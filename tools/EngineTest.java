@@ -12,6 +12,10 @@ public class EngineTest {
     check(lib.sounds.size() == 433, "library has 433 sounds: " + lib.sounds.size());
     check(lib.sounds.stream().allMatch(x -> !x.type.isEmpty()), "every sound has an instrument type");
     check("kick".equals(lib.sound("samples/basement-kick.wav").type) && "bass".equals(lib.sound("qb:block-of-meat-bass").type), "named sounds sort by name: " + lib.sound("qb:block-of-meat-bass").type);
+    // MM-8: the bundled sounds are FLAC; the kick must decode to exactly the WAV it came from (length and a checksum)
+    Sample kick = lib.load("samples/basement-kick.wav");
+    long sumAbs = 0; for (float v : kick.data) sumAbs += Math.abs(Math.round(v * 32768f));
+    check(kick.data.length == 26460 && kick.rate == 44100 && sumAbs == 92183135L, "FLAC kick is sample-exact: " + kick.data.length + " frames, sum " + sumAbs);
     Project p = Project.demo();
     for (String k : p.kit) if (!k.isEmpty()) check(lib.load(k) != null, "load " + k);
     Sample sl = lib.load("qb:stwretch-hit"); check(sl != null && Math.abs(sl.seconds() - .35) < .01, "qbldy slice length " + (sl == null ? -1 : sl.seconds()));

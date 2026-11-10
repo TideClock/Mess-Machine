@@ -42,15 +42,22 @@ class MainActivity : ComponentActivity() {
         handle(intent)
     }
 
+    private val midi by lazy { MidiIn(this, state) }
+
     override fun onStart() {
         super.onStart()
+        state.onScreen = true
         state.audio.start()
+        try { midi.start() } catch (_: Exception) {}
     }
 
     override fun onStop() {
         super.onStop()
+        try { midi.stop() } catch (_: Exception) {}
         state.saveNow()
-        // keep looping in the background only if the music is playing
+        state.onScreen = false
+        // keep looping in the background only if the music is playing and Settings allows it (MM-10)
+        if (state.playing && !state.bgPlay) state.togglePlay()
         if (!state.playing) state.audio.stop()
     }
 

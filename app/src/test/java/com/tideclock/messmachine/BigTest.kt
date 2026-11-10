@@ -1008,6 +1008,36 @@ class BigTest {
         assertEquals(before + 1, state.notes.notes.size)
     }
 
+    @Test fun playingKeepsGoingInTheBackgroundUntilStopped() {
+        // MM-10: while the music plays, the background notification runs; stopping (or the setting off) ends it
+        val app = shadowOf(ApplicationProvider.getApplicationContext<android.app.Application>())
+        state.backgroundPlay(true)
+        val started = app.nextStartedService
+        assertEquals(PlaybackService::class.java.name, started?.component?.className)
+        state.backgroundPlay(false)
+        assertEquals(PlaybackService::class.java.name, app.nextStoppedService?.component?.className)
+        // with the setting off, playing starts nothing
+        state.overlay = Overlay.Settings
+        settle()
+        rule.onNodeWithTag("set-bgplay").performScrollTo().performClick()
+        settle()
+        assertFalse(state.bgPlay)
+        state.backgroundPlay(true)
+        assertEquals(null, app.nextStartedService)
+        shot("51-settings-background")
+    }
+
+    @Test fun midiNotesHitPadsAndKeys() {
+        // MM-12: note 36 is pad 1 of the bank on screen; note 60 plays the selected pad at its own pitch
+        state.midiDown(36)
+        assertTrue("note 36 sounds pad 1", loudest() > .01f)
+        state.midiUp(36)
+        assertEquals(0, state.project.sel)
+        state.midiDown(60)
+        assertTrue("note 60 plays the selected pad as a key", loudest() > .01f)
+        state.midiUp(60)
+    }
+
     @Test fun helpShowsOnceThenBehindTheQuestionMark() {
         tab("Steps")
         assertTrue("first visit to Steps shows its how-to", rule.onAllNodesWithTag("help").fetchSemanticsNodes().isNotEmpty())

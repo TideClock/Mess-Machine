@@ -136,6 +136,9 @@ fun MessPicture(f: com.tideclock.messmachine.MessFile, modifier: Modifier = Modi
 /** ⚙ Settings: how the app looks and plays (split from the Messes sheet, which keeps files only). */
 @Composable
 fun SettingsScreen(state: AppState) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    // Android 13 and up ask before an app shows notifications; without it the music still plays, the Stop notification just stays hidden
+    val notif = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
     ScrollPane(hPad = 14.dp, vPad = 0.dp) {
         Card(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 14.dp)) {
             Column {
@@ -157,6 +160,13 @@ fun SettingsScreen(state: AppState) {
                     Btn("Tap start, tap stop", { state.switchRecordHold(false) }, on = !state.recordHold, onColor = C.Teal, small = true, tag = "set-rectap")
                     Btn("Hold to record", { state.switchRecordHold(true) }, on = state.recordHold, onColor = C.Teal, small = true, tag = "set-rechold")
                 }
+                Note("Leave the app while it plays and the music keeps going, with Stop in a notification.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
+                Btn(if (state.bgPlay) "Keep playing when I leave: on" else "Keep playing when I leave: off", {
+                    val on = !state.bgPlay
+                    state.switchBgPlay(on)
+                    if (on && android.os.Build.VERSION.SDK_INT >= 33 && androidx.core.content.ContextCompat.checkSelfPermission(ctx, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED)
+                        notif.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                }, on = state.bgPlay, onColor = C.Teal, small = true, tag = "set-bgplay")
                 Note("A short buzz when you hit a pad.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
                 Btn(if (state.buzz) "Pad buzz: on" else "Pad buzz: off", { state.switchBuzz(!state.buzz) }, on = state.buzz, onColor = C.Teal, small = true, tag = "set-buzz")
                 Note("Beat glow behind everything.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))

@@ -184,6 +184,29 @@ class AppState(private val app: Context) {
     var buzz by mutableStateOf(prefs.getBoolean("buzz", false))
         private set
     fun switchBuzz(v: Boolean) { buzz = v; prefs.edit().putBoolean("buzz", v).apply() }
+    /** Keep playing when you leave the app (MM-10). Off: leaving pauses the music. */
+    var bgPlay by mutableStateOf(prefs.getBoolean("bgPlay", true))
+        private set
+    fun switchBgPlay(v: Boolean) { bgPlay = v; prefs.edit().putBoolean("bgPlay", v).apply(); backgroundPlay(playing) }
+    private var fgOn = false
+    /** The background-play notification runs while the music plays, so leaving the app never cuts it off. */
+    fun backgroundPlay(on: Boolean) {
+        val want = on && bgPlay
+        if (want == fgOn) return
+        fgOn = want
+        val i = android.content.Intent(app, PlaybackService::class.java)
+        try { if (want) androidx.core.content.ContextCompat.startForegroundService(app, i) else app.stopService(i) } catch (_: Exception) { fgOn = false }
+    }
+    /** What the notification says: the loop or the song, and the tempo. */
+    fun playingLine(): String = (if (project.songMode) "Song, ${project.songLen()} bars" else "Loop ${Project.LETTERS[project.cur]}") + " at ${project.bpm} BPM"
+    /** Stop pressed in the notification: stop the music, and the sound output too if the app is not on screen. */
+    fun stopFromNotification() {
+        engine.stop(); playing = false; fgOn = false
+        notes.trail("stop from the notification")
+        if (!onScreen) audio.stop()
+    }
+    /** Set by MainActivity: whether the app is on screen. */
+    var onScreen = false
     var lastChord by mutableStateOf("")
     /** Bumped when the selected pad changes from the grid, so only the pads redraw. */
     var selV by mutableIntStateOf(0)
@@ -366,6 +389,7 @@ class AppState(private val app: Context) {
         }
         val p = engine.heard()
         if (playing != p.playing) playing = p.playing
+        backgroundPlay(playing)
         val st = if (p.playing) p.step else -1
         if (heardStep != st) { heardStep = st; if (recHold.isNotEmpty() && st != recStep) { writeMoves(); rebuild() } }
         if (heardPat != p.pat) heardPat = p.pat
@@ -469,6 +493,22 @@ class AppState(private val app: Context) {
     }
 
     fun keyOffset(d: Int): Int = Theory.keyNote(d, project.scale, project.root)
+
+    // ---- MIDI in (MM-12): notes 36 to 51 are pads 1 to 16 of this bank, the rest play the selected pad as keys ----
+    private val midiHeld = HashMap<Int, Int>()
+    fun midiDown(note: Int) {
+        if (note in 36..51) { padDown(note - 36); return }
+        val pad = project.sel
+        if (project.kit[pad].isEmpty()) { say("MIDI: pick a pad with a sound first; keys play the selected pad."); return }
+        val p = (note - 60).coerceIn(-36, 36)
+        val kid = 3000 + note
+        midiHeld[note] = kid
+        melodicDown(kid, pad, intArrayOf(p))
+    }
+    fun midiUp(note: Int) {
+        if (note in 36..51) { padUp(note - 36); return }
+        midiHeld.remove(note)?.let { melodicUp(it) }
+    }
 
     fun pickChordMode(m: String) {
         if (m.startsWith("set:")) {

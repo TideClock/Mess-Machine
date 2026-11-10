@@ -1,5 +1,5 @@
 {
-  "title": "Audio check, a faster start, and fewer duplicates",
+  "title": "Audio check, background play, MIDI and a smaller install",
   "thisBuild": [
     "Audio check: open Notes for Claude, then Audio check under How it is running. It shows the buffer, the output delay from Android's own clock, dropouts and any slow audio blocks.",
     "Tap the square there ten times: each tap plays a click and times your touch reaching the app.",
@@ -10,14 +10,21 @@
     "When an audio block runs slow, the app now notes what else was happening (loading a sound, the screen busy, the first minute). Every note carries the last few.",
     "Faster start and smoother first minutes: the app now ships a Baseline Profile, so Android compiles the sound engine and the screens ahead instead of while you play. It takes full effect after the phone's next idle tidy-up (overnight on the charger).",
     "Resample is now only on Steps (Resample to a pad). The copy in Your Workbench is gone.",
-    "Notes are public on GitHub, so they no longer carry your mess's name, and the mess summary goes only with bug notes and crashes. The phone model and audio numbers stay: the lag depends on them."
+    "Notes are public on GitHub, so they no longer carry your mess's name, and the mess summary goes only with bug notes and crashes. The phone model and audio numbers stay: the lag depends on them.",
+    "Keep playing when you leave the app: press Play, go to another app, and the music keeps going with a Mess Machine notification that has Stop. Settings has Keep playing when I leave (on to start). Android may ask once to show notifications.",
+    "MIDI over USB: plug in a pad controller or a keyboard. Notes 36 to 51 (most pad controllers' default) hit pads 1 to 16 of the bank on screen; any other note plays the selected pad as a key, middle C at the sound's own pitch.",
+    "The install is about half the size: the 433 sounds are packed as FLAC now, sample for sample the same as before."
   ],
   "watch": [
     "Run the Audio check: tap the square ten times, run the speaker test, then Save as a note and send it. That one note tells Claude what to fix next.",
-    "Play a busy mess for two minutes and listen for clicks, then send any note: it carries the slow blocks."
+    "Play a busy mess for two minutes and listen for clicks, then send any note: it carries the slow blocks.",
+    "Press Play, then switch to another app for a minute: the music should keep going, and Stop in the notification should stop it.",
+    "If you have a USB MIDI controller and an adapter, plug it in and play pads and keys."
   ],
   "limits": [
     "The speaker test needs the volume up and headphones out. It cannot see the touch screen's own scan time, so the real tap to sound is a little longer than it shows.",
-    "Touching a pad still plays it as it opens its menu; playing on touch is what keeps pads quick."
+    "Touching a pad still plays it as it opens its menu; playing on touch is what keeps pads quick.",
+    "MIDI ignores how hard you hit for now: every hit plays at full volume.",
+    "Lock-screen and Bluetooth headphone buttons do not control playback yet."
   ]
 }

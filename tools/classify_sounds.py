@@ -1,8 +1,9 @@
 """Sort every bundled sound by instrument type and a few qualities, from its name where the name
 says it and from the audio where it does not (the Heap's song chops). Writes "ty" and "q" into
 app/src/main/assets/sounds/library.json. Run from the repo root: python3 tools/classify_sounds.py"""
-import json, wave, re, collections
+import json, re, collections
 import numpy as np
+import soundfile as sf  # reads the FLAC sounds (MM-8): pip install soundfile
 
 ROOT = 'app/src/main/assets/sounds/'
 lib = json.load(open(ROOT + 'library.json'))
@@ -10,10 +11,8 @@ cache = {}
 
 def load(f):
     if f not in cache:
-        w = wave.open(ROOT + f)
-        x = np.frombuffer(w.readframes(w.getnframes()), dtype='<i2').astype(np.float32) / 32768
-        if w.getnchannels() > 1: x = x.reshape(-1, w.getnchannels()).mean(1)
-        cache[f] = (x, w.getframerate())
+        x, sr = sf.read(ROOT + f, dtype='float32', always_2d=True)
+        cache[f] = (x.mean(1), sr)
     return cache[f]
 
 def features(s):

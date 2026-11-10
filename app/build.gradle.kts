@@ -53,8 +53,8 @@ android {
         buildConfig = true
     }
     androidResources {
-        // the sounds are already as small as they get; storing them raw lets the app read them faster
-        noCompress += listOf("wav")
+        // FLAC is already packed (MM-8); storing it as is lets the app read it faster
+        noCompress += listOf("wav", "flac")
     }
     testOptions {
         unitTests {

@@ -149,11 +149,16 @@ public final class Library implements Engine.SampleSource {
             Sample sprite = sprite(snd.file);
             s = Sample.slice(key, sprite, snd.a, snd.d);
         } else {
-            try (InputStream in = opener.open(base + snd.file)) { s = Wav.read(key, in); }
+            try (InputStream in = opener.open(base + snd.file)) { s = decode(key, snd.file, in); }
         }
         } finally { DECODING.decrementAndGet(); }
         cache.put(key, s);
         return s;
+    }
+
+    /** The bundled sounds are FLAC (MM-8); your own sounds and older files are WAV. */
+    private static Sample decode(String key, String file, InputStream in) throws IOException {
+        return file.endsWith(".flac") ? Flac.read(key, in) : Wav.read(key, in);
     }
 
     private Sample sprite(String file) throws IOException {
@@ -161,7 +166,7 @@ public final class Library implements Engine.SampleSource {
             SoftReference<Sample> r = sprites.get(file);
             Sample s = r != null ? r.get() : null;
             if (s != null) return s;
-            try (InputStream in = opener.open(base + file)) { s = Wav.read(file, in); }
+            try (InputStream in = opener.open(base + file)) { s = decode(file, file, in); }
             sprites.put(file, new SoftReference<>(s));
             return s;
         }
