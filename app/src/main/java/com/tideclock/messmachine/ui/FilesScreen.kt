@@ -123,7 +123,7 @@ fun TempoScreen(state: AppState) {
         T("Swing pushes every other 16th late, like the site.", size = 12.sp, color = C.Dim, weight = FontWeight.Medium, modifier = Modifier.padding(bottom = 12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Btn("Click", { state.setLive { click = !click } }, on = state.live.click, small = true)
-            Btn("Hear steps when you tap them", { state.setPlayOnTap(!state.playOnTap) }, on = state.playOnTap, small = true, onColor = C.Teal)
+            Btn("Hear steps when you tap them", { state.switchPlayOnTap(!state.playOnTap) }, on = state.playOnTap, small = true, onColor = C.Teal)
         }
     }
 }

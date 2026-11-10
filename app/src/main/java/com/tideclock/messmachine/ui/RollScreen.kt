@@ -49,7 +49,7 @@ fun RollScreen(state: AppState) {
             Select(P.scale, Theory.SCALES.keys.map { it to it }, { state.setScale(it) })
         }
         Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Select(chordName(state.chordMode), chordOptions(P.scale, P.root), { state.setChordMode(it) })
+            Select(chordName(state.chordMode), chordOptions(P.scale, P.root), { state.pickChordMode(it) })
             Btn(if (P.fold) "Unfold" else "Fold to scale", { state.edit { fold = !fold } }, on = P.fold, small = true)
             for (l in listOf(1, 2, 4, 8)) Btn(if (l == 1) "1 step" else "$l", { state.noteLen = l }, on = state.noteLen == l, onColor = C.Teal, small = true)
         }

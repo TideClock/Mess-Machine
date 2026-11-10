@@ -76,7 +76,7 @@ fun KeysBar(state: AppState) {
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Select(Theory.NN[P.root], Theory.NN.mapIndexed { i, n -> i to n }, { state.setRoot(it) })
             Select(P.scale, Theory.SCALES.keys.map { it to it }, { state.setScale(it) })
-            Select(chordName(state.chordMode), chordOptions(P.scale, P.root), { state.setChordMode(it) })
+            Select(chordName(state.chordMode), chordOptions(P.scale, P.root), { state.pickChordMode(it) })
         }
         T(
             if (state.lastChord.isNotEmpty()) state.lastChord else "Keys play ${state.lib.titleOf(state.selKey()).ifEmpty { "the pad you picked" }} in ${Theory.NN[P.root]} ${P.scale.lowercase()}.",

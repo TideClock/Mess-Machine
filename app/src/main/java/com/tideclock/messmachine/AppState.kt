@@ -301,13 +301,13 @@ class AppState(private val app: Context) {
 
     fun keyOffset(d: Int): Int = Theory.keyNote(d, project.scale, project.root)
 
-    fun setChordMode(m: String) {
+    fun pickChordMode(m: String) {
         chordMode = m
         prefs.edit().putString("chord", m).apply()
         version++
     }
 
-    fun setPlayOnTap(v: Boolean) { playOnTap = v; prefs.edit().putBoolean("poc", v).apply() }
+    fun switchPlayOnTap(v: Boolean) { playOnTap = v; prefs.edit().putBoolean("poc", v).apply() }
 
     /** Hear a sound on its own, with its doctor settings. */
     fun preview(key: String, semis: Int = 0) {
