@@ -136,11 +136,19 @@ else note "play button: NOT FOUND"; fail=1; fi
 
 # 4. two long random runs (different seeds), with a cold restart between them
 for seed in 11 2026; do
-  adb shell monkey -p $PKG -s $seed --throttle 35 --pct-syskeys 0 --pct-appswitch 0 --pct-anyevent 0 --pct-nav 0 --pct-majornav 1 \
-    --pct-touch 55 --pct-motion 35 --pct-trackball 0 -v 5000 > $OUT/monkey-$seed.txt 2>&1
+  # no menu key (build 53's run: it opened Android's own Internet dialog, which froze), and Android's own
+  # freezes don't stop the run; only Mess Machine's crashes and freezes count
+  adb shell cmd statusbar collapse >/dev/null 2>&1
+  adb shell monkey -p $PKG -s $seed --throttle 35 --pct-syskeys 0 --pct-appswitch 0 --pct-anyevent 0 --pct-nav 0 --pct-majornav 0 \
+    --pct-touch 55 --pct-motion 35 --pct-trackball 0 --ignore-timeouts -v 5000 > $OUT/monkey-$seed.txt 2>&1
   tail -3 $OUT/monkey-$seed.txt
   shot "07-after-monkey-$seed"
-  grep -E "// CRASH|// NOT RESPONDING|Monkey aborted" $OUT/monkey-$seed.txt && { note "monkey $seed: CRASH or freeze"; fail=1; } || note "monkey $seed: clean"
+  other=$(grep -E "// NOT RESPONDING|// CRASH" $OUT/monkey-$seed.txt | grep -v "$PKG" | head -2 | tr -d '\r')
+  [ -n "$other" ] && note "monkey $seed: Android itself froze or crashed (not the app): $other"
+  if grep -E "// CRASH: $PKG|// NOT RESPONDING: $PKG" $OUT/monkey-$seed.txt || adb logcat -d | grep -q "ANR in $PKG"; then
+    note "monkey $seed: CRASH or freeze in the app"; fail=1
+  elif ! alive; then note "monkey $seed: app not running after the run"; fail=1
+  else note "monkey $seed: clean"; fi
   adb shell am force-stop $PKG; sleep 1; adb shell am start -W -n $PKG/.MainActivity; sleep 5
 done
 alive && note "after everything: running" || { note "after everything: NOT RUNNING"; fail=1; }
