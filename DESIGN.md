@@ -141,6 +141,20 @@ The proposal doc (claude.ai artifact 7DvA8tAeAYSUofSab1sWFG) is the short versio
 - Menus everywhere (#2): sound names in Steps and Roll, loop letters, song bars, picker rows, jar tiles; hold then lift.
 - Pitch strip in Steps (#3): tap a sound name for a one-row Padiano under its row; pick a step, then a note.
 
+### Status (2026-11-10)
+
+All four builds are in (builds 31 to 40), each with big-test flows and engine tests. How they turned out:
+- Hold on one-shots loops the trim by default; the doctor's When held picks loop, tail or once.
+- Padiano squares: 22 dp minimum; past that they wrap into even rows.
+- The dock sits in a row beside the page (it never covers pads). Lock blocks scrolling, tabs, sheets, menus, undo and back, and asks Android to pin.
+- Engine: per-voice dirty, crush, chorus and wobble; two shared spaces (reverb and a tempo echo) fed by sends; per-pad and per-bus perform effects; live per-pad modulation (pitch, volume, pan, sends, gate, ring, tape, stutter, roll) with rates interpolated inside each audio block. Render cost rose from about 2.7 to 5.8 ms per second of audio.
+- Effect settings open from the ✎ corner, because pressing and holding an effect is how you play it.
+- XY setups are saved in the mess under padOpts; your own presets live on the phone.
+- Circles: a finger must turn most of a full turn and travel 36 to 40 dp. On a Padiano note, the sphere moves that note's pitch and level; everything else moves the whole pad.
+- Desk: a 12-column grid with 24 dp rows. Pieces clip instead of scrolling inside the page; resize to see more. Layouts are saved on the phone, not in the mess.
+- Motion recording records XY moves (including filter and resonance) per step; dock sliders and effect buttons don't record yet.
+- Menus: Steps names, the Roll pad name, loop letters, song bars and picker rows. Jar tiles have none.
+
 ### Known trade-offs
 - Starting a circle on the Padiano can touch a neighbour note before the circle is recognised; it then snaps back and silences the stray note.
 - The pad still sounds on touch before its menu opens (same as before).
