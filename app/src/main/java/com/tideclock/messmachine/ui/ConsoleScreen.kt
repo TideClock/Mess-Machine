@@ -153,7 +153,7 @@ private fun ModuleBody(state: AppState, m: Module) {
             val (id, label) = FX_NAMES.getOrElse(m.pad) { FX_NAMES[0] }
             FxButton(state, id, label, Modifier.fillMaxWidth().testTag("cfx1-$id"), C.Letters[m.pad.coerceAtLeast(0) % C.Letters.size], height = pick(m.size, 58.dp, 90.dp, 140.dp))
         }
-        "xyp" -> if (m.pad in 0 until Project.NPADS && P.kit[m.pad].isNotEmpty()) PadXy(state, m.pad, tag = "cxyp-${m.pad}", size = pick(m.size, 130.dp, 190.dp, 260.dp))
+        "xyp" -> if (m.pad in 0 until Project.NPADS && P.kit[m.pad].isNotEmpty()) PadXy(state, m.pad, tag = "cxyp-${m.pad}", edge = pick(m.size, 130.dp, 190.dp, 260.dp))
             else EmptyModule("Pad ${m.pad + 1} is empty. Edit to point this XY at another pad.")
         "xy" -> Column {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 6.dp)) {

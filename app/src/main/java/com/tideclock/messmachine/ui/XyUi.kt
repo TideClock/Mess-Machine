@@ -142,12 +142,12 @@ fun xyDp(size: Int): Dp = listOf(130.dp, 190.dp, 260.dp)[size.coerceIn(0, 2)]
  * with a small dead zone. Springs back on lift unless the setup stays.
  */
 @Composable
-fun PadXy(state: AppState, pad: Int, modifier: Modifier = Modifier, tag: String = "xyp-$pad", size: Dp? = null) {
+fun PadXy(state: AppState, pad: Int, modifier: Modifier = Modifier, tag: String = "xyp-$pad", edge: Dp? = null) {
     val x = state.xyOf(pad)
     val live = state.xyLive[pad]
     val k = state.project.kit.getOrElse(pad) { "" }
     val col = if (k.isEmpty()) C.Teal else padColor(Color(state.lib.colorOf(k)))
-    val side = size ?: xyDp(x.size)
+    val side = edge ?: xyDp(x.size)
     Column(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 4.dp)) {
             T("XY ${pad + 1} · ${x.name.uppercase()}", size = 11.sp, color = C.Yellow, spacing = .06.em, lines = 1, modifier = Modifier.weight(1f))
