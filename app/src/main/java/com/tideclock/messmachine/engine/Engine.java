@@ -137,6 +137,7 @@ public final class Engine {
         long relLeft, relLen;
         boolean filt;
         float b0, b1, b2, a1, a2, x1, x2, y1, y2;
+        float px1, px2, py1, py2;
         float lastEnv;
     }
 
@@ -169,6 +170,11 @@ public final class Engine {
     private float[] fzL = new float[4], fzR = new float[4];
     private float[] dryBuf = new float[0];
     private boolean bypassMaster;
+
+    // live filter per pad (the strip under each piano): cutoff and resonance glide per block
+    private final double[] pfFreq = new double[64], pfTarget = new double[64], pfQ = new double[64], pfQT = new double[64];
+    private final boolean[] pfOn = new boolean[64], pfSlow = new boolean[64];
+    private final float[][] pfC = new float[64][5];
 
     private double oct() { return fxOct ? .5 : 1; }
 
@@ -225,6 +231,8 @@ public final class Engine {
         compRel = (float) (1 - Math.exp(-1.0 / (.2 * rate)));
         dlyL = new float[(int) (2.0 * rate)];
         dlyR = new float[(int) (2.0 * rate)];
+        java.util.Arrays.fill(pfFreq, 20000); java.util.Arrays.fill(pfTarget, 20000);
+        java.util.Arrays.fill(pfQ, .7); java.util.Arrays.fill(pfQT, .7);
         snap = Snapshot.build(new Project(), k -> null, null);
     }
 
@@ -264,6 +272,11 @@ public final class Engine {
     /** The filter pad: x 0..1 is cutoff, y 0..1 is resonance (top = more). on = finger down. */
     public void xy(float x, float y, boolean on) { cmds.add(new Object[]{"xy", x, y, on}); }
     public void xyHighPass(boolean hp) { cmds.add(new Object[]{"xyhp", hp}); }
+    /**
+     * A live filter on one pad only (every voice of that pad, held notes, repeats, the steps).
+     * cut 0..1 is cutoff (1 = open), res 0..1 is resonance. on = false glides it open again.
+     */
+    public void padFilter(int pad, float cut, float res, boolean on) { cmds.add(new Object[]{"pf", pad, cut, res, on}); }
     public void stopPreviews() { cmds.add(new Object[]{"stopprev"}); }
 
     public RecEvent pollRec() { return recs.poll(); }
@@ -294,6 +307,7 @@ public final class Engine {
         java.util.Arrays.fill(out, 0, frames * 2, 0f);
         if (dryBuf.length < frames * 2) dryBuf = new float[frames * 2];
         java.util.Arrays.fill(dryBuf, 0, frames * 2, 0f);
+        padFilters(frames);
         int done = 0;
         while (done < frames) {
             int chunk = frames - done;
@@ -317,6 +331,24 @@ public final class Engine {
         uiNanos = nanos;
         uiPlaying = playing;
     }
+
+    private void padFilters(int frames) {
+        for (int p = 0; p < 64; p++) {
+            if (!pfOn[p] && pfTarget[p] >= 19999 && pfQT[p] <= .71) continue;
+            double g = 1 - Math.exp(-frames / ((pfSlow[p] ? .12 : .025) * rate));
+            pfFreq[p] += (pfTarget[p] - pfFreq[p]) * g;
+            pfQ[p] += (pfQT[p] - pfQ[p]) * g;
+            if (pfFreq[p] >= 19900 && pfTarget[p] >= 19999) { pfFreq[p] = 20000; pfQ[p] = .7; pfOn[p] = false; continue; }
+            double f = Math.min(pfFreq[p], rate * .45), w = 2 * Math.PI * f / rate, cs = Math.cos(w), al = Math.sin(w) / (2 * pfQ[p]), a0 = 1 + al;
+            float[] c = pfC[p];
+            c[0] = (float) ((1 - cs) / 2 / a0); c[1] = (float) ((1 - cs) / a0); c[2] = c[0];
+            c[3] = (float) (-2 * cs / a0); c[4] = (float) ((1 - al) / a0);
+            pfOn[p] = true;
+        }
+    }
+
+    /** Is a pad's live filter closed at all right now (for the UI and tests). */
+    public boolean padFiltered(int pad) { return pad >= 0 && pad < 64 && pfOn[pad]; }
 
     private double spb(Snapshot S) { return rate * 60.0 / Math.max(40, S.bpm) / 4.0; }
 
@@ -385,6 +417,16 @@ public final class Engine {
                     filtSlow = false;
                 } else { filtTarget = xyHP ? 10 : 20000; qTarget = .7; filtSlow = true; }
                 break;
+            case "pf": {
+                int pd = (Integer) c[1];
+                if (pd < 0 || pd >= 64) break;
+                boolean on = (Boolean) c[4];
+                double cut = Math.max(0, Math.min(1, (Float) c[2])), res = Math.max(0, Math.min(1, (Float) c[3]));
+                pfTarget[pd] = on ? 90 * Math.pow(20000.0 / 90, cut) : 20000;
+                pfQT[pd] = on ? .7 + res * 13 : .7;
+                pfSlow[pd] = !on;
+                break;
+            }
             case "xyhp": xyHP = (Boolean) c[1]; filtFreq = filtTarget = xyHP ? 10 : 20000; filtQ = qTarget = .7; fzL = new float[4]; fzR = new float[4]; break;
         }
     }
@@ -578,6 +620,7 @@ public final class Engine {
         v.gr = (float) Math.min(1, Math.sqrt(2) * Math.sin(x * Math.PI / 2));
         v.pad = ps.index; v.choke = e.choke; v.startAbs = frame + delay; v.chokeAt = Long.MAX_VALUE; v.chokeG = 1; v.lastEnv = 0;
         v.relLeft = 0; v.relLen = 1; v.relFrom = 0;
+        v.px1 = v.px2 = v.py1 = v.py2 = 0;
         setFilter(v, e.tone);
         if (e.choke > 0) {
             for (Voice o : pool) if (o != v && o.active && !o.preview && o.choke == e.choke && o.startAbs < v.startAbs) o.chokeAt = Math.min(o.chokeAt, v.startAbs);
@@ -668,6 +711,13 @@ public final class Engine {
                 if (v.filt) {
                     float y = v.b0 * smp + v.b1 * v.x1 + v.b2 * v.x2 - v.a1 * v.y1 - v.a2 * v.y2;
                     v.x2 = v.x1; v.x1 = smp; v.y2 = v.y1; v.y1 = y; smp = y;
+                }
+                if (v.pad >= 0 && v.pad < 64) {
+                    if (pfOn[v.pad]) {
+                        float[] c = pfC[v.pad];
+                        float y = c[0] * smp + c[1] * v.px1 + c[2] * v.px2 - c[3] * v.py1 - c[4] * v.py2;
+                        v.px2 = v.px1; v.px1 = smp; v.py2 = v.py1; v.py1 = y; smp = y;
+                    } else { v.px2 = v.px1 = v.py2 = v.py1 = smp; }
                 }
                 smp *= env;
                 int o = (off + k) * 2;

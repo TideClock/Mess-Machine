@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.FileProvider
@@ -25,7 +26,35 @@ import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.Executors
 
-enum class Tab(val label: String) { Pads("Pads"), Steps("Steps"), Roll("Roll"), Song("Song"), Sounds("Sounds") }
+enum class Tab(val label: String) { Pads("Pads"), Console("Console"), Steps("Steps"), Roll("Roll"), Song("Song"), Sounds("Sounds") }
+
+/**
+ * One piece of Your Console. type picks what it is, pad which pad it plays (pianos, filters, a pad
+ * row, one effect), size how tall (0 small, 1 medium, 2 large), half = half the width.
+ */
+data class Module(val type: String, val pad: Int = -1, val size: Int = 1, val half: Boolean = false) {
+    fun code() = "$type,$pad,$size,${if (half) 1 else 0}"
+    companion object {
+        fun parse(c: String): Module? = try {
+            val f = c.split(",")
+            if (f[0] !in CONSOLE_TYPES.map { it.first }) null else Module(f[0], f[1].toInt(), f[2].toInt().coerceIn(0, 2), f[3] == "1")
+        } catch (_: Exception) { null }
+    }
+}
+
+/** Every module you can add, with its name. */
+val CONSOLE_TYPES = listOf(
+    "transport" to "Transport", "pads" to "Pads (4 x 4)", "row" to "One row of pads", "piano" to "Piano for a pad",
+    "pfilt" to "Filter for a pad", "hold" to "Hold", "fx" to "Effects (all nine)", "fx1" to "One effect", "xy" to "Filter pad (everything)",
+    "repeat" to "Repeat + arp", "loops" to "Loops A to H", "scale" to "Scale + chords", "beat" to "Beat light",
+)
+
+/** The site's perform effects, in the order the panels show them. */
+val FX_NAMES = listOf(
+    "stutter" to "Stutter", "echo" to "Echo throw", "crush" to "Crush",
+    "tape" to "Tape stop", "gate" to "Gate", "dirty" to "Dirty",
+    "ring" to "Ring mod", "oct" to "Octave down", "rev" to "Reverse",
+)
 
 sealed class Overlay {
     data class Picker(val pad: Int) : Overlay()
@@ -518,6 +547,7 @@ class AppState(private val app: Context) {
         if (playing) { engine.pause(); playing = false }
         engine.panic()
         latched.clear()
+        for (p in padFilt.keys.toList()) openPadFilter(p)
         for (d in 0 until 16) downIds[d] = -1
         say("Hushed. Everything is quiet. Play picks up where it paused.")
     }
@@ -787,17 +817,29 @@ class AppState(private val app: Context) {
 
     /* ---------------- hold: the first N notes keep sounding ---------------- */
 
-    /** How many notes hold after you lift your finger. 0 = off. */
-    var holdCount by mutableIntStateOf(prefs.getInt("holdCount", 0))
+    /** Hold on or off: one tap, from the hold bar or any piano. */
+    var holdOn by mutableStateOf(prefs.getBoolean("holdOn", false))
         private set
+    /** How many notes hold after you lift your finger, 1 to 8 (kept while Hold is off). */
+    var holdCount by mutableIntStateOf(prefs.getInt("holdN", 3).coerceIn(1, 8))
+        private set
+    /** Notes that hold right now: 0 when Hold is off. */
+    val holdSlots: Int get() = if (holdOn) holdCount else 0
     /** Notes holding right now, as engine ids (piano ids carry their pad and pitch). */
     val latched = mutableStateListOf<Int>()
     private val swallowUp = HashSet<Int>()
 
     fun changeHoldCount(n: Int) {
-        holdCount = n.coerceIn(0, 8)
-        prefs.edit().putInt("holdCount", holdCount).apply()
-        while (latched.size > holdCount) { engine.unlatch(latched.removeAt(0)) }
+        holdCount = n.coerceIn(1, 8)
+        prefs.edit().putInt("holdN", holdCount).apply()
+        while (latched.size > holdSlots) { engine.unlatch(latched.removeAt(0)) }
+    }
+
+    fun switchHold(v: Boolean = !holdOn) {
+        holdOn = v
+        prefs.edit().putBoolean("holdOn", v).apply()
+        notes.trail("hold ${if (v) "on" else "off"}")
+        if (!v) releaseHolds()
     }
 
     fun releaseHolds() {
@@ -810,13 +852,13 @@ class AppState(private val app: Context) {
 
     /** A melodic press with hold rules: a held note pressed again lets go; a free slot holds; otherwise it plays normally. */
     private fun melodicDown(id: Int, pad: Int, ps: IntArray) {
-        if (holdCount > 0 && id in latched) {
+        if (id in latched) {
             latched.remove(id)
             engine.unlatch(id)
             swallowUp.add(id)
             return
         }
-        val latch = holdCount > 0 && latched.size < holdCount
+        val latch = latched.size < holdSlots
         if (latch) latched.add(id)
         engine.down(id, pad, ps, true, latch)
     }
@@ -847,6 +889,82 @@ class AppState(private val app: Context) {
     }
 
     fun xy(x: Float, y: Float, on: Boolean) = engine.xy(x, y, on)
+
+    /* ---------------- Your Console ---------------- */
+
+    /** The modules on Your Console, top to bottom (declared after project and lib: the preset reads them). */
+    val console = mutableStateListOf<Module>().also { l ->
+        val mods = prefs.getString("console", null)?.split(";")?.mapNotNull { Module.parse(it) }
+        l.addAll(if (mods.isNullOrEmpty()) performPreset() else mods)
+    }
+    var consoleEdit by mutableStateOf(false)
+
+    /** A first melodic pad for the preset's piano and filter. */
+    private fun firstTonalPad(): Int {
+        val tonal = setOf("bass", "keys", "lead", "pad")
+        val i = (0 until Project.NPADS).firstOrNull { project.kit[it].isNotEmpty() && lib.sound(project.kit[it])?.type in tonal }
+        return i ?: (0 until 8).lastOrNull { project.kit[it].isNotEmpty() } ?: 0
+    }
+
+    /** The starting layout, a performance page: transport, pads, hold, a piano with its filter, the effects. */
+    fun performPreset(): List<Module> {
+        val t = firstTonalPad()
+        return listOf(
+            Module("transport"), Module("pads"), Module("hold"), Module("piano", t), Module("pfilt", t),
+            Module("fx"), Module("xy", size = 0, half = true), Module("repeat", half = true), Module("loops"),
+        )
+    }
+
+    private fun saveConsole() { prefs.edit().putString("console", console.joinToString(";") { it.code() }).apply() }
+
+    fun addModule(type: String) {
+        val pad = when (type) {
+            "piano", "pfilt" -> project.sel.takeIf { project.kit[it].isNotEmpty() } ?: firstTonalPad()
+            "row", "fx1" -> 0
+            else -> -1
+        }
+        console.add(Module(type, pad))
+        saveConsole()
+        notes.trail("console add $type")
+    }
+
+    fun changeModule(i: Int, m: Module) { if (i in console.indices) { console[i] = m; saveConsole() } }
+
+    fun moveModule(i: Int, by: Int) {
+        val j = i + by
+        if (i !in console.indices || j !in console.indices) return
+        val m = console.removeAt(i)
+        console.add(j, m)
+        saveConsole()
+    }
+
+    fun removeModule(i: Int) { if (i in console.indices) { console.removeAt(i); saveConsole() } }
+
+    fun resetConsole() { console.clear(); console.addAll(performPreset()); saveConsole(); say("Back to the Perform layout.") }
+
+    /* ---------------- a live filter on one pad ---------------- */
+
+    /** Where each pad's filter sits (cut 0..1, res 0..1) while it is closed; absent = open. */
+    val padFilt = mutableStateMapOf<Int, Pair<Float, Float>>()
+    /** Pads whose filter stays put after the finger lifts. */
+    val padFiltStay = mutableStateListOf<Int>()
+
+    fun padFilter(pad: Int, cut: Float, res: Float, on: Boolean) {
+        if (on) {
+            padFilt[pad] = cut to res
+            engine.padFilter(pad, cut, res, true)
+        } else if (pad !in padFiltStay) {
+            padFilt.remove(pad)
+            engine.padFilter(pad, 1f, 0f, false)
+        }
+    }
+
+    fun switchFiltStay(pad: Int) {
+        if (pad in padFiltStay) { padFiltStay.remove(pad); padFilt.remove(pad); engine.padFilter(pad, 1f, 0f, false) }
+        else padFiltStay.add(pad)
+    }
+
+    fun openPadFilter(pad: Int) { padFiltStay.remove(pad); padFilt.remove(pad); engine.padFilter(pad, 1f, 0f, false) }
 
     fun switchXyHP(v: Boolean) { xyHP = v; engine.xyHighPass(v) }
 
@@ -899,19 +1017,55 @@ class AppState(private val app: Context) {
         app.contentResolver.query(u, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c -> if (c.moveToFirst()) c.getString(0) else "" } ?: ""
     } catch (_: Exception) { "" }
 
+    /** The pad a mic take lands on, or -1 for the first empty pad. */
+    var micPad by mutableIntStateOf(-1)
+        private set
+    /** A pad asked to record but the mic needs permission first; the screen asks, then calls recordToPad. */
+    var askMicFor by mutableIntStateOf(-1)
+
+    /** From the pad menu: record now if the mic is allowed, or ask first (the screen asks, then records). */
+    fun askRecord(pad: Int) {
+        padMenu = -1
+        if (micOn) { bench.stopMic(); return }
+        val ok = androidx.core.content.ContextCompat.checkSelfPermission(app, android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (ok) recordToPad(pad) else askMicFor = pad
+    }
+
+    /** Record from the mic straight onto one pad (it replaces what was there; undo brings it back). */
+    fun recordToPad(pad: Int) {
+        padMenu = -1
+        if (micOn) { bench.stopMic(); return }
+        micPad = pad
+        startMic()
+    }
+
     fun toggleMic() {
         if (micOn) { bench.stopMic(); return }
+        micPad = -1
+        startMic()
+    }
+
+    private fun startMic() {
         micOn = true
-        notes.trail("mic on")
-        bench.startMic { take ->
+        val pad = micPad
+        notes.trail(if (pad >= 0) "record onto pad ${pad + 1}" else "mic on")
+        bench.startMic { take -> main.post { takeArrived(take, pad) } }
+    }
+
+    /** A mic take is in: keep it in Your Workbench and put it on its pad (or the first empty one). */
+    fun takeArrived(take: Sample?, pad: Int) {
+        micOn = false
+        micPad = -1
+        if (take == null) { say("Nothing came through the mic."); return }
+        busy = "Saving the take…"
+        worker.execute {
+            val key = bench.addSample("mic", "Mic take ${bench.count("mic") + 1}", take)
             main.post {
-                micOn = false
-                if (take == null) { say("Nothing came through the mic."); return@post }
-                busy = "Saving the take…"
-                worker.execute {
-                    val key = bench.addSample("mic", "Mic take ${bench.count("mic") + 1}", take)
-                    main.post { busy = null; placeNew(key, "Got it, %.1f seconds.".format(take.seconds())) }
-                }
+                busy = null
+                if (pad >= 0) {
+                    putOnPad(pad, key)
+                    say("Got it, %.1f seconds. It is on pad ${pad + 1} and in Your Workbench.".format(take.seconds()))
+                } else placeNew(key, "Got it, %.1f seconds.".format(take.seconds()))
             }
         }
     }
@@ -930,6 +1084,21 @@ class AppState(private val app: Context) {
                 val key = bench.addSample("rs", "Resample $letter ${bench.count("rs") + 1}", Sample.fromStereo("rs", lr, 44100))
                 main.post { busy = null; placeNew(key, "Loop $letter is now one sound.") }
             } catch (e: Exception) { main.post { busy = null; say("The resample broke: ${e.message}") } }
+        }
+    }
+
+    /** Keep a pad's sound, as you have it set, in Your Workbench (and leave the pad as it is). */
+    fun keepInBench(pad: Int) {
+        padMenu = -1
+        val key = project.kit[pad]
+        val s = lib.get(key) ?: run { say("Nothing on pad ${pad + 1} to keep."); return }
+        val e = project.edit(key).copy()
+        busy = "Saving…"
+        notes.trail("keep pad ${pad + 1}")
+        worker.execute {
+            val r = Engine.renderOne("take", s, e)
+            val k = bench.addSample("take", lib.titleOf(key).take(30), r)
+            main.post { busy = null; version++; say("Kept in Your Workbench as \"${lib.titleOf(k)}\". Share it from there or from the pad menu.") }
         }
     }
 

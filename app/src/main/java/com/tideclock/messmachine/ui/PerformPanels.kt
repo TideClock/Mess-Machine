@@ -42,11 +42,7 @@ import kotlin.math.floor
 /** Hold-to-use effects and the filter pad, like the site's Perform tab. */
 @Composable
 fun FxPanel(state: AppState) {
-    val names = listOf(
-        "stutter" to "Stutter", "echo" to "Echo throw", "crush" to "Crush",
-        "tape" to "Tape stop", "gate" to "Gate", "dirty" to "Dirty",
-        "ring" to "Ring mod", "oct" to "Octave down", "rev" to "Reverse",
-    )
+    val names = com.tideclock.messmachine.FX_NAMES
     Card(Modifier.fillMaxWidth().padding(top = 18.dp)) {
         Column {
             Heading("Perform", size = 18.sp)
@@ -71,11 +67,11 @@ fun FxPanel(state: AppState) {
 }
 
 @Composable
-fun HoldButton(label: String, modifier: Modifier, color: Color, onHold: (Boolean) -> Unit) {
+fun HoldButton(label: String, modifier: Modifier, color: Color, height: androidx.compose.ui.unit.Dp = 58.dp, onHold: (Boolean) -> Unit) {
     var held by remember { mutableStateOf(false) }
     Box(
         modifier
-            .height(58.dp)
+            .height(height)
             .padding(end = 4.dp, bottom = 4.dp)
             .sticker(if (held) color else C.Ink, shadow = if (held) 0.dp else 4.dp, shadowColor = color)
             .pointerInput(label) {
@@ -98,12 +94,12 @@ fun HoldButton(label: String, modifier: Modifier, color: Color, onHold: (Boolean
 }
 
 @Composable
-fun XyPad(state: AppState) {
+fun XyPad(state: AppState, height: androidx.compose.ui.unit.Dp = 180.dp) {
     var dot by remember { mutableStateOf<Offset?>(null) }
     Canvas(
         Modifier
             .fillMaxWidth()
-            .height(180.dp)
+            .height(height)
             .padding(end = 6.dp, bottom = 6.dp)
             .sticker(C.Paper, shadow = 6.dp, shadowColor = C.Teal)
             .testTag("xy")
@@ -150,7 +146,7 @@ private fun isBlack(p: Int) = Theory.pcOf(p) in BLACK_PC
  * at least an octave and a half on screen, slide or multi-finger, shaded for the scale.
  */
 @Composable
-fun PianoKeyboard(state: AppState, pad: Int) {
+fun PianoKeyboard(state: AppState, pad: Int, keysHeight: androidx.compose.ui.unit.Dp = 132.dp, filter: Boolean = true, close: Boolean = true) {
     val P = state.project
     val k = P.kit[pad]
     if (k.isEmpty()) return
@@ -170,15 +166,16 @@ fun PianoKeyboard(state: AppState, pad: Int) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
                 Swatch(col)
                 T(" PAD ${pad + 1} · ${state.lib.titleOf(k).uppercase()}", size = 12.sp, color = C.Yellow, lines = 1, spacing = .06.em, modifier = Modifier.weight(1f))
+                HoldToggle(state, tag = "piano-hold-$pad", modifier = Modifier.padding(end = 6.dp))
                 Btn("◀", { start = (first - 3).coerceAtLeast(0) }, small = true, enabled = first > 0)
                 Btn("▶", { start = (first + 3).coerceAtMost(maxStart) }, small = true, enabled = first < maxStart, modifier = Modifier.padding(start = 6.dp))
-                Btn("✕", { state.toggleKeyboard(pad) }, small = true, color = C.Riot, modifier = Modifier.padding(start = 6.dp), tag = "piano-close-$pad")
+                if (close) Btn("✕", { state.toggleKeyboard(pad) }, small = true, color = C.Riot, modifier = Modifier.padding(start = 6.dp), tag = "piano-close-$pad")
             }
             Canvas(
                 Modifier
                     .fillMaxWidth()
                     .padding(end = 6.dp, bottom = 6.dp)
-                    .height(132.dp)
+                    .height(keysHeight)
                     .sticker(C.Ink, shadow = 6.dp, shadowColor = col)
                     .testTag("piano-keys-$pad")
                     .pointerInput(pad, first, visible) {
@@ -288,6 +285,68 @@ fun PianoKeyboard(state: AppState, pad: Int) {
                     " · ${Theory.noteName(shown.first())} to ${Theory.noteName(shown.last())} · ◀ ▶ to shift",
                 modifier = Modifier.padding(top = 4.dp),
             )
+            if (filter) PadFilterStrip(state, pad, Modifier.padding(top = 8.dp))
+        }
+    }
+}
+
+/**
+ * A filter and resonance for one pad only, to play while you play: slide left to close the cutoff,
+ * up for more resonance. Lift and it opens again, unless Stay is on.
+ */
+@Composable
+fun PadFilterStrip(state: AppState, pad: Int, modifier: Modifier = Modifier, height: androidx.compose.ui.unit.Dp = 58.dp) {
+    val k = state.project.kit[pad]
+    val col = if (k.isEmpty()) C.Teal else padColor(Color(state.lib.colorOf(k)))
+    val at = state.padFilt[pad]
+    val stay = pad in state.padFiltStay
+    Column(modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 6.dp)) {
+            T("FILTER", size = 12.sp, color = if (at != null) C.Yellow else C.Dim, spacing = .1.em)
+            Note(if (at == null) "open · pad ${pad + 1} only" else "cut ${(at.first * 100).toInt()} · res ${(at.second * 100).toInt()}", color = if (at != null) C.Cream else C.Dim, modifier = Modifier.weight(1f))
+            Btn(if (stay) "Stay on" else "Stay", { state.switchFiltStay(pad) }, on = stay, onColor = C.Teal, small = true, tag = "pfilt-stay-$pad")
+            if (stay && at != null) Btn("Open", { state.openPadFilter(pad) }, small = true, tag = "pfilt-open-$pad")
+        }
+        Canvas(
+            Modifier
+                .fillMaxWidth()
+                .height(height)
+                .padding(end = 6.dp, bottom = 5.dp)
+                .sticker(C.Black, shadow = 5.dp, shadowColor = col)
+                .testTag("pfilt-$pad")
+                .pointerInput(pad) {
+                    awaitEachGesture {
+                        val d = awaitFirstDown(requireUnconsumed = false)
+                        fun send(p: Offset, on: Boolean) {
+                            val x = (p.x / size.width).coerceIn(0f, 1f)
+                            val y = 1f - (p.y / size.height).coerceIn(0f, 1f)
+                            state.padFilter(pad, x, y, on)
+                        }
+                        send(d.position, true)
+                        d.consume()
+                        var last = d.position
+                        while (true) {
+                            val e = awaitPointerEvent()
+                            val c = e.changes.firstOrNull { it.id == d.id } ?: e.changes.first()
+                            if (!c.pressed) break
+                            if (c.positionChange() != Offset.Zero) { last = c.position; send(c.position, true) }
+                            c.consume()
+                        }
+                        send(last, false)
+                    }
+                },
+        ) {
+            // a dark-to-bright ramp: left is muffled, right is open
+            drawRect(Brush.horizontalGradient(listOf(lerp(C.Ink, col, .15f), lerp(C.Ink, col, .55f))))
+            for (i in 1..7) drawLine(C.Card2, Offset(size.width * i / 8, 0f), Offset(size.width * i / 8, size.height), strokeWidth = 1.5f)
+            if (at != null) {
+                val cx = at.first * size.width
+                val cy = (1f - at.second) * size.height
+                drawRect(C.Black.copy(alpha = .45f), topLeft = Offset(cx, 0f), size = Size(size.width - cx, size.height))
+                drawLine(C.Pink, Offset(cx, 0f), Offset(cx, size.height), strokeWidth = 4f)
+                drawCircle(C.Pink, radius = 16f, center = Offset(cx, cy))
+                drawCircle(C.Cream, radius = 16f, center = Offset(cx, cy), style = Stroke(width = 4f))
+            }
         }
     }
 }

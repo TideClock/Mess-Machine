@@ -1,6 +1,8 @@
 package com.tideclock.messmachine.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.LinearOutSlowInEasing
@@ -64,15 +66,24 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
             if (state.toast != null) { delay(3200); state.toast = null }
         }
         BackHandler(enabled = state.overlay != null) { state.overlay = null }
+        // a pad asked to record: ask for the mic, then record onto it
+        val micPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+            val pad = state.askMicFor
+            state.askMicFor = -1
+            if (ok && pad >= 0) state.recordToPad(pad) else if (!ok) state.say("The mic needs permission. You can allow it in the phone's settings for Mess Machine.")
+        }
+        LaunchedEffect(state.askMicFor) { if (state.askMicFor >= 0) micPerm.launch(android.Manifest.permission.RECORD_AUDIO) }
         @Suppress("UNUSED_VARIABLE") val v = state.version
         val dn = LocalDensity.current
         CompositionLocalProvider(LocalDensity provides Density(dn.density * state.uiScale, dn.fontScale)) {
         Box(Modifier.fillMaxSize().background(C.Paper).grit().statusBarsPadding().navigationBarsPadding()) {
             Column(Modifier.fillMaxSize()) {
                 Transport(state)
+                if (state.micOn) RecordingBanner(state)
                 Box(Modifier.weight(1f).fillMaxWidth().testTag("screen-${state.tab.label}")) {
                     when (state.tab) {
                         Tab.Pads -> PadsScreen(state)
+                        Tab.Console -> ConsoleScreen(state)
                         Tab.Steps -> StepsScreen(state)
                         Tab.Roll -> RollScreen(state)
                         Tab.Song -> SongScreen(state)
@@ -151,18 +162,36 @@ fun Transport(state: AppState) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(end = 4.dp)) {
             BeatLight(state, pulse)
             PositionText(state)
-            Btn("Repeat", { state.setLive { nr = !nr } }, on = state.live.nr, onColor = C.Pink, small = true, tag = "repeat")
-            Select(
-                (when (state.live.nrRate) { 2.0 -> "1/8"; 0.5 -> "1/32"; else -> "1/16" }) + if (state.live.arp != "rep") " " + arpShort(state.live.arp) else "",
-                listOf("r2" to "Every 1/8", "r1" to "Every 1/16", "r.5" to "Every 1/32") + listOf("rep", "up", "down", "updown", "rand").map { "a$it" to arpName(it) },
-                { v ->
-                    if (v.startsWith("r")) state.setLive { nrRate = v.substring(1).toDouble() }
-                    else { val a = v.substring(1); state.setLive { arp = a; if (a != "rep") nr = true } }
-                },
-            )
+            RepeatControls(state)
             Spacer(Modifier.weight(1f))
             Btn("Hush", { state.hush() }, small = true, color = C.Riot, tag = "hush")
         }
+    }
+}
+
+/** Note repeat on or off, and its rate or arp. */
+@Composable
+fun RepeatControls(state: AppState, tag: String = "repeat") {
+    Btn("Repeat", { state.setLive { nr = !nr } }, on = state.live.nr, onColor = C.Pink, small = true, tag = tag)
+    Select(
+        (when (state.live.nrRate) { 2.0 -> "1/8"; 0.5 -> "1/32"; else -> "1/16" }) + if (state.live.arp != "rep") " " + arpShort(state.live.arp) else "",
+        listOf("r2" to "Every 1/8", "r1" to "Every 1/16", "r.5" to "Every 1/32") + listOf("rep", "up", "down", "updown", "rand").map { "a$it" to arpName(it) },
+        { v ->
+            if (v.startsWith("r")) state.setLive { nrRate = v.substring(1).toDouble() }
+            else { val a = v.substring(1); state.setLive { arp = a; if (a != "rep") nr = true } }
+        },
+    )
+}
+
+/** While the mic records: a red bar you can see from any page, tap to stop. */
+@Composable
+fun RecordingBanner(state: AppState) {
+    val pulse = beatPulse(state)
+    Box(
+        Modifier.fillMaxWidth().background(lerp(C.Riot, C.Pink, pulse.value * .5f)).clickable { if (state.micPad >= 0) state.recordToPad(state.micPad) else state.toggleMic() }
+            .testTag("rec-banner").padding(horizontal = 14.dp, vertical = 10.dp),
+    ) {
+        T("● RECORDING" + (if (state.micPad >= 0) " ONTO PAD ${state.micPad + 1}" else "") + " · TAP TO STOP", size = 14.sp, color = C.Cream, spacing = .06.em, lines = 1)
     }
 }
 
@@ -228,7 +257,7 @@ fun position(state: AppState): String {
 fun Tabs(state: AppState) {
     Row(Modifier.fillMaxWidth().background(C.Ink).drawBehind {
         drawLine(C.Pink, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 3.dp.toPx())
-    }.padding(horizontal = 6.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    }.padding(horizontal = 4.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
         for (t in Tab.entries) {
             val on = state.tab == t
             Box(
@@ -241,7 +270,7 @@ fun Tabs(state: AppState) {
                     .testTag("tab-${t.label}"),
                 contentAlignment = Alignment.Center,
             ) {
-                T(t.label.uppercase(), size = 12.sp, color = if (on) C.Ink else C.Dim, spacing = .08.em, lines = 1)
+                T(t.label.uppercase(), size = 11.sp, color = if (on) C.Ink else C.Dim, spacing = .02.em, lines = 1)
             }
         }
     }

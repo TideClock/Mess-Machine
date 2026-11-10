@@ -215,9 +215,12 @@ class BigTest {
     @Test fun holdKeepsTheFirstNotes() {
         state.toggleKeyboard(7)
         settle()
-        rule.onNodeWithTag("hold-up").performScrollTo().performClick()
-        rule.onNodeWithTag("hold-up").performClick()
-        rule.onNodeWithTag("hold-up").performClick()
+        // one tap turns Hold on, three notes by default
+        rule.onNodeWithTag("hold-toggle").performScrollTo().performClick()
+        settle()
+        assertTrue(state.holdOn)
+        assertEquals(3, state.holdCount)
+        rule.onNodeWithTag("hold-up").performClick(); rule.onNodeWithTag("hold-down").performClick()
         settle()
         assertEquals(3, state.holdCount)
         // five different notes: the first three hold, the next two do not
@@ -234,6 +237,137 @@ class BigTest {
         rule.onNodeWithTag("hold-release").performScrollTo().performClick()
         settle()
         assertTrue(state.latched.isEmpty())
+        // the Hold switch on the piano itself: turning it off lets every held note go
+        for (p in listOf(0, 4)) { state.pianoDown(7, p); state.pianoUp(7, p) }
+        assertEquals(2, state.latched.size)
+        rule.onNodeWithTag("piano-hold-7").performScrollTo().performClick()
+        settle()
+        assertFalse(state.holdOn)
+        assertTrue(state.latched.isEmpty())
+        state.pianoDown(7, 0); state.pianoUp(7, 0)
+        assertTrue("with Hold off nothing holds", state.latched.isEmpty())
+    }
+
+    @Test fun padFilterUnderThePiano() {
+        state.toggleKeyboard(7)
+        settle()
+        // hold the strip near the left: pad 8's filter closes, nothing else's does
+        rule.onNodeWithTag("pfilt-7").performScrollTo().performTouchInput { down(Offset(width * .08f, height * .3f)) }
+        settle()
+        assertTrue(7 in state.padFilt)
+        loudest(2048)
+        assertTrue(state.engine.padFiltered(7) && !state.engine.padFiltered(0))
+        state.pianoDown(7, 0)
+        loudest(1024)
+        rule.onNodeWithTag("piano-7").performScrollTo()
+        shot("21-pad-filter-held")
+        state.pianoUp(7, 0)
+        rule.onNodeWithTag("pfilt-7").performTouchInput { up() }
+        settle()
+        assertFalse("lifting opens it again", 7 in state.padFilt)
+        loudest(44100)
+        assertFalse(state.engine.padFiltered(7))
+        // Stay keeps it where you left it, Open lets it go
+        rule.onNodeWithTag("pfilt-stay-7").performScrollTo().performClick()
+        rule.onNodeWithTag("pfilt-7").performTouchInput { down(Offset(width * .3f, height * .5f)); moveTo(Offset(width * .2f, height * .2f)); up() }
+        settle()
+        assertTrue("Stay keeps it closed", 7 in state.padFilt)
+        rule.onNodeWithTag("pfilt-open-7").performClick()
+        settle()
+        assertFalse(7 in state.padFilt)
+    }
+
+    @Test fun recordOntoAPadAndKeepSounds() {
+        shadowOf(ApplicationProvider.getApplicationContext<android.app.Application>()).grantPermissions(android.Manifest.permission.RECORD_AUDIO)
+        // hold pad 4: Record onto this pad
+        rule.onNodeWithTag("pad-3").performScrollTo().performTouchInput { down(center); advanceEventTime(900); up() }
+        settle()
+        rule.onNodeWithTag("menu-record").performClick()
+        settle()
+        val started = state.micOn
+        println("MIC started=$started pad=${state.micPad}")
+        if (started) {
+            assertEquals(3, state.micPad)
+            rule.onNodeWithTag("rec-banner").assertExists()
+            shot("22-recording-onto-pad")
+            rule.onNodeWithTag("rec-banner").performClick()
+        }
+        waitFor("the mic to stop") { !state.micOn }
+        // the take lands on that pad and in Your Workbench
+        val rate = 44100
+        val tone = FloatArray(rate / 2) { (Math.sin(2 * Math.PI * 330 * it / rate) * .5 * (1 - it / (rate / 2.0))).toFloat() }
+        state.takeArrived(com.tideclock.messmachine.engine.Sample("mic", tone, rate), 3)
+        waitFor("the take to land on pad 4") { state.busy == null && state.lib.sound(state.project.kit[3])?.cab == "mine" }
+        val n = state.bench.items.size
+        // keep a pad's sound in Your Workbench from its menu
+        rule.onNodeWithTag("pad-0").performScrollTo().performTouchInput { down(center); advanceEventTime(900); up() }
+        settle()
+        rule.onNodeWithTag("menu-keep").performClick()
+        waitFor("the kick to be kept") { state.busy == null && state.bench.items.size == n + 1 }
+        rule.onNodeWithTag("pad-3").performScrollTo()
+        shot("23-mic-take-on-pad-4")
+        state.openWorkbench()
+        settle()
+        rule.onNodeWithTag("share-${state.project.kit[3]}").assertExists()
+        shot("24-workbench-share")
+    }
+
+    /* ---------- your console ---------- */
+
+    @Test fun consoleBuildsAndPlays() {
+        tab("Console")
+        shot("30-console-perform")
+        assertEquals(listOf("transport", "pads", "hold", "piano", "pfilt", "fx", "xy", "repeat", "loops"), state.console.map { it.type })
+        // it plays: a pad, the piano, an effect
+        loudest()
+        tapPad(0)
+        rule.onNodeWithTag("cfx-crush").performScrollTo().performTouchInput { down(center) }
+        settle()
+        loudest(1024)
+        assertTrue("an effect held on the console", state.engine.fxActive())
+        rule.onNodeWithTag("cfx-crush").performTouchInput { up() }
+        settle()
+        val pp = state.console[3].pad
+        rule.onNodeWithTag("piano-keys-$pp").performScrollTo().performTouchInput { down(Offset(width * .5f, height * .85f)) }
+        settle()
+        val key = loudest()
+        rule.onNodeWithTag("piano-keys-$pp").performTouchInput { up() }
+        settle()
+        assertTrue("the console's piano plays (peak $key)", key > .02f)
+        rule.onNodeWithTag("piano-$pp").performScrollTo()
+        shot("31-console-piano-and-filter")
+        // edit: resize, half width, move, add, remove
+        rule.onNodeWithTag("console-edit").performScrollTo().performClick()
+        settle()
+        rule.onNodeWithTag("mod-size-3").performScrollTo().performClick()
+        settle()
+        assertEquals(2, state.console[3].size)
+        rule.onNodeWithTag("mod-width-2").performScrollTo().performClick()
+        settle()
+        assertTrue(state.console[2].half)
+        rule.onNodeWithTag("mod-down-0").performScrollTo().performClick()
+        settle()
+        assertEquals("pads", state.console[0].type)
+        assertEquals("transport", state.console[1].type)
+        state.addModule("fx1")
+        state.addModule("beat")
+        settle()
+        assertEquals("fx1", state.console[state.console.size - 2].type)
+        rule.onNodeWithTag("mod-x-${state.console.size - 1}").performScrollTo().performClick()
+        settle()
+        assertEquals("fx1", state.console.last().type)
+        rule.onNodeWithTag("mod-0").performScrollTo()
+        shot("32-console-editing")
+        rule.onNodeWithTag("mod-${state.console.size - 1}").performScrollTo()
+        shot("33-console-editing-bottom")
+        val saved = ApplicationProvider.getApplicationContext<Context>().getSharedPreferences("mess", 0).getString("console", "")!!
+        assertTrue("the layout is saved: $saved", saved.startsWith("pads,") && "fx1" in saved)
+        rule.onNodeWithTag("console-edit").performScrollTo().performClick()
+        settle()
+        shot("34-console-custom")
+        state.resetConsole()
+        settle()
+        assertEquals("transport", state.console[0].type)
     }
 
     /* ---------- steps, roll, song ---------- */

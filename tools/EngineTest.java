@@ -130,6 +130,26 @@ public class EngineTest {
       double hf2 = 0; prev = 0; for (int i = 0; i < 40; i++) { ne.render(b, 256); for (int u = 0; u < 256; u++) { hf2 += Math.abs(b[u * 2] - prev); prev = b[u * 2]; } }
       check(hf < hf2 * .5, "filter pad at the bottom darkens the hat: " + (int) hf + " vs " + (int) hf2);
     }
+    // ---- pad filter: closes on one pad only
+    {
+      float[] b = new float[256 * 2];
+      java.util.function.BiFunction<Integer, Boolean, Double> hiss = (pad, closed) -> {
+        Engine pe = new Engine(rate); pe.setSnapshot(Engine.Snapshot.build(p, lib, new Engine.Live()));
+        if (closed) pe.padFilter(2, 0f, .3f, true);
+        for (int i = 0; i < 20; i++) pe.render(b, 256);
+        pe.down(7, pad, new int[]{0}, false);
+        double hf = 0, prev = 0; for (int i = 0; i < 40; i++) { pe.render(b, 256); for (int u = 0; u < 256; u++) { hf += Math.abs(b[u * 2] - prev); prev = b[u * 2]; } }
+        return hf;
+      };
+      double hatShut = hiss.apply(2, true), hatOpen = hiss.apply(2, false), kickShut = hiss.apply(0, true), kickOpen = hiss.apply(0, false);
+      check(hatShut < hatOpen * .5, "pad filter darkens its own pad: " + (int) hatShut + " vs " + (int) hatOpen);
+      check(Math.abs(kickShut - kickOpen) < kickOpen * .01 + 1e-6, "pad filter leaves other pads alone: " + (int) kickShut + " vs " + (int) kickOpen);
+      Engine oe = new Engine(rate); oe.setSnapshot(Engine.Snapshot.build(p, lib, new Engine.Live()));
+      oe.padFilter(2, 0f, 1f, true); for (int i = 0; i < 20; i++) oe.render(b, 256);
+      boolean wasOn = oe.padFiltered(2);
+      oe.padFilter(2, 0f, 0f, false); for (int i = 0; i < 200; i++) oe.render(b, 256);
+      check(wasOn && !oe.padFiltered(2), "letting go of the pad filter opens it again");
+    }
     // ---- hold (latch): a looping sound keeps going after the finger lifts, until it is pressed again
     {
       Project lp = Project.starter();

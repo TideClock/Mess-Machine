@@ -1,21 +1,20 @@
 {
-  "title": "Pianos that show the scale and chords",
+  "title": "Your Console, pad filters and record onto a pad",
   "thisBuild": [
-    "Hold, next to the scale and chords: + and − set how many notes keep sounding after you lift. The first that many notes hold; later ones play normally. Press a held note again to let it go, or tap Let go. Held keys get a yellow bar on the piano, and with Repeat or an arp on, held notes keep repeating.",
-    "Hold any pad for its menu, like a right click. Piano drops a keyboard right under that pad's row and lights the pad's bottom edge. One per row: four pads, a piano, four pads, a piano.",
-    "Pianos show your scale: in-scale keys glow softly, out-of-scale keys dim, the root gets a pink dot.",
-    "Chords: Play chord plays the whole chord. Show chord plays only the key you press and lights the chord's other notes for you to play yourself.",
-    "The sound picker sorts by instrument (kicks, snares, hats, percussion, bass, keys, leads, pads, voices, FX, chops) and by feel (punchy, long, dark, bright, tonal, gritty, busy), with Favorites up top.",
-    "A beat light and the line under the top bar pulse with the beat: pink on the one.",
-    "Scroll bars you can grab on every page, and View size in the ☰ menu."
+    "Console tab: a page you build yourself. Tap Edit, then + Add any piece: pads, a single row of pads, a piano for any pad, a filter for any pad, Hold, all nine effects or just one, the big filter pad, repeat and arp, loops, scale and chords, the beat light. Move pieces with ▲ ▼, size them S M L, and set ½ to put two side by side. It starts as a Perform layout and is saved on your phone.",
+    "Every piano has a filter strip under it that only touches that pad: slide left to close it, up for more resonance. Lift and it opens again, or turn on Stay to leave it where it is.",
+    "Hold is now one tap: the Hold switch sits on every piano and next to the scale. + and − still set how many notes hold, and turning Hold off lets them all go.",
+    "Hold a pad: Record onto this pad samples the mic straight onto it. A red bar shows while it records; tap it to stop. The take also goes to Your Workbench.",
+    "Hold a pad: Keep in Your Workbench saves the sound as you have it set. Share this sound sends it as a WAV to anyone or any app. Workbench sounds have a Share button too."
   ],
   "watch": [
-    "Set Hold to 3, play a chord, then play a melody over it.",
-    "Pick a scale and Triads, switch to Show chord, and play a piano.",
-    "Find a sound with By type, then a feel, and star it."
+    "Open a piano, hold a chord with Hold on, and sweep its filter strip.",
+    "Build a console with two pianos and their filters, then play it.",
+    "Record your voice onto an empty pad and play it from a piano."
   ],
   "limits": [
-    "Creature cards, the Ring, jams and duels stay on the site.",
-    "It stops playing a while after you leave the app."
+    "Sharing goes through Android's share menu. The site's shared jar is not reachable from the app.",
+    "Pieces stack top to bottom and pair up at half width. You cannot drag them freely yet.",
+    "Creature cards, the Ring, jams and duels stay on the site."
   ]
 }

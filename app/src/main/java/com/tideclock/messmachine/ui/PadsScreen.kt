@@ -233,18 +233,25 @@ fun SelectedPad(state: AppState) {
     }
 }
 
-/** Hold: the first N notes you play keep sounding; press one again to let it go. */
+/** Hold: one tap on or off. The first N notes you play keep sounding; press one again to let it go. */
 @Composable
-fun HoldBar(state: AppState) {
-    Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        T("HOLD", size = 12.sp, color = if (state.holdCount > 0) C.Yellow else C.Dim, spacing = .1.em)
-        Btn("−", { state.changeHoldCount(state.holdCount - 1) }, small = true, enabled = state.holdCount > 0, tag = "hold-down")
-        Box(Modifier.size(width = 64.dp, height = 34.dp).background(if (state.holdCount > 0) C.Yellow else C.Black).border(2.dp, C.Cream), contentAlignment = Alignment.Center) {
-            T(if (state.holdCount == 0) "OFF" else "${state.latched.size}/${state.holdCount}", size = 13.sp, color = if (state.holdCount > 0) C.Ink else C.Dim, family = Mono, weight = FontWeight.Bold)
+fun HoldBar(state: AppState, modifier: Modifier = Modifier) {
+    Row(modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        HoldToggle(state, tag = "hold-toggle")
+        Btn("−", { state.changeHoldCount(state.holdCount - 1) }, small = true, enabled = state.holdCount > 1, tag = "hold-down")
+        Box(Modifier.size(width = 54.dp, height = 34.dp).background(C.Black).border(2.dp, if (state.holdOn) C.Yellow else C.Cream), contentAlignment = Alignment.Center) {
+            T(if (state.holdOn) "${state.latched.size}/${state.holdCount}" else "${state.holdCount}", size = 13.sp, color = if (state.holdOn) C.Yellow else C.Dim, family = Mono, weight = FontWeight.Bold)
         }
         Btn("+", { state.changeHoldCount(state.holdCount + 1) }, small = true, enabled = state.holdCount < 8, tag = "hold-up")
         Btn("Let go", { state.releaseHolds() }, small = true, color = C.Riot, enabled = state.latched.isNotEmpty(), tag = "hold-release")
     }
+}
+
+/** The big Hold switch: yellow when on, with how many notes are holding. */
+@Composable
+fun HoldToggle(state: AppState, tag: String, modifier: Modifier = Modifier) {
+    Btn(if (state.holdOn) "● Hold ${state.latched.size}/${state.holdCount}" else "○ Hold", { state.switchHold() }, modifier = modifier.widthIn(min = 92.dp),
+        on = state.holdOn, onColor = C.Yellow, small = true, tag = tag)
 }
 
 /** Hold a pad: its own menu, like a right click. */
@@ -264,6 +271,8 @@ fun PadMenu(state: AppState, i: Int) {
                 onClick = { close(); onClick() }, enabled = enabled, modifier = Modifier.testTag(tag),
             )
         }
+        val recHere = state.micOn && state.micPad == i
+        item(if (recHere) "■ Stop recording" else "● Record onto this pad", "menu-record", enabled = !state.micOn || recHere) { state.askRecord(i) }
         if (k.isEmpty()) {
             item("Pick a sound", "menu-pick") { state.selectPad(i, false); state.overlay = Overlay.Picker(i) }
         } else {
@@ -272,6 +281,8 @@ fun PadMenu(state: AppState, i: Int) {
             item("Hear it", "menu-hear") { state.preview(k) }
             item("Swap sound", "menu-swap") { state.selectPad(i, false); state.overlay = Overlay.Picker(i) }
             item(if (k in state.favs) "★ Unstar" else "☆ Star", "menu-star") { state.toggleFav(k) }
+            item("Keep in Your Workbench", "menu-keep") { state.keepInBench(i) }
+            item("Share this sound", "menu-share") { state.shareSoundWav(k) }
             item("Clear pad", "menu-clear") { state.clearPad(i) }
         }
     }

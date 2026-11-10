@@ -205,6 +205,7 @@ fun SoundRow(state: AppState, s: Library.Sound, target: Int, picking: Boolean) {
             }
             T(if (s.key in state.favs) "★" else "☆", size = 22.sp, color = C.Yellow, modifier = Modifier.clickable { state.toggleFav(s.key) }.padding(horizontal = 8.dp))
             if (s.cab == "mine") {
+                Btn("Share", { state.shareSoundWav(s.key) }, small = true, modifier = Modifier.padding(end = 8.dp), tag = "share-${s.key}")
                 var sure by remember { mutableStateOf(false) }
                 Btn(if (sure) "Sure?" else "Toss", { if (sure) state.removeFromBench(s.key) else { sure = true } }, small = true, color = if (sure) C.Riot else C.Ink, modifier = Modifier.padding(end = 8.dp))
             }
