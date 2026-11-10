@@ -44,7 +44,7 @@ import com.tideclock.messmachine.engine.Project
 fun SlotBar(state: AppState) {
     val P = state.project
     Column(Modifier.padding(bottom = 12.dp)) {
-        Row(Modifier.horizontalScroll(rememberScrollState()).padding(end = 4.dp, bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Wrap(Modifier.padding(bottom = 4.dp), gap = 6.dp) {
             T("LOOPS", size = 12.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(end = 4.dp))
             for (i in 0 until Project.NSLOTS) {
                 val used = P.pats[i].used()
@@ -64,7 +64,7 @@ fun SlotBar(state: AppState) {
             }
         }
         Note("Editing loop ${Project.LETTERS[P.cur]}" + if (P.pat().len == 32) ", two bars" else "", modifier = Modifier.padding(top = 8.dp))
-        Row(Modifier.padding(top = 8.dp, end = 4.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Wrap(Modifier.padding(top = 8.dp)) {
             Btn(if (P.pat().len == 32) "2 bars" else "1 bar", { state.toggleLen() }, small = true, tag = "looplen")
             if (P.pat().len == 32) {
                 Btn("1-16", { state.page = 0 }, on = state.page == 0, small = true)
@@ -85,13 +85,13 @@ fun StepsScreen(state: AppState) {
     val off = (if (pat.len == 32) state.page else 0) * 16
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {
         SlotBar(state)
-        Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 12.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Wrap(Modifier.padding(bottom = 12.dp)) {
             for (b in 0 until 4) {
                 val n = (0 until Project.BANK).count { P.kit[b * Project.BANK + it].isNotEmpty() }
                 Btn("Bank ${b + 1} · $n", { state.bank = b }, on = state.bank == b, small = true)
             }
         }
-        Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 12.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Wrap(Modifier.padding(bottom = 12.dp)) {
             Btn("Click to hear: " + if (state.playOnTap) "on" else "off", { state.switchPlayOnTap(!state.playOnTap) }, on = state.playOnTap, small = true)
             Btn("Random drums", { state.randomDrums() }, small = true, tag = "random")
             Btn("Resample to a pad", { state.resampleLoop() }, small = true, enabled = pat.used())

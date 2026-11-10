@@ -125,7 +125,7 @@ fun Transport(state: AppState) {
             Btn("${P.bpm} BPM", { state.overlay = Overlay.Tempo }, tag = "bpm", modifier = Modifier.weight(1.15f))
         }
         Spacer(Modifier.height(10.dp))
-        Row(Modifier.horizontalScroll(rememberScrollState()).padding(end = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Wrap(Modifier) {
             PositionText(state)
             Btn("Loop", { state.setSongMode(false) }, on = !P.songMode, small = true)
             Btn("Song", { state.setSongMode(true) }, on = P.songMode, small = true, onColor = C.Pink)

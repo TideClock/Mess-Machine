@@ -92,7 +92,7 @@ fun SoundsScreen(state: AppState, pickFor: Int?) {
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).testTag("search"),
         )
         if (cab == "mine" && q.isBlank()) {
-            Row(Modifier.padding(start = 12.dp, end = 12.dp, top = 12.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Wrap(Modifier.padding(start = 12.dp, end = 12.dp, top = 12.dp)) {
                 Btn("Import sounds", { importer.launch(arrayOf("audio/*")) }, small = true, color = C.Teal, tag = "import")
                 Btn(if (state.micOn) "■ Stop recording" else "● Sample the mic", {
                     if (state.micOn) state.toggleMic()

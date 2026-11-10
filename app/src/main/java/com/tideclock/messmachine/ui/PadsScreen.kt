@@ -50,13 +50,13 @@ import com.tideclock.messmachine.engine.Theory
 fun PadsScreen(state: AppState) {
     val P = state.project
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {
-        Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 12.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Wrap(Modifier.padding(bottom = 12.dp)) {
             for (b in 0 until 4) {
                 val n = (0 until Project.BANK).count { P.kit[b * Project.BANK + it].isNotEmpty() }
                 Btn("Bank ${b + 1} · $n", { state.bank = b }, on = state.bank == b && !state.keysMode, small = true, enabled = !state.keysMode, tag = "bank-$b")
             }
         }
-        Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 12.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Wrap(Modifier.padding(bottom = 12.dp)) {
             Btn("Pads", { state.keysMode = false }, on = !state.keysMode, small = true, tag = "mode-pads")
             Btn("Keys", { state.keysMode = true }, on = state.keysMode, onColor = C.Teal, small = true, tag = "mode-keys")
             Btn("FX", { state.showFx = !state.showFx }, on = state.showFx, onColor = C.Pink, small = true, tag = "fx-toggle")
@@ -89,7 +89,7 @@ fun KeysBar(state: AppState) {
     @Suppress("UNUSED_VARIABLE") val sv = state.selV
     val P = state.project
     Column(Modifier.padding(bottom = 12.dp)) {
-        Row(Modifier.horizontalScroll(rememberScrollState()).padding(end = 4.dp, bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Wrap(Modifier.padding(bottom = 4.dp)) {
             Select(Theory.NN[P.root], Theory.NN.mapIndexed { i, n -> i to n }, { state.setRoot(it) })
             Select(P.scale, Theory.SCALES.keys.map { it to it }, { state.setScale(it) })
             Select(chordName(state.chordMode), chordOptions(P.scale, P.root), { state.pickChordMode(it) })
@@ -197,7 +197,7 @@ fun SelectedPad(state: AppState) {
                 T("PAD ${P.sel + 1}", size = 14.sp, color = C.Yellow, spacing = .06.em)
                 T("  " + if (k.isEmpty()) "empty" else state.lib.titleOf(k), size = 15.sp, lines = 1, modifier = Modifier.weight(1f))
             }
-            Row(Modifier.padding(top = 12.dp, end = 4.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Wrap(Modifier.padding(top = 12.dp)) {
                 Btn(if (k.isEmpty()) "Pick a sound" else "Swap sound", { state.overlay = Overlay.Picker(P.sel) }, small = true, color = C.Teal, tag = "pick-sound")
                 Btn("✂ Doctor it", { state.overlay = Overlay.Doctor(k) }, small = true, color = C.Yellow, enabled = k.isNotEmpty(), tag = "doctor")
                 Btn(if (P.sel in state.keyboards) "Hide keys" else "Keys ▾", { state.toggleKeyboard(P.sel) }, small = true, enabled = k.isNotEmpty(), tag = "keys-for-pad")
@@ -206,7 +206,7 @@ fun SelectedPad(state: AppState) {
             }
             Dashed(Modifier.padding(vertical = 12.dp))
             T("GET SOUNDS", size = 12.sp, color = C.Yellow, spacing = .1.em)
-            Row(Modifier.padding(top = 8.dp, end = 4.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Wrap(Modifier.padding(top = 8.dp)) {
                 Btn("The jars", { state.tab = com.tideclock.messmachine.Tab.Sounds }, small = true)
                 Btn("Your Workbench", { state.openWorkbench() }, small = true)
                 Btn("Resample this loop", { state.resampleLoop() }, small = true, enabled = P.pat().used())

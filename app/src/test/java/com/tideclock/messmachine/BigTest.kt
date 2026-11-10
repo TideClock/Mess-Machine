@@ -362,8 +362,9 @@ class BigTest {
             println("TAB ${t.label} displayed=$ok")
             assertTrue("tab ${t.label} shows its screen", ok)
         }
-        state.overlay = Overlay.Picker(12)
-        settle()
+        tab("Pads")
+        tapPad(12)
+        assertEquals("tapping an empty pad opens the jars for it", Overlay.Picker(12), state.overlay)
         rule.onNodeWithTag("sheet").assertExists()
         shot("19-picker")
         rule.onNodeWithText("DONE").performClick()

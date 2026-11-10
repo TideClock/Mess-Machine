@@ -47,7 +47,7 @@ fun FilesScreen(state: AppState) {
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = C.Pink, unfocusedBorderColor = C.Card2, cursorColor = C.Pink),
                     modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
                 )
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Wrap(Modifier) {
                     Btn(if (state.fileId == null) "Save" else "Save changes", { state.saveMess(name, false) }, color = C.Teal, small = true)
                     if (state.fileId != null) Btn("Save as new", { state.saveMess(name, true) }, small = true)
                     Btn(if (sureNew) "Really? Tap again" else "New mess", {
@@ -60,7 +60,7 @@ fun FilesScreen(state: AppState) {
             Column {
                 T("BOTTLE IT", size = 12.sp, color = C.Yellow, spacing = .1.em)
                 Note("Renders the music, then opens your share sheet so you can save it or send it anywhere.", modifier = Modifier.padding(bottom = 8.dp))
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Wrap(Modifier) {
                     val L = Project.LETTERS[P.cur]
                     Btn("Loop $L once", { state.bounce(false, 1) }, small = true, color = C.Pink)
                     Btn("Loop $L ×4", { state.bounce(false, 4) }, small = true)
@@ -75,7 +75,7 @@ fun FilesScreen(state: AppState) {
                     "The app reads and writes the same mess files as the Mess Machine on the site. Sounds you uploaded on the site stay there; those pads come in empty.",
                     size = 12.sp, color = C.Dim, weight = FontWeight.Medium, modifier = Modifier.padding(bottom = 8.dp),
                 )
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Wrap(Modifier) {
                     Btn("Open a mess file", { pick.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }, small = true, color = C.Teal)
                     Btn("Share this mess", { state.shareMess() }, small = true)
                 }

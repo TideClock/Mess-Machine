@@ -41,7 +41,7 @@ fun RollScreen(state: AppState) {
     val loaded = (0 until Project.NPADS).filter { P.kit[it].isNotEmpty() }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {
         SlotBar(state)
-        Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 10.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Wrap(Modifier.padding(bottom = 10.dp)) {
             Select(
                 if (k.isEmpty()) "Pick a pad" else "Pad ${P.sel + 1} · ${state.lib.titleOf(k)}",
                 loaded.map { it to "Pad ${it + 1} · ${state.lib.titleOf(P.kit[it])}" },
@@ -53,12 +53,12 @@ fun RollScreen(state: AppState) {
             Select(Theory.NN[P.root], Theory.NN.mapIndexed { i, n -> i to n }, { state.setRoot(it) })
             Select(P.scale, Theory.SCALES.keys.map { it to it }, { state.setScale(it) })
         }
-        Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 10.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Wrap(Modifier.padding(bottom = 10.dp)) {
             Select(chordName(state.chordMode), chordOptions(P.scale, P.root), { state.pickChordMode(it) })
             Btn(if (P.fold) "Unfold" else "Fold to scale", { state.edit { fold = !fold } }, on = P.fold, small = true)
             Btn("Clear notes", { state.clearNotes() }, small = true, enabled = k.isNotEmpty() && pat.notes(k).isNotEmpty(), tag = "roll-clear")
         }
-        Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 12.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Wrap(Modifier.padding(bottom = 12.dp)) {
             T("NOTE", size = 12.sp, color = C.Dim, spacing = .1.em)
             for ((l, name) in listOf(1 to "1 step", 2 to "2 steps", 4 to "1 beat", 8 to "Half a bar", 16 to "Whole bar")) {
                 Btn(name, { state.noteLen = l }, on = state.noteLen == l, onColor = C.Teal, small = true)

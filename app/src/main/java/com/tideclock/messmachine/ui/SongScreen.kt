@@ -43,7 +43,7 @@ fun SongScreen(state: AppState) {
             color = C.Yellow, modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
         )
         T("PAINT WITH", size = 12.sp, color = C.Dim, spacing = .1.em)
-        Row(Modifier.horizontalScroll(rememberScrollState()).padding(top = 6.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Wrap(Modifier.padding(top = 6.dp, bottom = 12.dp), gap = 6.dp) {
             for (i in 0 until Project.NSLOTS) {
                 Btn(
                     Project.LETTERS[i].toString() + if (P.pats[i].used()) "" else "·", { state.brush = i },
@@ -77,7 +77,7 @@ fun SongScreen(state: AppState) {
                 }
             }
         }
-        Row(Modifier.padding(top = 14.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Wrap(Modifier.padding(top = 14.dp)) {
             Btn("Rough it in", { state.songFromLoops() }, small = true, color = C.Teal, tag = "rough")
             Btn("Clear the song", { state.clearSong() }, small = true, enabled = len > 0)
         }

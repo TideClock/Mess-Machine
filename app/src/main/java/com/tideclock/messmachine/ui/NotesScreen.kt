@@ -64,7 +64,7 @@ fun NotesScreen(state: AppState) {
         Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
             Column {
                 T("New note for Claude", size = 15.sp)
-                Row(Modifier.padding(vertical = 8.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Wrap(Modifier.padding(vertical = 8.dp), gap = 6.dp) {
                     for ((c, label) in NOTE_CATS) Btn(label, { cat = c }, on = cat == c, onColor = catColor[c] ?: C.Yellow, small = true)
                 }
                 T(
@@ -92,7 +92,7 @@ fun NotesScreen(state: AppState) {
                     textStyle = TextStyle(color = C.Cream, fontFamily = Archivo, fontSize = 15.sp), colors = fieldColors,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 110.dp).padding(top = 8.dp),
                 )
-                Row(Modifier.padding(top = 10.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Wrap(Modifier.padding(top = 10.dp)) {
                     Btn("🎤 Speak", {
                         val i = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
                             .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)

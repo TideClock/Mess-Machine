@@ -136,7 +136,7 @@ fun DoctorScreen(state: AppState, key: String) {
             drawLine(C.Pink, Offset(xe, 0f), Offset(xe, size.height), strokeWidth = 6f)
         }
         Note("Drag the yellow line to trim the front, the pink one to trim the back.", modifier = Modifier.padding(top = 6.dp, bottom = 8.dp))
-        Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Wrap(Modifier.padding(bottom = 8.dp)) {
             Btn("Zoom to trim", {
                 val pad = (e.en - e.st) * .08
                 v0 = (e.st - pad).coerceAtLeast(0.0); v1 = (e.en + pad).coerceAtMost(1.0)
@@ -144,7 +144,7 @@ fun DoctorScreen(state: AppState, key: String) {
             Btn("Whole sound", { v0 = 0.0; v1 = 1.0 }, small = true, enabled = v0 > 0 || v1 < 1)
             Btn("Snap to zero", { snap = !snap }, on = snap, onColor = C.Teal, small = true)
         }
-        Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Wrap(Modifier.padding(bottom = 8.dp)) {
             Btn("Hear it", { looping = false; state.engine.stopPreviews(); state.preview(key) }, color = C.Teal, small = true)
             Btn(if (looping) "■ Stop loop" else "Loop the trim", {
                 looping = !looping
@@ -163,12 +163,12 @@ fun DoctorScreen(state: AppState, key: String) {
         SliderRow("Attack", e.att.toFloat(), 0f..1f, { "${(it * 1000).roundToInt()} ms" }, { v -> upd(false) { att = v.toDouble() } }, { upd(true) {} }, accent = C.Yellow)
         SliderRow("Release", e.rel.toFloat(), 0f..1.5f, { "${(it * 1000).roundToInt()} ms" }, { v -> upd(false) { rel = v.toDouble() } }, { upd(true) {} }, accent = C.Yellow)
         Note("Choke group: sounds in the same group cut each other off, like an open and closed hat.", modifier = Modifier.padding(top = 4.dp, bottom = 6.dp))
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Wrap(Modifier) {
             for (g in 0..6) Btn(if (g == 0) "Off" else "$g", { upd(true) { choke = g } }, on = e.choke == g, small = true)
         }
 
         Section("Re-pitch to fit")
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Wrap(Modifier) {
             for ((b, label) in listOf(.25 to "1 beat", .5 to "2 beats", 1.0 to "1 bar", 2.0 to "2 bars", 4.0 to "4 bars")) {
                 Btn(label, { fitBars = b }, on = fitBars == b, onColor = C.Teal, small = true)
             }
@@ -176,7 +176,7 @@ fun DoctorScreen(state: AppState, key: String) {
         }
 
         Section("Chop to pads")
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Wrap(Modifier) {
             for ((m, label) in listOf("equal" to "Equal", "auto" to "Auto (by hits)", "tap" to "Tap the wave", "lazy" to "Lazy (while it plays)")) {
                 Btn(label, { chopMode = m; cuts = emptyList(); refreshCuts() }, on = chopMode == m, onColor = C.Teal, small = true)
             }
@@ -199,14 +199,14 @@ fun DoctorScreen(state: AppState, key: String) {
                 }, small = true, color = C.Pink)
             }
         }
-        Row(Modifier.padding(top = 10.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Wrap(Modifier.padding(top = 10.dp)) {
             T("${cuts.count { it > e.st && it < e.en } + 1} slices", size = 13.sp, color = C.Yellow)
             Btn("Clear cuts", { cuts = emptyList() }, small = true)
             Btn("Chop to pads", { state.chopToPads(key, cuts); state.overlay = null }, small = true, color = C.Pink)
         }
 
         Section("Keep it")
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Wrap(Modifier) {
             Btn("Save as a new sound", { state.saveEditAsNew(key) }, small = true, color = C.Teal)
             Btn("Share as WAV", { state.shareSoundWav(key) }, small = true)
             if (inBench) {
