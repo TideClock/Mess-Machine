@@ -38,6 +38,10 @@ How a sound plays follows `voiceEd()` on the site: trim, reverse, tune and fine,
 - Doctor's table: waveform with drag trim and every setting above.
 - Messes: autosave, save, save as new, open, toss, new, import a site mess file, share a mess file, bounce a loop or the song to WAV and share it.
 
+## Piano keyboards
+
+Hold a pad (or tap Keys under the grid) and a piano for that pad drops below the pads; the grid itself never changes. Up to four pianos at once, oldest goes first. Each covers C3 to C5 around the sound's own pitch (C4), shows about an octave and a half on a phone with ◀ ▶ to shift, plays with several fingers and slides, shades keys for the scale and tints the root, and follows the chord mode.
+
 ## Next
 
 1. **Perform FX bus** from the site: stutter, tape stop, filter XY pad, echo, crush, octave down.

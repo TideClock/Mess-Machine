@@ -11,6 +11,11 @@ The cloud workspace cannot reach Google's Android servers, so the APK builds on 
 which is where Tyler installs from. The engine (`app/src/main/java/.../engine/`, plain Java) can be
 tested here: see README.md.
 
+Every build also runs the big test (`app/src/test/.../BigTest.kt`, Robolectric with real drawing):
+every screen driven by touch, checks on the mess and the engine, and screenshots published to the
+`test-screens` release (download its zip with `gh api` and look at them). Add a flow there for
+anything new.
+
 Before each push that Tyler will install, rewrite `app/src/main/assets/guide.json`
 (`title`, `thisBuild`, `watch`, `limits`). The app shows it once per new build.
 

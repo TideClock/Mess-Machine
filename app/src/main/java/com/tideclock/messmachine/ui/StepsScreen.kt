@@ -45,14 +45,13 @@ fun SlotBar(state: AppState) {
     val P = state.project
     Column(Modifier.padding(bottom = 12.dp)) {
         Wrap(Modifier.padding(bottom = 4.dp), gap = 6.dp) {
-            T("LOOPS", size = 12.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(end = 4.dp))
             for (i in 0 until Project.NSLOTS) {
                 val used = P.pats[i].used()
                 val playingHere = state.playing && state.heardPat == i
                 val on = i == P.cur
                 Box(
                     Modifier
-                        .size(38.dp)
+                        .size(36.dp)
                         .sticker(if (on) C.Yellow else C.Ink, shadow = if (on) 1.dp else 3.dp, border = if (playingHere) 4.dp else 2.5.dp, borderColor = if (playingHere) C.Pink else C.Cream)
                         .clickable { state.selectSlot(i) }
                         .testTag("slot-$i"),
@@ -88,7 +87,7 @@ fun StepsScreen(state: AppState) {
         Row(Modifier.fillMaxWidth().padding(bottom = 12.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for (b in 0 until 4) {
                 val n = (0 until Project.BANK).count { P.kit[b * Project.BANK + it].isNotEmpty() }
-                Btn(if (n > 0) "Bank ${b + 1}" else "Bank ${b + 1} ·", modifier = Modifier.weight(1f), onClick = { state.bank = b }, on = state.bank == b, small = true)
+                Btn("Bank ${b + 1}", modifier = Modifier.weight(1f), onClick = { state.bank = b }, on = state.bank == b, small = true)
             }
         }
         Wrap(Modifier.padding(bottom = 12.dp)) {
