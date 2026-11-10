@@ -335,6 +335,21 @@ class BigTest {
         shot("24-workbench-share")
     }
 
+    /* ---------- launching like a phone does ---------- */
+
+    @Test fun firstLaunchOfANewBuildShowsTheGuide() {
+        // a phone installing a new build has not seen its guide: the app must open it at launch, not crash
+        val ctx = ApplicationProvider.getApplicationContext<Context>()
+        ctx.getSharedPreferences("mess", 0).edit().remove("guideSeen").commit()
+        val fresh = AppState(ctx)
+        assertEquals(Overlay.Notes, fresh.overlay)
+        // and after a crash, the next launch opens the notes with the crash in them
+        File(ctx.filesDir, "last_crash.txt").writeText("java.lang.RuntimeException: test crash")
+        val afterCrash = AppState(ctx)
+        assertEquals(Overlay.Notes, afterCrash.overlay)
+        assertTrue(afterCrash.crash?.contains("test crash") == true)
+    }
+
     /* ---------- build A: fixes and safety ---------- */
 
     @Test fun padsRedrawAfterAChange() {

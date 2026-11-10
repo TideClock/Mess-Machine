@@ -1,6 +1,7 @@
 {
   "title": "Four builds in one: fixes, Padiano, the dock, effects, XY, the desk",
   "thisBuild": [
+    "Fixes build 41 crashing as soon as it opened.",
     "Your notes: pads redraw straight away (#6), Hold keeps short sounds going until you let go (#4), Hold has a Last setting (#1), pages fade instead of snapping (#5), menus show up in more places (#2), and Steps can give each step a pitch (#3).",
     "Pad menus open when you hold still and lift. A slide or a circle never opens one, and a pad you play never scrolls the page.",
     "Padiano (the piano under a row): one row of small squares by default. ⚙ sets how many notes, the size, Squares or Keys, and In key only. Glide and XY sit on its header.",

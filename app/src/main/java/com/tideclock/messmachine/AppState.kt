@@ -134,6 +134,12 @@ class AppState(private val app: Context) {
     var noteLen by mutableIntStateOf(2)
     var page by mutableIntStateOf(0)
     var brush by mutableIntStateOf(0)
+    /**
+     * Lock: the page stays put (no scrolling, tabs, menus, sheets); playing still works. Declared before
+     * the overlay because opening the start guide at launch checks it (build 41 crashed on launch).
+     */
+    var locked by mutableStateOf(false)
+        private set
     private val overlayState = mutableStateOf<Overlay?>(null)
     var overlay: Overlay?
         get() = overlayState.value
@@ -1245,9 +1251,6 @@ class AppState(private val app: Context) {
         app.contentResolver.query(u, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c -> if (c.moveToFirst()) c.getString(0) else "" } ?: ""
     } catch (_: Exception) { "" }
 
-    /** Lock: the page stays put (no scrolling, tabs, menus, sheets); playing still works. */
-    var locked by mutableStateOf(false)
-        private set
     /** Lock also pins the screen through Android (it asks each time). */
     var lockPin by mutableStateOf(prefs.getBoolean("lockPin", true))
         private set
