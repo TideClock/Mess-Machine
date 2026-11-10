@@ -41,8 +41,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
@@ -103,7 +102,7 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
         val dn = LocalDensity.current
         CompositionLocalProvider(LocalDensity provides Density(dn.density * state.uiScale, dn.fontScale), LocalLocked provides state.locked, LocalHelp provides state.helpShows(state.tab.label)) {
         // test tags show up as view ids, so the phone test on the emulator can find things by name
-        Box(Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }.background(C.Paper).grit().statusBarsPadding().navigationBarsPadding()) {
+        Box(Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }.background(C.Paper).grit().safeDrawingPadding()) {
             PulseBackdrop(state)
             Column(Modifier.fillMaxSize()) {
                 Transport(state)

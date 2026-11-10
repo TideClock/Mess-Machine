@@ -6,12 +6,12 @@ plugins {
 
 android {
     namespace = "com.tideclock.messmachine"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.tideclock.messmachine"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 36
         // CI passes the run number so every build installs over the last one
         versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
         versionName = "0.1." + (System.getenv("GITHUB_RUN_NUMBER") ?: "0")

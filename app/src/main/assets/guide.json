@@ -13,13 +13,15 @@
     "Notes are public on GitHub, so they no longer carry your mess's name, and the mess summary goes only with bug notes and crashes. The phone model and audio numbers stay: the lag depends on them.",
     "Keep playing when you leave the app: press Play, go to another app, and the music keeps going with a Mess Machine notification that has Stop. Settings has Keep playing when I leave (on to start). Android may ask once to show notifications.",
     "MIDI over USB: plug in a pad controller or a keyboard. Notes 36 to 51 (most pad controllers' default) hit pads 1 to 16 of the bank on screen; any other note plays the selected pad as a key, middle C at the sound's own pitch.",
-    "The install is about half the size: the 433 sounds are packed as FLAC now, sample for sample the same as before."
+    "The install is about half the size: the 433 sounds are packed as FLAC now, sample for sample the same as before.",
+    "Up to date with Android 16 (API 36), which the Play Store has required since August: the screen now runs edge to edge, clear of the camera hole and the bars, and the back swipe shows a preview of where it goes."
   ],
   "watch": [
     "Run the Audio check: tap the square ten times, run the speaker test, then Save as a note and send it. That one note tells Claude what to fix next.",
     "Play a busy mess for two minutes and listen for clicks, then send any note: it carries the slow blocks.",
     "Press Play, then switch to another app for a minute: the music should keep going, and Stop in the notification should stop it.",
-    "If you have a USB MIDI controller and an adapter, plug it in and play pads and keys."
+    "If you have a USB MIDI controller and an adapter, plug it in and play pads and keys.",
+    "Look at the top and bottom edges on both screens of the Fold: nothing should sit under the camera hole, the clock or the gesture bar."
   ],
   "limits": [
     "The speaker test needs the volume up and headphones out. It cannot see the touch screen's own scan time, so the real tap to sound is a little longer than it shows.",

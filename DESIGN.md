@@ -4,15 +4,18 @@
 
 Rewritten at the end of every session and at each step of a long job (BT-2). Read this first.
 
-- **Live:** build 56 (2026-11-10). Building next: build A of the review, the measuring kit (MM-1, 2, 3, 6, 13, 24).
-- **Plan:** the review doc https://claude.ai/artifact/QoAq7LzDGYD8XNyDDjPRHS, items MM-1 to MM-24. Order: build A (measure),
-  build B (MM-4, 7, 14, 17, 18), build C (MM-9, 10, 8, 12), build D (MM-16, 21), then MM-11 (Play Store) last.
-  MM-5 (Oboe) waits for real numbers from build A. MM-15 (Fold layouts) is skipped for now; MM-22 (creature cards)
-  is an outline only. MM-19 belongs to the site track.
-- **In flight:** build A.
-- **Promised to Tyler:** a list of issues in the review doc when the run is done.
-- **Not done, and why:** strong skipping stays off (every screen needs targeted state first, or pads stop
-  redrawing, note #6); pads still play when held for their menu (they play on touch, which keeps them quick).
+- **Live:** see the latest release. Today's review builds: 57 (failed a test, fixed), 58 (phone test caught an
+  audio-thread crash, never published), 59 (Audio check, buffer give-back, slow-block log, CPU hint, Baseline
+  Profile, Resample cut, notes privacy, FLAC sounds, background play, MIDI), then the API 36 build.
+- **Plan:** the review doc https://claude.ai/artifact/QoAq7LzDGYD8XNyDDjPRHS, items MM-1 to MM-24, with an Outcome
+  section at the top. MM-11 (Play Store) is last and notes only. MM-5 (Oboe) waits for real numbers from the Audio
+  check. MM-15 (Fold layouts) skipped with a big note. MM-22 (creature cards) is an outline in the doc.
+- **Next:** read Tyler's first Audio check note (it carries the Lag line and slow blocks), then decide MM-5.
+- **Not done, and why:** MM-14 strong skipping stays off: composable lambdas that read the mess without snapshot
+  state would stop redrawing (note #6 again), and nothing measured says the UI costs audio time yet; the Audio
+  check's "screen busy" flag will say. MM-21 (Heap sorting) needs ears: 0.35 s slices of full songs have no right
+  answer a script can check; the sorter now reads FLAC and sorts exactly as before. Pads still play when held for
+  their menu (decision 4: keep).
 - **Two tracks (2026-11-10):** this file and `app/`, `tools/`, `.github/` belong to the app conversation. The site
   and the web Mess Machine rebuild run in a second conversation that owns `site/` only (see site/DESIGN.md).
   Pushes touching only `site/` skip the app build, so the two never cancel each other's runs.
@@ -25,6 +28,10 @@ One line each, dated, with the reason and who decided (BT-2). Older decisions li
   what the lag is; MM-11 (Play Store) after everything else; skip MM-15 (Fold layouts) with a big note; MM-22
   (creature cards) as an outline only. Decisions 1 (cut the Workbench Resample) and 5 (notes privacy) unanswered,
   taken as the recommended answer.
+- 2026-11-10 Bundled sounds are FLAC (Claude, MM-8): sample-exact (EngineTest checks the kick), 31.7 MB to 14.7 MB.
+  Keys stay ".wav" so messes from the site still load.
+- 2026-11-10 Never format() a string with ${...} in it (Claude): build 58's audio thread crashed on "0% average".
+  tools/precheck.sh flags it; a line can say // format-ok with the reason.
 
 - 2026-11-10 Overhaul built in full (Tyler): Play tab with Pads, Keys, My Desk; Hush gone; dock folded; C minor;
   pad card gone; Steps one row (unanswered, taken as yes); help behind ?; all utility ideas; pad buzz.

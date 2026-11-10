@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
 import com.tideclock.messmachine.ui.MessMachineApp
 
@@ -32,6 +33,11 @@ class MainActivity : ComponentActivity() {
     private val state get() = (application as MessApp).state
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // API 36 draws every app edge to edge (MM-9): the screens pad themselves clear of the bars and the camera cutout
+        enableEdgeToEdge(
+            statusBarStyle = androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+        )
         super.onCreate(savedInstanceState)
         setContent { MessMachineApp(state) }
         if (savedInstanceState == null) handle(intent)

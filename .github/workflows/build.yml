@@ -99,7 +99,8 @@ jobs:
         id: phone
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
+          # Android 15: edge to edge is enforced here, as on Tyler's phone (MM-9)
+          api-level: 35
           target: google_apis
           arch: x86_64
           profile: pixel_6
