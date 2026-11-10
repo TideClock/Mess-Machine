@@ -238,11 +238,11 @@ fun SelectedPad(state: AppState) {
 fun HoldBar(state: AppState) {
     Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         T("HOLD", size = 12.sp, color = if (state.holdCount > 0) C.Yellow else C.Dim, spacing = .1.em)
-        Btn("−", { state.setHoldCount(state.holdCount - 1) }, small = true, enabled = state.holdCount > 0, tag = "hold-down")
+        Btn("−", { state.changeHoldCount(state.holdCount - 1) }, small = true, enabled = state.holdCount > 0, tag = "hold-down")
         Box(Modifier.size(width = 64.dp, height = 34.dp).background(if (state.holdCount > 0) C.Yellow else C.Black).border(2.dp, C.Cream), contentAlignment = Alignment.Center) {
             T(if (state.holdCount == 0) "OFF" else "${state.latched.size}/${state.holdCount}", size = 13.sp, color = if (state.holdCount > 0) C.Ink else C.Dim, family = Mono, weight = FontWeight.Bold)
         }
-        Btn("+", { state.setHoldCount(state.holdCount + 1) }, small = true, enabled = state.holdCount < 8, tag = "hold-up")
+        Btn("+", { state.changeHoldCount(state.holdCount + 1) }, small = true, enabled = state.holdCount < 8, tag = "hold-up")
         Btn("Let go", { state.releaseHolds() }, small = true, color = C.Riot, enabled = state.latched.isNotEmpty(), tag = "hold-release")
     }
 }

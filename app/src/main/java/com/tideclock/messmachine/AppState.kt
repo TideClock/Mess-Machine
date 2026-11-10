@@ -794,7 +794,7 @@ class AppState(private val app: Context) {
     val latched = mutableStateListOf<Int>()
     private val swallowUp = HashSet<Int>()
 
-    fun setHoldCount(n: Int) {
+    fun changeHoldCount(n: Int) {
         holdCount = n.coerceIn(0, 8)
         prefs.edit().putInt("holdCount", holdCount).apply()
         while (latched.size > holdCount) { engine.unlatch(latched.removeAt(0)) }
