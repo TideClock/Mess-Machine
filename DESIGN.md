@@ -4,9 +4,10 @@
 
 Rewritten at the end of every session and at each step of a long job (BT-2). Read this first.
 
-- **Live:** see the latest release. Today's review builds: 57 (failed a test, fixed), 58 (phone test caught an
-  audio-thread crash, never published), 59 (Audio check, buffer give-back, slow-block log, CPU hint, Baseline
-  Profile, Resample cut, notes privacy, FLAC sounds, background play, MIDI), then the API 36 build.
+- **Live:** build 60 (2026-11-10): the review's builds. 59 brought the Audio check, buffer give-back, slow-block
+  log, CPU hint, Baseline Profile, Resample cut, notes privacy, FLAC sounds (APK 17.0 MB), background play and MIDI;
+  60 targets API 36 (edge to edge, predictive back). 57 failed a test and 58's phone test caught an audio-thread
+  crash; neither was published.
 - **Plan:** the review doc https://claude.ai/artifact/QoAq7LzDGYD8XNyDDjPRHS, items MM-1 to MM-24, with an Outcome
   section at the top. MM-11 (Play Store) is last and notes only. MM-5 (Oboe) waits for real numbers from the Audio
   check. MM-15 (Fold layouts) skipped with a big note. MM-22 (creature cards) is an outline in the doc.
