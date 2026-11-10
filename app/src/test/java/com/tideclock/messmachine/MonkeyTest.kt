@@ -112,7 +112,11 @@ class MonkeyTest {
     /** Scroll a node into view and let the page stop moving, so the next touch lands on it. */
     private fun at(tag: String) = rule.onNodeWithTag(tag).also { it.performScrollTo(); rule.mainClock.advanceTimeBy(600); settle() }
 
-    private fun tab(label: String) { rule.onNodeWithTag("tab-$label").performClick(); settle() }
+    /** Pads and Desk share the Play tab: "Console" means the Play tab's My Desk view. */
+    private fun tab(label: String) {
+        if (label == "Console") { rule.onNodeWithTag("tab-Pads").performClick(); settle(); at("view-desk").performClick(); settle(); return }
+        rule.onNodeWithTag("tab-$label").performClick(); settle()
+    }
 
     private fun tapPad(d: Int) {
         at("pad-$d").performTouchInput { down(center) }

@@ -197,7 +197,7 @@ class BigTest {
         settle()
         state.switchChordPlay(true); state.pickChordMode("off")
         rule.onNodeWithTag("topbar").assertExists()
-        rule.onNodeWithTag("position").assertExists()
+        rule.onNodeWithTag("position", useUnmergedTree = true).assertExists()
 
         rule.onNodeWithTag("pad-0").performScrollTo()
         shot("03-pianos-under-rows-top")
