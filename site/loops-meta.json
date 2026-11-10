@@ -1,0 +1,79 @@
+[
+ {
+  "slug": "porch-light",
+  "title": "Porch Light",
+  "desc": "Intro. Quiet guitar, before the neighbors complained.",
+  "src": "Hide and Seek @ 0:09",
+  "kind": "full"
+ },
+ {
+  "slug": "kit-in-a-dumpster",
+  "title": "Kit In A Dumpster",
+  "desc": "Drums only. Pulled out of the full mix with a crowbar.",
+  "src": "Hide and Seek @ 0:40",
+  "kind": "p"
+ },
+ {
+  "slug": "big-g-energy",
+  "title": "Big G Energy",
+  "desc": "Guitars and voice, drums scraped off. Sits on G.",
+  "src": "Hide and Seek @ 0:45",
+  "kind": "h"
+ },
+ {
+  "slug": "minor-inconvenience",
+  "title": "Minor Inconvenience",
+  "desc": "The sad turn: A minor into G. Harmony only.",
+  "src": "Hide and Seek @ 1:10",
+  "kind": "h"
+ },
+ {
+  "slug": "basement-bass",
+  "title": "Basement Bass",
+  "desc": "Everything under 200 Hz. Feel it in your fillings.",
+  "src": "Hide and Seek @ 1:41",
+  "kind": "lo"
+ },
+ {
+  "slug": "full-send",
+  "title": "Full Send",
+  "desc": "Whole band, no notes.",
+  "src": "Hide and Seek @ 2:02",
+  "kind": "full"
+ },
+ {
+  "slug": "drum-goblin",
+  "title": "Drum Goblin",
+  "desc": "Late-song drums. More tired, more honest.",
+  "src": "Hide and Seek @ 2:12",
+  "kind": "p"
+ },
+ {
+  "slug": "mids-only",
+  "title": "Mids Only",
+  "desc": "Just the middle. Like a sandwich with no bread.",
+  "src": "Hide and Seek @ 2:22",
+  "kind": "mid"
+ },
+ {
+  "slug": "kazoo-ghost",
+  "title": "Kazoo Ghost",
+  "desc": "Fake kazoo lead in G. We did not play this. A computer did. Replace it.",
+  "src": "Synthesized stand-in",
+  "kind": "synth"
+ },
+ {
+  "slug": "clap-trap",
+  "title": "Clap Trap",
+  "desc": "Claps on 2 and 4 for people who cannot find 2 and 4.",
+  "src": "Synthesized stand-in",
+  "kind": "synth"
+ },
+ {
+  "slug": "shaker-of-shame",
+  "title": "Shaker Of Shame",
+  "desc": "Swung 16th shaker. Hold it like you mean it.",
+  "src": "Synthesized stand-in",
+  "kind": "synth"
+ }
+]

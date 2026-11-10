@@ -15,6 +15,9 @@ Rewritten at the end of every session and at each step of a long job (BT-2). Rea
 - **Not done, and why:** strong skipping stays off (every screen needs targeted state first, or pads stop
   redrawing, note #6); pads still play when held for their menu (they play on touch, which keeps them quick).
 - **Flagged for Tyler:** Resample in the Workbench (Sounds) repeats Steps' Resample to a pad. Keep or cut?
+- **Two tracks (2026-11-10):** this file and `app/`, `tools/`, `.github/` belong to the app conversation. The site
+  and the web Mess Machine rebuild run in a second conversation that owns `site/` only (see site/DESIGN.md).
+  Pushes touching only `site/` skip the app build, so the two never cancel each other's runs.
 
 ## Decisions
 

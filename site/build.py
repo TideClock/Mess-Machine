@@ -3,7 +3,7 @@ import json, os
 here = os.path.dirname(os.path.abspath(__file__))
 src = open(os.path.join(here, 'index2.src.html')).read()
 ram = open(os.path.join(here, 'ramblings.json')).read()
-loops = json.load(open('/home/claude/bw/loops/meta.json'))
+loops = json.load(open(os.path.join(here, 'loops-meta.json')))
 crates_p = os.path.join(here, 'crates.json')
 crates = json.load(open(crates_p)) if os.path.exists(crates_p) else []
 tracks_p = os.path.join(here, 'qtracks.json')
