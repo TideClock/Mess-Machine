@@ -152,6 +152,7 @@ class BigTest {
         // and Show chord lights the chord's other notes without playing them
         state.setRoot(0); state.setScale("Major"); state.pickChordMode("triad"); state.switchChordPlay(false)
         settle()
+        state.engine.panic()
         loudest(1024)
         rule.onNodeWithTag("piano-keys-5").performScrollTo().performTouchInput { down(Offset(width * .35f, height * .85f)) }
         settle()
