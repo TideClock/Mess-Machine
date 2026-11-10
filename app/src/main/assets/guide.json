@@ -1,17 +1,22 @@
 {
-  "title": "Faster screens",
+  "title": "Everything from the site's Mess Machine",
   "thisBuild": [
-    "Tapping pads no longer rebuilds the whole screen, so the grid should feel quicker.",
-    "The step grid and the roll redraw only the playhead while playing.",
-    "The bug panel now shows how smooth the screen is and how hard the sound engine works, and every note carries those numbers."
+    "FX button on the Pads tab: hold Stutter, Echo throw, Crush, Tape stop, Gate, Dirt, Ring mod, Octave down or Reverse while you play, plus the filter pad (low or high pass).",
+    "Strip button: the keys strip under the pads, with chords.",
+    "Sounds tab, Your Workbench jar: import sounds (WAV, MP3, M4A, OGG, FLAC), record from the mic, resample a loop into one sound.",
+    "Doctor's table: zoom to the trim, snap to zero, loop the trim, re-pitch to fit 1 beat to 4 bars, chop to pads (equal, by hits, tap the wave, or tap while it plays), save the edit as a new sound, share it as a WAV.",
+    "Star sounds; the Starred jar keeps them together.",
+    "On the site, Save as file and Open a file move a mess between the site and the app.",
+    "Faster: tapping pads no longer rebuilds the whole screen."
   ],
   "watch": [
-    "Drum on the pads and switch tabs while a loop plays. Still slow? Send a Tuning note from the \ud83d\udc1e button right after, so the speed numbers go with it."
+    "Hold Stutter and Tape stop while a loop plays.",
+    "Record a mic take, then chop it to pads with Auto.",
+    "If anything feels slow, send a Tuning note right away so the speed numbers go with it."
   ],
   "limits": [
-    "No performance effects yet (stutter, tape stop, echo, crush and the rest).",
-    "No importing your own sounds or recording from the mic yet.",
-    "Chop to pads and fit to tempo from the doctor's table are not in yet.",
+    "Creature cards and the Ring are not in the app yet.",
+    "Jams and duels need claude.ai's shared rooms, so they stay on the site.",
     "It stops playing a while after you leave the app."
   ]
 }

@@ -57,12 +57,13 @@ Trade-off: the repo is public, so notes are public. Making it private would hide
 
 ## Not carried over from the site yet
 
-- Perform FX bus: stutter, echo, crush, tape stop, gate, dirt, ring mod, octave down, reverse, and the filter XY pad.
-- Your Workbench: importing sounds, mic takes, saving a trimmed sound as a new one, chops and resamples.
-- Doctor extras: zoom, snap to zero crossing, loop preview, fit to tempo (bars), chop to pads.
-- The keys strip under the pads (Keys mode on the grid covers the same notes).
-- Saving messes to the site's cloud (the app saves on the phone and moves messes as files).
-- Specimen Lab extras: favorites, creature cards, the Ring, jams and duels with other visitors.
+- Creature cards and the Ring (the sound battle game). A big port; waiting on Tyler.
+- Jams and duels: they run on claude.ai's shared rooms for signed-in viewers, which a phone app cannot join.
+- Saving to the site's cloud: replaced by files. The site has Save as file and Open a file; the app has Share this mess and Open a mess file.
+
+Everything else from the site's Mess Machine is in as of build 7: the live FX bus and filter pad, the keys strip, Your Workbench (import, mic, resample, saved edits, chops), doctor zoom, snap, loop preview, fit to tempo and chop to pads, Random drums, chord sets that move the scale, and starred sounds.
+
+The site's source is kept in `site/` (build with `python3 build.py` next to the site's samples, images and loops, which live in the app's assets and the published pages).
 
 ## Differences from the site, on purpose
 
