@@ -90,6 +90,15 @@ class BigTest {
         println("SCREEN $name ${bmp.width}x${bmp.height}")
     }
 
+    /** Hold a finger on something long enough for its menu, moving the test clock so the timer fires. */
+    private fun longPress(tag: String) {
+        rule.onNodeWithTag(tag).performScrollTo().performTouchInput { down(center) }
+        rule.mainClock.advanceTimeBy(800)
+        settle()
+        rule.onNodeWithTag(tag).performTouchInput { advanceEventTime(800); up() }
+        settle()
+    }
+
     private fun tab(label: String) { rule.onNodeWithTag("tab-$label").performClick(); settle() }
 
     private fun tapPad(d: Int) {
@@ -116,8 +125,7 @@ class BigTest {
         state.putOnPad(13, "samples/wheezy-organ.wav")
         waitFor("the new pads to load") { state.lib.loaded("samples/glass-harp.wav") && state.lib.loaded("samples/wheezy-organ.wav") }
         for (d in listOf(1, 5, 8, 13)) {
-            rule.onNodeWithTag("pad-$d").performScrollTo().performTouchInput { down(center); advanceEventTime(900); up() }
-            settle()
+            longPress("pad-$d")
             assertEquals("holding pad ${d + 1} opens its menu", d, state.padMenu)
             if (d == 1) shot("02-pad-menu")
             rule.onNodeWithTag("menu-piano").performClick()
@@ -171,8 +179,7 @@ class BigTest {
         shot("03b-pianos-under-rows-bottom")
 
         // one piano per row: opening pad 1's piano swaps out pad 2's in the same row
-        rule.onNodeWithTag("pad-0").performScrollTo().performTouchInput { down(center); advanceEventTime(900); up() }
-        settle()
+        longPress("pad-0")
         rule.onNodeWithTag("menu-piano").performClick()
         settle()
         assertTrue(0 in state.keyboards && 1 !in state.keyboards)
@@ -280,8 +287,7 @@ class BigTest {
     @Test fun recordOntoAPadAndKeepSounds() {
         shadowOf(ApplicationProvider.getApplicationContext<android.app.Application>()).grantPermissions(android.Manifest.permission.RECORD_AUDIO)
         // hold pad 4: Record onto this pad
-        rule.onNodeWithTag("pad-3").performScrollTo().performTouchInput { down(center); advanceEventTime(900); up() }
-        settle()
+        longPress("pad-3")
         rule.onNodeWithTag("menu-record").performClick()
         settle()
         val started = state.micOn
@@ -290,7 +296,8 @@ class BigTest {
             assertEquals(3, state.micPad)
             rule.onNodeWithTag("rec-banner").assertExists()
             shot("22-recording-onto-pad")
-            rule.onNodeWithTag("rec-banner").performClick()
+            // the test phone's mic can run dry by itself; tap the bar if it is still recording
+            if (state.micOn) rule.onNodeWithTag("rec-banner").performClick()
         }
         waitFor("the mic to stop") { !state.micOn }
         // the take lands on that pad and in Your Workbench
@@ -300,8 +307,7 @@ class BigTest {
         waitFor("the take to land on pad 4") { state.busy == null && state.lib.sound(state.project.kit[3])?.cab == "mine" }
         val n = state.bench.items.size
         // keep a pad's sound in Your Workbench from its menu
-        rule.onNodeWithTag("pad-0").performScrollTo().performTouchInput { down(center); advanceEventTime(900); up() }
-        settle()
+        longPress("pad-0")
         rule.onNodeWithTag("menu-keep").performClick()
         waitFor("the kick to be kept") { state.busy == null && state.bench.items.size == n + 1 }
         rule.onNodeWithTag("pad-3").performScrollTo()
@@ -317,7 +323,7 @@ class BigTest {
     @Test fun consoleBuildsAndPlays() {
         tab("Console")
         shot("30-console-perform")
-        assertEquals(listOf("transport", "pads", "hold", "piano", "pfilt", "fx", "xy", "repeat", "loops"), state.console.map { it.type })
+        assertEquals(listOf("pads", "hold", "piano", "pfilt", "fx", "xy", "repeat", "loops"), state.console.map { it.type })
         // it plays: a pad, the piano, an effect
         loudest()
         tapPad(0)
@@ -327,7 +333,7 @@ class BigTest {
         assertTrue("an effect held on the console", state.engine.fxActive())
         rule.onNodeWithTag("cfx-crush").performTouchInput { up() }
         settle()
-        val pp = state.console[3].pad
+        val pp = state.console[2].pad
         rule.onNodeWithTag("piano-keys-$pp").performScrollTo().performTouchInput { down(Offset(width * .5f, height * .85f)) }
         settle()
         val key = loudest()
@@ -339,16 +345,17 @@ class BigTest {
         // edit: resize, half width, move, add, remove
         rule.onNodeWithTag("console-edit").performScrollTo().performClick()
         settle()
-        rule.onNodeWithTag("mod-size-3").performScrollTo().performClick()
+        rule.onNodeWithTag("mod-size-2").performScrollTo().performClick()
         settle()
-        assertEquals(2, state.console[3].size)
-        rule.onNodeWithTag("mod-width-2").performScrollTo().performClick()
+        assertEquals(2, state.console[2].size)
+        rule.onNodeWithTag("mod-width-1").performScrollTo().performClick()
         settle()
-        assertTrue(state.console[2].half)
+        assertTrue(state.console[1].half)
         rule.onNodeWithTag("mod-down-0").performScrollTo().performClick()
         settle()
-        assertEquals("pads", state.console[0].type)
-        assertEquals("transport", state.console[1].type)
+        assertEquals("hold", state.console[0].type)
+        assertEquals("pads", state.console[1].type)
+        state.addModule("transport")
         state.addModule("fx1")
         state.addModule("beat")
         settle()
@@ -361,13 +368,13 @@ class BigTest {
         rule.onNodeWithTag("mod-${state.console.size - 1}").performScrollTo()
         shot("33-console-editing-bottom")
         val saved = ApplicationProvider.getApplicationContext<Context>().getSharedPreferences("mess", 0).getString("console", "")!!
-        assertTrue("the layout is saved: $saved", saved.startsWith("pads,") && "fx1" in saved)
+        assertTrue("the layout is saved: $saved", saved.startsWith("hold,") && "fx1" in saved)
         rule.onNodeWithTag("console-edit").performScrollTo().performClick()
         settle()
         shot("34-console-custom")
         state.resetConsole()
         settle()
-        assertEquals("transport", state.console[0].type)
+        assertEquals("pads", state.console[0].type)
     }
 
     /* ---------- steps, roll, song ---------- */

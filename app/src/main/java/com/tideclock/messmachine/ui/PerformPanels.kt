@@ -303,7 +303,7 @@ fun PadFilterStrip(state: AppState, pad: Int, modifier: Modifier = Modifier, hei
     Column(modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 6.dp)) {
             T("FILTER", size = 12.sp, color = if (at != null) C.Yellow else C.Dim, spacing = .1.em)
-            Note(if (at == null) "open · pad ${pad + 1} only" else "cut ${(at.first * 100).toInt()} · res ${(at.second * 100).toInt()}", color = if (at != null) C.Cream else C.Dim, modifier = Modifier.weight(1f))
+            Note(if (at == null) "open · pad ${pad + 1} ${state.lib.titleOf(k).lowercase()} only" else "cut ${(at.first * 100).toInt()} · res ${(at.second * 100).toInt()}", color = if (at != null) C.Cream else C.Dim, modifier = Modifier.weight(1f))
             Btn(if (stay) "Stay on" else "Stay", { state.switchFiltStay(pad) }, on = stay, onColor = C.Teal, small = true, tag = "pfilt-stay-$pad")
             if (stay && at != null) Btn("Open", { state.openPadFilter(pad) }, small = true, tag = "pfilt-open-$pad")
         }

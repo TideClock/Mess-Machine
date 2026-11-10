@@ -221,6 +221,8 @@ fun SelectedPad(state: AppState) {
                 Btn(if (P.sel in state.keyboards) "Hide piano" else "🎹 Piano", { state.toggleKeyboard(P.sel) }, small = true, enabled = k.isNotEmpty(), tag = "keys-for-pad")
                 Btn("Hear", { state.preview(k) }, small = true, enabled = k.isNotEmpty())
                 Btn("Clear pad", { state.clearPad(P.sel) }, small = true, enabled = k.isNotEmpty())
+                Btn(if (state.micOn && state.micPad == P.sel) "■ Stop" else "● Record onto it", { state.askRecord(P.sel) }, small = true, color = C.Riot,
+                    enabled = !state.micOn || state.micPad == P.sel, tag = "record-pad")
             }
             Dashed(Modifier.padding(vertical = 12.dp))
             T("GET SOUNDS", size = 12.sp, color = C.Yellow, spacing = .1.em)
@@ -236,7 +238,7 @@ fun SelectedPad(state: AppState) {
 /** Hold: one tap on or off. The first N notes you play keep sounding; press one again to let it go. */
 @Composable
 fun HoldBar(state: AppState, modifier: Modifier = Modifier) {
-    Row(modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    Wrap(modifier.padding(top = 8.dp), gap = 6.dp) {
         HoldToggle(state, tag = "hold-toggle")
         Btn("−", { state.changeHoldCount(state.holdCount - 1) }, small = true, enabled = state.holdCount > 1, tag = "hold-down")
         Box(Modifier.size(width = 54.dp, height = 34.dp).background(C.Black).border(2.dp, if (state.holdOn) C.Yellow else C.Cream), contentAlignment = Alignment.Center) {

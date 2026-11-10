@@ -129,10 +129,7 @@ private fun ModuleBody(state: AppState, m: Module) {
         "piano" -> if (m.pad in 0 until Project.NPADS && P.kit[m.pad].isNotEmpty()) {
             PianoKeyboard(state, m.pad, keysHeight = pick(m.size, 92.dp, 132.dp, 184.dp), filter = false, close = false)
         } else EmptyModule("Pad ${m.pad + 1} is empty. Edit to point this piano at another pad.")
-        "pfilt" -> {
-            T("PAD ${m.pad + 1} · ${state.lib.titleOf(P.kit.getOrElse(m.pad) { "" }).uppercase()}", size = 11.sp, color = C.Dim, lines = 1, spacing = .06.em, modifier = Modifier.padding(bottom = 4.dp))
-            PadFilterStrip(state, m.pad, height = pick(m.size, 42.dp, 64.dp, 110.dp))
-        }
+        "pfilt" -> PadFilterStrip(state, m.pad, height = pick(m.size, 42.dp, 64.dp, 110.dp))
         "hold" -> HoldBar(state, Modifier.padding(top = 0.dp))
         "fx" -> {
             val h = pick(m.size, 44.dp, 58.dp, 80.dp)
@@ -205,7 +202,6 @@ private fun TransportModule(state: AppState) {
         Btn(if (state.playing) "❚❚" else "▶ Play", { state.togglePlay() }, color = C.Teal, on = state.playing, onColor = C.Yellow, tag = "cplay", modifier = Modifier.weight(1.2f))
         Btn("■", { state.stop() }, modifier = Modifier.weight(.6f))
         RecBtn(state, Modifier.weight(1f))
-        Btn("${state.project.bpm}", { state.overlay = Overlay.Tempo }, modifier = Modifier.weight(.8f))
-        Btn("Hush", { state.hush() }, color = C.Riot, modifier = Modifier.weight(.9f))
+        Btn("${state.project.bpm} BPM", { state.overlay = Overlay.Tempo }, modifier = Modifier.weight(1.1f))
     }
 }

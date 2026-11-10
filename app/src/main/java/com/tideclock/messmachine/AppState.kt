@@ -910,7 +910,7 @@ class AppState(private val app: Context) {
     fun performPreset(): List<Module> {
         val t = firstTonalPad()
         return listOf(
-            Module("transport"), Module("pads"), Module("hold"), Module("piano", t), Module("pfilt", t),
+            Module("pads"), Module("hold"), Module("piano", t), Module("pfilt", t),
             Module("fx"), Module("xy", size = 0, half = true), Module("repeat", half = true), Module("loops"),
         )
     }
