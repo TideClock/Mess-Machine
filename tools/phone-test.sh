@@ -15,16 +15,39 @@ infront() {
   if adb shell dumpsys window | grep -E "mCurrentFocus|mFocusedApp" | grep -q $PKG; then note "$1: in front"
   else note "$1: NOT IN FRONT"; fail=1; adb shell am start -n $PKG/.MainActivity; sleep 4; fi
 }
-# the centre of the element with this test tag, as "x y" (empty when it is not on screen)
+# Android's own "isn't responding" boxes (build 45's run: the emulator's launcher froze and its box sat
+# over the app, so the screen map held only that box). Turned off up front; any that still show are closed.
+clear_dialogs() {
+  for i in 1 2 3; do
+    f=$(adb shell dumpsys window | grep mCurrentFocus)
+    case "$f" in
+      *"Not Responding"*|*"Application Error"*|*"isn't responding"*)
+        note "system box over the app, closed: $(echo $f | tr -d '\r')"
+        adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS >/dev/null 2>&1
+        adb shell input keyevent KEYCODE_BACK; sleep 2 ;;
+      *) return ;;
+    esac
+  done
+}
+# the centre of the element with this test tag, as "x y" (empty when it is not on screen; the screen map
+# is saved as ui-<tag>.xml so a miss can be read afterwards)
 centre() {
+  clear_dialogs
   adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1
-  adb shell cat /sdcard/ui.xml | python3 -c "
+  adb shell cat /sdcard/ui.xml > $OUT/ui-now.xml
+  grep -q "resource-id=\"$1\"" $OUT/ui-now.xml || cp $OUT/ui-now.xml "$OUT/ui-$1.xml"
+  cat $OUT/ui-now.xml | python3 -c "
 import sys,re
 m=re.search(r'resource-id=\"$1\"[^>]*?bounds=\"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]\"',sys.stdin.read())
 print('%d %d'%((int(m[1])+int(m[3]))//2,(int(m[2])+int(m[4]))//2) if m else '')"
 }
 
 adb install -r -g "$APK" || { note "install failed"; exit 1; }
+# let the freshly booted emulator settle, and keep Android's error boxes off the screen
+adb shell settings put global hide_error_dialogs 1
+adb shell settings put secure anr_show_background 0
+sleep 20
+adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS >/dev/null 2>&1
 adb logcat -c
 size=$(adb shell wm size | grep -o '[0-9]*x[0-9]*' | tail -1); W=${size%x*}; H=${size#*x}
 note "screen ${W}x${H}"
@@ -35,7 +58,10 @@ sleep 10; shot 01-first-launch
 alive && note "first launch: running" || { note "first launch: NOT RUNNING"; fail=1; }
 
 # 2. close the guide and relaunch from cold
-adb shell input keyevent KEYCODE_BACK; sleep 2; shot 02-guide-closed
+clear_dialogs
+xy=$(centre done)
+if [ -n "$xy" ]; then adb shell input tap $xy; else adb shell input keyevent KEYCODE_BACK; fi
+sleep 2; shot 02-guide-closed
 infront "guide closed"
 adb shell am force-stop $PKG; sleep 1
 adb shell am start -W -n $PKG/.MainActivity
