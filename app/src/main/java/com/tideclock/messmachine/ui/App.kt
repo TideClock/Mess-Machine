@@ -58,6 +58,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -177,7 +178,7 @@ fun Sheet(state: AppState, title: String, content: @Composable () -> Unit) {
 private fun SheetBody(state: AppState, title: String, content: @Composable () -> Unit) {
     // the dimmed backdrop only blocks taps to the page behind; it is not a button (a clickable here
     // swallowed the whole sheet into one node for screen readers and for the design check)
-    Box(Modifier.fillMaxSize().background(C.Black.copy(alpha = .6f)).pointerInput(Unit) { androidx.compose.foundation.gestures.detectTapGestures { } }) {
+    Box(Modifier.fillMaxSize().background(C.Black.copy(alpha = .6f)).pointerInput(Unit) { detectTapGestures { } }) {
         Column(Modifier.fillMaxSize().padding(top = 18.dp).background(C.Paper).grit().drawBehind {
             drawLine(C.Pink, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 4.dp.toPx())
         }.testTag("sheet")) {
