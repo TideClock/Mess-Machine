@@ -74,7 +74,7 @@ fun ConsoleScreen(state: AppState) {
                 Select("+ Add", CONSOLE_TYPES, { state.addModule(it) }, color = C.Teal, modifier = Modifier.testTag("console-add"))
                 Btn("Start over", { state.resetConsole() }, small = true, tag = "console-reset")
             }
-            Note("Drag a piece to move it, drag its pink corner to resize it. 📌 pins it in place, ⚙ picks its pad and size, ✕ takes it off. Pieces can overlap; the one you touched last sits on top.",
+            Help("Drag a piece to move it, drag its pink corner to resize it. 📌 pins it in place, ⚙ picks its pad and size, ✕ takes it off. Pieces can overlap; the one you touched last sits on top.",
                 modifier = Modifier.padding(bottom = 10.dp))
         }
         if (state.console.isEmpty()) Note("Nothing here yet. Tap Arrange, then + Add.", modifier = Modifier.padding(vertical = 20.dp))

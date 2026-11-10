@@ -52,10 +52,29 @@ import kotlinx.coroutines.launch
 @Composable
 fun Dock(state: AppState) {
     if (!state.dockOpen) {
+        // folded (the default): a thin edge strip; tap it or swipe right from it to open the dock
         Box(
-            Modifier.width(16.dp).fillMaxHeight().background(C.Ink).clickable { state.switchDockOpen(true) }.testTag("dock-open"),
+            Modifier.width(14.dp).fillMaxHeight().background(C.Ink)
+                .drawBehind { drawLine(C.Pink, Offset(size.width, 0f), Offset(size.width, size.height), strokeWidth = 2.dp.toPx()) }
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        val d = awaitFirstDown(requireUnconsumed = false)
+                        d.consume()
+                        var dx = 0f
+                        while (true) {
+                            val e = awaitPointerEvent()
+                            val c = e.changes.firstOrNull { it.id == d.id } ?: break
+                            dx = c.position.x - d.position.x
+                            c.consume()
+                            if (!c.pressed) break
+                            if (dx > 24.dp.toPx()) break
+                        }
+                        state.switchDockOpen(true)
+                    }
+                }
+                .testTag("dock-open"),
             contentAlignment = Alignment.Center,
-        ) { T("▶", size = 10.sp, color = C.Pink) }
+        ) { T("›", size = 14.sp, color = C.Pink, weight = FontWeight.Bold) }
         return
     }
     Column(
@@ -105,8 +124,25 @@ private fun DockItem(state: AppState, t: String) {
                 modifier = Modifier.padding(top = 3.dp).clickable { state.changeHoldCount(if (state.holdCount >= 8) 0 else state.holdCount + 1) }.testTag("dock-hold-n"))
         }
         "filter" -> DockFilter(state)
-        "repeat" -> DockBtn("RPT", { state.setLive { nr = !nr } }, tag = "dock-repeat", on = state.live.nr, onColor = C.Pink)
-        "hush" -> DockBtn("✕", { state.hush() }, tag = "dock-hush", color = C.Riot)
+        "repeat" -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            // Repeat's one home: tap RPT to turn it on, tap the rate under it for 1/8, 1/16, 1/32 or an arp
+            var rates by remember { mutableStateOf(false) }
+            DockBtn("RPT", { state.setLive { nr = !nr } }, tag = "dock-repeat", on = state.live.nr, onColor = C.Pink)
+            Box {
+                T(
+                    (when (state.live.nrRate) { 2.0 -> "1/8"; 0.5 -> "1/32"; else -> "1/16" }) + if (state.live.arp != "rep") " " + arpShort(state.live.arp) else "",
+                    size = 10.sp, color = if (state.live.nr) C.Pink else C.Dim, family = Mono, lines = 1,
+                    modifier = Modifier.padding(top = 3.dp).clickable { rates = true }.testTag("dock-rate"),
+                )
+                HoldMenu(rates, "Repeat", { rates = false }, listOf(
+                    Triple("Every 1/8", "rate-r2") { state.setLive { nrRate = 2.0 } },
+                    Triple("Every 1/16", "rate-r1") { state.setLive { nrRate = 1.0 } },
+                    Triple("Every 1/32", "rate-r.5") { state.setLive { nrRate = .5 } },
+                ) + listOf("rep", "up", "down", "updown", "rand").map { a ->
+                    Triple(arpName(a), "rate-a$a") { state.setLive { arp = a; if (a != "rep") nr = true } }
+                })
+            }
+        }
         "rec" -> { val pulse = beatPulse(state); DockBtn("●", { state.setLive { rec = !rec } }, tag = "dock-rec", on = state.live.rec, onColor = C.Riot, modifier = Modifier.recGlow(state, pulse)) }
         "beat" -> BeatLight(state, beatPulse(state))
         "stutter", "echo" -> FxButton(state, t, if (t == "echo") "ECHO" else "STUT", Modifier.fillMaxWidth().testTag("dock-$t"), if (t == "echo") C.Teal else C.Pink, height = 46.dp)

@@ -129,9 +129,9 @@ fun SoundsScreen(state: AppState, pickFor: Int?) {
                 }, small = true, on = state.micOn, onColor = C.Riot, tag = "mic")
                 Btn("Resample loop ${Project.LETTERS[P.cur]}", { state.resampleLoop() }, small = true, enabled = P.pat().used())
             }
-            Note("WAV, MP3, M4A, OGG or FLAC, up to a minute each. Mic takes stop at 30 seconds. Your sounds stay on this phone.", modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
+            Help("WAV, MP3, M4A, OGG or FLAC, up to a minute each. Mic takes stop at 30 seconds. Your sounds stay on this phone.", modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
         }
-        Note("Tap a sound to hear it. The button puts it on pad ${target + 1}. ☆ stars it.", modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp))
+        Help("Tap a sound to hear it. The button puts it on pad ${target + 1}. ☆ stars it.", modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp))
         if (list.isEmpty()) Note(
             when { q.isNotBlank() -> "Nothing in the jars matches that."; mode == "fav" -> "No favorites yet. Tap ☆ on any sound."; mode == "type" -> "Nothing with that type and feel. Turn a feel off."; cab == "mine" -> "Nothing here yet. Import a sound, sample the mic or resample a loop."; else -> "Empty jar." },
             color = C.Yellow, modifier = Modifier.padding(horizontal = 14.dp),

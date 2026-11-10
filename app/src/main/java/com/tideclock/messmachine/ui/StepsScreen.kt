@@ -108,7 +108,6 @@ fun StepsScreen(state: AppState) {
             }
         }
         Wrap(Modifier.padding(bottom = 12.dp)) {
-            Btn("Click to hear: " + if (state.playOnTap) "on" else "off", { state.switchPlayOnTap(!state.playOnTap) }, on = state.playOnTap, small = true)
             Btn("Random drums", { state.randomDrums() }, small = true, tag = "random")
             Btn("Resample to a pad", { state.resampleLoop() }, small = true, enabled = pat.used())
             Btn("Clear notes", { state.clearAllNotes() }, small = true, enabled = pat.notes.values.any { it.isNotEmpty() }, tag = "clear-all-notes")
@@ -137,7 +136,7 @@ fun StepsScreen(state: AppState) {
                 Dashed(Modifier.padding(top = 10.dp))
             }
         }
-        Note("Tap a sound's name to give its steps pitches. Hold its name, then lift, for its menu. M mutes, S solos, ✂ opens the doctor. A dot means a step has a pitch or roll notes; tap it to clear it, or Clear notes for the whole loop.", modifier = Modifier.padding(top = 4.dp))
+        Help("Tap a sound's name to give its steps pitches. Hold its name, then lift, for its menu. M mutes, S solos, ✂ opens the doctor. A dot means a step has a pitch or roll notes; tap it to clear it, or Clear notes for the whole loop.", modifier = Modifier.padding(top = 4.dp))
     }
 }
 

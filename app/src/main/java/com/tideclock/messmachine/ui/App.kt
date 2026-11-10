@@ -99,7 +99,7 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
         LaunchedEffect(state.askMicFor) { if (state.askMicFor >= 0) micPerm.launch(android.Manifest.permission.RECORD_AUDIO) }
         @Suppress("UNUSED_VARIABLE") val v = state.version
         val dn = LocalDensity.current
-        CompositionLocalProvider(LocalDensity provides Density(dn.density * state.uiScale, dn.fontScale), LocalLocked provides state.locked) {
+        CompositionLocalProvider(LocalDensity provides Density(dn.density * state.uiScale, dn.fontScale), LocalLocked provides state.locked, LocalHelp provides state.helpShows(state.tab.label)) {
         // test tags show up as view ids, so the phone test on the emulator can find things by name
         Box(Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }.background(C.Paper).grit().statusBarsPadding().navigationBarsPadding()) {
             PulseBackdrop(state)
@@ -135,6 +135,7 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
                     is Overlay.Doctor -> Sheet(state, "Doctor's table") { DoctorScreen(state, o.key) }
                     is Overlay.Xy -> Sheet(state, "XY for pad ${o.pad + 1}") { XyEditor(state, o.pad) }
                     Overlay.Files -> Sheet(state, "Messes") { FilesScreen(state) }
+                    Overlay.Settings -> Sheet(state, "Settings") { SettingsScreen(state) }
                     Overlay.Tempo -> Sheet(state, "Tempo + feel") { TempoScreen(state) }
                     Overlay.Notes -> Sheet(state, "Notes for Claude") { NotesScreen(state) }
                     null -> Box(Modifier) {}
@@ -161,6 +162,13 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
 /** A full-height panel over the machine, for picking, editing and files. */
 @Composable
 fun Sheet(state: AppState, title: String, content: @Composable () -> Unit) {
+    val page = "sheet:$title"
+    androidx.compose.runtime.DisposableEffect(page) { onDispose { state.markHelpSeen(page) } }
+    CompositionLocalProvider(LocalHelp provides state.helpShows(page)) { SheetBody(state, title, content) }
+}
+
+@Composable
+private fun SheetBody(state: AppState, title: String, content: @Composable () -> Unit) {
     Box(Modifier.fillMaxSize().background(C.Black.copy(alpha = .6f)).clickable(enabled = true) { }) {
         Column(Modifier.fillMaxSize().padding(top = 18.dp).background(C.Paper).grit().drawBehind {
             drawLine(C.Pink, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 4.dp.toPx())
@@ -179,34 +187,59 @@ fun Transport(state: AppState) {
     val P = state.project
     @Suppress("UNUSED_VARIABLE") val lv = state.liveV
     val pulse = beatPulse(state)
-    Column(Modifier.fillMaxWidth().background(C.Ink).drawBehind {
-        // the line under the top bar flashes on every beat, brighter on the one
-        val v = pulse.value
-        val down = state.heardStep >= 0 && state.heardStep % 16 < 4
-        if (v > .01f) drawRect(Brush.verticalGradient(listOf(Color.Transparent, (if (down) C.Pink else C.Yellow).copy(alpha = .35f * v)), startY = size.height * .5f, endY = size.height), topLeft = Offset(0f, size.height * .5f))
-        drawLine(lerp(C.Pink, if (down) C.Cream else C.Yellow, v), Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = (3 + 4 * v).dp.toPx())
-    }.padding(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 10.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
-            GlitchTitle("Mess Machine", size = 20.sp, modifier = Modifier.weight(1f))
-            val free = !state.locked
-            Btn("↶", { state.undo() }, enabled = state.canUndo && free, small = true, tag = "undo")
-            Btn("↷", { state.redo() }, enabled = state.canRedo && free, small = true, tag = "redo", modifier = Modifier.padding(start = 6.dp))
-            Btn("🐞", { state.overlay = Overlay.Notes }, small = true, enabled = free, color = if (state.crash != null) C.Riot else C.Ink, tag = "notes", modifier = Modifier.padding(start = 6.dp))
-            Btn("☰", { state.refreshFiles(); state.overlay = Overlay.Files }, small = true, enabled = free, modifier = Modifier.padding(start = 6.dp), tag = "messes")
+    val free = !state.locked
+    Row(
+        Modifier.fillMaxWidth().background(C.Ink).drawBehind {
+            // the line under the top bar flashes on every beat, brighter on the one
+            val v = pulse.value
+            val down = state.heardStep >= 0 && state.heardStep % 16 < 4
+            if (v > .01f) drawRect(Brush.verticalGradient(listOf(Color.Transparent, (if (down) C.Pink else C.Yellow).copy(alpha = .35f * v)), startY = size.height * .5f, endY = size.height), topLeft = Offset(0f, size.height * .5f))
+            drawLine(lerp(C.Pink, if (down) C.Cream else C.Yellow, v), Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = (3 + 4 * v).dp.toPx())
+        }.padding(start = 8.dp, end = 8.dp, top = 6.dp, bottom = 9.dp).testTag("topbar"),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
+        Btn(if (state.playing) "❚❚" else "▶ Play", { state.togglePlay() }, color = C.Teal, on = state.playing, onColor = C.Yellow, small = true, tag = "play", modifier = Modifier.weight(1.25f))
+        Btn("■", { state.stop() }, small = true, tag = "stop", modifier = Modifier.weight(.55f))
+        RecBtn(state, Modifier.weight(.95f))
+        Btn("↶", { state.undo() }, enabled = state.canUndo && free, small = true, tag = "undo", modifier = Modifier.weight(.5f))
+        // tempo and where the music is, in one button: tap for tempo, swing and click
+        Box(
+            Modifier.weight(1.25f).height(36.dp).sticker(C.Black, shadow = 2.dp, border = 2.dp)
+                .clickable(enabled = free) { state.overlay = Overlay.Tempo }.testTag("bpm"),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                T("${P.bpm} BPM", size = 11.sp, color = C.Cream, lines = 1, family = Mono, weight = FontWeight.Bold)
+                T(position(state), size = 10.sp, color = C.Yellow, lines = 1, family = Mono, weight = FontWeight.Bold, modifier = Modifier.testTag("position"))
+            }
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(end = 4.dp)) {
-            Btn(if (state.playing) "❚❚ Pause" else "▶ Play", { state.togglePlay() }, color = C.Teal, on = state.playing, onColor = C.Yellow, tag = "play", modifier = Modifier.weight(1.35f))
-            Btn("■", { state.stop() }, tag = "stop", modifier = Modifier.weight(.6f))
-            RecBtn(state, Modifier.weight(1f))
-            Btn("${P.bpm} BPM", { state.overlay = Overlay.Tempo }, enabled = !state.locked, tag = "bpm", modifier = Modifier.weight(1.15f))
-        }
-        Spacer(Modifier.height(10.dp))
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(end = 4.dp)) {
-            BeatLight(state, pulse)
-            PositionText(state)
-            RepeatControls(state)
-            Spacer(Modifier.weight(1f))
-            Btn("Hush", { state.hush() }, small = true, color = C.Riot, tag = "hush")
+        Btn("?", { state.switchHelp() }, small = true, on = state.helpOn, onColor = C.Teal, tag = "help-toggle", modifier = Modifier.weight(.45f))
+        TopMenu(state, Modifier.weight(.5f))
+    }
+}
+
+/** ☰: messes, settings, redo and notes for Claude (the bug button), so the top bar stays one row. */
+@Composable
+fun TopMenu(state: AppState, modifier: Modifier = Modifier) {
+    var open by remember { mutableStateOf(false) }
+    val free = !state.locked
+    Box(modifier) {
+        Btn("☰", { open = true }, small = true, enabled = free, color = if (state.crash != null) C.Riot else C.Ink, tag = "menu", modifier = Modifier.fillMaxWidth())
+        androidx.compose.material3.DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.background(C.Ink).border(3.dp, C.Cream).testTag("topmenu")) {
+            for ((label, tag, act) in listOf(
+                Triple("☰  Messes", "messes") { state.refreshFiles(); state.overlay = Overlay.Files },
+                Triple("⚙  Settings", "settings") { state.overlay = Overlay.Settings },
+                Triple("↷  Redo", "redo") { state.redo() },
+                Triple("🐞  Notes for Claude" + if (state.crash != null) " (a crash to send)" else "", "notes") { state.overlay = Overlay.Notes },
+            )) {
+                androidx.compose.material3.DropdownMenuItem(
+                    text = { T(label, size = 15.sp, weight = FontWeight.Medium) },
+                    onClick = { open = false; act() },
+                    enabled = tag != "redo" || state.canRedo,
+                    modifier = Modifier.testTag(tag),
+                )
+            }
         }
     }
 }
@@ -335,13 +368,13 @@ fun position(state: AppState): String {
 fun Tabs(state: AppState) {
     Row(Modifier.fillMaxWidth().background(C.Ink).drawBehind {
         drawLine(C.Pink, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 3.dp.toPx())
-    }.padding(horizontal = 4.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+    }.padding(horizontal = 4.dp, vertical = 7.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
         for (t in Tab.entries) {
             val on = state.tab == t
             Box(
                 Modifier
                     .weight(1f)
-                    .height(40.dp)
+                    .height(34.dp)
                     .background(if (on) C.Yellow else C.Ink)
                     .border(if (on) 3.dp else 0.dp, C.Cream)
                     .clickable(enabled = !state.locked) { state.tab = t }

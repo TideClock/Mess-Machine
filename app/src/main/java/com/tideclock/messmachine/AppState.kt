@@ -50,7 +50,7 @@ data class Module(
 
 /** What can sit on the side dock. */
 val DOCK_TYPES = listOf(
-    "lock" to "Lock", "hold" to "Hold", "filter" to "Filter + resonance", "repeat" to "Repeat", "hush" to "Hush",
+    "lock" to "Lock", "hold" to "Hold", "filter" to "Filter + resonance", "repeat" to "Repeat",
     "rec" to "Rec", "beat" to "Beat light", "stutter" to "Stutter", "echo" to "Echo throw", "xy" to "XY setup for the picked pad", "desk" to "Desk layouts",
 )
 
@@ -72,6 +72,7 @@ sealed class Overlay {
     data class Picker(val pad: Int) : Overlay()
     data class Doctor(val key: String) : Overlay()
     data object Files : Overlay()
+    data object Settings : Overlay()
     data object Tempo : Overlay()
     data object Notes : Overlay()
     data class Xy(val pad: Int) : Overlay()
@@ -124,10 +125,21 @@ class AppState(private val app: Context) {
         private set
     var micOn by mutableStateOf(false)
         private set
+    /** ? in the top bar: show the how-to text on every page. Each page also shows it once, the first time. */
+    var helpOn by mutableStateOf(prefs.getBoolean("helpOn", false))
+        private set
+    val helpSeen = mutableStateListOf<String>().also { it.addAll((prefs.getString("helpSeen", "") ?: "").split(",").filter { x -> x.isNotEmpty() }) }
+    fun switchHelp(v: Boolean = !helpOn) { helpOn = v; prefs.edit().putBoolean("helpOn", v).apply() }
+    /** Is the how-to text showing on this page or sheet right now. */
+    fun helpShows(page: String): Boolean = helpOn || page !in helpSeen
+    fun markHelpSeen(page: String) {
+        if (page in helpSeen) return
+        helpSeen.add(page); prefs.edit().putString("helpSeen", helpSeen.joinToString(",")).apply()
+    }
     private val tabState = mutableStateOf(Tab.Pads)
     var tab: Tab
         get() = tabState.value
-        set(v) { if (v != tabState.value) notes.trail("tab ${v.label}"); tabState.value = v }
+        set(v) { if (v != tabState.value) { notes.trail("tab ${v.label}"); markHelpSeen(tabState.value.label) }; tabState.value = v }
     var bank by mutableIntStateOf(project.sel / Project.BANK)
     var keysMode by mutableStateOf(false)
     var chordMode by mutableStateOf(prefs.getString("chord", "off") ?: "off")
@@ -369,7 +381,11 @@ class AppState(private val app: Context) {
         }
     }
 
-    fun stop() { notes.trail("stop"); engine.stop(); playing = false }
+    /** Stop; pressed again while already stopped it hushes everything (the Hush button is gone). */
+    fun stop() {
+        if (!playing) { engine.stop(); hush("Stopped and hushed: held notes, effects and filters all let go."); return }
+        notes.trail("stop"); engine.stop(); playing = false
+    }
 
     fun setBpm(v: Int) = edit { bpm = v.coerceIn(60, 180) }
 
@@ -590,7 +606,7 @@ class AppState(private val app: Context) {
     }
 
     /** The site's Hush: everything quiet now, the loop pauses where it is. */
-    fun hush() {
+    fun hush(msg: String = "Hushed. Everything is quiet. Play picks up where it paused.") {
         notes.trail("hush")
         if (playing) { engine.pause(); playing = false }
         engine.panic()
@@ -598,7 +614,7 @@ class AppState(private val app: Context) {
         fxOn.clear(); fxLive.clear(); xyLive.clear(); sphere = null
         for (p in padFilt.keys.toList()) openPadFilter(p)
         for (d in 0 until 16) downIds[d] = -1
-        say("Hushed. Everything is quiet. Play picks up where it paused.")
+        say(msg)
     }
 
     /** The site's Bottle it: the loop to four bars (or the song), as a WAV. */
@@ -819,6 +835,7 @@ class AppState(private val app: Context) {
         is Overlay.Xy -> "XY setup (pad ${o.pad + 1})"
         is Overlay.Doctor -> "doctor (${lib.titleOf(o.key)})"
         Overlay.Files -> "messes"
+        Overlay.Settings -> "settings"
         Overlay.Tempo -> "tempo"
         Overlay.Notes -> "notes"
     }
@@ -1291,9 +1308,9 @@ class AppState(private val app: Context) {
 
     /** What sits on the dock, top to bottom. */
     val dockItems = mutableStateListOf<String>().also { l ->
-        l.addAll((prefs.getString("dock", null) ?: "lock,hold,filter,repeat,hush").split(",").filter { x -> DOCK_TYPES.any { it.first == x } })
+        l.addAll((prefs.getString("dock", null) ?: "lock,hold,filter,repeat").split(",").filter { x -> DOCK_TYPES.any { it.first == x } })
     }
-    var dockOpen by mutableStateOf(prefs.getBoolean("dockOpen", true))
+    var dockOpen by mutableStateOf(prefs.getBoolean("dockOpen2", false))
         private set
     /** The dock's filter acts on the whole mix (-1) or on one pad. */
     var dockTarget by mutableIntStateOf(-1)
@@ -1301,7 +1318,7 @@ class AppState(private val app: Context) {
     var dockCut by mutableFloatStateOf(1f)
     var dockRes by mutableFloatStateOf(0f)
 
-    fun switchDockOpen(v: Boolean) { dockOpen = v; prefs.edit().putBoolean("dockOpen", v).apply() }
+    fun switchDockOpen(v: Boolean) { dockOpen = v; prefs.edit().putBoolean("dockOpen2", v).apply() }
     fun toggleDockItem(t: String) {
         if (!dockItems.remove(t)) dockItems.add(t)
         prefs.edit().putString("dock", dockItems.joinToString(",")).apply()

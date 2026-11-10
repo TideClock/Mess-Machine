@@ -128,7 +128,7 @@ fun FxEditor(state: AppState) {
             Note("Gate length", modifier = Modifier.padding(top = 8.dp, bottom = 6.dp))
             Wrap(gap = 6.dp) { for ((st, n) in listOf(1 to "1/16", 2 to "1/8", 4 to "1/4")) Btn(n, { state.changeFx(id, s.copy(steps = st)) }, on = s.steps == st, small = true) }
         }
-        Note("Pads go to a bus from their menu (Route). Slide along an effect while you hold it to change how much it does.", modifier = Modifier.padding(top = 8.dp))
+        Help("Pads go to a bus from their menu (Route). Slide along an effect while you hold it to change how much it does.", modifier = Modifier.padding(top = 8.dp))
     }
 }
 
@@ -219,7 +219,7 @@ fun xyLegend(x: XySetup): String {
 fun XyEditor(state: AppState, pad: Int) {
     val x = state.xyOf(pad)
     ScrollPane(hPad = 14.dp, vPad = 0.dp, tag = "xy-editor") {
-        Note("Pad ${pad + 1}'s XY. It belongs to the pad, so it stays when you swap sounds. Draw a circle on the pad or one of its Padiano notes to play it anywhere.",
+        Help("Pad ${pad + 1}'s XY. It belongs to the pad, so it stays when you swap sounds. Draw a circle on the pad or one of its Padiano notes to play it anywhere.",
             modifier = Modifier.padding(bottom = 10.dp))
         T("PRESETS", size = 12.sp, color = C.Yellow, spacing = .1.em)
         Wrap(Modifier.padding(top = 6.dp, bottom = 12.dp), gap = 6.dp) {

@@ -73,7 +73,7 @@ fun RollScreen(state: AppState) {
             Note("Pick a pad with a sound on it. Its own pitch sits on C4, the bright row.", color = C.Yellow)
         } else {
             Roll(state)
-            Note(
+            Help(
                 "Tap a square to drop a note, tap it again to pull it. With chords on, one tap drops the whole chord. Tap a note name to hear it.",
                 modifier = Modifier.padding(top = 10.dp),
             )

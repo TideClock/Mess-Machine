@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.swipe
 import androidx.compose.ui.test.assertIsNotSelected
@@ -191,7 +192,8 @@ class BigTest {
         rule.onNodeWithTag("piano-keys-5").performTouchInput { up() }
         settle()
         state.switchChordPlay(true); state.pickChordMode("off")
-        rule.onNodeWithTag("beatlight").assertExists()
+        rule.onNodeWithTag("topbar").assertExists()
+        rule.onNodeWithTag("position").assertExists()
 
         rule.onNodeWithTag("pad-0").performScrollTo()
         shot("03-pianos-under-rows-top")
@@ -403,13 +405,24 @@ class BigTest {
     }
 
     @Test fun dockLightsFollowRepeatAndRec() {
+        // the dock starts folded to a thin edge strip; tap it to open
+        assertFalse("the dock starts folded", state.dockOpen)
+        rule.onNodeWithTag("dock-open").performClick()
+        settle()
+        assertTrue(state.dockOpen)
         // note #7: RPT on the dock did not light up when Repeat came on
-        rule.onNodeWithTag("repeat").performClick()
+        state.setLive { nr = true }
         settle()
         rule.onNodeWithTag("dock-repeat").assertIsSelected()
         rule.onNodeWithTag("dock-repeat").performClick()
         settle()
-        rule.onNodeWithTag("repeat").assertIsNotSelected()
+        assertFalse(state.live.nr)
+        // Repeat's rate lives under RPT now (it left the top bar)
+        rule.onNodeWithTag("dock-rate").performClick()
+        settle()
+        rule.onNodeWithTag("rate-r2").performClick()
+        settle()
+        assertEquals(2.0, state.live.nrRate, 0.001)
         state.toggleDockItem("rec")
         settle()
         rule.onNodeWithTag("rec").performClick()
@@ -556,6 +569,8 @@ class BigTest {
     }
 
     @Test fun dockLockAndFilter() {
+        state.switchDockOpen(true)
+        settle()
         rule.onNodeWithTag("dock").assertExists()
         shot("29-dock")
         // the dock's filter acts on the whole mix and springs back when let go
@@ -792,6 +807,18 @@ class BigTest {
 
     /* ---------- build D: menus everywhere, the pitch strip, motion recording ---------- */
 
+    @Test fun helpShowsOnceThenBehindTheQuestionMark() {
+        tab("Steps")
+        assertTrue("first visit to Steps shows its how-to", rule.onAllNodesWithTag("help").fetchSemanticsNodes().isNotEmpty())
+        tab("Roll")
+        tab("Steps")
+        assertTrue("second visit hides it", rule.onAllNodesWithTag("help").fetchSemanticsNodes().isEmpty())
+        rule.onNodeWithTag("help-toggle").performClick()
+        settle()
+        assertTrue("? shows it again", rule.onAllNodesWithTag("help").fetchSemanticsNodes().isNotEmpty())
+        shot("45-help-on")
+    }
+
     @Test fun stepsHeaderFitsOnAPhone() {
         tab("Steps")
         // the eight loop letters sit on one line (build 44 wrapped H onto a second row)
@@ -1005,12 +1032,25 @@ class BigTest {
     /* ---------- messes, notes, tempo ---------- */
 
     @Test fun messesNotesTempo() {
+        // the top bar is one row: messes, settings, redo and notes sit behind ☰
+        rule.onNodeWithTag("menu").performClick()
+        settle()
+        rule.onNodeWithTag("settings").performClick()
+        settle()
+        rule.onNodeWithTag("set-inkey").assertExists()
+        shot("15b-settings")
+        rule.onNodeWithTag("done").performClick()
+        settle()
+        rule.onNodeWithTag("menu").performClick()
+        settle()
         rule.onNodeWithTag("messes").performClick()
         settle()
         shot("15-messes")
         state.saveMess("Test mess", false)
         waitFor("the save") { state.files.any { it.name == "Test mess" } }
         rule.onNodeWithTag("done").performClick()
+        settle()
+        rule.onNodeWithTag("menu").performClick()
         settle()
         rule.onNodeWithTag("notes").performClick()
         settle()
@@ -1065,7 +1105,10 @@ class BigTest {
     @Test fun hushStopsEverything() {
         state.togglePlay()
         loudest(4800)
-        rule.onNodeWithTag("hush").performClick()
+        // the Hush button is gone: Stop, then Stop again, hushes
+        rule.onNodeWithTag("stop").performClick()
+        settle()
+        rule.onNodeWithTag("stop").performClick()
         settle()
         loudest(512)
         assertFalse(state.playing)

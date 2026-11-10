@@ -132,6 +132,8 @@ fun pcColor(pc: Int): Color {
 
 /** True while Lock is on: no scrolling, menus or navigation. */
 val LocalLocked = compositionLocalOf { false }
+/** True while the how-to text should show (? in the top bar, or the first visit to a page). */
+val LocalHelp = compositionLocalOf { true }
 
 /** The site's sticker: square, a cream outline, a hard pink shadow. */
 fun Modifier.sticker(
@@ -175,6 +177,11 @@ fun T(
 }
 
 /** Small lab-notes text, like the site's mono captions. */
+@Composable
+fun Help(text: String, modifier: Modifier = Modifier) {
+    if (LocalHelp.current) Note(text, modifier.testTag("help"), C.Teal)
+}
+
 @Composable
 fun Note(text: String, modifier: Modifier = Modifier, color: Color = C.Dim, size: TextUnit = 12.sp) {
     T(text, modifier, color = color, size = size, weight = FontWeight.Normal, family = Mono)

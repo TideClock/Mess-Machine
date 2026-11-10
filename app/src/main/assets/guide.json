@@ -1,25 +1,21 @@
 {
-  "title": "Four builds in one, plus a tidy-up: fixes, Padiano, the dock, effects, XY, the desk",
+  "title": "The overhaul, part 1: more room, smoother sound",
   "thisBuild": [
-    "Tidy-up from the big test: Steps banks read 1 2 3 4 like Pads, the loop letters A to H fit on one line, Roll has one Root picker instead of two, and the type chips in Sounds fade at the edge so you can tell they scroll.",
-    "Fixed from your notes: RPT and Rec on the dock light up (#7); resizing a desk piece can't crash it any more (#8); tap a dotted step to clear it, and Clear notes in Steps clears every pitch and roll note in the loop (#9); Rec glows on the beat at the same moment as the other lights (#10).",
-    "Your notes: pads redraw straight away (#6), Hold keeps short sounds going until you let go (#4), Hold has a Last setting (#1), pages fade instead of snapping (#5), menus show up in more places (#2), and Steps can give each step a pitch (#3).",
-    "Pad menus open when you hold still and lift. A slide or a circle never opens one, and a pad you play never scrolls the page.",
-    "Padiano (the piano under a row): one row of small squares by default. ⚙ sets how many notes, the size, Squares or Keys, and In key only. Glide and XY sit on its header.",
-    "Side dock on the left: Lock (hold it a second to unlock), Hold, a filter and resonance pair for the mix or one pad, and ⋯ to add Rec, Stutter, Echo, XY presets or desk layouts.",
-    "Effects: slide along one while you hold it to set how much; ✎ makes it stay on or act as a slider, and aims it at the mix, a bus, or one pad. Hold a pad, then Route, to put it on a bus.",
-    "Doctor's table: Reverb, Echo, Dirty, Crush, Chorus and Wobble on any sound.",
-    "XY: hold a pad, then XY setup. Two-way or four-way, pick what each direction moves, or use Sweep, Dub, Bend, Lo-fi or Scrub. Draw a circle on a pad or a Padiano note to play it as a sphere. With Rec on while the loop plays, your XY moves record into the loop.",
-    "DESK tab, M(ess)(y) Desk: Arrange, then drag pieces anywhere, resize from the pink corner, pin them. Perform, Beats and Sampling layouts, plus your own. ☰ menu, Playing: empty pads record, beat glow, in key only."
+    "One top bar: Play, Stop, Rec, Undo, then tempo and where the music is in one button (tap it for tempo, swing and click). ☰ holds Messes, Settings, Redo and Notes for Claude.",
+    "Hush is gone. Press Stop, then Stop again: everything lets go (held notes, effects, filters).",
+    "The dock starts folded to a thin strip on the left. Tap it or swipe right to open it; ◀ at its bottom folds it. Repeat lives on the dock now: tap RPT, and tap the rate under it for 1/8, 1/16, 1/32 or an arp.",
+    "⚙ Settings is its own sheet now (view size, empty pads record, beat glow, in key only, how-to text). Messes keeps your files only.",
+    "How-to text shows once on each page the first time you open it, in teal. ? in the top bar brings it back.",
+    "Show chord on the Padiano: every note now lights its chord on the keys you can see. Before, only the lowest notes did, because the rest of the chord sat off screen.",
+    "Smoother sound: clicks, arpeggios and rolls no longer make the phone tidy up memory mid-sound, and the sound starts with a slightly bigger buffer."
   ],
   "watch": [
-    "Lock the screen mid-jam and try to knock it off the page.",
-    "Give a pad the Bend preset, circle one of its Padiano notes and swing it around.",
-    "Arrange a desk the way you want it, then play only from that page."
+    "Play a busy mess for a minute and listen for clicks or gaps.",
+    "Press Stop twice while notes are held and effects are on: all of it should let go.",
+    "Turn Show chord on and press notes across the whole Padiano."
   ],
   "limits": [
-    "Desk pieces cut off what doesn't fit; make a piece bigger to see more.",
-    "Reverb and echo are shared: the sound you played last sets their size and time.",
-    "The site plays these sounds without the new effects, XY or glide."
+    "This is part 1 of 4. The Play tab (Pads and My Desk together), one row per sound in Steps and the rest come next.",
+    "Steps' Click to hear moved to the tempo sheet (tap the tempo button)."
   ]
 }

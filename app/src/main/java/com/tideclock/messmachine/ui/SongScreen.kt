@@ -86,10 +86,10 @@ fun SongScreen(state: AppState) {
             Btn("Rough it in", { state.songFromLoops() }, small = true, color = C.Teal, tag = "rough")
             Btn("Clear the song", { state.clearSong() }, small = true, enabled = len > 0)
         }
-        T(
+        Help(
             "Each square is one loop's worth. Tap a square to paint the loop you picked; tap it again to make it a rest. " +
-                "Rough it in lays every loop that has something in it down twice, in order. The ☰ menu bounces the song to a WAV.",
-            size = 12.sp, color = C.Dim, weight = FontWeight.Medium, modifier = Modifier.padding(top = 12.dp),
+                "Rough it in lays every loop that has something in it down twice, in order. ☰, then Messes, bounces the song to a WAV.",
+            modifier = Modifier.padding(top = 12.dp),
         )
     }
 }

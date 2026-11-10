@@ -47,7 +47,7 @@ fun FxPanel(state: AppState) {
     Card(Modifier.fillMaxWidth().padding(top = 18.dp)) {
         Column {
             Heading("Perform", size = 18.sp)
-            Note("Hold an effect while you play. Slide along it to set how much. ✎ in its corner: stays on, slider, or aim it at one pad or a bus.", modifier = Modifier.padding(top = 4.dp, bottom = 10.dp))
+            Help("Hold an effect while you play. Slide along it to set how much. ✎ in its corner: stays on, slider, or aim it at one pad or a bus.", modifier = Modifier.padding(top = 4.dp, bottom = 10.dp))
             FxEditor(state)
             for (r in 0 until 3) {
                 Row(Modifier.padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -63,7 +63,7 @@ fun FxPanel(state: AppState) {
                 Btn("High pass", { state.switchXyHP(true) }, on = state.xyHP, small = true, onColor = C.Teal)
             }
             XyPad(state)
-            Note("Slide left and right for the cutoff, up for more resonance.", modifier = Modifier.padding(top = 8.dp))
+            Help("Slide left and right for the cutoff, up for more resonance.", modifier = Modifier.padding(top = 8.dp))
         }
     }
 }
@@ -307,7 +307,7 @@ fun PadianoSettings(state: AppState) {
             T("SIZE", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(start = 8.dp))
             for (z in 0..2) Btn("SML"[z].toString(), { state.changePadianoSize(z) }, on = state.padianoSize == z, small = true)
         }
-        Note("Fewer notes make bigger squares. Squares wrap to a second row before they get too small to hit.", modifier = Modifier.padding(top = 6.dp))
+        Help("Fewer notes make bigger squares. Squares wrap to a second row before they get too small to hit.", modifier = Modifier.padding(top = 6.dp))
     }
 }
 

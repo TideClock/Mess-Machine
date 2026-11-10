@@ -39,34 +39,6 @@ fun FilesScreen(state: AppState) {
     ScrollPane(hPad = 14.dp, vPad = 0.dp) {
         Card(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 14.dp)) {
             Column {
-                T("VIEW SIZE", size = 12.sp, color = C.Yellow, spacing = .1.em)
-                Note("Zoom out to fit more of the machine on the screen.", modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
-                Wrap {
-                    for (z in listOf(.7f, .8f, .9f, 1f, 1.1f, 1.2f)) {
-                        Btn("${(z * 100).toInt()}%", { state.setViewSize(z) }, on = kotlin.math.abs(state.uiScale - z) < .01f, small = true, tag = "zoom-${(z * 100).toInt()}")
-                    }
-                }
-            }
-        }
-        Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
-            Column {
-                T("PLAYING", size = 12.sp, color = C.Yellow, spacing = .1.em)
-                Note("Empty pads record: an empty pad becomes a record button for the mic.", modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
-                Wrap {
-                    Btn(if (state.emptyRecord) "Empty pads record: on" else "Empty pads record: off", { state.switchEmptyRecord(!state.emptyRecord) }, on = state.emptyRecord, onColor = C.Riot, small = true, tag = "set-emptyrec")
-                    Btn("Tap start, tap stop", { state.switchRecordHold(false) }, on = !state.recordHold, onColor = C.Teal, small = true, tag = "set-rectap")
-                    Btn("Hold to record", { state.switchRecordHold(true) }, on = state.recordHold, onColor = C.Teal, small = true, tag = "set-rechold")
-                }
-                Note("Beat glow behind everything.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
-                Wrap {
-                    for ((v, n) in listOf(0 to "Off", 1 to "Soft", 2 to "Full")) Btn(n, { state.setPulse(v) }, on = state.pulseLevel == v, small = true, tag = "set-pulse-$v")
-                }
-                Note("Pianos show only the scale's notes.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
-                Btn(if (state.inKeyOnly) "In key only: on" else "In key only: off", { state.switchInKey(!state.inKeyOnly) }, on = state.inKeyOnly, onColor = C.Yellow, small = true, tag = "set-inkey")
-            }
-        }
-        Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
-            Column {
                 T("THIS MESS", size = 12.sp, color = C.Yellow, spacing = .1.em)
                 OutlinedTextField(
                     value = name, onValueChange = { name = it.take(48) }, singleLine = true,
@@ -87,7 +59,7 @@ fun FilesScreen(state: AppState) {
         Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
             Column {
                 T("BOTTLE IT", size = 12.sp, color = C.Yellow, spacing = .1.em)
-                Note("Renders the music, then opens your share sheet so you can save it or send it anywhere.", modifier = Modifier.padding(bottom = 8.dp))
+                Help("Renders the music, then opens your share sheet so you can save it or send it anywhere.", modifier = Modifier.padding(bottom = 8.dp))
                 Wrap(Modifier) {
                     val L = Project.LETTERS[P.cur]
                     Btn("Loop $L once", { state.bounce(false, 1) }, small = true, color = C.Pink)
@@ -133,6 +105,49 @@ fun FilesScreen(state: AppState) {
     }
 }
 
+/** ⚙ Settings: how the app looks and plays (split from the Messes sheet, which keeps files only). */
+@Composable
+fun SettingsScreen(state: AppState) {
+    ScrollPane(hPad = 14.dp, vPad = 0.dp) {
+        Card(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 14.dp)) {
+            Column {
+                T("VIEW SIZE", size = 12.sp, color = C.Yellow, spacing = .1.em)
+                Help("Zoom out to fit more of the machine on the screen.", modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
+                Wrap {
+                    for (z in listOf(.7f, .8f, .9f, 1f, 1.1f, 1.2f)) {
+                        Btn("${(z * 100).toInt()}%", { state.setViewSize(z) }, on = kotlin.math.abs(state.uiScale - z) < .01f, small = true, tag = "zoom-${(z * 100).toInt()}")
+                    }
+                }
+            }
+        }
+        Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
+            Column {
+                T("PLAYING", size = 12.sp, color = C.Yellow, spacing = .1.em)
+                Note("Empty pads record: an empty pad becomes a record button for the mic.", modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
+                Wrap {
+                    Btn(if (state.emptyRecord) "Empty pads record: on" else "Empty pads record: off", { state.switchEmptyRecord(!state.emptyRecord) }, on = state.emptyRecord, onColor = C.Riot, small = true, tag = "set-emptyrec")
+                    Btn("Tap start, tap stop", { state.switchRecordHold(false) }, on = !state.recordHold, onColor = C.Teal, small = true, tag = "set-rectap")
+                    Btn("Hold to record", { state.switchRecordHold(true) }, on = state.recordHold, onColor = C.Teal, small = true, tag = "set-rechold")
+                }
+                Note("Beat glow behind everything.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
+                Wrap {
+                    for ((v, n) in listOf(0 to "Off", 1 to "Soft", 2 to "Full")) Btn(n, { state.setPulse(v) }, on = state.pulseLevel == v, small = true, tag = "set-pulse-$v")
+                }
+                Note("Pianos show only the scale's notes.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
+                Btn(if (state.inKeyOnly) "In key only: on" else "In key only: off", { state.switchInKey(!state.inKeyOnly) }, on = state.inKeyOnly, onColor = C.Yellow, small = true, tag = "set-inkey")
+            }
+        }
+        Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
+            Column {
+                T("HELP", size = 12.sp, color = C.Yellow, spacing = .1.em)
+                Help("How-to text shows once on each page the first time you open it. ? in the top bar shows it again.", Modifier.padding(top = 2.dp, bottom = 8.dp))
+                Btn(if (state.helpOn) "How-to text: always" else "How-to text: first time only", { state.switchHelp() }, on = state.helpOn, onColor = C.Teal, small = true, tag = "set-help")
+            }
+        }
+        T(" ", size = 30.sp)
+    }
+}
+
 @Composable
 fun TempoScreen(state: AppState) {
     val P = state.project
@@ -149,7 +164,7 @@ fun TempoScreen(state: AppState) {
         }
         SliderRow("Tempo", bpm, 60f..180f, { "${it.roundToInt()} BPM" }, { bpm = it }, { state.setBpm(bpm.roundToInt()) })
         SliderRow("Swing", swing, 0f..100f, { "${it.roundToInt()}%" }, { swing = it }, { state.edit { this.swing = swing.roundToInt() } }, accent = C.Teal)
-        Note("Swing pushes every other 16th late, like the site.", modifier = Modifier.padding(bottom = 12.dp))
+        Help("Swing pushes every other 16th late, like the site.", modifier = Modifier.padding(bottom = 12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Btn("Click", { state.setLive { click = !click } }, on = state.live.click, small = true)
             Btn("Hear steps when you tap them", { state.switchPlayOnTap(!state.playOnTap) }, on = state.playOnTap, small = true, onColor = C.Teal)

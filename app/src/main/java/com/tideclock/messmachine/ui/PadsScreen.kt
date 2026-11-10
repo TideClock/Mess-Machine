@@ -82,9 +82,9 @@ fun PadsScreen(state: AppState) {
         if (state.showFx) FxPanel(state)
         SelectedPad(state)
         if (!state.keysMode && state.keyboards.isEmpty()) {
-            Note(
+            Help(
                 "Tap a pad to play it. Empty pads open the jars. Hold a pad still, then lift, for its menu: Padiano drops a keyboard right under that pad's row, one per row. " +
-                    "Keys turns the grid into a scale. Repeat up top rolls whatever you hold, and with Rec on while playing, every hit lands in the loop.",
+                    "Keys turns the grid into a scale. Repeat on the dock rolls whatever you hold, and with Rec on while playing, every hit lands in the loop.",
                 modifier = Modifier.padding(top = 14.dp),
             )
         }
