@@ -28,6 +28,16 @@ public final class Project {
         public int len = 16;
         public final Map<String, boolean[]> steps = new LinkedHashMap<>();
         public final Map<String, List<Note>> notes = new LinkedHashMap<>();
+        /** App only: recorded XY moves, "pad:target" to one value per step (NaN = nothing on that step). */
+        public final Map<String, float[]> motion = new LinkedHashMap<>();
+
+        public void setMotion(int pad, int target, int step, float v) {
+            float[] a = motion.get(pad + ":" + target);
+            if (a == null) { a = new float[MAXSTEPS]; Arrays.fill(a, Float.NaN); motion.put(pad + ":" + target, a); }
+            if (step >= 0 && step < a.length) a[step] = v;
+        }
+
+        public boolean hasMotion() { return !motion.isEmpty(); }
 
         public boolean step(String k, int j) { boolean[] a = steps.get(k); return a != null && j >= 0 && j < a.length && a[j]; }
 
@@ -72,10 +82,11 @@ public final class Project {
                 for (Note n : e.getValue()) l.add(n.copy());
                 p.notes.put(e.getKey(), l);
             }
+            for (Map.Entry<String, float[]> e : motion.entrySet()) p.motion.put(e.getKey(), e.getValue().clone());
             return p;
         }
 
-        public void clear() { steps.clear(); notes.clear(); }
+        public void clear() { steps.clear(); notes.clear(); motion.clear(); }
 
         /** Pull a sound out of the loop entirely (when its pad is cleared). */
         public void forget(String k) { steps.remove(k); notes.remove(k); }
@@ -191,6 +202,16 @@ public final class Project {
                 nm.put(e.getKey(), b.toString());
             }
             x.put("notes", nm);
+            if (!p.motion.isEmpty()) {
+                Map<String, Object> mm = new LinkedHashMap<>();
+                for (Map.Entry<String, float[]> e : p.motion.entrySet()) {
+                    StringBuilder b = new StringBuilder();
+                    float[] a = e.getValue();
+                    for (int j = 0; j < p.len; j++) { if (j > 0) b.append(','); if (!Float.isNaN(a[j])) b.append(Math.round(a[j] * 1000) / 1000f); }
+                    mm.put(e.getKey(), b.toString());
+                }
+                x.put("motion", mm);
+            }
             pl.add(x);
         }
         o.put("pats", pl);
@@ -270,6 +291,13 @@ public final class Project {
                 Pattern P = p.pats[i];
                 P.len = Json.num(x.get("len"), 16) == 32 ? 32 : 16;
                 decSteps(P, Json.map(x.get("steps")));
+                for (Map.Entry<String, Object> e : Json.map(x.get("motion")).entrySet()) {
+                    float[] a = new float[MAXSTEPS];
+                    Arrays.fill(a, Float.NaN);
+                    String[] f = Json.str(e.getValue(), "").split(",", -1);
+                    for (int j = 0; j < f.length && j < a.length; j++) if (!f[j].isEmpty()) try { a[j] = Float.parseFloat(f[j]); } catch (NumberFormatException ignored) {}
+                    P.motion.put(e.getKey(), a);
+                }
                 Object nv = x.get("notes");
                 if (nv instanceof String) {
                     String inst = Json.str(x.get("inst"), "");

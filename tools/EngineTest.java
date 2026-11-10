@@ -255,6 +255,22 @@ public class EngineTest {
       int rt0 = re.triggers; for (int i = 0; i < (int) (rate / 256); i++) re.render(b, 256);
       check(re.triggers - rt0 >= 12, "a full roll retriggers a held note many times a second: " + (re.triggers - rt0));
     }
+    // ---- motion recording: recorded XY moves play back with the loop
+    {
+      Project mp = Project.starter();
+      mp.pats[0].setMotion(7, Engine.T_PITCH, 4, 12f);
+      mp.pats[0].setMotion(7, Engine.T_PITCH, 8, 0f);
+      Project back = Project.fromJson(mp.toJson(), null).project;
+      check(back.pats[0].hasMotion() && back.pats[0].motion.get("7:0")[4] == 12f && Float.isNaN(back.pats[0].motion.get("7:0")[5]), "recorded moves save with the mess");
+      Engine me2 = new Engine(rate); me2.setSnapshot(Engine.Snapshot.build(mp, lib, new Engine.Live()));
+      float[] b = new float[256 * 2];
+      me2.play();
+      double spbF = rate * 60.0 / mp.bpm / 4.0;
+      for (int i = 0; i < (int) (6.5 * spbF / 256); i++) me2.render(b, 256);
+      double during = me2.padRate(7);
+      for (int i = 0; i < (int) (4 * spbF / 256); i++) me2.render(b, 256);
+      check(Math.abs(during - 2) < 1e-6 && Math.abs(me2.padRate(7) - 1) < 1e-6, "a recorded bend plays back on its step and lets go on the next mark: " + during + ", " + me2.padRate(7));
+    }
     // ---- workbench tools
     Sample hat = lib.get(p.kit[2]);
     SoundEdit tr = new SoundEdit(); tr.st = .1; tr.en = .6; tr.tune = 12;

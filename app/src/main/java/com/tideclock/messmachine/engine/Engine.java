@@ -53,7 +53,9 @@ public final class Engine {
     static final class Pat {
         final int len;
         final Track[] tracks;
-        Pat(int len, Track[] tracks) { this.len = len; this.tracks = tracks; }
+        final int[] lanePad, laneT;
+        final float[][] laneV;
+        Pat(int len, Track[] tracks, int[] lanePad, int[] laneT, float[][] laneV) { this.len = len; this.tracks = tracks; this.lanePad = lanePad; this.laneT = laneT; this.laneV = laneV; }
     }
 
     public static final class Snapshot {
@@ -101,7 +103,15 @@ public final class Engine {
                     }
                     tr.add(new Track(ps, st, gap, nt));
                 }
-                pats[pi] = new Pat(len, tr.toArray(new Track[0]));
+                List<int[]> ids = new ArrayList<>();
+                List<float[]> vals = new ArrayList<>();
+                for (Map.Entry<String, float[]> e : P.motion.entrySet()) {
+                    String[] f = e.getKey().split(":");
+                    try { ids.add(new int[]{Integer.parseInt(f[0]), Integer.parseInt(f[1])}); vals.add(e.getValue().clone()); } catch (Exception ignored) {}
+                }
+                int[] lp = new int[ids.size()], lt = new int[ids.size()];
+                for (int q = 0; q < lp.length; q++) { lp[q] = ids.get(q)[0]; lt[q] = ids.get(q)[1]; }
+                pats[pi] = new Pat(len, tr.toArray(new Track[0]), lp, lt, vals.toArray(new float[0][]));
             }
             int sl = p.songLen();
             return new Snapshot(p.bpm, p.swing, p.cur, sl, p.songMode && sl > 0, p.song.clone(), pads, pats, live == null ? new Live() : live.copy());
@@ -438,7 +448,11 @@ public final class Engine {
             case "fx": fxSet(S, (String) c[1], (Boolean) c[2]); break;
             case "mod": {
                 int pd = (Integer) c[1], t = (Integer) c[2];
-                if (pd >= 0 && pd < 64 && t >= 0 && t < NT) pMod[pd][t] = (Float) c[3];
+                if (pd >= 0 && pd < 64 && t >= 0 && t < NT) {
+                    pMod[pd][t] = (Float) c[3];
+                    modTouch[pd][t] = frame;
+                    if (t == T_FILTER || t == T_RES) filterFromMod(pd);
+                }
                 break;
             }
             case "fxt": {
@@ -621,6 +635,15 @@ public final class Engine {
                 int[] nt = t.notes[ts];
                 for (int k = 0; k < nt.length; k += 2) trigger(t.pad, rateMul * Math.pow(2, nt[k] / 12.0), (fxStut ? Math.min(nt[k + 1], 2) : nt[k + 1]) * spb / rate, true, .78f, delay, false);
             }
+        }
+        // recorded XY moves play back, unless a finger is moving that control right now
+        if (P != null) for (int q = 0; q < P.lanePad.length; q++) {
+            int lp = P.lanePad[q], lt = P.laneT[q];
+            if (lp < 0 || lp >= 64 || lt < 0 || lt >= NT) continue;
+            float v = P.laneV[q][s];
+            if (Float.isNaN(v) || frame - modTouch[lp][lt] < .25 * rate) continue;
+            pMod[lp][lt] = v;
+            if (lt == T_FILTER || lt == T_RES) filterFromMod(lp);
         }
         Live L = S.live;
         if (L.click && s % 4 == 0) { Voice cv = trigger(new PadSlot(-2, "click", s == 0 ? clickHi : clickLo, SoundEdit.DEFAULT, true), 1, 0, false, 1f, delay, false, false); if (cv != null) cv.dry = true; }
@@ -969,6 +992,18 @@ public final class Engine {
     /** How much a mix effect does when held, 0..1, and the gate's length in steps. */
     public void fxAmount(String name, float amount) { cmds.add(new Object[]{"famt", name, amount}); }
     public void gateLength(int steps) { cmds.add(new Object[]{"gatelen", steps}); }
+
+    private final long[][] modTouch = new long[64][NT];
+    { for (long[] m : modTouch) java.util.Arrays.fill(m, Long.MIN_VALUE / 2); }
+
+    /** Filter and resonance moved through mod() or recorded moves: set that pad's live filter. */
+    private void filterFromMod(int pd) {
+        double cut = 1 - Math.max(0, Math.min(1, pMod[pd][T_FILTER])), res = Math.max(0, Math.min(1, pMod[pd][T_RES]));
+        boolean on = cut < .999 || res > .001;
+        pfTarget[pd] = on ? 90 * Math.pow(20000.0 / 90, cut) : 20000;
+        pfQT[pd] = on ? .7 + res * 13 : .7;
+        pfSlow[pd] = !on;
+    }
 
     private static int fxIndex(String n) { for (int k = 0; k < FXN.length; k++) if (FXN[k].equals(n)) return k; return -1; }
 

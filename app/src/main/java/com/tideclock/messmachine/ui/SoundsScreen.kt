@@ -185,11 +185,20 @@ fun SoundRow(state: AppState, s: Library.Sound, target: Int, picking: Boolean) {
     val P = state.project
     val onPad = P.padOf(s.key)
     val col = padColor(Color(state.lib.cab(s.cab).color))
+    var menu by remember(s.key) { mutableStateOf(false) }
     Column {
+        HoldMenu(menu, s.title, { menu = false }, listOfNotNull(
+            Triple("Hear it", "rowmenu-hear") { state.preview(s.key) },
+            Triple(if (s.key in state.favs) "Unstar" else "Star", "rowmenu-star") { state.toggleFav(s.key) },
+            Triple("Put it on pad ${target + 1}", "rowmenu-put") { state.putOnPad(target, s.key); if (picking) state.overlay = null },
+            if (onPad >= 0) Triple("Doctor it", "rowmenu-doctor") { state.overlay = com.tideclock.messmachine.Overlay.Doctor(s.key) } else null,
+            if (s.cab == "mine") Triple("Share it", "rowmenu-share") { state.shareSoundWav(s.key) } else null,
+        ))
         Row(
             Modifier
                 .fillMaxWidth()
-                .clickable { state.preview(s.key) }
+                .tapOrHold(s.key, { state.preview(s.key) }, { if (!state.locked) menu = true })
+                .testTag("row-${s.key}")
                 .padding(vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

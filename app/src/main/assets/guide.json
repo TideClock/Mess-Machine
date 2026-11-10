@@ -1,23 +1,21 @@
 {
-  "title": "Effects you can edit, routing and XY pads",
+  "title": "M(ess)(y) Desk, motion recording, menus everywhere",
   "thisBuild": [
-    "Perform effects: hold one to use it, slide along it while you hold to set how much, and tap ✎ in its corner for settings: While held, Stays on or Slider, and where it acts (the mix, Bus 1 to 4, or one pad).",
-    "Stutter, tape stop, gate, ring mod, octave down, crush, dirty, echo and reverse all work on one pad or one bus as well as the whole mix.",
-    "Routing: hold a pad, then Route, to send it to a bus. The pad shows B1 to B4.",
-    "Doctor's table, Effects: Reverb (amount and space), Echo (amount and 1/16 to 1/4), Dirty, Crush, Chorus and Wobble. Save as a new sound bakes them in, tails and all.",
-    "Every pad has an XY setup (hold a pad, then XY setup): two-way, or four-way with zero in the middle. Pick what each direction moves: pitch, filter, resonance, volume, pan, attack, release, start point, any doctor effect, glide, a repeat roll, gate, ring, stutter or tape stop.",
-    "Presets: Sweep, Dub, Bend, Lo-fi and Scrub, plus Save as mine.",
-    "Draw a circle on a pad or a Padiano note: a clear sphere opens over it, bigger than the pad. Keep moving to play its XY; lift to close it. On a Padiano note it bends that note only.",
-    "XY on a Padiano header shows the pad's XY under it. The dock can hold an XY button that flips through presets for the pad you picked."
+    "The DESK tab is now M(ess)(y) Desk: tap Arrange, then drag any piece anywhere, drag its pink corner to resize it, let pieces overlap, and 📌 to pin one down. ⚙ picks a piece's pad and inner size.",
+    "Three layouts to start: Perform, Beats and Sampling, plus + New. Switch at the top of the desk, or add Desk layouts to the dock to flip through them while you play.",
+    "Motion recording: with Rec on while the loop plays, XY moves record into the loop and play back every time around. Your finger wins while it's moving. Clear moves is next to Clear loop, and in the loop letter's menu.",
+    "Hold, then lift, now opens menus in more places: sound names in Steps (the pad's menu), the pad name in Roll, loop letters (copy to the next empty loop, clear), song bars (clear, put a bar in, take one out), and sounds in the picker (hear, star, put on the pad, doctor, share).",
+    "Steps: tap a sound's name for its pitch strip. Pick a step, then a note, and that step plays at that pitch. Plain takes it back to a normal hit.",
+    "Pad names size themselves so long words don't break in the middle."
   ],
   "watch": [
-    "Put the hats on Bus 1, aim Stutter at Bus 1, and play with the loop running.",
-    "Give a pad the Bend preset, then circle a Padiano note and swing it around.",
-    "Add reverb in the doctor and save it as a new sound."
+    "Arrange a desk with two Padianos side by side and an XY for each.",
+    "Record a filter sweep with the XY while the loop plays, then take your hands off.",
+    "Give a bassline pitches straight from Steps."
   ],
   "limits": [
-    "Reverb and echo are shared spaces: the sound you played last sets their size and time.",
-    "On a single Padiano note, the sphere moves that note's pitch and level; other targets move the whole pad.",
-    "The site plays these sounds without the new effects."
+    "Jar tiles have no menu (there wasn't anything useful to put in one).",
+    "Recorded moves are XY moves; the dock's sliders and effect buttons don't record yet.",
+    "Creature cards, the Ring, jams and duels stay on the site."
   ]
 }

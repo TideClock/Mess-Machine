@@ -239,7 +239,7 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
         if (!keys && !empty && P.edits.containsKey(key)) T("✂", size = 12.sp, color = ink(fill), modifier = Modifier.align(Alignment.TopEnd))
         if (!keys && !empty && P.opt(i).route > 0) T("B${P.opt(i).route}", size = 10.sp, color = ink(fill), family = Mono, modifier = Modifier.align(Alignment.TopCenter))
         if (!keys) PadMenu(state, i)
-        T(main, size = if (keys) 18.sp else if (state.dockOpen) 9.5.sp else 11.sp, color = if (empty) C.Empty else ink(fill), weight = FontWeight.Black, lines = 3, modifier = Modifier.align(Alignment.BottomStart))
+        T(main, size = if (keys) 18.sp else padFont(main, state.dockOpen), color = if (empty) C.Empty else ink(fill), weight = FontWeight.Black, lines = 3, modifier = Modifier.align(Alignment.BottomStart))
     }
 }
 
@@ -331,6 +331,13 @@ fun PadMenu(state: AppState, i: Int) {
             item("Clear pad", "menu-clear") { state.clearPad(i) }
         }
     }
+}
+
+/** A pad's name size: smaller for long words, so a word never breaks in the middle. */
+fun padFont(title: String, narrow: Boolean): androidx.compose.ui.unit.TextUnit {
+    val longest = title.split(" ").maxOfOrNull { it.length } ?: 1
+    val base = if (narrow) 10f else 11.5f
+    return minOf(base, (if (narrow) 66f else 78f) / maxOf(1, longest)).coerceAtLeast(7f).sp
 }
 
 /** The shared look of a small coloured square used in lists. */

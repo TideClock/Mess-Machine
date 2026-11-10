@@ -621,61 +621,128 @@ class BigTest {
 
     /* ---------- your console ---------- */
 
-    @Test fun consoleBuildsAndPlays() {
+    @Test fun deskArrangesAndPlays() {
         tab("Console")
-        shot("30-console-perform")
+        shot("30-desk-perform")
+        assertEquals(listOf("Perform", "Beats", "Sampling"), state.desks.map { it.name })
         assertEquals(listOf("pads", "hold", "piano", "pfilt", "fx", "xy", "repeat", "loops"), state.console.map { it.type })
-        // it plays: a pad, the piano, an effect
+        // it plays: a pad, an effect, the Padiano
         loudest()
         tapPad(0)
-        at("cfx-crush").performTouchInput { down(center) }
-        settle()
-        loudest(1024)
-        assertTrue("an effect held on the console", state.engine.fxActive())
+        at("cfx-crush").performTouchInput { down(Offset(width * .3f, height * .6f)) }
+        settle(); loudest(1024)
+        assertTrue("an effect held on the desk", state.engine.fxActive())
         rule.onNodeWithTag("cfx-crush").performTouchInput { up() }
         settle()
-        val pp = state.console[2].pad
-        at("piano-keys-$pp").performTouchInput { down(Offset(width * .5f, height * .85f)) }
+        val pp = state.console.first { it.type == "piano" }.pad
+        at("piano-keys-$pp").performTouchInput { down(Offset(width * .5f, height * .5f)) }
         settle()
         val key = loudest()
         rule.onNodeWithTag("piano-keys-$pp").performTouchInput { up() }
         settle()
-        assertTrue("the console's piano plays (peak $key)", key > .02f)
-        rule.onNodeWithTag("piano-$pp").performScrollTo()
-        shot("31-console-piano-and-filter")
-        // edit: resize, half width, move, add, remove
+        assertTrue("the desk's Padiano plays (peak $key)", key > .02f)
+        // Arrange: drag a piece down, resize one, pin one, add one
         rule.onNodeWithTag("console-edit").performScrollTo().performClick()
         settle()
-        rule.onNodeWithTag("mod-size-2").performScrollTo().performClick()
+        shot("31-desk-arrange")
+        val holdY = state.console.first { it.type == "hold" }.y
+        at("mod-drag-1").performTouchInput { down(center); moveBy(Offset(0f, 30f)); moveBy(Offset(0f, 90f)); moveBy(Offset(0f, 90f)); up() }
         settle()
-        assertEquals(2, state.console[2].size)
-        rule.onNodeWithTag("mod-width-1").performScrollTo().performClick()
+        val hold = state.console.first { it.type == "hold" }
+        assertTrue("dragging moved the Hold piece down (${holdY} to ${hold.y})", hold.y > holdY)
+        assertEquals("the piece you moved comes to the front", "hold", state.console.last().type)
+        val hi = state.console.indexOfFirst { it.type == "hold" }
+        val w0 = state.console[hi].w
+        at("mod-size-$hi").performTouchInput { down(center); moveBy(Offset(-30f, 0f)); moveBy(Offset(-120f, 0f)); up() }
         settle()
-        assertTrue(state.console[1].half)
-        rule.onNodeWithTag("mod-down-0").performScrollTo().performClick()
+        assertTrue("dragging the corner narrows it (${w0} to ${state.console[state.console.indexOfFirst { it.type == "hold" }].w})", state.console.first { it.type == "hold" }.w < w0)
+        val hi2 = state.console.indexOfFirst { it.type == "hold" }
+        rule.onNodeWithTag("mod-pin-$hi2").performScrollTo().performClick()
         settle()
-        assertEquals("hold", state.console[0].type)
-        assertEquals("pads", state.console[1].type)
-        state.addModule("transport")
-        state.addModule("fx1")
-        state.addModule("beat")
+        assertTrue(state.console.first { it.type == "hold" }.pinned)
+        state.addModule("xyp")
         settle()
-        assertEquals("fx1", state.console[state.console.size - 2].type)
-        rule.onNodeWithTag("mod-x-${state.console.size - 1}").performScrollTo().performClick()
-        settle()
-        assertEquals("fx1", state.console.last().type)
-        rule.onNodeWithTag("mod-0").performScrollTo()
-        shot("32-console-editing")
+        assertEquals("xyp", state.console.last().type)
         rule.onNodeWithTag("mod-${state.console.size - 1}").performScrollTo()
-        shot("33-console-editing-bottom")
-        val saved = ApplicationProvider.getApplicationContext<Context>().getSharedPreferences("mess", 0).getString("console", "")!!
-        assertTrue("the layout is saved: $saved", saved.startsWith("hold,") && "fx1" in saved)
+        shot("32-desk-arranged")
+        val saved = ApplicationProvider.getApplicationContext<Context>().getSharedPreferences("mess", 0).getString("desks", "")!!
+        assertTrue("the layout is saved", "xyp" in saved && "Beats" in saved)
+        // another layout, and back
+        rule.onNodeWithTag("desk-1").performScrollTo().performClick()
+        settle()
+        assertEquals(1, state.deskIdx)
+        assertEquals("loops", state.console.first().type)
         rule.onNodeWithTag("console-edit").performScrollTo().performClick()
         settle()
-        shot("34-console-custom")
-        state.resetConsole()
+        shot("33-desk-beats")
+        state.switchDesk(0)
         settle()
-        assertEquals("pads", state.console[0].type)
+        assertEquals("xyp", state.console.last().type)
+    }
+
+    /* ---------- build D: menus everywhere, the pitch strip, motion recording ---------- */
+
+    @Test fun menusEverywhereAndThePitchStrip() {
+        tab("Steps")
+        // hold a sound's name, then lift: its pad menu
+        longPress("steps-name-0")
+        assertEquals(0, state.padMenu)
+        state.padMenu = -1
+        rule.mainClock.advanceTimeBy(1000); settle()
+        // tap a name: its pitch strip; pick a step, then a note
+        at("steps-name-7").performClick()
+        settle()
+        assertEquals(7, state.stepStrip)
+        at("steps-7").performTouchInput { click(Offset(width * (4.5f / 16f), height / 2f)) }
+        settle()
+        assertEquals(4, state.stepPick)
+        at("pitch-keys-7").performTouchInput { click(Offset(width * (7.5f / 13f), height / 2f)) }
+        settle()
+        val k7 = state.project.kit[7]
+        assertTrue("step 5 now plays a pitch (${state.project.pat().notes(k7).map { "${it.s}:${it.p}" }})", state.project.pat().notes(k7).any { it.s == 4 && it.p == 7 })
+        rule.onNodeWithTag("pitch-strip-7").performScrollTo()
+        shot("39-steps-pitch-strip")
+        rule.onNodeWithTag("pitch-plain").performClick()
+        settle()
+        assertTrue(state.project.pat().step(k7, 4) && state.project.pat().notes(k7).none { it.s == 4 })
+        // a loop letter's menu
+        longPress("slot-0")
+        assertEquals(0, state.slotMenu)
+        rule.onNodeWithTag("slotmenu-copy").performClick()
+        settle()
+        assertTrue("loop A copied to B", state.project.pats[1].used())
+        // a song bar's menu
+        tab("Song")
+        state.edit { song[0] = 0; song[1] = 1 }
+        settle()
+        longPress("bar-0")
+        assertEquals(0, state.barMenu)
+        rule.onNodeWithTag("barmenu-delete").performClick()
+        settle()
+        assertEquals("taking bar 1 out moves bar 2 up", 1, state.project.song[0])
+    }
+
+    @Test fun motionRecordingPlaysBack() {
+        state.setXy(7, XySetup.PRESETS[2])
+        state.togglePlay()
+        loudest(4096); state.tick(System.nanoTime())
+        state.setLive { rec = true }
+        settle()
+        // hold the XY to the right through a few steps
+        state.xyMove(7, 1f, 0f, true)
+        repeat(6) { loudest(2048); state.tick(System.nanoTime()) }
+        state.xyMove(7, 1f, 0f, false)
+        settle()
+        assertTrue("the moves are in the loop", state.project.pat().hasMotion())
+        val lane = state.project.pat().motion["7:${Engine.T_PITCH}"]
+        assertTrue("pitch moves were recorded (${lane?.take(16)})", lane != null && lane.any { !it.isNaN() && it > 0f })
+        state.setLive { rec = false }
+        state.stop()
+        settle()
+        tab("Steps")
+        rule.onNodeWithTag("clear-moves").performScrollTo().performClick()
+        settle()
+        assertFalse(state.project.pat().hasMotion())
     }
 
     /* ---------- steps, roll, song ---------- */

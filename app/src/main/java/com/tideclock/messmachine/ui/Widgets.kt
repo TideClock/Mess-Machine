@@ -40,6 +40,8 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -360,4 +362,39 @@ fun Wrap(modifier: Modifier = Modifier, gap: Dp = 8.dp, content: @Composable () 
 @Composable
 fun ChipRow(content: @Composable RowScope.() -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically, content = content)
+}
+
+/**
+ * Tap, or hold still and lift for a menu (like a right click). Any slide cancels both, so a page still
+ * scrolls under it.
+ */
+fun Modifier.tapOrHold(key: Any?, onTap: () -> Unit, onHold: () -> Unit): Modifier = this.pointerInput(key) {
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false)
+        val slop = viewConfiguration.touchSlop
+        var moved = false
+        suspend fun androidx.compose.ui.input.pointer.AwaitPointerEventScope.follow(): Boolean {
+            while (true) {
+                val e = awaitPointerEvent()
+                val c = e.changes.firstOrNull { it.id == down.id } ?: return false
+                if (c.isConsumed) moved = true
+                if (!c.pressed) return true
+                if ((c.position - down.position).getDistance() > slop) moved = true
+            }
+        }
+        val early = withTimeoutOrNull(450) { follow() }
+        if (early == null) { if (follow() && !moved) onHold() }
+        else if (early && !moved) onTap()
+    }
+}
+
+/** A small right-click style menu: a title, then items; closes itself after a pick. */
+@Composable
+fun HoldMenu(open: Boolean, title: String, onClose: () -> Unit, items: List<Triple<String, String, () -> Unit>>) {
+    DropdownMenu(expanded = open, onDismissRequest = onClose, modifier = Modifier.background(C.Ink).border(3.dp, C.Cream)) {
+        T(title.uppercase(), size = 12.sp, color = C.Yellow, lines = 1, spacing = .06.em, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
+        for ((label, tag, act) in items) {
+            DropdownMenuItem(text = { T(label.uppercase(), size = 13.sp, spacing = .06.em) }, onClick = { onClose(); act() }, modifier = Modifier.testTag(tag))
+        }
+    }
 }

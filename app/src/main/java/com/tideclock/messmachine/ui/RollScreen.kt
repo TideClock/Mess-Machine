@@ -5,6 +5,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -41,6 +42,11 @@ fun RollScreen(state: AppState) {
     val loaded = (0 until Project.NPADS).filter { P.kit[it].isNotEmpty() }
     ScrollPane {
         SlotBar(state)
+        if (k.isNotEmpty()) Row(Modifier.padding(bottom = 8.dp).tapOrHold(P.sel, { state.preview(k) }, { if (!state.locked) state.padMenu = P.sel }).testTag("roll-name"), verticalAlignment = Alignment.CenterVertically) {
+            Swatch(padColor(Color(state.lib.colorOf(k))))
+            T("  PAD ${P.sel + 1} · ${state.lib.titleOf(k).uppercase()}", size = 13.sp, color = C.Yellow, lines = 1, spacing = .04.em)
+            Box { PadMenu(state, P.sel) }
+        }
         Wrap(Modifier.padding(bottom = 10.dp)) {
             Select(
                 if (k.isEmpty()) "Pick a pad" else "Pad ${P.sel + 1} · ${state.lib.titleOf(k)}",

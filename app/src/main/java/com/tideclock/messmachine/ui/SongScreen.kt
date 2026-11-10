@@ -67,9 +67,14 @@ fun SongScreen(state: AppState) {
                                 .aspectRatio(1f)
                                 .sticker(bg, shadow = if (i == playBar) 4.dp else 0.dp, border = if (i == playBar) 3.dp else 2.dp, borderColor = if (i == playBar) C.Cream else if (v >= 0) C.Black else C.Empty)
                                 .testTag("bar-$i")
-                                .clickable { state.paintSong(i) },
+                                .tapOrHold(i, { state.paintSong(i) }, { if (!state.locked) state.barMenu = i }),
                             contentAlignment = Alignment.Center,
                         ) {
+                            HoldMenu(state.barMenu == i, "Bar ${i + 1}", { state.barMenu = -1 }, listOf(
+                                Triple("Clear this bar", "barmenu-clear") { state.clearBar(i) },
+                                Triple("Put a bar in here", "barmenu-insert") { state.insertBar(i) },
+                                Triple("Take this bar out", "barmenu-delete") { state.deleteBar(i) },
+                            ))
                             if (v >= 0) T(Project.LETTERS[v].toString(), size = 16.sp, color = C.Ink, weight = FontWeight.Black)
                             else Note("${i + 1}", color = C.Empty, size = 10.sp)
                         }

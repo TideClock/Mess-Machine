@@ -108,6 +108,10 @@ private fun DockItem(state: AppState, t: String) {
         "rec" -> DockBtn("●", { state.setLive { rec = !rec } }, tag = "dock-rec", on = state.live.rec, onColor = C.Riot)
         "beat" -> BeatLight(state, beatPulse(state))
         "stutter", "echo" -> FxButton(state, t, if (t == "echo") "ECHO" else "STUT", Modifier.fillMaxWidth().testTag("dock-$t"), if (t == "echo") C.Teal else C.Pink, height = 46.dp)
+        "desk" -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            DockBtn("DSK", { state.nextDesk() }, tag = "dock-desk", onColor = C.Teal)
+            T(state.desks.getOrNull(state.deskIdx)?.name?.uppercase()?.take(6) ?: "", size = 9.sp, color = C.Teal, family = Mono, modifier = Modifier.padding(top = 3.dp))
+        }
         "xy" -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
             val pad = state.project.sel
             DockBtn("XY", { if (state.project.kit[pad].isNotEmpty()) state.cycleXy(pad) }, tag = "dock-xy", onColor = C.Pink)

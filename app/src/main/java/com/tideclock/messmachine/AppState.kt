@@ -32,12 +32,18 @@ enum class Tab(val label: String) { Pads("Pads"), Console("Console"), Steps("Ste
  * One piece of Your Console. type picks what it is, pad which pad it plays (pianos, filters, a pad
  * row, one effect), size how tall (0 small, 1 medium, 2 large), half = half the width.
  */
-data class Module(val type: String, val pad: Int = -1, val size: Int = 1, val half: Boolean = false) {
-    fun code() = "$type,$pad,$size,${if (half) 1 else 0}"
+data class Module(
+    val type: String, val pad: Int = -1, val size: Int = 1, val half: Boolean = false,
+    /** Where it sits on the desk grid: 12 columns across, rows of 24 dp. x < 0 = not placed yet. */
+    val x: Int = -1, val y: Int = 0, val w: Int = 12, val h: Int = 4, val pinned: Boolean = false,
+) {
+    fun code() = "$type,$pad,$size,${if (half) 1 else 0},$x,$y,$w,$h,${if (pinned) 1 else 0}"
     companion object {
         fun parse(c: String): Module? = try {
             val f = c.split(",")
-            if (f[0] !in CONSOLE_TYPES.map { it.first }) null else Module(f[0], f[1].toInt(), f[2].toInt().coerceIn(0, 2), f[3] == "1")
+            if (f[0] !in CONSOLE_TYPES.map { it.first }) null
+            else if (f.size >= 9) Module(f[0], f[1].toInt(), f[2].toInt().coerceIn(0, 2), f[3] == "1", f[4].toInt(), f[5].toInt(), f[6].toInt().coerceIn(1, 12), f[7].toInt().coerceIn(1, 60), f[8] == "1")
+            else Module(f[0], f[1].toInt(), f[2].toInt().coerceIn(0, 2), f[3] == "1")
         } catch (_: Exception) { null }
     }
 }
@@ -45,7 +51,7 @@ data class Module(val type: String, val pad: Int = -1, val size: Int = 1, val ha
 /** What can sit on the side dock. */
 val DOCK_TYPES = listOf(
     "lock" to "Lock", "hold" to "Hold", "filter" to "Filter + resonance", "repeat" to "Repeat", "hush" to "Hush",
-    "rec" to "Rec", "beat" to "Beat light", "stutter" to "Stutter", "echo" to "Echo throw", "xy" to "XY setup for the picked pad",
+    "rec" to "Rec", "beat" to "Beat light", "stutter" to "Stutter", "echo" to "Echo throw", "xy" to "XY setup for the picked pad", "desk" to "Desk layouts",
 )
 
 /** Every module you can add, with its name. */
@@ -321,7 +327,7 @@ class AppState(private val app: Context) {
         val p = engine.heard()
         if (playing != p.playing) playing = p.playing
         val st = if (p.playing) p.step else -1
-        if (heardStep != st) heardStep = st
+        if (heardStep != st) { heardStep = st; if (recHold.isNotEmpty() && st != recStep) { writeMoves(); rebuild() } }
         if (heardPat != p.pat) heardPat = p.pat
         if (heardSong != p.songPos) heardSong = p.songPos
         if (p.playing && project.songMode && follow && p.pat >= 0 && p.pat != project.cur) {
@@ -601,6 +607,38 @@ class AppState(private val app: Context) {
     fun setSongMode(on: Boolean) {
         if (on && project.songLen() == 0) { say("Paint some loops into the song lane first."); return }
         view { songMode = on }
+    }
+
+    /** Song bar menu: clear it, or put a bar in or take one out (the rest shuffle along). */
+    var barMenu by mutableIntStateOf(-1)
+    fun clearBar(i: Int) = edit { song[i] = -1 }
+    fun insertBar(i: Int) = edit { for (k in song.size - 1 downTo i + 1) song[k] = song[k - 1]; song[i] = -1 }
+    fun deleteBar(i: Int) = edit { for (k in i until song.size - 1) song[k] = song[k + 1]; song[song.size - 1] = -1 }
+
+    /** Loop letter menu. */
+    var slotMenu by mutableIntStateOf(-1)
+    fun copySlotToNextEmpty(i: Int) {
+        val to = (0 until Project.NSLOTS).firstOrNull { it != i && !project.pats[it].used() } ?: run { say("Every loop is in use."); return }
+        edit { pats[to] = pats[i].copy() }
+        say("Loop ${Project.LETTERS[i]} copied to ${Project.LETTERS[to]}.")
+    }
+    fun clearSlotAt(i: Int) = edit { pats[i].clear() }
+
+    /** Steps: the pitch strip under one sound's row, and the step it is setting. */
+    var stepStrip by mutableIntStateOf(-1)
+    var stepPick by mutableIntStateOf(-1)
+    fun openStepStrip(pad: Int) { stepStrip = if (stepStrip == pad) -1 else pad; stepPick = -1; selectPad(pad, false) }
+
+    /** Give one step a pitch (it becomes a one-step roll note), or make it a plain hit again. */
+    fun setStepPitch(key: String, j: Int, p: Int?) {
+        edit {
+            val pt = pat()
+            pt.notes(key).removeAll { it.s == j }
+            if (p == null) pt.setStep(key, j, true)
+            else { pt.setStep(key, j, false); pt.notes(key).add(Project.Note(j, p, 1)) }
+        }
+        if (p != null) preview(key, p)
+        notes.trail("step ${j + 1} pitch ${p?.let { Theory.noteName(it) } ?: "plain"}")
     }
 
     fun paintSong(i: Int) = edit { song[i] = if (song[i] == brush) -1 else brush }
@@ -936,23 +974,46 @@ class AppState(private val app: Context) {
 
     fun xy(x: Float, y: Float, on: Boolean) = engine.xy(x, y, on)
 
-    /* ---------------- Your Console ---------------- */
+    /* ---------------- M(ess)(y) Desk: layouts you arrange freely ---------------- */
 
-    /** The modules on Your Console, top to bottom (declared after project and lib: the preset reads them). */
+    /** One saved desk layout. */
+    data class Desk(val name: String, val mods: List<Module>)
+
+    /** Every saved layout; the one showing is deskIdx, and its pieces are in console. */
+    val desks = mutableStateListOf<Desk>()
+    var deskIdx by mutableIntStateOf(0)
+        private set
+
+    /** The pieces on the desk showing now, back to front (declared after project and lib: the presets read them). */
     val console = mutableStateListOf<Module>().also { l ->
-        val mods = prefs.getString("console", null)?.split(";")?.mapNotNull { Module.parse(it) }
-        l.addAll(if (mods.isNullOrEmpty()) performPreset() else mods)
+        val saved = prefs.getString("desks", null)
+        if (saved != null) {
+            for (part in saved.split("##")) {
+                val name = part.substringBefore("~")
+                val mods = part.substringAfter("~", "").split(";").mapNotNull { Module.parse(it) }
+                desks.add(Desk(name, layoutStack(mods)))
+            }
+        }
+        if (desks.isEmpty()) {
+            // the first desk keeps the console you already built
+            val old = prefs.getString("console", null)?.split(";")?.mapNotNull { Module.parse(it) }
+            desks.add(Desk("Perform", layoutStack(if (old.isNullOrEmpty()) performPreset() else old)))
+            desks.add(Desk("Beats", layoutStack(beatsPreset())))
+            desks.add(Desk("Sampling", layoutStack(samplingPreset())))
+        }
+        deskIdx = prefs.getInt("deskIdx", 0).coerceIn(0, desks.size - 1)
+        l.addAll(desks[deskIdx].mods)
     }
     var consoleEdit by mutableStateOf(false)
 
-    /** A first melodic pad for the preset's piano and filter. */
+    /** A first melodic pad for the presets' Padiano and filter. */
     private fun firstTonalPad(): Int {
         val tonal = setOf("bass", "keys", "lead", "pad")
         val i = (0 until Project.NPADS).firstOrNull { project.kit[it].isNotEmpty() && lib.sound(project.kit[it])?.type in tonal }
         return i ?: (0 until 8).lastOrNull { project.kit[it].isNotEmpty() } ?: 0
     }
 
-    /** The starting layout, a performance page: transport, pads, hold, a piano with its filter, the effects. */
+    /** The Perform layout: pads, Hold, a Padiano with its filter, the effects, the filter pad, repeat, loops. */
     fun performPreset(): List<Module> {
         val t = firstTonalPad()
         return listOf(
@@ -961,7 +1022,78 @@ class AppState(private val app: Context) {
         )
     }
 
-    private fun saveConsole() { prefs.edit().putString("console", console.joinToString(";") { it.code() }).apply() }
+    fun beatsPreset(): List<Module> = listOf(
+        Module("loops"), Module("pads"), Module("repeat", half = true), Module("beat", half = true),
+        Module("fx1", 0, half = true), Module("fx1", 3, half = true), Module("xy", size = 0),
+    )
+
+    fun samplingPreset(): List<Module> {
+        val t = firstTonalPad()
+        return listOf(Module("pads"), Module("piano", t), Module("xyp", t, half = true), Module("pfilt", t, half = true), Module("hold"))
+    }
+
+    /** How tall a piece starts, in desk rows (24 dp each). */
+    fun defaultH(m: Module, w: Int): Int = when (m.type) {
+        "pads" -> if (w >= 9) 17 else 10
+        "row" -> 4
+        "piano" -> 9
+        "pfilt" -> 4
+        "hold" -> if (w >= 9) 2 else 4
+        "fx" -> if (w >= 9) 10 else 14
+        "fx1" -> listOf(3, 4, 6)[m.size]
+        "xy", "xyp" -> listOf(8, 10, 13)[m.size]
+        "repeat", "loops", "beat" -> 2
+        "scale" -> 4
+        "transport" -> 3
+        else -> 4
+    }
+
+    /** Pieces without a place get stacked top to bottom, half-width ones in pairs. */
+    private fun layoutStack(mods: List<Module>): List<Module> {
+        var y = mods.filter { it.x >= 0 }.maxOfOrNull { it.y + it.h } ?: 0
+        val out = ArrayList<Module>()
+        var halfAt = -1
+        var halfH = 0
+        for (m in mods) {
+            if (m.x >= 0) { out.add(m); continue }
+            val w = if (m.half) 6 else 12
+            val h = defaultH(m, w)
+            if (m.half && halfAt >= 0) {
+                out.add(m.copy(x = 6, y = halfAt, w = w, h = h))
+                y = halfAt + maxOf(halfH, h); halfAt = -1
+            } else if (m.half) {
+                out.add(m.copy(x = 0, y = y, w = w, h = h)); halfAt = y; halfH = h; y += h
+            } else {
+                if (halfAt >= 0) halfAt = -1
+                out.add(m.copy(x = 0, y = y, w = w, h = h)); y += h
+            }
+        }
+        return out
+    }
+
+    private fun saveConsole() {
+        if (deskIdx in desks.indices) desks[deskIdx] = desks[deskIdx].copy(mods = console.toList())
+        prefs.edit().putString("desks", desks.joinToString("##") { d -> d.name.replace("~", " ").replace("#", " ") + "~" + d.mods.joinToString(";") { it.code() } })
+            .putInt("deskIdx", deskIdx).apply()
+    }
+
+    fun switchDesk(i: Int) {
+        if (i !in desks.indices) return
+        saveConsole()
+        deskIdx = i
+        console.clear(); console.addAll(desks[i].mods)
+        saveConsole()
+        notes.trail("desk ${desks[i].name}")
+    }
+
+    /** From the dock: the next layout, and the Desk page if you are somewhere else (and not locked). */
+    fun nextDesk() { switchDesk((deskIdx + 1) % desks.size); if (!locked) tab = Tab.Console }
+
+    fun newDesk() {
+        saveConsole()
+        desks.add(Desk("Desk ${desks.size + 1}", layoutStack(performPreset())))
+        switchDesk(desks.size - 1)
+    }
 
     fun addModule(type: String) {
         val pad = when (type) {
@@ -969,12 +1101,31 @@ class AppState(private val app: Context) {
             "row", "fx1" -> 0
             else -> -1
         }
-        console.add(Module(type, pad))
+        val m = Module(type, pad)
+        val y = console.maxOfOrNull { it.y + it.h } ?: 0
+        console.add(m.copy(x = 0, y = y, w = 12, h = defaultH(m, 12)))
         saveConsole()
-        notes.trail("console add $type")
+        notes.trail("desk add $type")
     }
 
     fun changeModule(i: Int, m: Module) { if (i in console.indices) { console[i] = m; saveConsole() } }
+
+    /** Arrange mode: drop a piece at a grid spot (it comes to the front). */
+    fun placeModule(i: Int, x: Int, y: Int) {
+        if (i !in console.indices) return
+        val m = console.removeAt(i)
+        console.add(m.copy(x = x.coerceIn(0, 12 - m.w), y = y.coerceAtLeast(0)))
+        saveConsole()
+    }
+
+    fun resizeModule(i: Int, w: Int, h: Int) {
+        if (i !in console.indices) return
+        val m = console[i]
+        console[i] = m.copy(w = w.coerceIn(2, 12 - m.x), h = h.coerceIn(2, 40))
+        saveConsole()
+    }
+
+    fun pinModule(i: Int) { if (i in console.indices) changeModule(i, console[i].copy(pinned = !console[i].pinned)) }
 
     fun moveModule(i: Int, by: Int) {
         val j = i + by
@@ -986,7 +1137,38 @@ class AppState(private val app: Context) {
 
     fun removeModule(i: Int) { if (i in console.indices) { console.removeAt(i); saveConsole() } }
 
-    fun resetConsole() { console.clear(); console.addAll(performPreset()); saveConsole(); say("Back to the Perform layout.") }
+    fun resetConsole() {
+        val name = desks.getOrNull(deskIdx)?.name ?: "Perform"
+        val mods = when (name) { "Beats" -> beatsPreset(); "Sampling" -> samplingPreset(); else -> performPreset() }
+        console.clear(); console.addAll(layoutStack(mods)); saveConsole()
+        say("$name is back to how it started.")
+    }
+
+    /* ---------------- motion recording ---------------- */
+
+    /** XY values held by a finger while Rec is on, written into the loop on every step. */
+    private val recHold = HashMap<Pair<Int, Int>, Float>()
+    private var recStep = -1
+
+    private fun recordMoves(pad: Int, vals: Map<Int, Float>, used: Set<Int>, on: Boolean) {
+        if (!live.rec || !playing || heardPat < 0) return
+        for (t in used) recHold[pad to t] = vals[t] ?: 0f
+        writeMoves()
+        if (!on) {
+            for (t in used) recHold.remove(pad to t)
+            changed(true)
+        }
+    }
+
+    private fun writeMoves() {
+        if (recHold.isEmpty() || heardStep < 0 || heardPat < 0) return
+        val P = project.pats[heardPat]
+        for ((k, v) in recHold) P.setMotion(k.first, k.second, heardStep, v)
+        recStep = heardStep
+    }
+
+    fun clearMoves() = edit { pat().motion.clear() }
+
 
     /* ---------------- a live filter on one pad ---------------- */
 
@@ -1241,6 +1423,7 @@ class AppState(private val app: Context) {
         val res = vals[Engine.T_RES] ?: 0f
         if (cut > 0f || res > 0f) { padFilt[pad] = (1f - cut).coerceIn(0f, 1f) to res.coerceIn(0f, 1f); engine.padFilter(pad, (1f - cut).coerceIn(0f, 1f), res.coerceIn(0f, 1f), true) }
         else if (Engine.T_FILTER in used || Engine.T_RES in used) { if (pad !in padFiltStay) { padFilt.remove(pad); engine.padFilter(pad, 1f, 0f, false) } }
+        recordMoves(pad, vals, used, on)
         xyUsed[pad] = if (on || !x.spring) x.targets() else emptySet()
         xyLive[pad] = if (on) fx to fy else if (x.spring) null else fx to fy
     }
