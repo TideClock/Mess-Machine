@@ -113,7 +113,8 @@ private fun DeskPiece(state: AppState, i: Int, m: Module, col: Dp, unit: Dp, arr
             .padding(3.dp)
             .testTag("mod-$i"),
     ) {
-        Box(Modifier.fillMaxSize().clipToBounds().verticalScroll(rememberScrollState(), enabled = !state.locked)) { ModuleBody(state, m) }
+        // no scrolling inside a piece (a scroll inside a scrolling page fights your thumb): resize it instead
+        Box(Modifier.fillMaxSize().clipToBounds()) { Column { ModuleBody(state, m) } }
         if (arranging) {
             Box(
                 Modifier

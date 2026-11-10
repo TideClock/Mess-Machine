@@ -630,10 +630,8 @@ class BigTest {
         loudest()
         tapPad(0)
         val crushNode = at("cfx-crush")
-        println("DESKFX bounds=${crushNode.fetchSemanticsNode().boundsInRoot} mods=${state.console.map { "${it.type}@${it.x},${it.y},${it.w}x${it.h}" }}")
         crushNode.performTouchInput { down(Offset(width * .3f, height * .6f)) }
         settle(); loudest(1024)
-        println("DESKFX after down fxActive=${state.engine.fxActive()} live=${state.fxLive.toMap()} on=${state.fxOn.toList()}")
         assertTrue("an effect held on the desk", state.engine.fxActive())
         rule.onNodeWithTag("cfx-crush").performTouchInput { up() }
         settle()
