@@ -66,8 +66,13 @@ class AppState(private val app: Context) {
     val notes = NotesBook(app)
     var favs by mutableStateOf(prefs.getStringSet("favs", emptySet())!!.toSet())
         private set
-    var showStrip by mutableStateOf(false)
+    /** Piano keyboards dropped below the pads, by pad number, oldest first. Up to four. */
+    val keyboards = mutableStateListOf<Int>()
     var showFx by mutableStateOf(false)
+    /** Which jar the Sounds tab shows. */
+    var soundsCab by mutableStateOf("thumps")
+
+    fun openWorkbench() { soundsCab = "mine"; tab = Tab.Sounds }
     var xyHP by mutableStateOf(false)
         private set
     var micOn by mutableStateOf(false)
@@ -79,7 +84,7 @@ class AppState(private val app: Context) {
     var bank by mutableIntStateOf(project.sel / Project.BANK)
     var keysMode by mutableStateOf(false)
     var chordMode by mutableStateOf(prefs.getString("chord", "off") ?: "off")
-    var noteLen by mutableIntStateOf(1)
+    var noteLen by mutableIntStateOf(2)
     var page by mutableIntStateOf(0)
     var brush by mutableIntStateOf(0)
     private val overlayState = mutableStateOf<Overlay?>(null)
@@ -410,6 +415,7 @@ class AppState(private val app: Context) {
     }
 
     fun clearPad(pad: Int) {
+        keyboards.remove(pad)
         notes.trail("clear pad ${pad + 1}")
         val t = lib.titleOf(project.kit[pad])
         edit { this.clearPad(pad) }
@@ -471,7 +477,49 @@ class AppState(private val app: Context) {
         page = 0
     }
 
-    fun toggleLen() = edit { pat().len = if (pat().len == 32) 16 else 32 }
+    /** Like the site: one bar to two copies bar one into bar two; two to one drops bar two. */
+    fun toggleLen() {
+        val P = project.pat()
+        val L = Project.LETTERS[project.cur]
+        if (P.len == 16) {
+            edit {
+                P.len = 32
+                for (a in P.steps.values) for (j in 0 until 16) a[j + 16] = a[j]
+                for (l in P.notes.values) { val copy = l.map { Project.Note(it.s + 16, it.p, it.l) }; l.addAll(copy) }
+            }
+            say("Loop $L is two bars now. Bar one got copied into bar two.")
+        } else {
+            edit {
+                P.len = 16
+                for (a in P.steps.values) for (j in 16 until 32) a[j] = false
+                for (l in P.notes.values) { l.removeAll { it.s >= 16 }; for (n in l) n.l = minOf(n.l, 16 - n.s) }
+            }
+            page = 0
+            say("Loop $L is back to one bar.")
+        }
+    }
+
+    /** Clear the roll notes for the picked pad in this loop. */
+    fun clearNotes() {
+        val k = selKey()
+        if (k.isEmpty()) return
+        edit { pat().notes.remove(k) }
+    }
+
+    /** The site's Hush: everything quiet now, the loop pauses where it is. */
+    fun hush() {
+        notes.trail("hush")
+        if (playing) { engine.pause(); playing = false }
+        engine.panic()
+        for (d in 0 until 16) downIds[d] = -1
+        say("Hushed. Everything is quiet. Play picks up where it paused.")
+    }
+
+    /** The site's Bottle it: the loop to four bars (or the song), as a WAV. */
+    fun bottleIt() {
+        if (project.songMode && project.songLen() > 0) bounce(true, 1)
+        else bounce(false, if (project.pat().len == 32) 2 else 4)
+    }
 
     fun clearSlot() = edit { pat().clear() }
 
@@ -508,11 +556,11 @@ class AppState(private val app: Context) {
     /** Chain every loop that has something in it, in order. */
     fun songFromLoops() {
         val used = (0 until Project.NSLOTS).filter { project.pats[it].used() }
-        if (used.isEmpty()) { say("All eight loops are empty."); return }
+        if (used.isEmpty()) { say("Make a loop first."); return }
+        // like the site's Rough it in: every used loop twice, in order
         edit {
             java.util.Arrays.fill(song, -1)
-            var k = 0
-            for (u in used) { song[k++] = u; if (pats[u].len == 16 && k < Project.MAXSONG) song[k++] = u }
+            for (i in 0 until minOf(Project.MAXSONG, used.size * 2)) song[i] = used[i / 2]
         }
     }
 
@@ -689,26 +737,29 @@ class AppState(private val app: Context) {
         prefs.edit().putStringSet("favs", favs).apply()
     }
 
-    /* ---------------- the keys strip under the pads ---------------- */
+    /* ---------------- piano keyboards under the pads ---------------- */
 
-    fun stripNotes(): IntArray = Theory.stripNotes(project.scale, project.root)
-
-    fun stripDown(i: Int) {
-        val pad = project.sel
-        if (project.kit[pad].isEmpty()) { say("Pick a pad with a sound first."); return }
-        val p = stripNotes().getOrNull(i) ?: return
-        val ps = Theory.chordOf(p, i, chordMode, project.scale, project.root)
-        lastChord = if (ps.size > 1) Theory.chordLabel(p, i, chordMode, project.scale, project.root) + " · " + Theory.chordNotes(ps) else Theory.noteName(p)
-        notes.trail("strip ${Theory.noteName(p)}")
-        engine.down(200 + i, pad, ps, true)
+    fun toggleKeyboard(pad: Int) {
+        if (pad in keyboards) { keyboards.remove(pad); return }
+        if (project.kit[pad].isEmpty()) { say("Put a sound on pad ${pad + 1} first."); return }
+        if (keyboards.size >= 4) keyboards.removeAt(0)
+        keyboards.add(pad)
+        notes.trail("keyboard pad ${pad + 1}")
     }
 
-    fun stripUp(i: Int) = engine.up(200 + i)
+    private fun pianoId(pad: Int, p: Int) = 1000 + pad * 32 + (p + 12)
 
-    fun stripLabel(i: Int): String {
-        val p = stripNotes().getOrNull(i) ?: return ""
-        return Theory.chordLabel(p, i, chordMode, project.scale, project.root)
+    fun pianoDown(pad: Int, p: Int) {
+        if (project.kit[pad].isEmpty()) return
+        val strip = Theory.stripNotes(project.scale, project.root)
+        val idx = strip.indexOf(p)
+        val ps = if (chordMode.startsWith("set:") && idx < 0) intArrayOf(p) else Theory.chordOf(p, idx.coerceAtLeast(0), chordMode, project.scale, project.root)
+        lastChord = if (ps.size > 1) Theory.chordLabel(p, idx.coerceAtLeast(0), chordMode, project.scale, project.root) + " · " + Theory.chordNotes(ps) else Theory.noteName(p)
+        notes.trail("piano ${pad + 1} ${Theory.noteName(p)}")
+        engine.down(pianoId(pad, p), pad, ps, true)
     }
+
+    fun pianoUp(pad: Int, p: Int) = engine.up(pianoId(pad, p))
 
     /* ---------------- perform FX ---------------- */
 

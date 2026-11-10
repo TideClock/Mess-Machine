@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.tideclock.messmachine.AppState
 import com.tideclock.messmachine.engine.Project
@@ -38,7 +39,7 @@ fun FilesScreen(state: AppState) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 14.dp)) {
         Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
             Column {
-                T("This mess", size = 13.sp, color = C.Dim)
+                T("THIS MESS", size = 12.sp, color = C.Yellow, spacing = .1.em)
                 OutlinedTextField(
                     value = name, onValueChange = { name = it.take(48) }, singleLine = true,
                     placeholder = { T("Untitled mess", color = C.Dim, weight = FontWeight.Medium) },
@@ -57,8 +58,8 @@ fun FilesScreen(state: AppState) {
         }
         Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
             Column {
-                T("Bounce to a WAV", size = 13.sp, color = C.Dim)
-                T("Renders the music, then opens your share sheet so you can save it or send it anywhere.", size = 12.sp, color = C.Dim, weight = FontWeight.Medium, modifier = Modifier.padding(bottom = 8.dp))
+                T("BOTTLE IT", size = 12.sp, color = C.Yellow, spacing = .1.em)
+                Note("Renders the music, then opens your share sheet so you can save it or send it anywhere.", modifier = Modifier.padding(bottom = 8.dp))
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     val L = Project.LETTERS[P.cur]
                     Btn("Loop $L once", { state.bounce(false, 1) }, small = true, color = C.Pink)
@@ -69,7 +70,7 @@ fun FilesScreen(state: AppState) {
         }
         Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
             Column {
-                T("Move a mess between the site and your phone", size = 13.sp, color = C.Dim)
+                T("SITE AND PHONE", size = 12.sp, color = C.Yellow, spacing = .1.em)
                 T(
                     "The app reads and writes the same mess files as the Mess Machine on the site. Sounds you uploaded on the site stay there; those pads come in empty.",
                     size = 12.sp, color = C.Dim, weight = FontWeight.Medium, modifier = Modifier.padding(bottom = 8.dp),
@@ -80,7 +81,7 @@ fun FilesScreen(state: AppState) {
                 }
             }
         }
-        T("Saved on this phone", size = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
+        Heading("Lab logbook", size = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
         if (state.files.isEmpty()) T("Nothing saved yet. Name the mess and hit Save.", size = 13.sp, color = C.Dim, weight = FontWeight.Medium)
         for (f in state.files) {
             Card(Modifier.fillMaxWidth().padding(bottom = 10.dp), color = if (f.id == state.fileId) C.Card2 else C.Card) {
@@ -120,7 +121,7 @@ fun TempoScreen(state: AppState) {
         }
         SliderRow("Tempo", bpm, 60f..180f, { "${it.roundToInt()} BPM" }, { bpm = it }, { state.setBpm(bpm.roundToInt()) })
         SliderRow("Swing", swing, 0f..100f, { "${it.roundToInt()}%" }, { swing = it }, { state.edit { this.swing = swing.roundToInt() } }, accent = C.Teal)
-        T("Swing pushes every other 16th late, like the site.", size = 12.sp, color = C.Dim, weight = FontWeight.Medium, modifier = Modifier.padding(bottom = 12.dp))
+        Note("Swing pushes every other 16th late, like the site.", modifier = Modifier.padding(bottom = 12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Btn("Click", { state.setLive { click = !click } }, on = state.live.click, small = true)
             Btn("Hear steps when you tap them", { state.switchPlayOnTap(!state.playOnTap) }, on = state.playOnTap, small = true, onColor = C.Teal)

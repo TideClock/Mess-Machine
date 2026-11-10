@@ -33,6 +33,29 @@ jobs:
           javac -d build/enginetest $(find app/src/main/java -name "*.java") tools/EngineTest.java
           java -cp build/enginetest EngineTest app/src/main/assets/sounds/ build/enginetest
 
+      - name: The big test (every screen, with screenshots)
+        id: bigtest
+        continue-on-error: true
+        run: ./gradlew testDebugUnitTest --stacktrace
+
+      - name: Publish the test screenshots
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p shots
+          cp app/build/screens/*.png shots/ 2>/dev/null || true
+          cp app/build/test-results/testDebugUnitTest/*.xml shots/ 2>/dev/null || true
+          (cd shots && zip -q -r ../test-screens.zip .) || true
+          if [ -f test-screens.zip ]; then
+            gh release delete test-screens --yes --cleanup-tag || true
+            gh release create test-screens test-screens.zip --title "Test screenshots" --notes "Screens from build ${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7}). Test outcome: ${{ steps.bigtest.outcome }}." --prerelease
+          fi
+
+      - name: Stop here if the big test failed
+        if: steps.bigtest.outcome == 'failure'
+        run: exit 1
+
       - name: Build the APK
         run: ./gradlew assembleRelease --stacktrace
 

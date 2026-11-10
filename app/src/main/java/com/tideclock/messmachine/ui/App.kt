@@ -2,6 +2,11 @@ package com.tideclock.messmachine.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.em
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,9 +39,9 @@ import com.tideclock.messmachine.engine.Project
 import kotlinx.coroutines.delay
 
 @Composable
-fun MessMachineApp(state: AppState) {
+fun MessMachineApp(state: AppState, ticker: Boolean = true) {
     MaterialTheme(colorScheme = darkColorScheme(primary = C.Pink, secondary = C.Teal, background = C.Paper, surface = C.Card)) {
-        LaunchedEffect(Unit) {
+        if (ticker) LaunchedEffect(Unit) {
             while (true) {
                 val t = withFrameNanos { it }
                 state.tick(t)
@@ -47,10 +52,10 @@ fun MessMachineApp(state: AppState) {
         }
         BackHandler(enabled = state.overlay != null) { state.overlay = null }
         @Suppress("UNUSED_VARIABLE") val v = state.version
-        Box(Modifier.fillMaxSize().background(C.Paper).statusBarsPadding().navigationBarsPadding()) {
+        Box(Modifier.fillMaxSize().background(C.Paper).grit().statusBarsPadding().navigationBarsPadding()) {
             Column(Modifier.fillMaxSize()) {
                 Transport(state)
-                Box(Modifier.weight(1f).fillMaxWidth()) {
+                Box(Modifier.weight(1f).fillMaxWidth().testTag("screen-${state.tab.label}")) {
                     when (state.tab) {
                         Tab.Pads -> PadsScreen(state)
                         Tab.Steps -> StepsScreen(state)
@@ -63,22 +68,22 @@ fun MessMachineApp(state: AppState) {
             }
             when (val o = state.overlay) {
                 is Overlay.Picker -> Sheet(state, "Pick a sound for pad ${o.pad + 1}") { SoundsScreen(state, o.pad) }
-                is Overlay.Doctor -> Sheet(state, "The doctor's table") { DoctorScreen(state, o.key) }
+                is Overlay.Doctor -> Sheet(state, "Doctor's table") { DoctorScreen(state, o.key) }
                 Overlay.Files -> Sheet(state, "Messes") { FilesScreen(state) }
-                Overlay.Tempo -> Sheet(state, "Tempo and feel") { TempoScreen(state) }
+                Overlay.Tempo -> Sheet(state, "Tempo + feel") { TempoScreen(state) }
                 Overlay.Notes -> Sheet(state, "Notes for Claude") { NotesScreen(state) }
                 null -> {}
             }
             state.toast?.let { msg ->
                 Box(Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = 84.dp)) {
-                    Box(Modifier.sticker(C.Yellow, radius = 12.dp).clickable { state.toast = null }.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                    Box(Modifier.sticker(C.Yellow, shadow = 5.dp).clickable { state.toast = null }.testTag("toast").padding(horizontal = 14.dp, vertical = 11.dp)) {
                         T(msg, color = C.Ink, size = 14.sp)
                     }
                 }
             }
             state.busy?.let { msg ->
-                Box(Modifier.fillMaxSize().background(C.Black.copy(alpha = .6f)).clickable(enabled = true) { }, contentAlignment = Alignment.Center) {
-                    Box(Modifier.sticker(C.Teal).padding(20.dp)) { T(msg, color = C.Ink, size = 18.sp) }
+                Box(Modifier.fillMaxSize().background(C.Black.copy(alpha = .65f)).clickable(enabled = true) { }, contentAlignment = Alignment.Center) {
+                    Box(Modifier.sticker(C.Teal, shadow = 6.dp).padding(22.dp)) { T(msg.uppercase(), color = C.Ink, size = 18.sp, spacing = .08.em) }
                 }
             }
         }
@@ -88,11 +93,13 @@ fun MessMachineApp(state: AppState) {
 /** A full-height panel over the machine, for picking, editing and files. */
 @Composable
 fun Sheet(state: AppState, title: String, content: @Composable () -> Unit) {
-    Box(Modifier.fillMaxSize().background(C.Black.copy(alpha = .55f)).clickable(enabled = true) { }) {
-        Column(Modifier.fillMaxSize().padding(top = 24.dp).background(C.Paper)) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                T(title, size = 20.sp, weight = FontWeight.Black, modifier = Modifier.weight(1f))
-                Btn("Done", { state.overlay = null }, color = C.Pink, small = true)
+    Box(Modifier.fillMaxSize().background(C.Black.copy(alpha = .6f)).clickable(enabled = true) { }) {
+        Column(Modifier.fillMaxSize().padding(top = 18.dp).background(C.Paper).grit().drawBehind {
+            drawLine(C.Pink, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 4.dp.toPx())
+        }.testTag("sheet")) {
+            Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 14.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Heading(title, size = 20.sp, modifier = Modifier.weight(1f))
+                Btn("Done", { state.overlay = null }, color = C.Pink, small = true, tag = "done")
             }
             Box(Modifier.weight(1f).fillMaxWidth()) { content() }
         }
@@ -103,20 +110,27 @@ fun Sheet(state: AppState, title: String, content: @Composable () -> Unit) {
 fun Transport(state: AppState) {
     val P = state.project
     @Suppress("UNUSED_VARIABLE") val lv = state.liveV
-    Column(Modifier.fillMaxWidth().background(C.Ink).padding(horizontal = 10.dp, vertical = 8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Btn(if (state.playing) "❚❚ Pause" else "▶ Play", { state.togglePlay() }, color = C.Teal, on = state.playing, onColor = C.Teal)
-            Btn("■", { state.stop() })
-            Btn("● Rec", { state.setLive { rec = !rec } }, on = state.live.rec, onColor = C.Riot)
-            Btn("${P.bpm} BPM", { state.overlay = Overlay.Tempo })
+    Column(Modifier.fillMaxWidth().background(C.Ink).drawBehind {
+        drawLine(C.Pink, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 3.dp.toPx())
+    }.padding(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
+            GlitchTitle("Mess Machine", size = 20.sp, modifier = Modifier.weight(1f))
+            Btn("🐞", { state.overlay = Overlay.Notes }, small = true, color = if (state.crash != null) C.Riot else C.Ink, tag = "notes")
+            Btn("☰ Messes", { state.refreshFiles(); state.overlay = Overlay.Files }, small = true, modifier = Modifier.padding(start = 8.dp), tag = "messes")
         }
-        Spacer(Modifier.height(8.dp))
-        Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Btn("☰", { state.refreshFiles(); state.overlay = Overlay.Files }, small = true)
-            Btn("🐞", { state.overlay = Overlay.Notes }, small = true, color = if (state.crash != null) C.Riot else C.Card2)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(end = 4.dp)) {
+            Btn(if (state.playing) "❚❚ Pause" else "▶ Play", { state.togglePlay() }, color = C.Teal, on = state.playing, onColor = C.Yellow, tag = "play", modifier = Modifier.weight(1.35f))
+            Btn("■", { state.stop() }, tag = "stop", modifier = Modifier.weight(.6f))
+            RecBtn(state, Modifier.weight(1f))
+            Btn("${P.bpm} BPM", { state.overlay = Overlay.Tempo }, tag = "bpm", modifier = Modifier.weight(1.15f))
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(Modifier.horizontalScroll(rememberScrollState()).padding(end = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PositionText(state)
+            Btn("Loop", { state.setSongMode(false) }, on = !P.songMode, small = true)
+            Btn("Song", { state.setSongMode(true) }, on = P.songMode, small = true, onColor = C.Pink)
             Btn("Click", { state.setLive { click = !click } }, on = state.live.click, small = true)
-            Btn("Repeat", { state.setLive { nr = !nr } }, on = state.live.nr, onColor = C.Pink, small = true)
+            Btn("Repeat", { state.setLive { nr = !nr } }, on = state.live.nr, onColor = C.Pink, small = true, tag = "repeat")
             Select(
                 when (state.live.nrRate) { 2.0 -> "1/8"; 0.5 -> "1/32"; else -> "1/16" },
                 listOf(2.0 to "1/8", 1.0 to "1/16", 0.5 to "1/32"), { r -> state.setLive { nrRate = r } },
@@ -126,35 +140,60 @@ fun Transport(state: AppState) {
                 listOf("rep", "up", "down", "updown", "rand").map { it to arpName(it) },
                 { a -> state.setLive { arp = a; if (a != "rep") nr = true } },
             )
-            Btn("↶", { state.undo() }, enabled = state.canUndo, small = true)
-            Btn("↷", { state.redo() }, enabled = state.canRedo, small = true)
+            Btn("Hush", { state.hush() }, small = true, color = C.Riot, tag = "hush")
+            Btn("↶", { state.undo() }, enabled = state.canUndo, small = true, tag = "undo")
+            Btn("↷", { state.redo() }, enabled = state.canRedo, small = true, tag = "redo")
         }
     }
 }
 
+/** Rec blinks on the beat while it is armed and the loop plays. */
 @Composable
-fun PositionText(state: AppState) {
-    T(position(state), size = 13.sp, color = C.Yellow, modifier = Modifier.width(92.dp), lines = 1)
+fun RecBtn(state: AppState, modifier: Modifier = Modifier) {
+    val armed = state.live.rec
+    val blink = armed && state.playing && state.heardStep % 4 >= 2
+    Btn("● Rec", { state.setLive { rec = !rec } }, on = armed, onColor = if (blink) C.Cream else C.Riot, tag = "rec", modifier = modifier)
 }
 
-fun arpName(a: String) = when (a) { "up" -> "Arp up"; "down" -> "Arp down"; "updown" -> "Arp up-down"; "rand" -> "Arp random"; else -> "Repeat notes" }
+@Composable
+fun PositionText(state: AppState) {
+    Box(Modifier.width(96.dp).height(34.dp).background(C.Black).border(2.dp, C.Cream), contentAlignment = Alignment.Center) {
+        T(position(state), size = 13.sp, color = C.Yellow, lines = 1, family = Mono, weight = FontWeight.Bold)
+    }
+}
+
+fun arpName(a: String) = when (a) { "up" -> "Arp up"; "down" -> "Arp down"; "updown" -> "Arp up-down"; "rand" -> "Arp random"; else -> "Repeat" }
 
 fun position(state: AppState): String {
     val s = state.heardStep
     if (!state.playing || s < 0) {
         val p = state.project
-        return if (p.songMode) "Song · ${p.songLen()} bars" else "Loop ${Project.LETTERS[p.cur]}"
+        return if (p.songMode) "SONG ${p.songLen()}" else "LOOP ${Project.LETTERS[p.cur]}"
     }
     val pat = state.heardPat
     val pre = if (state.project.songMode) "${state.heardSong + 1}·" else ""
-    return "$pre${if (pat >= 0) Project.LETTERS[pat].toString() else "rest"} ${s / 16 + 1}.${s % 16 / 4 + 1}.${s % 4 + 1}"
+    return "$pre${if (pat >= 0) Project.LETTERS[pat].toString() else "-"} ${s / 16 + 1}.${s % 16 / 4 + 1}.${s % 4 + 1}"
 }
 
 @Composable
 fun Tabs(state: AppState) {
-    Row(Modifier.fillMaxWidth().background(C.Ink).padding(horizontal = 6.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row(Modifier.fillMaxWidth().background(C.Ink).drawBehind {
+        drawLine(C.Pink, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 3.dp.toPx())
+    }.padding(horizontal = 6.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         for (t in Tab.entries) {
-            Btn(t.label, { state.tab = t }, modifier = Modifier.weight(1f), on = state.tab == t, onColor = C.Pink, small = true)
+            val on = state.tab == t
+            Box(
+                Modifier
+                    .weight(1f)
+                    .height(40.dp)
+                    .background(if (on) C.Yellow else C.Ink)
+                    .border(if (on) 3.dp else 0.dp, C.Cream)
+                    .clickable { state.tab = t }
+                    .testTag("tab-${t.label}"),
+                contentAlignment = Alignment.Center,
+            ) {
+                T(t.label.uppercase(), size = 12.sp, color = if (on) C.Ink else C.Dim, spacing = .08.em, lines = 1)
+            }
         }
     }
 }

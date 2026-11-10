@@ -113,7 +113,7 @@ fun NotesScreen(state: AppState) {
             T("Your notes", size = 16.sp, modifier = Modifier.weight(1f))
             Btn(if (state.notes.checking) "Checking…" else "Check for replies", { state.notes.checkReplies { state.say(it) } }, small = true, color = C.Teal, enabled = !state.notes.checking)
         }
-        if (state.notes.lastCheck.isNotEmpty()) T(state.notes.lastCheck, size = 12.sp, color = C.Dim, weight = FontWeight.Medium, modifier = Modifier.padding(bottom = 8.dp))
+        if (state.notes.lastCheck.isNotEmpty()) Note(state.notes.lastCheck, modifier = Modifier.padding(bottom = 8.dp))
         if (state.notes.notes.isEmpty()) T("No notes yet.", size = 13.sp, color = C.Dim, weight = FontWeight.Medium)
         val fmt = remember { SimpleDateFormat("MMM d, h:mm a", Locale.US) }
         for (n in state.notes.notes) {
@@ -121,7 +121,7 @@ fun NotesScreen(state: AppState) {
                 Column {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         T(catLabel(n.cat) + if (n.cat == "discuss" && n.topic.isNotEmpty()) ": ${n.topic}" else "", size = 12.sp, color = catColor[n.cat] ?: C.Yellow)
-                        T(fmt.format(Date(n.at)), size = 12.sp, color = C.Dim, weight = FontWeight.Medium)
+                        Note(fmt.format(Date(n.at)))
                     }
                     T(n.text.ifEmpty { "(crash report)" }, size = 14.sp, weight = FontWeight.Medium, modifier = Modifier.padding(vertical = 4.dp))
                     T(
@@ -173,10 +173,10 @@ fun Guide(state: AppState) {
 fun SpeedCard(state: AppState) {
     var text by remember { mutableStateOf("") }
     LaunchedEffect(Unit) {
-        while (true) {
+        do {
             text = "Screen: ${state.uiPerf}\nSound engine: ${state.audio.loadText()}\nAudio buffer: ${state.audio.bufferFrames} frames at ${state.rate} Hz, dropouts ${state.audio.underruns}"
-            delay(1000)
-        }
+            if (!UiFlags.testing) delay(1000)
+        } while (!UiFlags.testing)
     }
     Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
         Column {

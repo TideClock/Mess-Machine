@@ -15,6 +15,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -29,16 +31,18 @@ fun SongScreen(state: AppState) {
     for (k in 0 until len) steps += if (P.song[k] >= 0) P.pats[P.song[k]].len else 16
     val secs = (steps * 60.0 / P.bpm / 4).toInt()
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 10.dp)) {
+        SlotBar(state)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 14.dp)) {
             Btn("Play the loop", { state.setSongMode(false) }, on = !P.songMode, onColor = C.Teal)
             Btn("Play the song", { state.setSongMode(true) }, on = P.songMode, onColor = C.Pink)
         }
-        T(
-            if (len == 0) "The song lane is empty. Pick a loop below and tap bars to paint it in."
+        Heading("Song", size = 18.sp)
+        Note(
+            if (len == 0) "Empty. Pick a loop below and tap bars to paint it in, or Rough it in."
             else "$len bars, about ${secs / 60}:${(secs % 60).toString().padStart(2, '0')} at ${P.bpm} BPM.",
-            size = 13.sp, color = C.Yellow, modifier = Modifier.padding(bottom = 10.dp),
+            color = C.Yellow, modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
         )
-        T("Paint with", size = 12.sp, color = C.Dim)
+        T("PAINT WITH", size = 12.sp, color = C.Dim, spacing = .1.em)
         Row(Modifier.horizontalScroll(rememberScrollState()).padding(top = 6.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for (i in 0 until Project.NSLOTS) {
                 Btn(
@@ -61,24 +65,25 @@ fun SongScreen(state: AppState) {
                             Modifier
                                 .weight(1f)
                                 .aspectRatio(1f)
-                                .sticker(bg, radius = 8.dp, shadow = 2.dp, border = if (i == playBar) 3.dp else 2.dp, borderColor = if (i == playBar) C.Cream else C.Black)
+                                .sticker(bg, shadow = if (i == playBar) 4.dp else 0.dp, border = if (i == playBar) 3.dp else 2.dp, borderColor = if (i == playBar) C.Cream else if (v >= 0) C.Black else C.Empty)
+                                .testTag("bar-$i")
                                 .clickable { state.paintSong(i) },
                             contentAlignment = Alignment.Center,
                         ) {
-                            T(if (v >= 0) Project.LETTERS[v].toString() else "${i + 1}", size = if (v >= 0) 16.sp else 10.sp,
-                                color = if (v >= 0) C.Ink else C.Dim, weight = FontWeight.Black)
+                            if (v >= 0) T(Project.LETTERS[v].toString(), size = 16.sp, color = C.Ink, weight = FontWeight.Black)
+                            else Note("${i + 1}", color = C.Empty, size = 10.sp)
                         }
                     }
                 }
             }
         }
         Row(Modifier.padding(top = 14.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Btn("Chain my loops", { state.songFromLoops() }, small = true, color = C.Teal)
+            Btn("Rough it in", { state.songFromLoops() }, small = true, color = C.Teal, tag = "rough")
             Btn("Clear the song", { state.clearSong() }, small = true, enabled = len > 0)
         }
         T(
             "Each square is one loop's worth. Tap a square to paint the loop you picked; tap it again to make it a rest. " +
-                "Chain my loops lays every loop that has something in it end to end. The ☰ menu bounces the song to a WAV.",
+                "Rough it in lays every loop that has something in it down twice, in order. The ☰ menu bounces the song to a WAV.",
             size = 12.sp, color = C.Dim, weight = FontWeight.Medium, modifier = Modifier.padding(top = 12.dp),
         )
     }

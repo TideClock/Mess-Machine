@@ -14,6 +14,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -38,7 +41,7 @@ fun RollScreen(state: AppState) {
     val loaded = (0 until Project.NPADS).filter { P.kit[it].isNotEmpty() }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {
         SlotBar(state)
-        Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 10.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Select(
                 if (k.isEmpty()) "Pick a pad" else "Pad ${P.sel + 1} · ${state.lib.titleOf(k)}",
                 loaded.map { it to "Pad ${it + 1} · ${state.lib.titleOf(P.kit[it])}" },
@@ -46,20 +49,28 @@ fun RollScreen(state: AppState) {
                 color = C.Teal,
             )
             Select(Theory.NN[P.root], Theory.NN.mapIndexed { i, n -> i to n }, { state.setRoot(it) })
+            Btn("✂", { state.overlay = com.tideclock.messmachine.Overlay.Doctor(k) }, small = true, enabled = k.isNotEmpty())
+            Select(Theory.NN[P.root], Theory.NN.mapIndexed { i, n -> i to n }, { state.setRoot(it) })
             Select(P.scale, Theory.SCALES.keys.map { it to it }, { state.setScale(it) })
         }
-        Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 10.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Select(chordName(state.chordMode), chordOptions(P.scale, P.root), { state.pickChordMode(it) })
             Btn(if (P.fold) "Unfold" else "Fold to scale", { state.edit { fold = !fold } }, on = P.fold, small = true)
-            for (l in listOf(1, 2, 4, 8)) Btn(if (l == 1) "1 step" else "$l", { state.noteLen = l }, on = state.noteLen == l, onColor = C.Teal, small = true)
+            Btn("Clear notes", { state.clearNotes() }, small = true, enabled = k.isNotEmpty() && pat.notes(k).isNotEmpty(), tag = "roll-clear")
+        }
+        Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 12.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            T("NOTE", size = 12.sp, color = C.Dim, spacing = .1.em)
+            for ((l, name) in listOf(1 to "1 step", 2 to "2 steps", 4 to "1 beat", 8 to "Half a bar", 16 to "Whole bar")) {
+                Btn(name, { state.noteLen = l }, on = state.noteLen == l, onColor = C.Teal, small = true)
+            }
         }
         if (k.isEmpty()) {
-            T("Pick a pad with a sound on it. Its own pitch sits on C4, the bright row.", color = C.Dim, weight = FontWeight.Medium)
+            Note("Pick a pad with a sound on it. Its own pitch sits on C4, the bright row.", color = C.Yellow)
         } else {
             Roll(state)
-            T(
+            Note(
                 "Tap a square to drop a note, tap it again to pull it. With chords on, one tap drops the whole chord. Tap a note name to hear it.",
-                size = 12.sp, color = C.Dim, weight = FontWeight.Medium, modifier = Modifier.padding(top = 10.dp),
+                modifier = Modifier.padding(top = 10.dp),
             )
         }
     }
@@ -80,6 +91,7 @@ fun Roll(state: AppState) {
         Modifier
             .fillMaxWidth()
             .height(rowH * rows.size)
+            .testTag("roll")
             .pointerInput(rows, off, k, P.cur) {
                 detectTapGestures { o ->
                     val kw = keyW.toPx()
@@ -101,10 +113,9 @@ fun Roll(state: AppState) {
             val ins = Theory.inScale(p, P.scale, P.root)
             val black = Theory.pcOf(p) in intArrayOf(1, 3, 6, 8, 10)
             val bg = when {
-                p == 0 -> lerp(C.Card2, C.Yellow, .25f)
+                p == 0 -> lerp(C.Ink, C.Yellow, .22f)
                 !ins -> C.Paper
-                black -> C.Card
-                else -> C.Card2
+                else -> lerp(C.Ink, pcColor(p - P.root), if (black) .07f else .13f)
             }
             drawRect(bg, topLeft = Offset(kw, y), size = Size(size.width - kw, rh))
             drawRect(if (black) C.Ink else lerp(C.Cream, pcColor(p - P.root), .25f), topLeft = Offset(0f, y), size = Size(kw - 2, rh - 1))
@@ -120,7 +131,8 @@ fun Roll(state: AppState) {
         }
         val playStep = if (state.playing && state.heardPat == P.cur) state.heardStep else -1
         if (playStep in off until off + 16) {
-            drawRect(C.Yellow.copy(alpha = .22f), topLeft = Offset(kw + (playStep - off) * cw, 0f), size = Size(cw, size.height))
+            drawRect(C.Pink.copy(alpha = .22f), topLeft = Offset(kw + (playStep - off) * cw, 0f), size = Size(cw, size.height))
+            drawRect(C.Yellow, topLeft = Offset(kw + (playStep - off) * cw, 0f), size = Size(3f, size.height))
         }
         for ((s, p, l) in notes) {
             val r = rows.indexOf(p)
@@ -132,7 +144,7 @@ fun Roll(state: AppState) {
             val tl = Offset(kw + a * cw + 2, r * rh + 3)
             val sz = Size((z - a) * cw - 4, rh - 6)
             drawRoundRect(c, topLeft = tl, size = sz, cornerRadius = CornerRadius(8f))
-            drawRoundRect(C.Black, topLeft = tl, size = sz, cornerRadius = CornerRadius(8f), style = Stroke(width = 3f))
+            drawRoundRect(C.Cream, topLeft = tl, size = sz, cornerRadius = CornerRadius(8f), style = Stroke(width = 3f))
         }
     }
 }

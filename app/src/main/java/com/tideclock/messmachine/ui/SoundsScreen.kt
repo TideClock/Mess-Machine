@@ -1,8 +1,13 @@
 package com.tideclock.messmachine.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,14 +15,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -28,21 +31,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
-import android.Manifest
-import android.content.pm.PackageManager
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.tideclock.messmachine.AppState
 import com.tideclock.messmachine.R
 import com.tideclock.messmachine.engine.Library
+import com.tideclock.messmachine.engine.Project
 
 fun jarArt(cab: String): Int = when (cab) {
     "thumps" -> R.drawable.jar_thumps
@@ -56,13 +58,11 @@ fun jarArt(cab: String): Int = when (cab) {
     else -> R.drawable.jar_heap
 }
 
-private var lastCab = "thumps"
-
 /** The jars. pickFor = a pad number when choosing a sound for that pad, null when just browsing. */
 @Composable
 fun SoundsScreen(state: AppState, pickFor: Int?) {
     val P = state.project
-    var cab by remember { mutableStateOf(lastCab) }
+    val cab = state.soundsCab
     var q by remember { mutableStateOf("") }
     val target = pickFor ?: P.sel
     @Suppress("UNUSED_VARIABLE") val bv = state.bench.items.size
@@ -71,71 +71,54 @@ fun SoundsScreen(state: AppState, pickFor: Int?) {
     val micPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         if (ok) state.toggleMic() else state.say("The mic needs permission. You can allow it in the phone's settings for Mess Machine.")
     }
-    val list: List<Library.Sound> = if (q.isBlank() && cab == "fav") state.lib.sounds.filter { it.key in state.favs }
-    else if (q.isBlank()) state.lib.inCab(cab)
-    else state.lib.sounds.filter { it.title.contains(q.trim(), ignoreCase = true) || it.group.contains(q.trim(), ignoreCase = true) }
+    val list: List<Library.Sound> = when {
+        q.isNotBlank() -> state.lib.sounds.filter { it.title.contains(q.trim(), ignoreCase = true) || it.group.contains(q.trim(), ignoreCase = true) }
+        cab == "fav" -> state.lib.sounds.filter { it.key in state.favs }
+        else -> state.lib.inCab(cab)
+    }
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Column(
-                Modifier
-                    .width(86.dp)
-                    .sticker(if (cab == "fav" && q.isBlank()) C.Yellow else C.Card, radius = 12.dp, shadow = if (cab == "fav") 1.dp else 3.dp)
-                    .clickable { cab = "fav"; lastCab = "fav"; q = "" }
-                    .padding(6.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Box(Modifier.height(64.dp), contentAlignment = Alignment.Center) { T("★", size = 40.sp, color = if (cab == "fav") C.Ink else C.Yellow) }
-                T("Starred · ${state.favs.size}", size = 10.sp, color = if (cab == "fav") C.Ink else C.Cream, lines = 2)
-            }
+        Row(Modifier.horizontalScroll(rememberScrollState()).padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            JarTab("fav", "Starred · ${state.favs.size}", C.Yellow, cab == "fav" && q.isBlank(), null) { state.soundsCab = "fav"; q = "" }
             for (c in state.lib.cabs) {
-                val on = c.id == cab && q.isBlank()
-                Column(
-                    Modifier
-                        .width(86.dp)
-                        .sticker(if (on) Color(c.color) else C.Card, radius = 12.dp, shadow = if (on) 1.dp else 3.dp)
-                        .clickable { cab = c.id; lastCab = c.id; q = "" }
-                        .padding(6.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Image(painterResource(jarArt(c.id)), contentDescription = null, modifier = Modifier.height(64.dp), contentScale = ContentScale.Fit)
-                    T(c.name, size = 10.sp, color = if (on) ink(Color(c.color)) else C.Cream, lines = 2)
-                }
+                JarTab(c.id, c.name, Color(c.color), c.id == cab && q.isBlank(), jarArt(c.id)) { state.soundsCab = c.id; q = "" }
             }
         }
         OutlinedTextField(
             value = q, onValueChange = { q = it }, singleLine = true,
-            placeholder = { T("Search every jar", color = C.Dim, weight = FontWeight.Medium) },
+            placeholder = { Note("Search every jar") },
             textStyle = TextStyle(color = C.Cream, fontFamily = Archivo, fontSize = 15.sp),
-            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = C.Pink, unfocusedBorderColor = C.Card2, cursorColor = C.Pink),
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+            shape = RectangleShape,
+            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = C.Pink, unfocusedBorderColor = C.Cream, cursorColor = C.Pink),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).testTag("search"),
         )
         if (cab == "mine" && q.isBlank()) {
-            Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Btn("Import sounds", { importer.launch(arrayOf("audio/*")) }, small = true, color = C.Teal)
-                Btn(if (state.micOn) "■ Stop recording" else "● Record from mic", {
+            Row(Modifier.padding(start = 12.dp, end = 12.dp, top = 12.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Btn("Import sounds", { importer.launch(arrayOf("audio/*")) }, small = true, color = C.Teal, tag = "import")
+                Btn(if (state.micOn) "■ Stop recording" else "● Sample the mic", {
                     if (state.micOn) state.toggleMic()
                     else if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) state.toggleMic()
                     else micPerm.launch(Manifest.permission.RECORD_AUDIO)
-                }, small = true, on = state.micOn, onColor = C.Riot)
-                Btn("Resample loop ${com.tideclock.messmachine.engine.Project.LETTERS[state.project.cur]}", { state.resampleLoop() }, small = true)
+                }, small = true, on = state.micOn, onColor = C.Riot, tag = "mic")
+                Btn("Resample loop ${Project.LETTERS[P.cur]}", { state.resampleLoop() }, small = true, enabled = P.pat().used())
             }
-            T("WAV, MP3, M4A, OGG or FLAC, up to a minute each. Mic takes stop at 30 seconds. Your sounds stay on this phone.", size = 11.sp, color = C.Dim, weight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 14.dp))
+            Note("WAV, MP3, M4A, OGG or FLAC, up to a minute each. Mic takes stop at 30 seconds. Your sounds stay on this phone.", modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
         }
-        T(
-            "Tap a sound to hear it. The button puts it on pad ${target + 1}.",
-            size = 12.sp, color = C.Dim, weight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+        Note("Tap a sound to hear it. The button puts it on pad ${target + 1}. ☆ stars it.", modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp))
+        if (list.isEmpty()) Note(
+            when { q.isNotBlank() -> "Nothing in the jars matches that."; cab == "fav" -> "No stars yet. Tap ☆ on any sound."; cab == "mine" -> "Nothing here yet. Import a sound, sample the mic or resample a loop."; else -> "Empty jar." },
+            color = C.Yellow, modifier = Modifier.padding(horizontal = 14.dp),
         )
-        LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
+        LazyColumn(Modifier.weight(1f).fillMaxWidth().testTag("sound-list")) {
             var lastGroup = ""
             val rows = ArrayList<Pair<String?, Library.Sound>>()
             for (s in list) {
-                val g = if (q.isBlank()) s.group else state.lib.cab(s.cab).name
+                val g = if (q.isBlank() && cab != "fav") s.group else state.lib.cab(s.cab).name
                 rows.add((if (g != lastGroup && g.isNotEmpty()) g else null) to s)
                 lastGroup = g
             }
             items(rows, key = { it.second.key }) { (head, s) ->
                 Column(Modifier.padding(horizontal = 12.dp)) {
-                    if (head != null) T(head + (if (s.album.isNotEmpty() && q.isBlank()) " · ${s.album}" else ""), size = 13.sp, color = C.Yellow, modifier = Modifier.padding(top = 10.dp, bottom = 6.dp))
+                    if (head != null) T(head.uppercase() + (if (s.album.isNotEmpty() && q.isBlank()) " · ${s.album}" else ""), size = 12.sp, color = C.Yellow, spacing = .1.em, modifier = Modifier.padding(top = 14.dp, bottom = 4.dp))
                     SoundRow(state, s, target, pickFor != null)
                 }
             }
@@ -144,33 +127,52 @@ fun SoundsScreen(state: AppState, pickFor: Int?) {
 }
 
 @Composable
+private fun JarTab(id: String, name: String, col: Color, on: Boolean, art: Int?, onClick: () -> Unit) {
+    Column(
+        Modifier
+            .width(92.dp)
+            .padding(end = 4.dp, bottom = 4.dp)
+            .sticker(if (on) col else C.Ink, shadow = if (on) 2.dp else 4.dp)
+            .clickable { onClick() }
+            .testTag("jar-$id")
+            .padding(6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        if (art != null) Image(painterResource(art), contentDescription = null, modifier = Modifier.height(64.dp), contentScale = ContentScale.Fit)
+        else Box(Modifier.height(64.dp), contentAlignment = Alignment.Center) { T("★", size = 40.sp, color = if (on) C.Ink else C.Yellow) }
+        T(name.uppercase(), size = 10.sp, color = if (on) ink(col) else C.Cream, lines = 2, spacing = .04.em)
+    }
+}
+
+@Composable
 fun SoundRow(state: AppState, s: Library.Sound, target: Int, picking: Boolean) {
     val P = state.project
     val onPad = P.padOf(s.key)
-    val col = Color(state.lib.cab(s.cab).color)
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(bottom = 8.dp)
-            .sticker(C.Card, radius = 12.dp, shadow = 2.dp)
-            .clickable { state.preview(s.key) }
-            .padding(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(Modifier.size(width = 8.dp, height = 34.dp).background(col, RoundedCornerShape(4.dp)))
-        Column(Modifier.weight(1f).padding(start = 10.dp)) {
-            T(s.title, size = 15.sp, lines = 1)
-            if (onPad >= 0) T("on pad ${onPad + 1}", size = 11.sp, color = C.Teal, weight = FontWeight.Medium)
+    val col = padColor(Color(state.lib.cab(s.cab).color))
+    Column {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clickable { state.preview(s.key) }
+                .padding(vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(Modifier.size(width = 10.dp, height = 34.dp).background(col))
+            Column(Modifier.weight(1f).padding(start = 10.dp)) {
+                T(s.title, size = 15.sp, lines = 1)
+                if (onPad >= 0) Note("on pad ${onPad + 1}", color = C.Teal)
+            }
+            T(if (s.key in state.favs) "★" else "☆", size = 22.sp, color = C.Yellow, modifier = Modifier.clickable { state.toggleFav(s.key) }.padding(horizontal = 8.dp))
+            if (s.cab == "mine") {
+                var sure by remember { mutableStateOf(false) }
+                Btn(if (sure) "Sure?" else "Toss", { if (sure) state.removeFromBench(s.key) else { sure = true } }, small = true, color = if (sure) C.Riot else C.Ink, modifier = Modifier.padding(end = 8.dp))
+            }
+            if (onPad == target) Note("here", color = C.Yellow)
+            else Btn("Pad ${target + 1}", {
+                state.putOnPad(target, s.key)
+                if (picking) state.overlay = null
+            }, small = true, color = C.Pink, tag = "put-${s.key}")
         }
-        T(if (s.key in state.favs) "★" else "☆", size = 22.sp, color = C.Yellow, modifier = Modifier.clickable { state.toggleFav(s.key) }.padding(horizontal = 8.dp))
-        if (s.cab == "mine") {
-            var sure by remember { mutableStateOf(false) }
-            Btn(if (sure) "Sure?" else "Toss", { if (sure) state.removeFromBench(s.key) else { sure = true } }, small = true, color = if (sure) C.Riot else C.Card2, modifier = Modifier.padding(end = 6.dp))
-        }
-        if (onPad == target) T("here", size = 12.sp, color = C.Dim)
-        else Btn("Pad ${target + 1}", {
-            state.putOnPad(target, s.key)
-            if (picking) state.overlay = null
-        }, small = true, color = C.Pink)
+        Dashed()
     }
 }

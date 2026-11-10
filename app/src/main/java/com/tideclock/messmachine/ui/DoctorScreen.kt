@@ -135,7 +135,7 @@ fun DoctorScreen(state: AppState, key: String) {
             drawLine(C.Yellow, Offset(xs, 0f), Offset(xs, size.height), strokeWidth = 6f)
             drawLine(C.Pink, Offset(xe, 0f), Offset(xe, size.height), strokeWidth = 6f)
         }
-        T("Drag the yellow line to trim the front, the pink one to trim the back.", size = 12.sp, color = C.Dim, weight = FontWeight.Medium, modifier = Modifier.padding(top = 6.dp, bottom = 8.dp))
+        Note("Drag the yellow line to trim the front, the pink one to trim the back.", modifier = Modifier.padding(top = 6.dp, bottom = 8.dp))
         Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Btn("Zoom to trim", {
                 val pad = (e.en - e.st) * .08
@@ -162,7 +162,7 @@ fun DoctorScreen(state: AppState, key: String) {
         SliderRow("Tone", e.tone.toFloat(), -1f..1f, { if (abs(it) < .02f) "open" else if (it < 0) "darker ${(-it * 100).roundToInt()}" else "thinner ${(it * 100).roundToInt()}" }, { v -> upd(false) { tone = v.toDouble() } }, { upd(true) {} }, accent = C.Teal)
         SliderRow("Attack", e.att.toFloat(), 0f..1f, { "${(it * 1000).roundToInt()} ms" }, { v -> upd(false) { att = v.toDouble() } }, { upd(true) {} }, accent = C.Yellow)
         SliderRow("Release", e.rel.toFloat(), 0f..1.5f, { "${(it * 1000).roundToInt()} ms" }, { v -> upd(false) { rel = v.toDouble() } }, { upd(true) {} }, accent = C.Yellow)
-        T("Choke group: sounds in the same group cut each other off, like an open and closed hat.", size = 12.sp, color = C.Dim, weight = FontWeight.Medium, modifier = Modifier.padding(top = 4.dp, bottom = 6.dp))
+        Note("Choke group: sounds in the same group cut each other off, like an open and closed hat.", modifier = Modifier.padding(top = 4.dp, bottom = 6.dp))
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             for (g in 0..6) Btn(if (g == 0) "Off" else "$g", { upd(true) { choke = g } }, on = e.choke == g, small = true)
         }
@@ -186,7 +186,7 @@ fun DoctorScreen(state: AppState, key: String) {
                 for (n in listOf(2, 4, 8, 16)) Btn("$n slices", { chopN = n; cuts = equalCuts(n) }, on = chopN == n, small = true)
             }
             "auto" -> SliderRow("Sensitivity", sens, 0f..1f, { "${(it * 100).roundToInt()}" }, { sens = it }, { refreshCuts() }, accent = C.Teal)
-            "tap" -> T("Tap the waveform to add a cut; tap a cut to take it away. Zoom in for fine work.", size = 12.sp, color = C.Dim, weight = FontWeight.Medium, modifier = Modifier.padding(top = 8.dp))
+            "tap" -> Note("Tap the waveform to add a cut; tap a cut to take it away. Zoom in for fine work.", modifier = Modifier.padding(top = 8.dp))
             else -> Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Btn("Play", { cuts = emptyList(); looping = false; state.engine.stopPreviews(); state.preview(key); lazyT0 = System.nanoTime() }, small = true, color = C.Teal)
                 Btn("Chop here", {

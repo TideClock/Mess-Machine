@@ -56,6 +56,16 @@ android {
         // the sounds are already as small as they get; storing them raw lets the app read them faster
         noCompress += listOf("wav")
     }
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+            all {
+                it.maxHeapSize = "3g"
+                it.systemProperty("robolectric.graphicsMode", "NATIVE")
+                it.testLogging { events("passed", "failed", "skipped"); showStandardStreams = true; exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL }
+            }
+        }
+    }
     lint {
         checkReleaseBuilds = false
         abortOnError = false
@@ -72,4 +82,12 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.activity:activity-compose:1.9.2")
     implementation("androidx.core:core-ktx:1.13.1")
+
+    // the big test: every screen run on the JVM with real drawing, plus screenshots
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.13")
+    testImplementation("androidx.test:core-ktx:1.6.1")
+    testImplementation(platform("androidx.compose:compose-bom:2024.09.00"))
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

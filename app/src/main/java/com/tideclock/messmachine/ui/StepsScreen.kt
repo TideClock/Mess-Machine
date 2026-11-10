@@ -2,6 +2,8 @@ package com.tideclock.messmachine.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.em
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.geometry.CornerRadius
@@ -37,39 +39,42 @@ import com.tideclock.messmachine.AppState
 import com.tideclock.messmachine.Overlay
 import com.tideclock.messmachine.engine.Project
 
-/** Loop slots A to H, length, copy, clear. Shared by Steps and Roll. */
+/** Loop slots A to H, length, copy, clear, bottle. Shared by Steps, Roll and Song. */
 @Composable
 fun SlotBar(state: AppState) {
     val P = state.project
-    Column(Modifier.padding(bottom = 10.dp)) {
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+    Column(Modifier.padding(bottom = 12.dp)) {
+        Row(Modifier.horizontalScroll(rememberScrollState()).padding(end = 4.dp, bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            T("LOOPS", size = 12.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(end = 4.dp))
             for (i in 0 until Project.NSLOTS) {
                 val used = P.pats[i].used()
                 val playingHere = state.playing && state.heardPat == i
+                val on = i == P.cur
                 Box(
                     Modifier
-                        .size(40.dp)
-                        .sticker(
-                            if (i == P.cur) C.Letters[i] else if (used) C.Card2 else C.Card, radius = 10.dp,
-                            shadow = if (i == P.cur) 1.dp else 3.dp, border = if (playingHere) 3.dp else 2.dp, borderColor = if (playingHere) C.Yellow else C.Black,
-                        )
-                        .clickable { state.selectSlot(i) },
+                        .size(38.dp)
+                        .sticker(if (on) C.Yellow else C.Ink, shadow = if (on) 1.dp else 3.dp, border = if (playingHere) 4.dp else 2.5.dp, borderColor = if (playingHere) C.Pink else C.Cream)
+                        .clickable { state.selectSlot(i) }
+                        .testTag("slot-$i"),
                     contentAlignment = Alignment.Center,
                 ) {
-                    T(Project.LETTERS[i].toString(), size = 16.sp, weight = FontWeight.Black, color = if (i == P.cur) C.Ink else if (used) C.Cream else C.Dim)
+                    T(Project.LETTERS[i].toString(), size = 15.sp, weight = FontWeight.Black, color = if (on) C.Ink else if (used) C.Cream else C.Empty)
+                    if (used && !on) Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 3.dp).size(5.dp).background(C.Letters[i]))
                 }
             }
         }
-        Row(Modifier.padding(top = 8.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Btn(if (P.pat().len == 32) "2 bars" else "1 bar", { state.toggleLen() }, small = true)
+        Note("Editing loop ${Project.LETTERS[P.cur]}" + if (P.pat().len == 32) ", two bars" else "", modifier = Modifier.padding(top = 8.dp))
+        Row(Modifier.padding(top = 8.dp, end = 4.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Btn(if (P.pat().len == 32) "2 bars" else "1 bar", { state.toggleLen() }, small = true, tag = "looplen")
             if (P.pat().len == 32) {
                 Btn("1-16", { state.page = 0 }, on = state.page == 0, small = true)
-                Btn("17-32", { state.page = 1 }, on = state.page == 1, small = true)
+                Btn("17-32", { state.page = 1 }, on = state.page == 1, small = true, tag = "page2")
             }
             Select("Copy to", (0 until Project.NSLOTS).filter { it != P.cur }.map { it to "Loop ${Project.LETTERS[it]}" }, { state.copySlotTo(it) })
             Btn("Clear loop", { state.clearSlot() }, small = true, enabled = P.pat().used())
-            Btn("Resample to a pad", { state.resampleLoop() }, small = true, enabled = P.pat().used())
+            Btn("Bottle it", { state.bottleIt() }, small = true, color = C.Pink, enabled = P.pat().used() || P.songLen() > 0, tag = "bottle")
         }
+        Dashed(Modifier.padding(top = 12.dp))
     }
 }
 
@@ -80,39 +85,39 @@ fun StepsScreen(state: AppState) {
     val off = (if (pat.len == 32) state.page else 0) * 16
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {
         SlotBar(state)
-        Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 12.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             for (b in 0 until 4) {
                 val n = (0 until Project.BANK).count { P.kit[b * Project.BANK + it].isNotEmpty() }
                 Btn("Bank ${b + 1} · $n", { state.bank = b }, on = state.bank == b, small = true)
             }
-            Btn("Hear on tap", { state.switchPlayOnTap(!state.playOnTap) }, on = state.playOnTap, onColor = C.Teal, small = true)
-            Btn("Random drums", { state.randomDrums() }, small = true)
+        }
+        Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 12.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Btn("Click to hear: " + if (state.playOnTap) "on" else "off", { state.switchPlayOnTap(!state.playOnTap) }, on = state.playOnTap, small = true)
+            Btn("Random drums", { state.randomDrums() }, small = true, tag = "random")
+            Btn("Resample to a pad", { state.resampleLoop() }, small = true, enabled = pat.used())
         }
         val rows = (0 until Project.BANK).map { state.bank * Project.BANK + it }.filter { P.kit[it].isNotEmpty() }
-        if (rows.isEmpty()) {
-            T("Bank ${state.bank + 1} is empty. Put sounds on its pads from the Pads or Sounds tab.", color = C.Dim, weight = FontWeight.Medium)
-        }
+        if (rows.isEmpty()) Note("Bank ${state.bank + 1} is empty. Put sounds on its pads from the Pads or Sounds tab.", color = C.Yellow)
         for (i in rows) {
             val k = P.kit[i]
-            val col = Color(state.lib.colorOf(k))
+            val col = padColor(Color(state.lib.colorOf(k)))
             val audible = P.audible(k)
-            Card(Modifier.fillMaxWidth().padding(bottom = 10.dp).alpha(if (audible) 1f else .55f), color = if (i == P.sel) C.Card2 else C.Card) {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Row(Modifier.weight(1f).clickable { state.selectPad(i, true) }, verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.size(14.dp).background(col, CircleShape).border(2.dp, C.Black, CircleShape))
-                            T("${i + 1}", size = 12.sp, color = C.Dim, modifier = Modifier.padding(start = 6.dp, end = 6.dp))
-                            T(state.lib.titleOf(k), size = 14.sp, lines = 1)
-                        }
-                        Btn("M", { state.toggleMute(k) }, on = P.mutes.contains(k), onColor = C.Riot, small = true)
-                        Btn("S", { state.toggleSolo(k) }, on = P.solos.contains(k), onColor = C.Yellow, small = true)
-                        Btn("✂", { state.overlay = Overlay.Doctor(k) }, small = true)
+            Column(Modifier.fillMaxWidth().padding(bottom = 6.dp).alpha(if (audible) 1f else .45f)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(Modifier.weight(1f).clickable { state.selectPad(i, true) }, verticalAlignment = Alignment.CenterVertically) {
+                        Swatch(col)
+                        T("${i + 1}", size = 11.sp, color = C.Dim, family = Mono, weight = FontWeight.Bold, modifier = Modifier.padding(start = 6.dp, end = 6.dp))
+                        T(state.lib.titleOf(k).uppercase(), size = 13.sp, lines = 1, spacing = .04.em, color = if (i == P.sel) C.Yellow else C.Cream)
                     }
-                    StepRow(state, k, col, off, state.version)
+                    Btn("M", { state.toggleMute(k) }, on = P.mutes.contains(k), onColor = C.Riot, small = true, tag = "mute-$i")
+                    Btn("S", { state.toggleSolo(k) }, on = P.solos.contains(k), onColor = C.Yellow, small = true)
+                    Btn("✂", { state.overlay = Overlay.Doctor(k) }, small = true)
                 }
+                Box(Modifier.testTag("steps-$i")) { StepRow(state, k, col, off, state.version) }
+                Dashed(Modifier.padding(top = 10.dp))
             }
         }
-        T("M mutes, S solos, ✂ opens the doctor. A dot means the pad has piano roll notes on that step.", size = 12.sp, color = C.Dim, weight = FontWeight.Medium)
+        Note("M mutes, S solos, ✂ opens the doctor. A dot means the pad has piano roll notes on that step.", modifier = Modifier.padding(top = 4.dp))
     }
 }
 
@@ -137,14 +142,15 @@ fun StepRow(state: AppState, k: String, col: Color, off: Int, ver: Int) {
     ) {
         val cw = size.width / 16f
         val gap = 3.dp.toPx()
-        val r = CornerRadius(5.dp.toPx())
+        val r = CornerRadius(2.dp.toPx())
         val now = if (state.playing && state.heardPat == P.cur) state.heardStep - off else -1
         for (c in 0 until 16) {
             val tl = Offset(c * cw + gap / 2, 0f)
             val sz = Size(cw - gap, size.height)
-            drawRoundRect(if (on[c]) col else if ((off + c) % 4 == 0) C.Card2 else C.Paper, tl, sz, r)
             val hot = c == now
-            drawRoundRect(if (hot) C.Yellow else C.Black, tl, sz, r, style = Stroke(width = if (hot) 3.dp.toPx() else 1.5.dp.toPx()))
+            if (hot) drawRoundRect(C.Pink.copy(alpha = .55f), Offset(tl.x - 3, tl.y - 3), Size(sz.width + 6, sz.height + 6), r)
+            drawRoundRect(if (on[c]) (if (hot) lerp(col, C.Cream, .5f) else col) else if ((off + c) % 4 == 0) C.Card2 else C.Ink, tl, sz, r)
+            drawRoundRect(if (hot) C.Yellow else if (on[c]) C.Cream else C.Empty, tl, sz, r, style = Stroke(width = if (hot) 3.dp.toPx() else 1.5.dp.toPx()))
             if (dot[c]) drawCircle(if (on[c]) C.Ink else C.Cream, radius = 3.dp.toPx(), center = Offset(tl.x + sz.width / 2, sz.height / 2))
         }
     }
