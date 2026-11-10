@@ -570,10 +570,12 @@ class BigTest {
         assertTrue(state.xyOf(7).four)
         shot("37-xy-editor")
         // the try-out pad: right bends the pitch up, and letting go springs it back
-        at("xy-try").performTouchInput { down(Offset(width * .98f, height / 2f)) }
+        val tryPad = rule.onNodeWithTag("xy-try", useUnmergedTree = true)
+        tryPad.performScrollTo(); rule.mainClock.advanceTimeBy(600); settle()
+        tryPad.performTouchInput { down(Offset(width * .98f, height / 2f)) }
         settle(); loudest(1024)
         assertTrue("right on Bend raises pad 8's pitch (${state.engine.padRate(7)})", state.engine.padRate(7) > 1.3)
-        rule.onNodeWithTag("xy-try").performTouchInput { up() }
+        tryPad.performTouchInput { up() }
         settle(); loudest(1024)
         assertEquals(1.0, state.engine.padRate(7), 1e-6)
         state.overlay = null
