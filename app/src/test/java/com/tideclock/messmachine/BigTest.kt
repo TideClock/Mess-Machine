@@ -348,7 +348,7 @@ class BigTest {
     @Test fun hushStopsEverything() {
         state.togglePlay()
         loudest(4800)
-        rule.onNodeWithTag("hush").performScrollTo().performClick()
+        rule.onNodeWithTag("hush").performClick()
         settle()
         loudest(512)
         assertFalse(state.playing)
@@ -365,7 +365,7 @@ class BigTest {
         tab("Pads")
         tapPad(12)
         assertEquals("tapping an empty pad opens the jars for it", Overlay.Picker(12), state.overlay)
-        rule.onNodeWithTag("sheet").assertExists()
+        rule.onNodeWithTag("sheet", useUnmergedTree = true).assertExists()
         shot("19-picker")
         rule.onNodeWithText("DONE").performClick()
         settle()

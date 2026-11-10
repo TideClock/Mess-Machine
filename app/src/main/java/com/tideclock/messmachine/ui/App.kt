@@ -115,8 +115,10 @@ fun Transport(state: AppState) {
     }.padding(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
             GlitchTitle("Mess Machine", size = 20.sp, modifier = Modifier.weight(1f))
-            Btn("🐞", { state.overlay = Overlay.Notes }, small = true, color = if (state.crash != null) C.Riot else C.Ink, tag = "notes")
-            Btn("☰ Messes", { state.refreshFiles(); state.overlay = Overlay.Files }, small = true, modifier = Modifier.padding(start = 8.dp), tag = "messes")
+            Btn("↶", { state.undo() }, enabled = state.canUndo, small = true, tag = "undo")
+            Btn("↷", { state.redo() }, enabled = state.canRedo, small = true, tag = "redo", modifier = Modifier.padding(start = 6.dp))
+            Btn("🐞", { state.overlay = Overlay.Notes }, small = true, color = if (state.crash != null) C.Riot else C.Ink, tag = "notes", modifier = Modifier.padding(start = 6.dp))
+            Btn("☰", { state.refreshFiles(); state.overlay = Overlay.Files }, small = true, modifier = Modifier.padding(start = 6.dp), tag = "messes")
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(end = 4.dp)) {
             Btn(if (state.playing) "❚❚ Pause" else "▶ Play", { state.togglePlay() }, color = C.Teal, on = state.playing, onColor = C.Yellow, tag = "play", modifier = Modifier.weight(1.35f))
@@ -125,27 +127,24 @@ fun Transport(state: AppState) {
             Btn("${P.bpm} BPM", { state.overlay = Overlay.Tempo }, tag = "bpm", modifier = Modifier.weight(1.15f))
         }
         Spacer(Modifier.height(10.dp))
-        Wrap(Modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(end = 4.dp)) {
             PositionText(state)
-            Btn("Loop", { state.setSongMode(false) }, on = !P.songMode, small = true)
-            Btn("Song", { state.setSongMode(true) }, on = P.songMode, small = true, onColor = C.Pink)
-            Btn("Click", { state.setLive { click = !click } }, on = state.live.click, small = true)
             Btn("Repeat", { state.setLive { nr = !nr } }, on = state.live.nr, onColor = C.Pink, small = true, tag = "repeat")
             Select(
-                when (state.live.nrRate) { 2.0 -> "1/8"; 0.5 -> "1/32"; else -> "1/16" },
-                listOf(2.0 to "1/8", 1.0 to "1/16", 0.5 to "1/32"), { r -> state.setLive { nrRate = r } },
+                (when (state.live.nrRate) { 2.0 -> "1/8"; 0.5 -> "1/32"; else -> "1/16" }) + if (state.live.arp != "rep") " " + arpShort(state.live.arp) else "",
+                listOf("r2" to "Every 1/8", "r1" to "Every 1/16", "r.5" to "Every 1/32") + listOf("rep", "up", "down", "updown", "rand").map { "a$it" to arpName(it) },
+                { v ->
+                    if (v.startsWith("r")) state.setLive { nrRate = v.substring(1).toDouble() }
+                    else { val a = v.substring(1); state.setLive { arp = a; if (a != "rep") nr = true } }
+                },
             )
-            Select(
-                arpName(state.live.arp),
-                listOf("rep", "up", "down", "updown", "rand").map { it to arpName(it) },
-                { a -> state.setLive { arp = a; if (a != "rep") nr = true } },
-            )
+            Spacer(Modifier.weight(1f))
             Btn("Hush", { state.hush() }, small = true, color = C.Riot, tag = "hush")
-            Btn("↶", { state.undo() }, enabled = state.canUndo, small = true, tag = "undo")
-            Btn("↷", { state.redo() }, enabled = state.canRedo, small = true, tag = "redo")
         }
     }
 }
+
+fun arpShort(a: String) = when (a) { "up" -> "UP"; "down" -> "DN"; "updown" -> "UD"; "rand" -> "RND"; else -> "" }
 
 /** Rec blinks on the beat while it is armed and the loop plays. */
 @Composable
@@ -157,12 +156,12 @@ fun RecBtn(state: AppState, modifier: Modifier = Modifier) {
 
 @Composable
 fun PositionText(state: AppState) {
-    Box(Modifier.width(96.dp).height(34.dp).background(C.Black).border(2.dp, C.Cream), contentAlignment = Alignment.Center) {
+    Box(Modifier.width(86.dp).height(34.dp).background(C.Black).border(2.dp, C.Cream), contentAlignment = Alignment.Center) {
         T(position(state), size = 13.sp, color = C.Yellow, lines = 1, family = Mono, weight = FontWeight.Bold)
     }
 }
 
-fun arpName(a: String) = when (a) { "up" -> "Arp up"; "down" -> "Arp down"; "updown" -> "Arp up-down"; "rand" -> "Arp random"; else -> "Repeat" }
+fun arpName(a: String) = when (a) { "up" -> "Arp up"; "down" -> "Arp down"; "updown" -> "Arp up-down"; "rand" -> "Arp random"; else -> "Plain repeat" }
 
 fun position(state: AppState): String {
     val s = state.heardStep

@@ -50,10 +50,10 @@ import com.tideclock.messmachine.engine.Theory
 fun PadsScreen(state: AppState) {
     val P = state.project
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {
-        Wrap(Modifier.padding(bottom = 12.dp)) {
+        Row(Modifier.fillMaxWidth().padding(bottom = 12.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for (b in 0 until 4) {
                 val n = (0 until Project.BANK).count { P.kit[b * Project.BANK + it].isNotEmpty() }
-                Btn("Bank ${b + 1} · $n", { state.bank = b }, on = state.bank == b && !state.keysMode, small = true, enabled = !state.keysMode, tag = "bank-$b")
+                Btn(if (n > 0) "Bank ${b + 1}" else "Bank ${b + 1} ·", modifier = Modifier.weight(1f), onClick = { state.bank = b }, on = state.bank == b && !state.keysMode, small = true, enabled = !state.keysMode, tag = "bank-$b")
             }
         }
         Wrap(Modifier.padding(bottom = 12.dp)) {
