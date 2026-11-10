@@ -95,7 +95,9 @@ class BigTest {
         rule.onNodeWithTag(tag).performScrollTo().performTouchInput { down(center) }
         rule.mainClock.advanceTimeBy(800)
         settle()
+        println("LONGPRESS $tag menu while held=${state.padMenu}")
         rule.onNodeWithTag(tag).performTouchInput { advanceEventTime(800); up() }
+        println("LONGPRESS $tag menu after lift=${state.padMenu}")
         settle()
     }
 
