@@ -40,6 +40,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -118,6 +119,9 @@ fun pcColor(pc: Int): Color {
         else -> lerp(C.Yellow, C.Riot, (k - 8) / 4f)
     }
 }
+
+/** True while Lock is on: no scrolling, menus or navigation. */
+val LocalLocked = compositionLocalOf { false }
 
 /** The site's sticker: square, a cream outline, a hard pink shadow. */
 fun Modifier.sticker(
@@ -227,7 +231,7 @@ fun <V> Select(
 ) {
     var open by remember { mutableStateOf(false) }
     Box(modifier) {
-        Btn("$label ▾", { open = true }, small = small, color = color)
+        Btn("$label ▾", { open = true }, small = small, color = color, enabled = !LocalLocked.current)
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.background(C.Ink).border(2.dp, C.Cream)) {
             for ((v, name) in options) {
                 DropdownMenuItem(
@@ -268,9 +272,10 @@ fun SliderRow(label: String, value: Float, range: ClosedFloatingPointRange<Float
 @Composable
 fun ScrollPane(modifier: Modifier = Modifier, hPad: Dp = 12.dp, vPad: Dp = 12.dp, tag: String = "scrollpane", content: @Composable ColumnScope.() -> Unit) {
     val ss = rememberScrollState()
+    val locked = LocalLocked.current
     Box(modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize().verticalScroll(ss).testTag(tag).padding(start = hPad, top = vPad, bottom = vPad + 24.dp, end = hPad + 14.dp), content = content)
-        ScrollBar(ss, Modifier.align(Alignment.CenterEnd))
+        Column(Modifier.fillMaxSize().verticalScroll(ss, enabled = !locked).testTag(tag).padding(start = hPad, top = vPad, bottom = vPad + 24.dp, end = hPad + 14.dp), content = content)
+        if (!locked) ScrollBar(ss, Modifier.align(Alignment.CenterEnd))
     }
 }
 

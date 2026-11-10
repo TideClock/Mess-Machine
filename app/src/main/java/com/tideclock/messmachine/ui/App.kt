@@ -16,6 +16,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -72,6 +76,16 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
             if (state.toast != null) { delay(3200); state.toast = null }
         }
         BackHandler(enabled = state.overlay != null) { state.overlay = null }
+        // Lock: back does nothing but remind you how to unlock; the screen is pinned if you chose that
+        BackHandler(enabled = state.locked) { state.say("Locked. Hold the lock on the dock for a second to unlock.") }
+        val act = androidx.compose.ui.platform.LocalContext.current as? android.app.Activity
+        var pinned by remember { mutableStateOf(false) }
+        LaunchedEffect(state.locked) {
+            try {
+                if (state.locked && state.lockPin && !pinned) { act?.startLockTask(); pinned = true }
+                else if (!state.locked && pinned) { act?.stopLockTask(); pinned = false }
+            } catch (_: Exception) { pinned = false }
+        }
         // a pad asked to record: ask for the mic, then record onto it
         val micPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
             val pad = state.askMicFor
@@ -81,13 +95,15 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
         LaunchedEffect(state.askMicFor) { if (state.askMicFor >= 0) micPerm.launch(android.Manifest.permission.RECORD_AUDIO) }
         @Suppress("UNUSED_VARIABLE") val v = state.version
         val dn = LocalDensity.current
-        CompositionLocalProvider(LocalDensity provides Density(dn.density * state.uiScale, dn.fontScale)) {
+        CompositionLocalProvider(LocalDensity provides Density(dn.density * state.uiScale, dn.fontScale), LocalLocked provides state.locked) {
         Box(Modifier.fillMaxSize().background(C.Paper).grit().statusBarsPadding().navigationBarsPadding()) {
             PulseBackdrop(state)
             Column(Modifier.fillMaxSize()) {
                 Transport(state)
                 if (state.micOn) RecordingBanner(state)
-                Box(Modifier.weight(1f).fillMaxWidth().testTag("screen-${state.tab.label}")) {
+                Row(Modifier.weight(1f).fillMaxWidth()) {
+                Dock(state)
+                Box(Modifier.weight(1f).fillMaxHeight().testTag("screen-${state.tab.label}")) {
                     // pages change with a short fade instead of a hard cut (note #5)
                     Crossfade(targetState = state.tab, animationSpec = tween(150), label = "tab") { t ->
                         when (t) {
@@ -99,6 +115,7 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
                             Tab.Sounds -> SoundsScreen(state, null)
                         }
                     }
+                }
                 }
                 Tabs(state)
             }
@@ -164,16 +181,17 @@ fun Transport(state: AppState) {
     }.padding(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
             GlitchTitle("Mess Machine", size = 20.sp, modifier = Modifier.weight(1f))
-            Btn("↶", { state.undo() }, enabled = state.canUndo, small = true, tag = "undo")
-            Btn("↷", { state.redo() }, enabled = state.canRedo, small = true, tag = "redo", modifier = Modifier.padding(start = 6.dp))
-            Btn("🐞", { state.overlay = Overlay.Notes }, small = true, color = if (state.crash != null) C.Riot else C.Ink, tag = "notes", modifier = Modifier.padding(start = 6.dp))
-            Btn("☰", { state.refreshFiles(); state.overlay = Overlay.Files }, small = true, modifier = Modifier.padding(start = 6.dp), tag = "messes")
+            val free = !state.locked
+            Btn("↶", { state.undo() }, enabled = state.canUndo && free, small = true, tag = "undo")
+            Btn("↷", { state.redo() }, enabled = state.canRedo && free, small = true, tag = "redo", modifier = Modifier.padding(start = 6.dp))
+            Btn("🐞", { state.overlay = Overlay.Notes }, small = true, enabled = free, color = if (state.crash != null) C.Riot else C.Ink, tag = "notes", modifier = Modifier.padding(start = 6.dp))
+            Btn("☰", { state.refreshFiles(); state.overlay = Overlay.Files }, small = true, enabled = free, modifier = Modifier.padding(start = 6.dp), tag = "messes")
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(end = 4.dp)) {
             Btn(if (state.playing) "❚❚ Pause" else "▶ Play", { state.togglePlay() }, color = C.Teal, on = state.playing, onColor = C.Yellow, tag = "play", modifier = Modifier.weight(1.35f))
             Btn("■", { state.stop() }, tag = "stop", modifier = Modifier.weight(.6f))
             RecBtn(state, Modifier.weight(1f))
-            Btn("${P.bpm} BPM", { state.overlay = Overlay.Tempo }, tag = "bpm", modifier = Modifier.weight(1.15f))
+            Btn("${P.bpm} BPM", { state.overlay = Overlay.Tempo }, enabled = !state.locked, tag = "bpm", modifier = Modifier.weight(1.15f))
         }
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(end = 4.dp)) {
@@ -299,11 +317,11 @@ fun Tabs(state: AppState) {
                     .height(40.dp)
                     .background(if (on) C.Yellow else C.Ink)
                     .border(if (on) 3.dp else 0.dp, C.Cream)
-                    .clickable { state.tab = t }
+                    .clickable(enabled = !state.locked) { state.tab = t }
                     .testTag("tab-${t.label}"),
                 contentAlignment = Alignment.Center,
             ) {
-                T(t.label.uppercase(), size = 11.sp, color = if (on) C.Ink else C.Dim, spacing = .02.em, lines = 1)
+                T(if (t == Tab.Console) "DESK" else t.label.uppercase(), size = 11.sp, color = if (on) C.Ink else if (state.locked) C.Empty else C.Dim, spacing = .02.em, lines = 1)
             }
         }
     }

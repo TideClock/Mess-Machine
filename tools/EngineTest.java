@@ -186,6 +186,27 @@ public class EngineTest {
       SoundEdit tail = new SoundEdit(); tail.held = "tail"; op.setEdit(op.kit[0], tail);
       check(SoundEdit.fromMap(tail.toMap()).held.equals("tail") && SoundEdit.fromMap(new SoundEdit().toMap()).held.equals("loop"), "When held saves with the mess");
     }
+    // ---- glide: a new note slides in from the pad's last note
+    {
+      Project gp = Project.starter();
+      PadOpts go = new PadOpts(); go.glide = true; go.glideT = .3; gp.setOpt(7, go);
+      check(Project.fromJson(gp.toJson(), null).project.opt(7).glide, "glide saves with the mess");
+      Engine ge = new Engine(rate); ge.setSnapshot(Engine.Snapshot.build(gp, lib, new Engine.Live()));
+      float[] b = new float[256 * 2];
+      ge.down(1, 7, new int[]{0}, true); for (int i = 0; i < 4; i++) ge.render(b, 256);
+      double gBase = ge.lastInc();
+      ge.down(2, 7, new int[]{12}, true); ge.render(b, 256);
+      double mid = ge.lastInc();
+      for (int i = 0; i < (int) (.5 * rate / 256); i++) ge.render(b, 256);
+      double end = ge.lastInc();
+      check(mid < gBase * 1.25 && Math.abs(end / gBase - 2) < .01, String.format("glide slides up an octave over 0.3 s (%.2f, %.2f, %.2f)", gBase, mid, end));
+      PadOpts lo = go.copy(); lo.legato = true; gp.setOpt(7, lo);
+      Engine le2 = new Engine(rate); le2.setSnapshot(Engine.Snapshot.build(gp, lib, new Engine.Live()));
+      le2.down(1, 7, new int[]{0}, true); le2.up(1); for (int i = 0; i < 4; i++) le2.render(b, 256);
+      double b2 = le2.lastInc();
+      le2.down(2, 7, new int[]{12}, true); le2.render(b, 256);
+      check(Math.abs(le2.lastInc() / b2 - 2) < .01, "legato only: separate notes jump straight to pitch");
+    }
     // ---- workbench tools
     Sample hat = lib.get(p.kit[2]);
     SoundEdit tr = new SoundEdit(); tr.st = .1; tr.en = .6; tr.tune = 12;

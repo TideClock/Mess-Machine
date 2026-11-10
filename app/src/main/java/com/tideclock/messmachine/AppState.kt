@@ -42,6 +42,12 @@ data class Module(val type: String, val pad: Int = -1, val size: Int = 1, val ha
     }
 }
 
+/** What can sit on the side dock. */
+val DOCK_TYPES = listOf(
+    "lock" to "Lock", "hold" to "Hold", "filter" to "Filter + resonance", "repeat" to "Repeat", "hush" to "Hush",
+    "rec" to "Rec", "beat" to "Beat light", "stutter" to "Stutter", "echo" to "Echo throw",
+)
+
 /** Every module you can add, with its name. */
 val CONSOLE_TYPES = listOf(
     "transport" to "Transport", "pads" to "Pads (4 x 4)", "row" to "One row of pads", "piano" to "Padiano for a pad",
@@ -124,7 +130,7 @@ class AppState(private val app: Context) {
     private val overlayState = mutableStateOf<Overlay?>(null)
     var overlay: Overlay?
         get() = overlayState.value
-        set(v) { if (v != overlayState.value) notes.trail(if (v == null) "close panel" else "open ${overlayName(v)}"); overlayState.value = v }
+        set(v) { if (v != null && locked) return; if (v != overlayState.value) notes.trail(if (v == null) "close panel" else "open ${overlayName(v)}"); overlayState.value = v }
     /** A crash from last time, waiting to become a bug note. */
     var crash by mutableStateOf<String?>(null)
     var guide: Map<String, Any?> = emptyMap()
@@ -1060,6 +1066,65 @@ class AppState(private val app: Context) {
 
     /** Lock: the page stays put (no scrolling, tabs, menus, sheets); playing still works. */
     var locked by mutableStateOf(false)
+        private set
+    /** Lock also pins the screen through Android (it asks each time). */
+    var lockPin by mutableStateOf(prefs.getBoolean("lockPin", true))
+        private set
+
+    fun lock() {
+        overlay = null
+        padMenu = -1
+        consoleEdit = false
+        locked = true
+        notes.trail("lock")
+        say("Locked. Playing still works. Hold the lock for a second to unlock.")
+    }
+
+    fun unlock() { locked = false; notes.trail("unlock") }
+    fun switchLockPin(v: Boolean) { lockPin = v; prefs.edit().putBoolean("lockPin", v).apply() }
+
+    /* ---------------- the side dock ---------------- */
+
+    /** What sits on the dock, top to bottom. */
+    val dockItems = mutableStateListOf<String>().also { l ->
+        l.addAll((prefs.getString("dock", null) ?: "lock,hold,filter,repeat,hush").split(",").filter { x -> DOCK_TYPES.any { it.first == x } })
+    }
+    var dockOpen by mutableStateOf(prefs.getBoolean("dockOpen", true))
+        private set
+    /** The dock's filter acts on the whole mix (-1) or on one pad. */
+    var dockTarget by mutableIntStateOf(-1)
+    var dockStay by mutableStateOf(false)
+    var dockCut by mutableFloatStateOf(1f)
+    var dockRes by mutableFloatStateOf(0f)
+
+    fun switchDockOpen(v: Boolean) { dockOpen = v; prefs.edit().putBoolean("dockOpen", v).apply() }
+    fun toggleDockItem(t: String) {
+        if (!dockItems.remove(t)) dockItems.add(t)
+        prefs.edit().putString("dock", dockItems.joinToString(",")).apply()
+    }
+
+    /** The dock's filter sliders moved (on) or were let go (off: springs open unless Stay). */
+    fun dockFilter(on: Boolean) {
+        if (!on && !dockStay) { dockCut = 1f; dockRes = 0f }
+        val live = on || dockStay
+        if (dockTarget < 0) engine.xy(dockCut, 1f - dockRes, live && (dockCut < .995f || dockRes > .005f))
+        else if (live) padFilter(dockTarget, dockCut, dockRes, true) else openPadFilter(dockTarget)
+    }
+
+    fun cycleDockTarget() {
+        val t = dockTarget
+        if (t >= 0) { if (t !in padFiltStay) openPadFilter(t) } else engine.xy(1f, 1f, false)
+        dockTarget = if (t < 0 && project.kit[project.sel].isNotEmpty()) project.sel else -1
+        dockCut = 1f; dockRes = 0f
+    }
+
+    /* ---------------- per-pad settings: glide, routing, XY ---------------- */
+
+    fun setPadOpt(pad: Int, commit: Boolean = true, f: com.tideclock.messmachine.engine.PadOpts.() -> Unit) {
+        val o = project.opt(pad).copy()
+        o.f()
+        edit(commit) { setOpt(pad, o) }
+    }
 
     /** Settings for playing: empty pads record, hold-to-record, the beat glow, in key only. */
     var emptyRecord by mutableStateOf(prefs.getBoolean("emptyRec", false))

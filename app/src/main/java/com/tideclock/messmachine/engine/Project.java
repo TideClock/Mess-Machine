@@ -83,6 +83,11 @@ public final class Project {
 
     public String name = "";
     public final String[] kit = new String[NPADS];
+    /** Per-pad settings (glide, routing, XY); null = the defaults. */
+    public final PadOpts[] opts = new PadOpts[NPADS];
+
+    public PadOpts opt(int pad) { return pad >= 0 && pad < NPADS && opts[pad] != null ? opts[pad] : PadOpts.DEFAULT; }
+    public void setOpt(int pad, PadOpts o) { if (pad >= 0 && pad < NPADS) opts[pad] = o == null || o.isDefault() ? null : o.copy(); }
     public final Pattern[] pats = new Pattern[NSLOTS];
     public final int[] song = new int[MAXSONG];
     public int bpm = 112, swing = 0, sel = 7, root = 0, cur = 0;
@@ -202,6 +207,9 @@ public final class Project {
         Map<String, Object> em = new LinkedHashMap<>();
         for (String k : kit) if (!k.isEmpty() && edits.containsKey(k)) em.put(k, edits.get(k).toMap());
         o.put("edits", em);
+        Map<String, Object> po = new LinkedHashMap<>();
+        for (int k = 0; k < NPADS; k++) if (opts[k] != null && !opts[k].isDefault()) po.put(String.valueOf(k), opts[k].toMap());
+        if (!po.isEmpty()) o.put("padOpts", po);
         if (withTime) o.put("at", isoNow());
         o.put("app", "android");
         o.put("mode", songMode ? "song" : "loop");
@@ -237,6 +245,9 @@ public final class Project {
         Map<String, Object> q = Json.map(Json.parse(text));
         Project p = new Project();
         p.name = Json.str(q.get("name"), "");
+        for (Map.Entry<String, Object> e : Json.map(q.get("padOpts")).entrySet()) {
+            try { int k = Integer.parseInt(e.getKey()); if (k >= 0 && k < NPADS) p.opts[k] = PadOpts.fromMap(Json.map(e.getValue())); } catch (NumberFormatException ignored) {}
+        }
         List<Object> kl = Json.list(q.get("kit"));
         int missing = 0;
         for (int k = 0; k < kl.size() && k < NPADS; k++) {

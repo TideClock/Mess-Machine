@@ -211,6 +211,7 @@ fun PianoKeyboard(state: AppState, pad: Int, keysHeight: Dp = 132.dp, filter: Bo
             }
             PadianoExtras(state, pad)
         }
+        GlideRow(state, pad)
         if (showSet) PadianoSettings(state)
         if (squares) PadianoSquares(state, pad, col, base)
         else PadianoKeys(state, pad, col, if (keysHeight != 132.dp) keysHeight else listOf(96.dp, 132.dp, 176.dp)[state.padianoSize])
@@ -218,9 +219,25 @@ fun PianoKeyboard(state: AppState, pad: Int, keysHeight: Dp = 132.dp, filter: Bo
     }
 }
 
-/** Room for more controls on the Padiano header (Glide lands here). */
+/** Glide on the Padiano header: tap to switch it on; its time and Legato show underneath. */
 @Composable
-fun PadianoExtras(state: AppState, pad: Int) {}
+fun PadianoExtras(state: AppState, pad: Int) {
+    val o = state.project.opt(pad)
+    Btn(if (o.glide) "Glide ${(o.glideT * 1000).toInt()} ms" else "Glide", { state.setPadOpt(pad) { glide = !glide } }, on = o.glide, onColor = C.Teal, small = true, tag = "glide-$pad")
+}
+
+@Composable
+fun GlideRow(state: AppState, pad: Int) {
+    val o = state.project.opt(pad)
+    if (!o.glide) return
+    Column(Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
+        SliderRow("Glide time", o.glideT.toFloat(), 0f..1f, { "${(it * 1000).toInt()} ms" }, { v -> state.setPadOpt(pad, commit = false) { glideT = v.toDouble() } }, { state.setPadOpt(pad) {} }, accent = C.Teal)
+        Wrap(gap = 6.dp) {
+            Btn("Always", { state.setPadOpt(pad) { legato = false } }, on = !o.legato, onColor = C.Teal, small = true, tag = "glide-always-$pad")
+            Btn("Legato only", { state.setPadOpt(pad) { legato = true } }, on = o.legato, onColor = C.Teal, small = true, tag = "glide-legato-$pad")
+        }
+    }
+}
 
 @Composable
 fun PadianoSettings(state: AppState) {

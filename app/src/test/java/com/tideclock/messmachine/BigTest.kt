@@ -425,6 +425,88 @@ class BigTest {
         assertEquals("switched off, empty pads open the jars again", Overlay.Picker(12), state.overlay)
     }
 
+    /* ---------- build B: glide, the dock, Lock ---------- */
+
+    @Test fun glideOnThePadiano() {
+        state.toggleKeyboard(7)
+        settle()
+        rule.onNodeWithTag("glide-7").performScrollTo().performClick()
+        settle()
+        assertTrue(state.project.opt(7).glide)
+        rule.onNodeWithTag("glide-legato-7").performScrollTo().performClick()
+        settle()
+        assertTrue(state.project.opt(7).legato)
+        rule.onNodeWithTag("piano-7").performScrollTo()
+        shot("28-padiano-glide")
+        // it saves with the mess, and undo takes it back
+        state.undo(); settle()
+        assertFalse(state.project.opt(7).legato)
+    }
+
+    @Test fun dockLockAndFilter() {
+        rule.onNodeWithTag("dock").assertExists()
+        shot("29-dock")
+        // the dock's filter acts on the whole mix and springs back when let go
+        loudest(1024)
+        rule.onNodeWithTag("dock-cut").performTouchInput { down(Offset(width / 2f, height * .9f)) }
+        settle(); loudest(1024)
+        assertTrue("the dock filter closes the mix", state.engine.fxActive())
+        rule.onNodeWithTag("dock-cut").performTouchInput { up() }
+        settle(); loudest(1024)
+        assertFalse("and springs back open", state.engine.fxActive())
+        // pointed at one pad instead
+        rule.onNodeWithTag("dock-target").performClick()
+        settle()
+        val pad = state.dockTarget
+        assertEquals(state.project.sel, pad)
+        rule.onNodeWithTag("dock-res").performTouchInput { down(Offset(width / 2f, height * .2f)) }
+        settle()
+        assertTrue("the dock filter closes one pad", pad in state.padFilt)
+        rule.onNodeWithTag("dock-res").performTouchInput { up() }
+        settle()
+        assertFalse(pad in state.padFilt)
+        // add Rec to the dock
+        rule.onNodeWithTag("dock-edit").performClick()
+        settle()
+        rule.onNodeWithTag("dock-pick-rec").performClick()
+        settle()
+        assertTrue("rec" in state.dockItems)
+        state.toggleDockItem("rec")
+        rule.mainClock.advanceTimeBy(500); settle()
+        // Lock: tabs, sheets and menus stay shut, the pads still play
+        rule.onNodeWithTag("dock-lock").performClick()
+        settle()
+        assertTrue(state.locked)
+        rule.onNodeWithTag("tab-Steps").performClick()
+        settle()
+        assertEquals("tabs do nothing while locked", Tab.Pads, state.tab)
+        state.overlay = Overlay.Files
+        assertEquals("sheets stay shut while locked", null, state.overlay)
+        loudest()
+        rule.onNodeWithTag("pad-0").performTouchInput { down(center) }
+        settle()
+        val hit = loudest()
+        rule.onNodeWithTag("pad-0").performTouchInput { up() }
+        settle()
+        assertTrue("pads still play while locked (peak $hit)", hit > .02f)
+        shot("30b-locked")
+        // a tap does not unlock; holding for a second does
+        rule.onNodeWithTag("dock-lock").performClick()
+        settle()
+        assertTrue("a quick tap leaves it locked", state.locked)
+        rule.onNodeWithTag("dock-lock").performTouchInput { down(center) }
+        rule.mainClock.advanceTimeBy(1200); settle()
+        rule.onNodeWithTag("dock-lock").performTouchInput { up() }
+        settle()
+        assertFalse("holding the lock unlocks", state.locked)
+        // fold the dock away and back
+        rule.onNodeWithTag("dock-fold").performScrollTo().performClick()
+        settle()
+        rule.onNodeWithTag("dock-open").performClick()
+        settle()
+        assertTrue(state.dockOpen)
+    }
+
     /* ---------- your console ---------- */
 
     @Test fun consoleBuildsAndPlays() {

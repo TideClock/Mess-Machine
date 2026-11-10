@@ -39,7 +39,7 @@ fun ConsoleScreen(state: AppState) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 12.dp)) {
             Heading("Your console", size = 18.sp, modifier = Modifier.weight(1f))
             Btn(if (state.consoleEdit) "Done" else "Edit", { state.consoleEdit = !state.consoleEdit }, small = true,
-                on = state.consoleEdit, onColor = C.Pink, tag = "console-edit")
+                on = state.consoleEdit, onColor = C.Pink, enabled = !state.locked, tag = "console-edit")
         }
         if (state.consoleEdit) {
             Wrap(Modifier.padding(bottom = 12.dp)) {

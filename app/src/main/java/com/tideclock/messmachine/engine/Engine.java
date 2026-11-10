@@ -35,8 +35,10 @@ public final class Engine {
         public final Sample sample;
         public final SoundEdit edit;
         public final boolean audible;
-        public PadSlot(int index, String key, Sample sample, SoundEdit edit, boolean audible) {
-            this.index = index; this.key = key; this.sample = sample; this.edit = edit; this.audible = audible;
+        public final PadOpts opts;
+        public PadSlot(int index, String key, Sample sample, SoundEdit edit, boolean audible) { this(index, key, sample, edit, audible, PadOpts.DEFAULT); }
+        public PadSlot(int index, String key, Sample sample, SoundEdit edit, boolean audible, PadOpts opts) {
+            this.index = index; this.key = key; this.sample = sample; this.edit = edit; this.audible = audible; this.opts = opts;
         }
     }
 
@@ -74,7 +76,7 @@ public final class Engine {
                 if (k.isEmpty()) continue;
                 Sample s = src.get(k);
                 if (s == null) continue;
-                pads[i] = new PadSlot(i, k, s, p.edit(k).copy(), p.audible(k));
+                pads[i] = new PadSlot(i, k, s, p.edit(k).copy(), p.audible(k), p.opt(i).copy());
             }
             Pat[] pats = new Pat[Project.NSLOTS];
             for (int pi = 0; pi < Project.NSLOTS; pi++) {
@@ -130,7 +132,8 @@ public final class Engine {
         boolean active, preview, hold, releasing, choked, dry;
         float[] d;
         int a, zEnd, choke, pad;
-        double pos, len, inc, loopFrom;
+        double pos, len, inc, loopFrom, glideMul;
+        long glideLeft;
         boolean loop;
         long delay, t, playLen, attF, fadeF, startAbs, chokeAt;
         float lvl, gl, gr, relFrom, chokeG;
@@ -155,6 +158,8 @@ public final class Engine {
     private int step, songPos, arpI;
     private long fired, stopAfter = -1;
     private final Map<Integer, Held> held = new LinkedHashMap<>();
+    private final double[] lastP = new double[64];
+    private volatile Voice lastVoice;
     private final java.util.Random rnd = new java.util.Random();
 
     // perform FX state (audio thread)
@@ -232,6 +237,7 @@ public final class Engine {
         dlyL = new float[(int) (2.0 * rate)];
         dlyR = new float[(int) (2.0 * rate)];
         java.util.Arrays.fill(pfFreq, 20000); java.util.Arrays.fill(pfTarget, 20000);
+        java.util.Arrays.fill(lastP, Double.NaN);
         java.util.Arrays.fill(pfQ, .7); java.util.Arrays.fill(pfQT, .7);
         snap = Snapshot.build(new Project(), k -> null, null);
     }
@@ -431,6 +437,19 @@ public final class Engine {
         }
     }
 
+    /** Start a voice semis away from its pitch and slide it home over sec seconds. */
+    private void glide(Voice v, double semis, double sec) {
+        if (Math.abs(semis) < .01) return;
+        long n = Math.max(1, Math.round(sec * rate));
+        double target = v.inc;
+        v.inc = target * Math.pow(2, semis / 12.0);
+        v.glideMul = Math.pow(target / v.inc, 1.0 / n);
+        v.glideLeft = n;
+    }
+
+    /** The playback rate of the newest voice, for tests. */
+    public double lastInc() { Voice v = lastVoice; return v == null ? 0 : v.inc; }
+
     private void releaseAll(float sec) { for (Voice v : pool) if (v.active && !v.preview) startRelease(v, sec); }
 
     private void padDown(Snapshot S, int id, int pad, int[] pitches, boolean mel, long nanos, long renderNanos, boolean latch) {
@@ -443,6 +462,14 @@ public final class Engine {
         h.at = playing ? nowStep(S, nanos, renderNanos) : 0;
         Held old = held.remove(id);
         if (old != null) for (Voice v : old.voices) startRelease(v, .02f);
+        // glide: slide in from the pad's last note (legato: only while another note of this pad is down)
+        double from = Double.NaN;
+        if (mel && pad >= 0 && pad < lastP.length && ps.opts.glide && ps.opts.glideT > .001 && !Double.isNaN(lastP[pad])) {
+            boolean overlap = false;
+            for (Held o : held.values()) if (o.pad.index == pad) { overlap = true; break; }
+            if (!ps.opts.legato || overlap) from = lastP[pad];
+        }
+        if (mel && pad >= 0 && pad < lastP.length && pitches.length > 0) lastP[pad] = pitches[0];
         held.put(id, h);
         Live L = S.live;
         boolean arpLive = L.nr && !"rep".equals(L.arp);
@@ -452,6 +479,7 @@ public final class Engine {
                 Voice v = trigger(ps, oct() * Math.pow(2, p / 12.0), 0, false, g, 0, h.holdV);
                 if (v == null) continue;
                 // Hold keeps a one-shot going: loop its trim, or freeze its tail
+                if (!Double.isNaN(from)) glide(v, from + (p - pitches[0]) - p, ps.opts.glideT);
                 if (latch && !v.loop && !"once".equals(ps.edit.held)) {
                     v.loop = true;
                     if ("tail".equals(ps.edit.held)) v.loopFrom = Math.max(v.len * .7, v.len - .12 * ps.sample.rate);
@@ -620,7 +648,8 @@ public final class Engine {
         Voice v = freeVoice();
         v.active = true; v.preview = false; v.dry = false; v.hold = hold; v.releasing = false; v.choked = false;
         v.d = d; v.a = (int) Math.max(0, Math.floor(a)); v.len = len; v.zEnd = (int) Math.min(N, Math.ceil(a + len));
-        v.pos = 0; v.inc = r * s.rate / rate; v.loop = e.loop; v.loopFrom = 0;
+        v.pos = 0; v.inc = r * s.rate / rate; v.loop = e.loop; v.loopFrom = 0; v.glideLeft = 0; v.glideMul = 1;
+        lastVoice = v;
         v.delay = delay; v.t = 0;
         v.playLen = Math.max(1, Math.round(play * rate)); v.attF = Math.round(att * rate); v.fadeF = Math.max(1, Math.round(fade * rate));
         v.lvl = (float) lvl;
@@ -734,6 +763,7 @@ public final class Engine {
                 dst[o] += smp * v.gl;
                 dst[o + 1] += smp * v.gr;
                 v.pos += v.inc;
+                if (v.glideLeft > 0) { v.inc *= v.glideMul; v.glideLeft--; }
                 v.t++;
             }
         }
