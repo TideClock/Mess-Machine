@@ -43,7 +43,7 @@ fun AudioCheckScreen(state: AppState) {
     LaunchedEffect(Unit) {
         do {
             val a = state.audio
-            live = "Buffer: ${a.bufferFrames} frames, %.1f ms at ${state.rate} Hz\n".format(a.ms(a.bufferFrames)) +
+            live = "Buffer: ${a.bufferFrames} frames, %.1f ms at ${state.rate} Hz\n".format(a.ms(a.bufferFrames)) + // format-ok: numbers only
                 "Output (Android's clock): " + (if (a.outputMs >= 0) "%.0f ms".format(a.outputMs) else "measuring") + "\n" +
                 "Sound engine: ${a.loadText()}\n" +
                 "Dropouts: ${a.underruns}, buffer grown ${a.grown}, given back ${a.shrunk}\n" +

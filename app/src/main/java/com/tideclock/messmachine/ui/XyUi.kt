@@ -244,7 +244,7 @@ fun XyEditor(state: AppState, pad: Int) {
                     state.setXy(pad, x.copy(dirs = nd, name = "Custom"))
                 }, modifier = Modifier.testTag("xy-dir-$i"))
             }
-            if (d.target >= 0) SliderRow("At the edge", d.to, t.lo..t.hi, { v -> "%.2f ${t.unit}".format(v).trim() }, { v ->
+            if (d.target >= 0) SliderRow("At the edge", d.to, t.lo..t.hi, { v -> "%.2f ${t.unit}".format(v).trim() }, { v -> // format-ok: units are letters only (Xy.kt)
                 val nd = x.dirs.toMutableList(); nd[i] = d.copy(to = v)
                 state.setXy(pad, x.copy(dirs = nd, name = "Custom"))
             }, {}, accent = C.Teal)

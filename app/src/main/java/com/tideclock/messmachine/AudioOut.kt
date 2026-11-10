@@ -171,7 +171,8 @@ class AudioOut(private val engine: Engine, private val rate: Int, framesPerBurst
                     if (n % 1024 == 0) {
                         loadPeak = peak; peak = 0.0
                         // read by the phone test (tools/phone-test.sh) to report clicks, load and lag
-                        Log.i("MessAudio", "underruns=$u buffer=$size burst=$burst ${loadText()} out=%.1fms long=%d cpu=%s".format(outputMs, lbCount, cpuHint))
+                        // no format() over loadText(): its "%" signs would be read as format codes (build 58's phone test crash)
+                        Log.i("MessAudio", "underruns=$u buffer=$size burst=$burst ${loadText()} out=${"%.1f".format(outputMs)}ms long=$lbCount cpu=$cpuHint")
                     }
                 }
             }

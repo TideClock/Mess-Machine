@@ -47,6 +47,13 @@ for f in glob.glob('app/src/main/**/*.kt', recursive=True):
     for n, line in enumerate(open(f, encoding='utf-8'), 1):
         for lit in re.findall(r'"([^"\n]*)"', line):
             if '—' in lit: print(f"PRECHECK em dash in app text: {f}:{n}"); bad = 1
+# 5. format() over a string with ${...} in it: any "%" in the inserted text is read as a format code and throws
+#    (build 58: the audio thread crashed every 20 seconds on "0% average"). Format the number alone, or mark the line // format-ok
+for f in glob.glob('app/src/main/**/*.kt', recursive=True):
+    for n, line in enumerate(open(f, encoding='utf-8'), 1):
+        if 'format-ok' in line: continue
+        if re.search(r'"[^"\n]*\$\{[^"\n]*"\s*\)?\s*\.format\(', line):
+            print(f"PRECHECK format over inserted text (a % in it would crash): {f}:{n}"); bad = 1
 sys.exit(bad)
 EOF
 

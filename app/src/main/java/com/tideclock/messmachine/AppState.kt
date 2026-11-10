@@ -955,8 +955,8 @@ class AppState(private val app: Context) {
         val wait = if (engine.hits > 0) "%.1f ms".format(engine.lastHitWaitNanos / 1e6) else "no hits yet"
         val touch = touchMs().let { if (it >= 0) "$it ms (${minOf(touchN, 32)} taps)" else "no taps yet" }
         val spk = if (speakerMs >= 0) "%.0f ms".format(speakerMs) else "not run"
-        return "output $out by Android's clock, buffer %.1f ms, last hit waited $wait for a block, touch to app $touch, speaker test $spk, buffer grown ${audio.grown} and given back ${audio.shrunk}, steady CPU ${audio.cpuHint}"
-            .format(audio.ms(audio.bufferFrames))
+        val buf = "%.1f".format(audio.ms(audio.bufferFrames))
+        return "output $out by Android's clock, buffer $buf ms, last hit waited $wait for a block, touch to app $touch, speaker test $spk, buffer grown ${audio.grown} and given back ${audio.shrunk}, steady CPU ${audio.cpuHint}"
     }
 
     /** A short click for the tap pad and the speaker test: 3 ms of 2 kHz, loud enough for the mic. */
@@ -1732,7 +1732,7 @@ class AppState(private val app: Context) {
                 busy = null
                 if (pad >= 0) {
                     putOnPad(pad, key)
-                    say("Got it, %.1f seconds. It is on pad ${pad + 1} and in Your Workbench.".format(take.seconds()))
+                    say("Got it, %.1f seconds. It is on pad ${pad + 1} and in Your Workbench.".format(take.seconds())) // format-ok: only a pad number goes in
                 } else placeNew(key, "Got it, %.1f seconds.".format(take.seconds()))
             }
         }
