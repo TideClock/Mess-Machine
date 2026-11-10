@@ -444,60 +444,6 @@ class BigTest {
         assertTrue("plain hits stay", state.project.pat().used())
     }
 
-    @Test fun monkeyRunsEverywhere() {
-        // a long seeded run of random taps, holds, slides and circles on every page, with the loop
-        // starting and stopping, sheets opening and Lock going on and off; any crash fails the test
-        val rnd = java.util.Random(20261110)
-        val tabs = Tab.entries.map { it.label }
-        fun mainRoot(): androidx.compose.ui.test.SemanticsNodeInteraction {
-            val roots = rule.onAllNodes(androidx.compose.ui.test.isRoot()).fetchSemanticsNodes()
-            val big = roots.indices.maxByOrNull { roots[it].size.width * roots[it].size.height } ?: 0
-            return rule.onAllNodes(androidx.compose.ui.test.isRoot())[big]
-        }
-        var actions = 0
-        repeat(450) { n ->
-            if (n % 30 == 0) {
-                state.padMenu = -1; state.slotMenu = -1; state.barMenu = -1; state.fxEditing = null
-                if (state.locked) state.unlock()
-                state.overlay = null
-                state.sphere = null
-            }
-            when (rnd.nextInt(14)) {
-                0 -> tab(tabs[rnd.nextInt(tabs.size)])
-                1 -> state.togglePlay()
-                2 -> if (rnd.nextBoolean()) state.undo() else state.redo()
-                3 -> state.setLive { nr = rnd.nextBoolean(); rec = rnd.nextInt(4) == 0 }
-                4 -> if (rnd.nextInt(5) == 0) state.hush()
-                5 -> state.toggleKeyboard(rnd.nextInt(8))
-                else -> {
-                    val x = rnd.nextFloat(); val y = rnd.nextFloat(); val x2 = rnd.nextFloat(); val y2 = rnd.nextFloat()
-                    val kind = rnd.nextInt(5)
-                    mainRoot().performTouchInput {
-                        val a = Offset(x * width, y * height)
-                        when (kind) {
-                            0, 1 -> click(a)
-                            2 -> { down(a); advanceEventTime(700); up() }
-                            3 -> swipe(a, Offset(x2 * width, y2 * height), 300L)
-                            else -> {
-                                val r = 40f
-                                down(a + Offset(r, 0f))
-                                for (k in 1..22) { val t = k * (2 * Math.PI / 18); moveTo(a + Offset((r * kotlin.math.cos(t)).toFloat(), (r * kotlin.math.sin(t)).toFloat())) }
-                                up()
-                            }
-                        }
-                    }
-                }
-            }
-            settle()
-            val pk = loudest(512)
-            assertTrue("the sound stays sane after action $n (peak $pk)", !pk.isNaN() && pk < 8f)
-            state.tick(System.nanoTime())
-            actions++
-        }
-        println("MONKEY $actions actions, tab=${state.tab}, desk=${state.console.size} pieces, pads=${state.project.kit.count { it.isNotEmpty() }}")
-        shot("42-after-monkey")
-    }
-
     /* ---------- build A: fixes and safety ---------- */
 
     @Test fun padsRedrawAfterAChange() {

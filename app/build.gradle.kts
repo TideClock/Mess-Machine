@@ -61,6 +61,8 @@ android {
             isIncludeAndroidResources = true
             all {
                 it.maxHeapSize = "3g"
+                // each test class in its own JVM: a crash in one (the random run) cannot leave Compose broken for the other
+                it.forkEvery = 1
                 it.systemProperty("robolectric.graphicsMode", "NATIVE")
                 it.testLogging { events("passed", "failed", "skipped"); showStandardStreams = true; exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL }
             }
