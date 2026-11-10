@@ -64,7 +64,8 @@ fun PadsScreen(state: AppState) {
             Btn("FX", { state.showFx = !state.showFx }, on = state.showFx, onColor = C.Pink, small = true, tag = "fx-toggle")
         }
         if (state.keysMode || state.keyboards.isNotEmpty()) KeysBar(state)
-        Box(Modifier.fillMaxWidth().widthIn(max = 560.dp).align(Alignment.CenterHorizontally)) {
+        // zoomed out, the pad grid shrinks with everything else so more of the machine fits
+        Box(Modifier.fillMaxWidth(minOf(1f, state.uiScale)).widthIn(max = 560.dp).align(Alignment.CenterHorizontally)) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 for (r in 0 until 4) {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
