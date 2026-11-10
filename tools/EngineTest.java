@@ -10,6 +10,8 @@ public class EngineTest {
     String base = a[0];
     Library lib = new Library(p -> new FileInputStream(p), base);
     check(lib.sounds.size() == 433, "library has 433 sounds: " + lib.sounds.size());
+    check(lib.sounds.stream().allMatch(x -> !x.type.isEmpty()), "every sound has an instrument type");
+    check("kick".equals(lib.sound("samples/basement-kick.wav").type) && "bass".equals(lib.sound("qb:block-of-meat-bass").type), "named sounds sort by name: " + lib.sound("qb:block-of-meat-bass").type);
     Project p = Project.demo();
     for (String k : p.kit) if (!k.isEmpty()) check(lib.load(k) != null, "load " + k);
     Sample sl = lib.load("qb:stwretch-hit"); check(sl != null && Math.abs(sl.seconds() - .35) < .01, "qbldy slice length " + (sl == null ? -1 : sl.seconds()));

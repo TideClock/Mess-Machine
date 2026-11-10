@@ -12,6 +12,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.core.view.drawToBitmap
@@ -147,6 +148,22 @@ class BigTest {
         }
         settle()
 
+        // scale and chords on the piano: in-scale keys glow, others dim, the root has a dot,
+        // and Show chord lights the chord's other notes without playing them
+        state.setRoot(0); state.setScale("Major"); state.pickChordMode("triad"); state.switchChordPlay(false)
+        settle()
+        loudest(1024)
+        rule.onNodeWithTag("piano-keys-5").performScrollTo().performTouchInput { down(Offset(width * .35f, height * .85f)) }
+        settle()
+        loudest(1024)
+        assertEquals("show chord plays one note", 1, state.engine.activeVoices())
+        rule.onNodeWithTag("piano-5").performScrollTo()
+        shot("03d-piano-scale-and-shown-chord")
+        rule.onNodeWithTag("piano-keys-5").performTouchInput { up() }
+        settle()
+        state.switchChordPlay(true); state.pickChordMode("off")
+        rule.onNodeWithTag("beatlight").assertExists()
+
         rule.onNodeWithTag("pad-0").performScrollTo()
         shot("03-pianos-under-rows-top")
         rule.onNodeWithTag("piano-13").performScrollTo()
@@ -262,6 +279,24 @@ class BigTest {
         rule.onNodeWithTag("put-samples/goblin-burp.wav").performClick()
         settle()
         assertEquals("samples/goblin-burp.wav", state.project.kit[state.project.sel])
+        // by instrument type and feel
+        rule.onNodeWithTag("search").performTextClearance()
+        rule.onNodeWithTag("mode-type").performClick()
+        settle()
+        rule.onNodeWithTag("type-bass").performScrollTo().performClick()
+        settle()
+        rule.onNodeWithTag("put-qb:block-of-meat-bass").assertExists()
+        rule.onNodeWithTag("feel-dark").performScrollTo().performClick()
+        settle()
+        shot("10b-sounds-by-type-bass-dark")
+        // favorites
+        state.toggleFav("samples/sub-drop.wav")
+        rule.onNodeWithTag("mode-fav").performClick()
+        settle()
+        rule.onNodeWithTag("put-samples/sub-drop.wav").assertExists()
+        shot("10c-favorites")
+        rule.onNodeWithTag("mode-jar").performClick()
+        settle()
         rule.onNodeWithTag("jar-mine").performScrollTo().performClick()
         settle()
         shot("11-workbench")

@@ -72,17 +72,44 @@ fun SoundsScreen(state: AppState, pickFor: Int?) {
     val micPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         if (ok) state.toggleMic() else state.say("The mic needs permission. You can allow it in the phone's settings for Mess Machine.")
     }
+    val mode = state.soundsMode
     val list: List<Library.Sound> = when {
         q.isNotBlank() -> state.lib.sounds.filter { it.title.contains(q.trim(), ignoreCase = true) || it.group.contains(q.trim(), ignoreCase = true) }
-        cab == "fav" -> state.lib.sounds.filter { it.key in state.favs }
+        mode == "fav" -> state.lib.sounds.filter { it.key in state.favs }
+        mode == "type" -> state.lib.sounds.filter { s ->
+            (state.soundsType.isEmpty() || s.type == state.soundsType) && state.soundsTags.all { it in s.tags }
+        }.sortedBy { s -> Library.TYPES.indexOfFirst { it[0] == s.type }.let { if (it < 0) 99 else it } }
         else -> state.lib.inCab(cab)
     }
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.horizontalScroll(rememberScrollState()).padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            JarTab("fav", "Starred · ${state.favs.size}", C.Yellow, cab == "fav" && q.isBlank(), null) { state.soundsCab = "fav"; q = "" }
-            for (c in state.lib.cabs) {
-                JarTab(c.id, c.name, Color(c.color), c.id == cab && q.isBlank(), jarArt(c.id)) { state.soundsCab = c.id; q = "" }
+        Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 16.dp, top = 10.dp, bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Btn("By type", { state.soundsMode = "type"; q = "" }, on = mode == "type", small = true, modifier = Modifier.weight(1f), tag = "mode-type")
+            Btn("By jar", { state.soundsMode = "jar"; q = "" }, on = mode == "jar", small = true, modifier = Modifier.weight(1f), tag = "mode-jar")
+            Btn("★ Favorites", { state.soundsMode = "fav"; q = "" }, on = mode == "fav", small = true, onColor = C.Pink, modifier = Modifier.weight(1.2f), tag = "mode-fav")
+        }
+        when (mode) {
+            "type" -> {
+                Row(Modifier.horizontalScroll(rememberScrollState()).padding(start = 12.dp, end = 12.dp, bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Btn("All", { state.soundsType = "" }, on = state.soundsType.isEmpty(), small = true, tag = "type-all")
+                    for (t in Library.TYPES) {
+                        val n = state.lib.sounds.count { it.type == t[0] }
+                        Btn("${t[1]} $n", { state.soundsType = t[0] }, on = state.soundsType == t[0], small = true, onColor = C.Teal, tag = "type-${t[0]}")
+                    }
+                }
+                Row(Modifier.horizontalScroll(rememberScrollState()).padding(start = 12.dp, end = 12.dp, bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    T("FEEL", size = 11.sp, color = C.Dim, spacing = .1.em)
+                    for (qq in Library.QUALITIES) {
+                        val on = qq[0] in state.soundsTags
+                        Btn(qq[1], { state.soundsTags = if (on) state.soundsTags - qq[0] else state.soundsTags + qq[0] }, on = on, small = true, onColor = C.Pink, tag = "feel-${qq[0]}")
+                    }
+                }
             }
+            "jar" -> Row(Modifier.horizontalScroll(rememberScrollState()).padding(start = 12.dp, end = 12.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                for (c in state.lib.cabs) {
+                    JarTab(c.id, c.name, Color(c.color), c.id == cab && q.isBlank(), jarArt(c.id)) { state.soundsCab = c.id; q = "" }
+                }
+            }
+            else -> Note("Star a sound with ☆ in any list, or from a pad's hold menu.", color = C.Yellow, modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp))
         }
         OutlinedTextField(
             value = q, onValueChange = { q = it }, singleLine = true,
@@ -92,7 +119,7 @@ fun SoundsScreen(state: AppState, pickFor: Int?) {
             colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = C.Pink, unfocusedBorderColor = C.Cream, cursorColor = C.Pink),
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).testTag("search"),
         )
-        if (cab == "mine" && q.isBlank()) {
+        if (mode == "jar" && cab == "mine" && q.isBlank()) {
             Wrap(Modifier.padding(start = 12.dp, end = 12.dp, top = 12.dp)) {
                 Btn("Import sounds", { importer.launch(arrayOf("audio/*")) }, small = true, color = C.Teal, tag = "import")
                 Btn(if (state.micOn) "■ Stop recording" else "● Sample the mic", {
@@ -106,7 +133,7 @@ fun SoundsScreen(state: AppState, pickFor: Int?) {
         }
         Note("Tap a sound to hear it. The button puts it on pad ${target + 1}. ☆ stars it.", modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp))
         if (list.isEmpty()) Note(
-            when { q.isNotBlank() -> "Nothing in the jars matches that."; cab == "fav" -> "No stars yet. Tap ☆ on any sound."; cab == "mine" -> "Nothing here yet. Import a sound, sample the mic or resample a loop."; else -> "Empty jar." },
+            when { q.isNotBlank() -> "Nothing in the jars matches that."; mode == "fav" -> "No favorites yet. Tap ☆ on any sound."; mode == "type" -> "Nothing with that type and feel. Turn a feel off."; cab == "mine" -> "Nothing here yet. Import a sound, sample the mic or resample a loop."; else -> "Empty jar." },
             color = C.Yellow, modifier = Modifier.padding(horizontal = 14.dp),
         )
         val ls = rememberLazyListState()
@@ -115,13 +142,17 @@ fun SoundsScreen(state: AppState, pickFor: Int?) {
             var lastGroup = ""
             val rows = ArrayList<Pair<String?, Library.Sound>>()
             for (s in list) {
-                val g = if (q.isBlank() && cab != "fav") s.group else state.lib.cab(s.cab).name
+                val g = when {
+                    q.isNotBlank() || mode == "fav" -> state.lib.cab(s.cab).name
+                    mode == "type" -> Library.TYPES.firstOrNull { it[0] == s.type }?.get(1) ?: "Other"
+                    else -> s.group
+                }
                 rows.add((if (g != lastGroup && g.isNotEmpty()) g else null) to s)
                 lastGroup = g
             }
             items(rows, key = { it.second.key }) { (head, s) ->
                 Column(Modifier.padding(horizontal = 12.dp)) {
-                    if (head != null) T(head.uppercase() + (if (s.album.isNotEmpty() && q.isBlank()) " · ${s.album}" else ""), size = 12.sp, color = C.Yellow, spacing = .1.em, modifier = Modifier.padding(top = 14.dp, bottom = 4.dp))
+                    if (head != null) T(head.uppercase() + (if (s.album.isNotEmpty() && q.isBlank() && mode == "jar") " · ${s.album}" else ""), size = 12.sp, color = C.Yellow, spacing = .1.em, modifier = Modifier.padding(top = 14.dp, bottom = 4.dp))
                     SoundRow(state, s, target, pickFor != null)
                 }
             }
@@ -165,7 +196,12 @@ fun SoundRow(state: AppState, s: Library.Sound, target: Int, picking: Boolean) {
             Box(Modifier.size(width = 10.dp, height = 34.dp).background(col))
             Column(Modifier.weight(1f).padding(start = 10.dp)) {
                 T(s.title, size = 15.sp, lines = 1)
-                if (onPad >= 0) Note("on pad ${onPad + 1}", color = C.Teal)
+                val info = listOfNotNull(
+                    if (onPad >= 0) "on pad ${onPad + 1}" else null,
+                    state.lib.cab(s.cab).name.takeIf { it.isNotEmpty() },
+                    s.tags.joinToString(" ").takeIf { it.isNotEmpty() },
+                ).joinToString(" · ")
+                if (info.isNotEmpty()) Note(info, color = if (onPad >= 0) C.Teal else C.Dim, size = 11.sp)
             }
             T(if (s.key in state.favs) "★" else "☆", size = 22.sp, color = C.Yellow, modifier = Modifier.clickable { state.toggleFav(s.key) }.padding(horizontal = 8.dp))
             if (s.cab == "mine") {

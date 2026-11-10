@@ -72,8 +72,12 @@ class AppState(private val app: Context) {
     var showFx by mutableStateOf(false)
     /** Which jar the Sounds tab shows. */
     var soundsCab by mutableStateOf("thumps")
+    /** How the jars are browsed: by instrument type, by jar, or just favorites. */
+    var soundsMode by mutableStateOf("type")
+    var soundsType by mutableStateOf("")
+    var soundsTags by mutableStateOf(setOf<String>())
 
-    fun openWorkbench() { soundsCab = "mine"; tab = Tab.Sounds }
+    fun openWorkbench() { soundsMode = "jar"; soundsCab = "mine"; tab = Tab.Sounds }
     var xyHP by mutableStateOf(false)
         private set
     var micOn by mutableStateOf(false)
@@ -766,14 +770,27 @@ class AppState(private val app: Context) {
 
     private fun pianoId(pad: Int, p: Int) = 1000 + pad * 32 + (p + 12)
 
-    fun pianoDown(pad: Int, p: Int) {
-        if (project.kit[pad].isEmpty()) return
+    /** Chords can play, or just show their notes on the piano so you can play them yourself. */
+    var chordPlay by mutableStateOf(prefs.getBoolean("chordPlay", true))
+        private set
+
+    fun switchChordPlay(v: Boolean) { chordPlay = v; prefs.edit().putBoolean("chordPlay", v).apply() }
+
+    /** The notes the chord mode builds on a key, folded into the piano's two octaves. */
+    fun chordFor(p: Int): IntArray {
         val strip = Theory.stripNotes(project.scale, project.root)
         val idx = strip.indexOf(p)
-        val ps = if (chordMode.startsWith("set:") && idx < 0) intArrayOf(p) else Theory.chordOf(p, idx.coerceAtLeast(0), chordMode, project.scale, project.root)
-        lastChord = if (ps.size > 1) Theory.chordLabel(p, idx.coerceAtLeast(0), chordMode, project.scale, project.root) + " · " + Theory.chordNotes(ps) else Theory.noteName(p)
+        return if (chordMode.startsWith("set:") && idx < 0) intArrayOf(p) else Theory.chordOf(p, idx.coerceAtLeast(0), chordMode, project.scale, project.root)
+    }
+
+    fun pianoDown(pad: Int, p: Int) {
+        if (project.kit[pad].isEmpty()) return
+        val ps = chordFor(p)
+        val idx = Theory.stripNotes(project.scale, project.root).indexOf(p).coerceAtLeast(0)
+        lastChord = if (ps.size > 1) Theory.chordLabel(p, idx, chordMode, project.scale, project.root) + " · " + Theory.chordNotes(ps) +
+            (if (!chordPlay) " (showing)" else "") else Theory.noteName(p)
         notes.trail("piano ${pad + 1} ${Theory.noteName(p)}")
-        engine.down(pianoId(pad, p), pad, ps, true)
+        engine.down(pianoId(pad, p), pad, if (chordPlay) ps else intArrayOf(p), true)
     }
 
     fun pianoUp(pad: Int, p: Int) = engine.up(pianoId(pad, p))

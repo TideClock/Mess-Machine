@@ -24,9 +24,22 @@ public final class Library implements Engine.SampleSource {
         Cab(String id, String name, int color) { this.id = id; this.name = name; this.color = color; }
     }
 
+    /** Instrument types, in the order the picker shows them. */
+    public static final String[][] TYPES = {
+        {"kick", "Kicks"}, {"snare", "Snares + claps"}, {"hat", "Hats + cymbals"}, {"perc", "Percussion"},
+        {"bass", "Bass"}, {"keys", "Keys + stabs"}, {"lead", "Leads"}, {"pad", "Pads + drones"},
+        {"voice", "Voices + bodies"}, {"fx", "FX + noise"}, {"chop", "Chops + phrases"},
+    };
+    /** Qualities, worked out from the sound itself. */
+    public static final String[][] QUALITIES = {
+        {"punchy", "Punchy"}, {"long", "Long"}, {"dark", "Dark"}, {"bright", "Bright"}, {"tonal", "Tonal"}, {"gritty", "Gritty"}, {"busy", "Busy"},
+    };
+
     public static final class Sound {
         public final String key, title, cab, file, group, album;
         public final double a, d;
+        public String type = "";
+        public java.util.List<String> tags = new ArrayList<>();
         public Sound(String key, String title, String cab, String file, double a, double d, String group, String album) {
             this.key = key; this.title = title; this.cab = cab; this.file = file; this.a = a; this.d = d; this.group = group; this.album = album;
         }
@@ -63,6 +76,8 @@ public final class Library implements Engine.SampleSource {
             Map<String, Object> s = Json.map(o);
             Sound snd = new Sound(Json.str(s.get("k"), ""), Json.str(s.get("t"), ""), Json.str(s.get("c"), ""), Json.str(s.get("f"), ""),
                     Json.num(s.get("a"), 0), Json.num(s.get("d"), 0), Json.str(s.get("g"), ""), Json.str(s.get("al"), ""));
+            snd.type = Json.str(s.get("ty"), "");
+            for (Object q : Json.list(s.get("q"))) if (q instanceof String) snd.tags.add((String) q);
             sounds.add(snd);
             byKey.put(snd.key, snd);
         }

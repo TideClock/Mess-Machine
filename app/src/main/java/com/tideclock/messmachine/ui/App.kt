@@ -1,6 +1,16 @@
 package com.tideclock.messmachine.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.ui.draw.drawBehind
@@ -116,8 +126,13 @@ fun Sheet(state: AppState, title: String, content: @Composable () -> Unit) {
 fun Transport(state: AppState) {
     val P = state.project
     @Suppress("UNUSED_VARIABLE") val lv = state.liveV
+    val pulse = beatPulse(state)
     Column(Modifier.fillMaxWidth().background(C.Ink).drawBehind {
-        drawLine(C.Pink, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 3.dp.toPx())
+        // the line under the top bar flashes on every beat, brighter on the one
+        val v = pulse.value
+        val down = state.heardStep >= 0 && state.heardStep % 16 < 4
+        if (v > .01f) drawRect(Brush.verticalGradient(listOf(Color.Transparent, (if (down) C.Pink else C.Yellow).copy(alpha = .35f * v)), startY = size.height * .5f, endY = size.height), topLeft = Offset(0f, size.height * .5f))
+        drawLine(lerp(C.Pink, if (down) C.Cream else C.Yellow, v), Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = (3 + 4 * v).dp.toPx())
     }.padding(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
             GlitchTitle("Mess Machine", size = 20.sp, modifier = Modifier.weight(1f))
@@ -134,6 +149,7 @@ fun Transport(state: AppState) {
         }
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(end = 4.dp)) {
+            BeatLight(state, pulse)
             PositionText(state)
             Btn("Repeat", { state.setLive { nr = !nr } }, on = state.live.nr, onColor = C.Pink, small = true, tag = "repeat")
             Select(
@@ -152,6 +168,34 @@ fun Transport(state: AppState) {
 
 fun arpShort(a: String) = when (a) { "up" -> "UP"; "down" -> "DN"; "updown" -> "UD"; "rand" -> "RND"; else -> "" }
 
+/** 1 on each beat while playing, falling back to 0 before the next. */
+@Composable
+fun beatPulse(state: AppState): Animatable<Float, AnimationVector1D> {
+    val pulse = remember { Animatable(0f) }
+    val beat = if (state.playing && state.heardStep >= 0) state.heardStep / 4 else -1
+    LaunchedEffect(beat) {
+        if (beat >= 0) {
+            pulse.snapTo(1f)
+            pulse.animateTo(0f, tween((60000f / state.project.bpm * .8f).toInt(), easing = LinearOutSlowInEasing))
+        } else pulse.snapTo(0f)
+    }
+    return pulse
+}
+
+/** A round light that thumps with the beat: pink on the one, yellow on the others. */
+@Composable
+fun BeatLight(state: AppState, pulse: Animatable<Float, AnimationVector1D>) {
+    Canvas(Modifier.size(26.dp).testTag("beatlight")) {
+        val v = pulse.value
+        val down = state.heardStep >= 0 && state.heardStep % 16 < 4
+        val c = if (down) C.Pink else C.Yellow
+        val r = size.minDimension / 2
+        if (v > .01f) drawCircle(c.copy(alpha = .35f * v), radius = r)
+        drawCircle(lerp(C.Card2, c, v), radius = r * (.55f + .2f * v))
+        drawCircle(C.Cream, radius = r * (.55f + .2f * v), style = Stroke(2.dp.toPx()))
+    }
+}
+
 /** Rec blinks on the beat while it is armed and the loop plays. */
 @Composable
 fun RecBtn(state: AppState, modifier: Modifier = Modifier) {
@@ -162,7 +206,7 @@ fun RecBtn(state: AppState, modifier: Modifier = Modifier) {
 
 @Composable
 fun PositionText(state: AppState) {
-    Box(Modifier.width(86.dp).height(34.dp).background(C.Black).border(2.dp, C.Cream), contentAlignment = Alignment.Center) {
+    Box(Modifier.width(80.dp).height(34.dp).background(C.Black).border(2.dp, C.Cream), contentAlignment = Alignment.Center) {
         T(position(state), size = 13.sp, color = C.Yellow, lines = 1, family = Mono, weight = FontWeight.Bold)
     }
 }
