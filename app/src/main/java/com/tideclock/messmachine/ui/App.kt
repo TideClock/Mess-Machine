@@ -140,6 +140,7 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
                     Overlay.Settings -> Sheet(state, "Settings") { SettingsScreen(state) }
                     Overlay.Tempo -> Sheet(state, "Tempo + feel") { TempoScreen(state) }
                     Overlay.Notes -> Sheet(state, "Notes for Claude") { NotesScreen(state) }
+                    Overlay.AudioCheck -> Sheet(state, "Audio check") { AudioCheckScreen(state) }
                     null -> Box(Modifier) {}
                 }
             }

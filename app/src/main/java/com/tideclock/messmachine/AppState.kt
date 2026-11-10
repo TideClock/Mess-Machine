@@ -75,6 +75,7 @@ sealed class Overlay {
     data object Settings : Overlay()
     data object Tempo : Overlay()
     data object Notes : Overlay()
+    data object AudioCheck : Overlay()
     data class Xy(val pad: Int) : Overlay()
 }
 
@@ -94,7 +95,7 @@ class AppState(private val app: Context) {
     val rate: Int = am.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)?.toIntOrNull() ?: 48000
     private val burst: Int = am.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER)?.toIntOrNull() ?: 256
     val engine = Engine(rate)
-    val audio = AudioOut(engine, rate, burst)
+    val audio = AudioOut(engine, rate, burst, app)
     val live = Engine.Live()
     private val main = Handler(Looper.getMainLooper())
     private val worker = Executors.newSingleThreadExecutor()
@@ -353,6 +354,7 @@ class AppState(private val app: Context) {
             val dt = now - lastFrame
             frames++
             if (dt > 33_000_000L) slow++
+            if (dt > 50_000_000L) audio.lastSlowFrameNanos = System.nanoTime()
             if (dt > worst) worst = dt
         }
         lastFrame = now
@@ -885,7 +887,61 @@ class AppState(private val app: Context) {
         Overlay.Settings -> "settings"
         Overlay.Tempo -> "tempo"
         Overlay.Notes -> "notes"
+        Overlay.AudioCheck -> "audio check"
     }
+
+    // ---- Audio check (MM-1): where the time goes between a tap and the sound ----
+    private val touchLags = IntArray(32)
+    private var touchN = 0
+    /** Result of the speaker test in ms (median of the clicks heard), or -1. */
+    var speakerMs by mutableStateOf(-1.0)
+    var speakerNote by mutableStateOf("")
+
+    /** A pad or the check's tap pad was touched: how long the touch took to reach the app. */
+    fun noteTouch(eventUptimeMs: Long) {
+        val d = android.os.SystemClock.uptimeMillis() - eventUptimeMs
+        if (d in 0..1000) { touchLags[touchN and 31] = d.toInt(); touchN++ }
+    }
+
+    /** Middle of the last touches, in ms, or -1 before any. */
+    fun touchMs(): Int {
+        val n = minOf(touchN, 32)
+        if (n == 0) return -1
+        return touchLags.copyOf(n).sorted()[n / 2]
+    }
+
+    fun lagText(): String {
+        val out = if (audio.outputMs >= 0) "%.0f ms".format(audio.outputMs) else "not known yet"
+        val wait = if (engine.hits > 0) "%.1f ms".format(engine.lastHitWaitNanos / 1e6) else "no hits yet"
+        val touch = touchMs().let { if (it >= 0) "$it ms (${minOf(touchN, 32)} taps)" else "no taps yet" }
+        val spk = if (speakerMs >= 0) "%.0f ms".format(speakerMs) else "not run"
+        return "output $out by Android's clock, buffer %.1f ms, last hit waited $wait for a block, touch to app $touch, speaker test $spk, buffer grown ${audio.grown} and given back ${audio.shrunk}, steady CPU ${audio.cpuHint}"
+            .format(audio.ms(audio.bufferFrames))
+    }
+
+    /** A short click for the tap pad and the speaker test: 3 ms of 2 kHz, loud enough for the mic. */
+    val clickSample: com.tideclock.messmachine.engine.Sample by lazy {
+        val n = rate * 3 / 1000
+        val d = FloatArray(n) { k -> (Math.sin(2 * Math.PI * 2000.0 * k / rate) * .9 * (1 - k.toDouble() / n)).toFloat() }
+        com.tideclock.messmachine.engine.Sample("check-click", d, rate)
+    }
+
+    fun checkClick() { engine.preview(clickSample, null, 0, false) }
+
+    fun runSpeakerTest() {
+        if (speakerNote == "Listening...") return
+        speakerNote = "Listening..."
+        Thread({
+            val r = SpeakerTest.run(engine, rate, clickSample)
+            main.post {
+                speakerMs = r.first
+                speakerNote = r.second
+                notes.trail("speaker test ${r.second}")
+            }
+        }, "speaker-test").start()
+    }
+
+    fun audioCheckSummary(): String = "Audio check on build $buildName. ${lagText()}. Long blocks: ${audio.longBlocksText()}. Engine ${audio.loadText()}, ${audio.underruns} underruns."
 
     fun switchGuide(v: Boolean) { guideOn = v; prefs.edit().putBoolean("guideOn", v).apply() }
 
@@ -895,6 +951,8 @@ class AppState(private val app: Context) {
         val loops = (0 until Project.NSLOTS).count { p.pats[it].used() }
         return "**Device:** ${NotesBook.device()}\n" +
             "**Audio:** ${rate} Hz, buffer ${audio.bufferFrames} frames, burst ${burst}, underruns ${audio.underruns}, engine load ${audio.loadText()}\n" +
+            "**Lag:** ${lagText()}\n" +
+            "**Long audio blocks:** ${audio.longBlocksText()}\n" +
             "**Screen:** $uiPerf\n" +
             "**Mess:** \"${p.name.ifEmpty { "Untitled" }}\", ${p.bpm} BPM, swing ${p.swing}%, ${p.loadedCount()} pads, $loops loops, " +
             (if (p.songMode) "song mode (${p.songLen()} bars)" else "loop ${Project.LETTERS[p.cur]}") +

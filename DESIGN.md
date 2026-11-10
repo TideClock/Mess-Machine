@@ -4,17 +4,15 @@
 
 Rewritten at the end of every session and at each step of a long job (BT-2). Read this first.
 
-- **Live:** build 56 (2026-11-10): the overhaul plus the new design rules. Proposal docs: overhaul
-  https://claude.ai/artifact/2vcp2CcSo4nXTmVskaCpTS, bug testing skill next version
-  https://claude.ai/artifact/46YXJp4AuLNttREgpPhJ2W.
-- **In flight:** nothing. The design check (`designCheck` in BigTest) is strict and passing; `tools/precheck.sh`
-  runs first in CI and should be run before every push.
-- **Next:** Bad Mouse No Cheese under the same rules when Tyler says; watch the audio numbers in the phone test
-  (build 55 logged 1 underrun and a 103% peak on the emulator, build 56 see phone-screens).
-- **Promised to Tyler:** nothing open. The skill package went to him 2026-11-10 as bug-testing.skill to upload.
+- **Live:** build 56 (2026-11-10). Building next: build A of the review, the measuring kit (MM-1, 2, 3, 6, 13, 24).
+- **Plan:** the review doc https://claude.ai/artifact/QoAq7LzDGYD8XNyDDjPRHS, items MM-1 to MM-24. Order: build A (measure),
+  build B (MM-4, 7, 14, 17, 18), build C (MM-9, 10, 8, 12), build D (MM-16, 21), then MM-11 (Play Store) last.
+  MM-5 (Oboe) waits for real numbers from build A. MM-15 (Fold layouts) is skipped for now; MM-22 (creature cards)
+  is an outline only. MM-19 belongs to the site track.
+- **In flight:** build A.
+- **Promised to Tyler:** a list of issues in the review doc when the run is done.
 - **Not done, and why:** strong skipping stays off (every screen needs targeted state first, or pads stop
   redrawing, note #6); pads still play when held for their menu (they play on touch, which keeps them quick).
-- **Flagged for Tyler:** Resample in the Workbench (Sounds) repeats Steps' Resample to a pad. Keep or cut?
 - **Two tracks (2026-11-10):** this file and `app/`, `tools/`, `.github/` belong to the app conversation. The site
   and the web Mess Machine rebuild run in a second conversation that owns `site/` only (see site/DESIGN.md).
   Pushes touching only `site/` skip the app build, so the two never cancel each other's runs.
@@ -22,6 +20,11 @@ Rewritten at the end of every session and at each step of a long job (BT-2). Rea
 ## Decisions
 
 One line each, dated, with the reason and who decided (BT-2). Older decisions live in the plan sections below.
+
+- 2026-11-10 Review go-ahead (Tyler): build MM-1 to MM-14 and more; skip MM-5 (Oboe) until the Audio check shows
+  what the lag is; MM-11 (Play Store) after everything else; skip MM-15 (Fold layouts) with a big note; MM-22
+  (creature cards) as an outline only. Decisions 1 (cut the Workbench Resample) and 5 (notes privacy) unanswered,
+  taken as the recommended answer.
 
 - 2026-11-10 Overhaul built in full (Tyler): Play tab with Pads, Keys, My Desk; Hush gone; dock folded; C minor;
   pad card gone; Steps one row (unanswered, taken as yes); help behind ?; all utility ideas; pad buzz.
@@ -133,14 +136,8 @@ The picker sorts by instrument type (kicks, snares and claps, hats and cymbals, 
 
 ## Next
 
-1. **Perform FX bus** from the site: stutter, tape stop, filter XY pad, echo, crush, octave down.
-2. **Your own sounds:** import a WAV or MP3 from the phone, and record from the mic onto a pad.
-3. **Chop to pads:** slice one long sound across a bank, like the site's doctor.
-4. **Drag to lengthen** notes in the roll, and drag-paint across steps.
-5. **Oboe audio** (Google's low-latency audio library) if `AudioTrack` lags on Tyler's phone. The engine stays the same; only `AudioOut` changes.
-6. **Keep playing in the background** with a media notification (needs a foreground service).
-7. **"Send to phone" on the site:** a button that downloads the current mess as a file the app opens.
-8. **MIDI:** plug in a pad controller or keyboard over USB.
+The 2026-11-10 review replaced the old list (items 1 to 4 were built by build 7). Its items are MM-1 to MM-24 in
+https://claude.ai/artifact/QoAq7LzDGYD8XNyDDjPRHS; the order is in Now above.
 
 ## Notes for Claude (the bug button)
 
@@ -167,7 +164,7 @@ The site's source is kept in `site/` (build with `python3 build.py` next to the 
 
 Ideas Tyler tags "wishlist" go here, not into the build.
 
-- (Started) Mess Machine as a standalone Android app. This repo.
+- 2026-11-03 (site) Mess Machine as a standalone Android app: done, this repo (builds 1 to 56).
 
 ## Plan agreed 2026-11-09 (builds after 30)
 

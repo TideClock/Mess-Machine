@@ -191,6 +191,7 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
                     down.consume()
                     pressed = true
                     armed = false
+                    state.noteTouch(down.uptimeMillis)
                     state.padDown(d)
                     if (state.buzz && state.project.kit[state.bank * Project.BANK + d].isNotEmpty()) view.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
                     val slop = 10.dp.toPx()

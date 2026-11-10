@@ -882,7 +882,7 @@ class BigTest {
         at("mode-pads").performClick(); settle()
         for (t in listOf("Steps", "Roll", "Song", "Sounds")) { tab(t); page(t) }
         tab("Pads")
-        for ((n, o) in listOf("Messes" to Overlay.Files, "Settings" to Overlay.Settings, "Tempo" to Overlay.Tempo, "Notes for Claude" to Overlay.Notes)) {
+        for ((n, o) in listOf("Messes" to Overlay.Files, "Settings" to Overlay.Settings, "Tempo" to Overlay.Tempo, "Notes for Claude" to Overlay.Notes, "Audio check" to Overlay.AudioCheck)) {
             state.overlay = o; sheet(n); state.overlay = null; settle()
         }
         state.overlay = Overlay.Doctor(state.project.kit[0])
@@ -985,6 +985,25 @@ class BigTest {
         state.overlay = Overlay.Files
         settle()
         shot("49-messes-with-pictures")
+    }
+
+    @Test fun audioCheckTimesTapsAndSavesANote() {
+        // MM-1: the Audio check opens from the speed card in Notes, times a tap and saves its numbers as a note
+        state.overlay = Overlay.Notes
+        settle()
+        rule.onNodeWithTag("audio-check").performScrollTo().performClick()
+        settle()
+        assertEquals(Overlay.AudioCheck, state.overlay)
+        rule.onNodeWithTag("check-pad").performClick()
+        settle()
+        assertTrue("a tap was timed", state.touchMs() >= 0)
+        assertTrue("the notes carry the lag line", state.noteDetails().contains("**Lag:**"))
+        shot("50-audio-check")
+        val before = state.notes.notes.size
+        rule.onNodeWithTag("check-save").performScrollTo().performClick()
+        settle()
+        assertEquals(Overlay.Notes, state.overlay)
+        assertEquals(before + 1, state.notes.notes.size)
     }
 
     @Test fun helpShowsOnceThenBehindTheQuestionMark() {

@@ -1,41 +1,20 @@
 {
-  "title": "The overhaul, plus one home for each control",
+  "title": "Audio check: finding where the lag and clicks come from",
   "thisBuild": [
-    "One home per control: In key only now lives only in the Padiano's settings (gear on the Padiano), since it only changes the Padiano. Resample left the pad menu; it lives in Steps.",
-    "The loop tools (bars, Copy to, Clear loop, Bottle it) live only on Steps now. Roll and Song keep the loop letters A to H, so you can still pick a loop there.",
-    "The pad menu is in groups: Play, Sound, then Clear at the bottom.",
-    "Screen readers can now reach the buttons on every sheet (Messes, Settings, the Doctor and the rest). The dimmed backdrop used to hide them.",
-    "Two buttons that shared a name with a different job got their own: the Padiano layout is Squares or Keyboard, and Roll's clear says Clear this sound's notes.",
-    "Play tab: Pads and the desk are one tab now. At its top, Pads, Keys and My Desk switch what it shows; it reopens on the one you used last.",
-    "The card under the pads is gone. Everything it did is in the pad's menu (hold still, then lift), now with Mute, Solo and Resample too. Clears are red, at the bottom.",
-    "Steps: one row per sound, the name on the left and its 16 steps beside it, so about twice as many fit. Hold a name, then lift, for mute, solo and the doctor. A red M or yellow S by the number shows it.",
-    "Padiano: one thin header (octave, Glide, XY, settings, close) and taller keys. Hold is on the dock and the keys bar; the pad filter is the dock's (tap MIX to aim it at a pad) or a desk piece.",
-    "Doctor: Trim, Shape, Effects and Tools tabs under a waveform that stays put.",
-    "Every clear (pad, loop, notes, moves, bar, song) shows Undo right in its message.",
-    "Locked shows a yellow edge round the screen. New messes start in C minor.",
-    "Loops can be 1, 2, 4 or 8 bars (the bars button in Steps). Longer copies what's there into the new bars; BAR 1 to 8 picks which one you see.",
-    "Swap two pads: hold one still until its outline turns yellow, then slide onto another pad and lift. Undo swaps them back.",
-    "My Desk: while arranging, rename the desk, Save a copy, or Delete it.",
-    "Messes show a little picture: the first 16 pads' colours and the first loop's steps.",
-    "Song: Share the song bounces it and opens your share sheet in one tap.",
-    "Settings: Pad buzz gives a short buzz on every pad hit (off to start; your phone's touch vibration needs to be on).",
-    "One top bar: Play, Stop, Rec, Undo, then tempo and where the music is in one button (tap it for tempo, swing and click). ☰ holds Messes, Settings, Redo and Notes for Claude.",
-    "Hush is gone. Press Stop, then Stop again: everything lets go (held notes, effects, filters).",
-    "The dock starts folded to a thin strip on the left. Tap it or swipe right to open it; ◀ at its bottom folds it. Repeat lives on the dock now: tap RPT, and tap the rate under it for 1/8, 1/16, 1/32 or an arp.",
-    "⚙ Settings is its own sheet now (view size, empty pads record, beat glow, in key only, how-to text). Messes keeps your files only.",
-    "How-to text shows once on each page the first time you open it, in teal. ? in the top bar brings it back.",
-    "Show chord on the Padiano: every note now lights its chord on the keys you can see. Before, only the lowest notes did, because the rest of the chord sat off screen.",
-    "Smoother sound: clicks, arpeggios and rolls no longer make the phone tidy up memory mid-sound, and the sound starts with a slightly bigger buffer."
+    "Audio check: open Notes for Claude, then Audio check under How it is running. It shows the buffer, the output delay from Android's own clock, dropouts and any slow audio blocks.",
+    "Tap the square there ten times: each tap plays a click and times your touch reaching the app.",
+    "Speaker test: five clicks timed with the mic, for the real time from the app to the speaker on your phone. It asks for the mic once.",
+    "Save as a note puts all of it in a note, ready to send.",
+    "After a click (a dropout), the audio buffer grows as before, but now gives the extra back after a quiet minute instead of keeping the lag all session.",
+    "On Android 12 and up the app asks the phone to keep the audio thread's CPU fast enough for each block, which should mean fewer clicks.",
+    "When an audio block runs slow, the app now notes what else was happening (loading a sound, the screen busy, the first minute). Every note carries the last few."
   ],
   "watch": [
-    "Play a busy mess for a minute and listen for clicks or gaps.",
-    "Press Stop twice while notes are held and effects are on: all of it should let go.",
-    "Carry a pad onto another, then try playing pads fast: a quick slide should never swap anything.",
-    "Make a loop 8 bars and play it through."
+    "Run the Audio check: tap the square ten times, run the speaker test, then Save as a note and send it. That one note tells Claude what to fix next.",
+    "Play a busy mess for two minutes and listen for clicks, then send any note: it carries the slow blocks."
   ],
   "limits": [
-    "The site plays 1 and 2 bar loops only; a 4 or 8 bar loop opened on the site plays its first bar.",
-    "Steps' Click to hear moved to the tempo sheet (tap the tempo button).",
+    "The speaker test needs the volume up and headphones out. It cannot see the touch screen's own scan time, so the real tap to sound is a little longer than it shows.",
     "Touching a pad still plays it as it opens its menu; playing on touch is what keeps pads quick."
   ]
 }

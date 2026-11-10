@@ -100,6 +100,10 @@ public final class Library implements Engine.SampleSource {
         return l;
     }
 
+    /** How many sounds are being read from storage right now, so the Audio check can tell a slow block was loading (MM-3). */
+    private static final java.util.concurrent.atomic.AtomicInteger DECODING = new java.util.concurrent.atomic.AtomicInteger();
+    public static int decoding() { return DECODING.get(); }
+
     /** Already decoded, or null. Safe on the audio thread. */
     @Override public Sample get(String key) { return cache.get(key); }
 
@@ -137,6 +141,8 @@ public final class Library implements Engine.SampleSource {
         }
         Sound snd = byKey.get(key);
         if (snd == null) return null;
+        DECODING.incrementAndGet();
+        try {
         if (snd.file.startsWith("/")) {
             try (InputStream in = new java.io.FileInputStream(snd.file)) { s = Wav.read(key, in); }
         } else if (snd.sliced()) {
@@ -145,6 +151,7 @@ public final class Library implements Engine.SampleSource {
         } else {
             try (InputStream in = opener.open(base + snd.file)) { s = Wav.read(key, in); }
         }
+        } finally { DECODING.decrementAndGet(); }
         cache.put(key, s);
         return s;
     }

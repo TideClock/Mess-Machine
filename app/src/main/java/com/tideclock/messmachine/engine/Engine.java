@@ -299,7 +299,7 @@ public final class Engine {
     /** Hear a sound with its doctor settings, outside the mess (browsing, editing, toggling a step). */
     public void preview(Sample s, SoundEdit e, int semis) { preview(s, e, semis, false); }
     /** hold = keep looping the trim until stopPreviews(), for the doctor's loop preview. */
-    public void preview(Sample s, SoundEdit e, int semis, boolean hold) { if (s != null) cmds.add(new Object[]{"preview", s, e == null ? SoundEdit.DEFAULT : e.copy(), semis, hold}); }
+    public void preview(Sample s, SoundEdit e, int semis, boolean hold) { if (s != null) cmds.add(new Object[]{"preview", s, e == null ? SoundEdit.DEFAULT : e.copy(), semis, hold, System.nanoTime()}); }
 
     /* ---------- perform FX, held from the UI ---------- */
     public void fx(String name, boolean on) { cmds.add(new Object[]{"fx", name, on}); }
@@ -429,7 +429,7 @@ public final class Engine {
                 for (float[] m : tFx) java.util.Arrays.fill(m, 0f);
                 held.clear(); freeOn = false;
                 break;
-            case "down": padDown(S, (Integer) c[1], (Integer) c[2], (int[]) c[3], (Boolean) c[4], (Long) c[5], renderNanos, c.length > 6 && (Boolean) c[6]); break;
+            case "down": lastHitWaitNanos = renderNanos - (Long) c[5]; hits++; padDown(S, (Integer) c[1], (Integer) c[2], (int[]) c[3], (Boolean) c[4], (Long) c[5], renderNanos, c.length > 6 && (Boolean) c[6]); break;
             case "unlatch": {
                 Held h = held.remove((Integer) c[1]);
                 if (h != null) for (Voice v : h.voices) startRelease(v, .03f);
@@ -439,6 +439,7 @@ public final class Engine {
             case "up": padUp(S, (Integer) c[1], (Long) c[2], renderNanos); break;
             case "preview": {
                 Sample s = (Sample) c[1];
+                if (c.length > 5) { lastHitWaitNanos = renderNanos - (Long) c[5]; hits++; }
                 for (Voice v : pool) if (v.active && v.preview) v.active = false;
                 boolean hold = c.length > 4 && (Boolean) c[4];
                 SoundEdit pe = (SoundEdit) c[2];
@@ -1152,6 +1153,10 @@ public final class Engine {
         float y = .8f + .2f * (float) Math.tanh((a - .8f) / .2f);
         return x < 0 ? -y : y;
     }
+
+    /** How long the last hit waited in the queue for the next block, and how many hits so far (Audio check, MM-1). */
+    public volatile long lastHitWaitNanos;
+    public volatile int hits;
 
     public int activeVoices() { int n = 0; for (Voice v : pool) if (v.active) n++; return n; }
 

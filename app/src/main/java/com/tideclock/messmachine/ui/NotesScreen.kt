@@ -175,7 +175,8 @@ fun SpeedCard(state: AppState) {
     var text by remember { mutableStateOf("") }
     LaunchedEffect(Unit) {
         do {
-            text = "Screen: ${state.uiPerf}\nSound engine: ${state.audio.loadText()}\nAudio buffer: ${state.audio.bufferFrames} frames at ${state.rate} Hz, dropouts ${state.audio.underruns}"
+            text = "Screen: ${state.uiPerf}\nSound engine: ${state.audio.loadText()}\nAudio buffer: ${state.audio.bufferFrames} frames at ${state.rate} Hz, dropouts ${state.audio.underruns}" +
+                (if (state.audio.outputMs >= 0) "\nOutput: %.0f ms by Android's clock".format(state.audio.outputMs) else "")
             if (!UiFlags.testing) delay(1000)
         } while (!UiFlags.testing)
     }
@@ -183,6 +184,8 @@ fun SpeedCard(state: AppState) {
         Column {
             T("How it is running", size = 13.sp, color = C.Dim)
             T(text, size = 13.sp, weight = FontWeight.Medium, modifier = Modifier.padding(top = 4.dp))
+            // the Audio check's one home (MM-1): the start guide points here
+            Btn("Audio check", { state.overlay = com.tideclock.messmachine.Overlay.AudioCheck }, small = true, tag = "audio-check", modifier = Modifier.padding(top = 10.dp))
         }
     }
 }
