@@ -176,7 +176,7 @@ class BigTest {
         shot("05-steps")
         val k = state.project.kit[1]
         val before = state.project.pat().step(k, 1)
-        rule.onNodeWithTag("steps-1").performTouchInput { click(Offset(width * (1.5f / 16f), height / 2)) }
+        rule.onNodeWithTag("steps-1").performTouchInput { click(Offset(width * (1.5f / 16f), height / 2f)) }
         settle()
         assertEquals(!before, state.project.pat().step(k, 1))
         rule.onNodeWithTag("random").performClick()
