@@ -212,6 +212,30 @@ class BigTest {
         assertTrue("a triad plays three voices (got $v)", v >= 3)
     }
 
+    @Test fun holdKeepsTheFirstNotes() {
+        state.toggleKeyboard(7)
+        settle()
+        rule.onNodeWithTag("hold-up").performScrollTo().performClick()
+        rule.onNodeWithTag("hold-up").performClick()
+        rule.onNodeWithTag("hold-up").performClick()
+        settle()
+        assertEquals(3, state.holdCount)
+        // five different notes: the first three hold, the next two do not
+        for (p in listOf(0, 2, 4, 5, 7)) { state.pianoDown(7, p); state.pianoUp(7, p) }
+        settle()
+        assertEquals(setOf(0, 2, 4), state.heldPitches(7))
+        rule.onNodeWithTag("piano-7").performScrollTo()
+        shot("20-hold-three")
+        // press two of the held ones again: they let go; two new notes take their places
+        for (p in listOf(0, 2)) { state.pianoDown(7, p); state.pianoUp(7, p) }
+        assertEquals(setOf(4), state.heldPitches(7))
+        for (p in listOf(9, 11)) { state.pianoDown(7, p); state.pianoUp(7, p) }
+        assertEquals(setOf(4, 9, 11), state.heldPitches(7))
+        rule.onNodeWithTag("hold-release").performScrollTo().performClick()
+        settle()
+        assertTrue(state.latched.isEmpty())
+    }
+
     /* ---------- steps, roll, song ---------- */
 
     @Test fun stepsToggleRandomMute() {

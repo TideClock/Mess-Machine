@@ -211,7 +211,7 @@ public final class Engine {
         int id;
         PadSlot pad;
         int[] pitches;
-        boolean mel, holdV;
+        boolean mel, holdV, latched;
         double at;
         List<Voice> voices = new ArrayList<>();
     }
@@ -248,7 +248,10 @@ public final class Engine {
     public void panic() { cmds.add(new Object[]{"panic"}); }
 
     /** A pad or key went down. mel = keys or the strip (pitched, may hold), pitches in semitones. */
-    public void down(int id, int pad, int[] pitches, boolean mel) { cmds.add(new Object[]{"down", id, pad, pitches, mel, System.nanoTime()}); }
+    public void down(int id, int pad, int[] pitches, boolean mel) { down(id, pad, pitches, mel, false); }
+    /** latch = keep sounding (and repeating) after the finger lifts, until unlatch(id). */
+    public void down(int id, int pad, int[] pitches, boolean mel, boolean latch) { cmds.add(new Object[]{"down", id, pad, pitches, mel, System.nanoTime(), latch}); }
+    public void unlatch(int id) { cmds.add(new Object[]{"unlatch", id}); }
     public void up(int id) { cmds.add(new Object[]{"up", id, System.nanoTime()}); }
 
     /** Hear a sound with its doctor settings, outside the mess (browsing, editing, toggling a step). */
@@ -353,7 +356,13 @@ public final class Engine {
                 for (Voice v : pool) v.active = false;
                 held.clear(); freeOn = false;
                 break;
-            case "down": padDown(S, (Integer) c[1], (Integer) c[2], (int[]) c[3], (Boolean) c[4], (Long) c[5], renderNanos); break;
+            case "down": padDown(S, (Integer) c[1], (Integer) c[2], (int[]) c[3], (Boolean) c[4], (Long) c[5], renderNanos, c.length > 6 && (Boolean) c[6]); break;
+            case "unlatch": {
+                Held h = held.remove((Integer) c[1]);
+                if (h != null) for (Voice v : h.voices) startRelease(v, .03f);
+                if (held.isEmpty()) { arpI = 0; freeOn = false; }
+                break;
+            }
             case "up": padUp(S, (Integer) c[1], (Long) c[2], renderNanos); break;
             case "preview": {
                 Sample s = (Sample) c[1];
@@ -382,12 +391,13 @@ public final class Engine {
 
     private void releaseAll(float sec) { for (Voice v : pool) if (v.active && !v.preview) startRelease(v, sec); }
 
-    private void padDown(Snapshot S, int id, int pad, int[] pitches, boolean mel, long nanos, long renderNanos) {
+    private void padDown(Snapshot S, int id, int pad, int[] pitches, boolean mel, long nanos, long renderNanos, boolean latch) {
         PadSlot ps = pad >= 0 && pad < S.pads.length ? S.pads[pad] : null;
         if (ps == null) return;
         Held h = new Held();
         h.id = id; h.pad = ps; h.pitches = pitches; h.mel = mel;
-        h.holdV = mel && ps.edit.holds();
+        h.latched = latch;
+        h.holdV = (mel && ps.edit.holds()) || latch;
         h.at = playing ? nowStep(S, nanos, renderNanos) : 0;
         Held old = held.remove(id);
         if (old != null) for (Voice v : old.voices) startRelease(v, .02f);
@@ -413,8 +423,9 @@ public final class Engine {
     }
 
     private void padUp(Snapshot S, int id, long nanos, long renderNanos) {
+        Held h0 = held.get(id);
+        if (h0 == null || h0.latched) return;
         Held h = held.remove(id);
-        if (h == null) return;
         if (h.holdV) for (Voice v : h.voices) release(v);
         Live L = S.live;
         if (L.rec && playing && h.mel && !L.nr) {

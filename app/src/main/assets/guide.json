@@ -1,6 +1,7 @@
 {
   "title": "Pianos that show the scale and chords",
   "thisBuild": [
+    "Hold, next to the scale and chords: + and − set how many notes keep sounding after you lift. The first that many notes hold; later ones play normally. Press a held note again to let it go, or tap Let go. Held keys get a yellow bar on the piano, and with Repeat or an arp on, held notes keep repeating.",
     "Hold any pad for its menu, like a right click. Piano drops a keyboard right under that pad's row and lights the pad's bottom edge. One per row: four pads, a piano, four pads, a piano.",
     "Pianos show your scale: in-scale keys glow softly, out-of-scale keys dim, the root gets a pink dot.",
     "Chords: Play chord plays the whole chord. Show chord plays only the key you press and lights the chord's other notes for you to play yourself.",
@@ -9,6 +10,7 @@
     "Scroll bars you can grab on every page, and View size in the ☰ menu."
   ],
   "watch": [
+    "Set Hold to 3, play a chord, then play a melody over it.",
     "Pick a scale and Triads, switch to Show chord, and play a piano.",
     "Find a sound with By type, then a feel, and star it."
   ],

@@ -348,9 +348,10 @@ class AppState(private val app: Context) {
             val p = Theory.keyNote(d, project.scale, project.root)
             val ps = Theory.chordOf(p, d, chordMode, project.scale, project.root)
             lastChord = if (ps.size > 1) Theory.chordLabel(p, d, chordMode, project.scale, project.root) + " · " + Theory.chordNotes(ps) else Theory.noteName(p)
-            downIds[d] = 100 + d
+            val kid = 2000 + pad * 32 + (p + 12)
+            downIds[d] = kid
             notes.trail("key ${Theory.noteName(p)}")
-            engine.down(100 + d, pad, ps, true)
+            melodicDown(kid, pad, ps)
             return
         }
         val i = bank * Project.BANK + d
@@ -363,7 +364,7 @@ class AppState(private val app: Context) {
 
     fun padUp(d: Int) {
         val id = downIds[d]
-        if (id >= 0) engine.up(id)
+        if (id >= 2000) melodicUp(id) else if (id >= 0) engine.up(id)
         downIds[d] = -1
     }
 
@@ -516,6 +517,7 @@ class AppState(private val app: Context) {
         notes.trail("hush")
         if (playing) { engine.pause(); playing = false }
         engine.panic()
+        latched.clear()
         for (d in 0 until 16) downIds[d] = -1
         say("Hushed. Everything is quiet. Play picks up where it paused.")
     }
@@ -783,6 +785,47 @@ class AppState(private val app: Context) {
         return if (chordMode.startsWith("set:") && idx < 0) intArrayOf(p) else Theory.chordOf(p, idx.coerceAtLeast(0), chordMode, project.scale, project.root)
     }
 
+    /* ---------------- hold: the first N notes keep sounding ---------------- */
+
+    /** How many notes hold after you lift your finger. 0 = off. */
+    var holdCount by mutableIntStateOf(prefs.getInt("holdCount", 0))
+        private set
+    /** Notes holding right now, as engine ids (piano ids carry their pad and pitch). */
+    val latched = mutableStateListOf<Int>()
+    private val swallowUp = HashSet<Int>()
+
+    fun setHoldCount(n: Int) {
+        holdCount = n.coerceIn(0, 8)
+        prefs.edit().putInt("holdCount", holdCount).apply()
+        while (latched.size > holdCount) { engine.unlatch(latched.removeAt(0)) }
+    }
+
+    fun releaseHolds() {
+        for (id in latched) engine.unlatch(id)
+        latched.clear()
+    }
+
+    /** Pitches holding on one pad's piano, for drawing. */
+    fun heldPitches(pad: Int): Set<Int> = latched.filter { it >= 1000 && (it - 1000) / 32 == pad }.map { (it - 1000) % 32 - 12 }.toSet()
+
+    /** A melodic press with hold rules: a held note pressed again lets go; a free slot holds; otherwise it plays normally. */
+    private fun melodicDown(id: Int, pad: Int, ps: IntArray) {
+        if (holdCount > 0 && id in latched) {
+            latched.remove(id)
+            engine.unlatch(id)
+            swallowUp.add(id)
+            return
+        }
+        val latch = holdCount > 0 && latched.size < holdCount
+        if (latch) latched.add(id)
+        engine.down(id, pad, ps, true, latch)
+    }
+
+    private fun melodicUp(id: Int) {
+        if (swallowUp.remove(id)) return
+        engine.up(id)
+    }
+
     fun pianoDown(pad: Int, p: Int) {
         if (project.kit[pad].isEmpty()) return
         val ps = chordFor(p)
@@ -790,10 +833,10 @@ class AppState(private val app: Context) {
         lastChord = if (ps.size > 1) Theory.chordLabel(p, idx, chordMode, project.scale, project.root) + " · " + Theory.chordNotes(ps) +
             (if (!chordPlay) " (showing)" else "") else Theory.noteName(p)
         notes.trail("piano ${pad + 1} ${Theory.noteName(p)}")
-        engine.down(pianoId(pad, p), pad, if (chordPlay) ps else intArrayOf(p), true)
+        melodicDown(pianoId(pad, p), pad, if (chordPlay) ps else intArrayOf(p))
     }
 
-    fun pianoUp(pad: Int, p: Int) = engine.up(pianoId(pad, p))
+    fun pianoUp(pad: Int, p: Int) = melodicUp(pianoId(pad, p))
 
     /* ---------------- perform FX ---------------- */
 

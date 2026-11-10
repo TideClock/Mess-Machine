@@ -130,6 +130,22 @@ public class EngineTest {
       double hf2 = 0; prev = 0; for (int i = 0; i < 40; i++) { ne.render(b, 256); for (int u = 0; u < 256; u++) { hf2 += Math.abs(b[u * 2] - prev); prev = b[u * 2]; } }
       check(hf < hf2 * .5, "filter pad at the bottom darkens the hat: " + (int) hf + " vs " + (int) hf2);
     }
+    // ---- hold (latch): a looping sound keeps going after the finger lifts, until it is pressed again
+    {
+      Project lp = Project.starter();
+      SoundEdit le = new SoundEdit(); le.loop = true; lp.setEdit(lp.kit[7], le);
+      Engine he = new Engine(rate); he.setSnapshot(Engine.Snapshot.build(lp, lib, new Engine.Live()));
+      float[] b = new float[256 * 2];
+      he.down(1500, 7, new int[]{0}, true, true); he.up(1500);
+      for (int i = 0; i < 400; i++) he.render(b, 256);
+      check(he.activeVoices() >= 1, "a held note keeps sounding after lifting: " + he.activeVoices());
+      he.unlatch(1500);
+      for (int i = 0; i < 40; i++) he.render(b, 256);
+      check(he.activeVoices() == 0, "pressing it again lets it go: " + he.activeVoices());
+      he.down(1501, 7, new int[]{0}, true, false); he.up(1501);
+      for (int i = 0; i < 40; i++) he.render(b, 256);
+      check(he.activeVoices() == 0, "a normal note on a looping sound stops on lift: " + he.activeVoices());
+    }
     // ---- workbench tools
     Sample hat = lib.get(p.kit[2]);
     SoundEdit tr = new SoundEdit(); tr.st = .1; tr.en = .6; tr.tune = 12;

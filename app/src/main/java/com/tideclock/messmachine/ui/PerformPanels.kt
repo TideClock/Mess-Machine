@@ -226,15 +226,17 @@ fun PianoKeyboard(state: AppState, pad: Int) {
                 val bh = size.height * .6f
                 val bw = ww * .6f
                 val chromatic = P.scale == "Chromatic"
+                val holding = state.heldPitches(pad)
+                val down = held + holding
                 val chord = HashSet<Int>()
-                for (h in held) for (c in state.chordFor(h)) if (c !in held) chord.add(c)
+                for (h in down) for (c in state.chordFor(h)) if (c !in down) chord.add(c)
                 val playsChord = state.chordPlay
                 shown.forEachIndexed { i, p ->
                     val x = i * ww
                     val inS = chromatic || Theory.inScale(p, P.scale, P.root)
                     val root = Theory.pcOf(p - P.root) == 0
                     val fill = when {
-                        p in held -> col
+                        p in down -> col
                         p in chord && playsChord -> lerp(col, C.Cream, .25f)
                         root -> lerp(C.Cream, col, .5f)
                         chromatic -> C.Cream
@@ -243,7 +245,7 @@ fun PianoKeyboard(state: AppState, pad: Int) {
                     }
                     drawRect(fill, topLeft = Offset(x, 0f), size = Size(ww, size.height))
                     // in the scale: a soft glow along the bottom of the key
-                    if (!chromatic && inS && p !in held) drawRect(Brush.verticalGradient(listOf(Color.Transparent, col.copy(alpha = .55f)), startY = size.height * .55f, endY = size.height), topLeft = Offset(x, size.height * .55f), size = Size(ww, size.height * .45f))
+                    if (!chromatic && inS && p !in down) drawRect(Brush.verticalGradient(listOf(Color.Transparent, col.copy(alpha = .55f)), startY = size.height * .55f, endY = size.height), topLeft = Offset(x, size.height * .55f), size = Size(ww, size.height * .45f))
                     // the root: a dot
                     if (root) drawCircle(C.Pink, radius = ww * .13f, center = Offset(x + ww / 2, size.height - ww * .55f))
                     // a chord tone you can play yourself: a glowing ring
@@ -251,6 +253,8 @@ fun PianoKeyboard(state: AppState, pad: Int) {
                         drawRect(C.Pink.copy(alpha = .28f), topLeft = Offset(x, 0f), size = Size(ww, size.height))
                         drawRect(C.Pink, topLeft = Offset(x + 3f, 3f), size = Size(ww - 6f, size.height - 6f), style = Stroke(width = 5f))
                     }
+                    // holding: a yellow bar across the top of the key
+                    if (p in holding) drawRect(C.Yellow, topLeft = Offset(x + 3f, 3f), size = Size(ww - 6f, 10f))
                     drawRect(C.Black, topLeft = Offset(x, 0f), size = Size(ww, size.height), style = Stroke(width = 3f))
                     if (Theory.pcOf(p) == 0 || root) {
                         drawText(tm, Theory.noteName(p), topLeft = Offset(x + 4f, size.height - 34f),
@@ -263,7 +267,7 @@ fun PianoKeyboard(state: AppState, pad: Int) {
                     val x = (i + 1) * ww - bw / 2
                     val inS = chromatic || Theory.inScale(b, P.scale, P.root)
                     val fill = when {
-                        b in held -> col
+                        b in down -> col
                         b in chord && playsChord -> lerp(col, C.Ink, .2f)
                         Theory.pcOf(b - P.root) == 0 -> lerp(C.Ink, col, .65f)
                         chromatic -> C.Ink
@@ -272,7 +276,8 @@ fun PianoKeyboard(state: AppState, pad: Int) {
                     }
                     drawRect(C.Black, topLeft = Offset(x + 3f, 3f), size = Size(bw, bh))
                     drawRect(fill, topLeft = Offset(x, 0f), size = Size(bw, bh))
-                    if (!chromatic && inS && b !in held) drawRect(col, topLeft = Offset(x + 3f, bh - 8f), size = Size(bw - 6f, 5f))
+                    if (b in holding) drawRect(C.Yellow, topLeft = Offset(x + 3f, 3f), size = Size(bw - 6f, 10f))
+                    if (!chromatic && inS && b !in down) drawRect(col, topLeft = Offset(x + 3f, bh - 8f), size = Size(bw - 6f, 5f))
                     if (Theory.pcOf(b - P.root) == 0) drawCircle(C.Pink, radius = bw * .16f, center = Offset(x + bw / 2, bh - bw * .45f))
                     if (b in chord && !playsChord) drawRect(C.Pink, topLeft = Offset(x + 2f, 2f), size = Size(bw - 4f, bh - 4f), style = Stroke(width = 5f))
                     drawRect(if (!chromatic && !inS) C.Empty else C.Black, topLeft = Offset(x, 0f), size = Size(bw, bh), style = Stroke(width = 3f))
