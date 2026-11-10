@@ -76,7 +76,7 @@ fun DoctorScreen(state: AppState, key: String) {
     }
     val col = Color(state.lib.colorOf(key))
     val inBench = state.bench.item(key) != null
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 14.dp)) {
+    ScrollPane(hPad = 14.dp, vPad = 0.dp) {
         T(state.lib.titleOf(key), size = 18.sp)
         T(
             "%.2f s · plays %.2f s".format(seconds, seconds * (e.en - e.st) / Math.pow(2.0, (e.tune + e.fine / 100) / 12)),

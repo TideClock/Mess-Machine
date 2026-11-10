@@ -30,7 +30,7 @@ fun SongScreen(state: AppState) {
     var steps = 0
     for (k in 0 until len) steps += if (P.song[k] >= 0) P.pats[P.song[k]].len else 16
     val secs = (steps * 60.0 / P.bpm / 4).toInt()
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {
+    ScrollPane {
         SlotBar(state)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 14.dp)) {
             Btn("Play the loop", { state.setSongMode(false) }, on = !P.songMode, onColor = C.Teal)

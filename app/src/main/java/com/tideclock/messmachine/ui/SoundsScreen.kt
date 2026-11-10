@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -108,7 +109,9 @@ fun SoundsScreen(state: AppState, pickFor: Int?) {
             when { q.isNotBlank() -> "Nothing in the jars matches that."; cab == "fav" -> "No stars yet. Tap ☆ on any sound."; cab == "mine" -> "Nothing here yet. Import a sound, sample the mic or resample a loop."; else -> "Empty jar." },
             color = C.Yellow, modifier = Modifier.padding(horizontal = 14.dp),
         )
-        LazyColumn(Modifier.weight(1f).fillMaxWidth().testTag("sound-list")) {
+        val ls = rememberLazyListState()
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+        LazyColumn(Modifier.fillMaxSize().padding(end = 14.dp).testTag("sound-list"), state = ls) {
             var lastGroup = ""
             val rows = ArrayList<Pair<String?, Library.Sound>>()
             for (s in list) {
@@ -122,6 +125,8 @@ fun SoundsScreen(state: AppState, pickFor: Int?) {
                     SoundRow(state, s, target, pickFor != null)
                 }
             }
+        }
+        LazyScrollBar(ls, list.size, Modifier.align(Alignment.CenterEnd))
         }
     }
 }

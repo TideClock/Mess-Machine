@@ -25,7 +25,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,6 +55,8 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
         }
         BackHandler(enabled = state.overlay != null) { state.overlay = null }
         @Suppress("UNUSED_VARIABLE") val v = state.version
+        val dn = LocalDensity.current
+        CompositionLocalProvider(LocalDensity provides Density(dn.density * state.uiScale, dn.fontScale)) {
         Box(Modifier.fillMaxSize().background(C.Paper).grit().statusBarsPadding().navigationBarsPadding()) {
             Column(Modifier.fillMaxSize()) {
                 Transport(state)
@@ -86,6 +91,7 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
                     Box(Modifier.sticker(C.Teal, shadow = 6.dp).padding(22.dp)) { T(msg.uppercase(), color = C.Ink, size = 18.sp, spacing = .08.em) }
                 }
             }
+        }
         }
     }
 }

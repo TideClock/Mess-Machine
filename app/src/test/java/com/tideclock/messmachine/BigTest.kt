@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -109,46 +110,70 @@ class BigTest {
         settle()
         assertTrue("tapping pad 1 makes sound (peak $hit)", hit > .02f)
 
-        // a piano for each of pads 1 to 4, from the selected pad's Keys button
-        for (d in 0 until 4) {
-            tapPad(d)
-            rule.onNodeWithTag("keys-for-pad").performScrollTo().performClick()
+        // hold a pad: its menu opens; Piano drops a keyboard right under that pad's row
+        state.putOnPad(8, "samples/glass-harp.wav")
+        state.putOnPad(13, "samples/wheezy-organ.wav")
+        waitFor("the new pads to load") { state.lib.loaded("samples/glass-harp.wav") && state.lib.loaded("samples/wheezy-organ.wav") }
+        for (d in listOf(1, 5, 8, 13)) {
+            rule.onNodeWithTag("pad-$d").performScrollTo().performTouchInput { down(center); advanceEventTime(900); up() }
+            settle()
+            assertEquals("holding pad ${d + 1} opens its menu", d, state.padMenu)
+            if (d == 1) shot("02-pad-menu")
+            rule.onNodeWithTag("menu-piano").performClick()
             settle()
         }
-        assertEquals(listOf(0, 1, 2, 3), state.keyboards.toList())
+        assertEquals(listOf(1, 5, 8, 13), state.keyboards.toList())
+        // each piano sits between its own row and the next one
+        fun top(t: String) = rule.onNodeWithTag(t).fetchSemanticsNode().boundsInRoot.top
+        fun bottom(t: String) = rule.onNodeWithTag(t).fetchSemanticsNode().boundsInRoot.bottom
+        rule.onNodeWithTag("pad-0").performScrollTo()
+        assertTrue("piano 1 is under row 1", top("piano-1") >= bottom("pad-1") && bottom("piano-1") <= top("pad-4"))
+        rule.onNodeWithTag("pad-4").performScrollTo()
+        assertTrue("piano 2 is under row 2", top("piano-5") >= bottom("pad-5") && bottom("piano-5") <= top("pad-8"))
         for (d in 0 until 16) rule.onNodeWithTag("pad-$d").assertExists()
-        for (d in 0 until 4) rule.onNodeWithTag("piano-$d").assertExists()
 
         // play a key on the first piano
         loudest()
-        rule.onNodeWithTag("piano-keys-0").performScrollTo().performTouchInput { down(Offset(width * .5f, height * .85f)) }
+        rule.onNodeWithTag("piano-keys-1").performScrollTo().performTouchInput { down(Offset(width * .5f, height * .85f)) }
         settle()
         val key = loudest()
-        rule.onNodeWithTag("piano-keys-0").performTouchInput { up() }
+        rule.onNodeWithTag("piano-keys-1").performTouchInput { up() }
         settle()
         assertTrue("a piano key plays its pad (peak $key)", key > .02f)
 
         // slide across the keys: the note changes without lifting
-        rule.onNodeWithTag("piano-keys-1").performScrollTo().performTouchInput {
+        rule.onNodeWithTag("piano-keys-5").performScrollTo().performTouchInput {
             down(Offset(width * .1f, height * .85f)); moveTo(Offset(width * .9f, height * .85f)); up()
         }
         settle()
 
-        rule.onNodeWithTag("piano-0").performScrollTo()
-        shot("02-pads-four-pianos-top")
-        rule.onNodeWithTag("piano-3").performScrollTo()
-        shot("03-pads-four-pianos-bottom")
+        rule.onNodeWithTag("pad-0").performScrollTo()
+        shot("03-pianos-under-rows-top")
+        rule.onNodeWithTag("piano-13").performScrollTo()
+        shot("03b-pianos-under-rows-bottom")
 
-        // a fifth piano drops the oldest
-        tapPad(4)
-        rule.onNodeWithTag("keys-for-pad").performScrollTo().performClick()
+        // one piano per row: opening pad 1's piano swaps out pad 2's in the same row
+        rule.onNodeWithTag("pad-0").performScrollTo().performTouchInput { down(center); advanceEventTime(900); up() }
         settle()
-        assertEquals(listOf(1, 2, 3, 4), state.keyboards.toList())
+        rule.onNodeWithTag("menu-piano").performClick()
+        settle()
+        assertTrue(0 in state.keyboards && 1 !in state.keyboards)
 
-        // holding a pad also drops a piano (soft check: depends on the test clock)
-        rule.onNodeWithTag("pad-5").performScrollTo().performTouchInput { down(center); advanceEventTime(900); up() }
+        // the scroll bar moves the page
+        rule.onNodeWithTag("scrollbar").performTouchInput { click(Offset(width / 2f, height - 4f)) }
         settle()
-        println("HOLD-PAD opened a piano: ${5 in state.keyboards}")
+        rule.onNodeWithTag("scrollbar").performTouchInput { swipeUp() }
+        settle()
+
+        // view size: zoomed out, a pad gets smaller
+        val w1 = rule.onNodeWithTag("pad-0").performScrollTo().fetchSemanticsNode().boundsInRoot.width
+        state.setViewSize(.8f)
+        settle()
+        val w2 = rule.onNodeWithTag("pad-0").performScrollTo().fetchSemanticsNode().boundsInRoot.width
+        assertTrue("zooming out shrinks the pads ($w1 to $w2)", w2 < w1 * .9f)
+        shot("03c-zoomed-out-80")
+        state.setViewSize(1f)
+        settle()
 
         // keys mode keeps the grid and plays the scale
         rule.onNodeWithTag("mode-keys").performScrollTo().performClick()

@@ -36,7 +36,18 @@ fun FilesScreen(state: AppState) {
     var sureNew by remember { mutableStateOf(false) }
     var sureDel by remember { mutableStateOf<String?>(null) }
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) state.importUri(uri) }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 14.dp)) {
+    ScrollPane(hPad = 14.dp, vPad = 0.dp) {
+        Card(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 14.dp)) {
+            Column {
+                T("VIEW SIZE", size = 12.sp, color = C.Yellow, spacing = .1.em)
+                Note("Zoom out to fit more of the machine on the screen.", modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
+                Wrap {
+                    for (z in listOf(.7f, .8f, .9f, 1f, 1.1f, 1.2f)) {
+                        Btn("${(z * 100).toInt()}%", { state.setViewSize(z) }, on = kotlin.math.abs(state.uiScale - z) < .01f, small = true, tag = "zoom-${(z * 100).toInt()}")
+                    }
+                }
+            }
+        }
         Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
             Column {
                 T("THIS MESS", size = 12.sp, color = C.Yellow, spacing = .1.em)
@@ -111,7 +122,7 @@ fun TempoScreen(state: AppState) {
     var bpm by remember { mutableStateOf(P.bpm.toFloat()) }
     var swing by remember { mutableStateOf(P.swing.toFloat()) }
     @Suppress("UNUSED_VARIABLE") val lv = state.liveV
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 14.dp)) {
+    ScrollPane(hPad = 14.dp, vPad = 0.dp) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Btn("−", { state.setBpm(P.bpm - 1); bpm = state.project.bpm.toFloat() })
             T("${state.project.bpm}", size = 44.sp, family = Bungee)

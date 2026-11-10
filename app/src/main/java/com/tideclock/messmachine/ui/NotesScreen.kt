@@ -53,7 +53,7 @@ fun NotesScreen(state: AppState) {
         }
     }
     val fieldColors = OutlinedTextFieldDefaults.colors(focusedBorderColor = C.Pink, unfocusedBorderColor = C.Card2, cursorColor = C.Pink)
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 14.dp)) {
+    ScrollPane(hPad = 14.dp, vPad = 0.dp) {
         Guide(state)
         SpeedCard(state)
         state.crash?.let {

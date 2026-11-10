@@ -39,7 +39,7 @@ fun RollScreen(state: AppState) {
     val pat = P.pat()
     val k = state.selKey()
     val loaded = (0 until Project.NPADS).filter { P.kit[it].isNotEmpty() }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {
+    ScrollPane {
         SlotBar(state)
         Wrap(Modifier.padding(bottom = 10.dp)) {
             Select(

@@ -1,16 +1,14 @@
 {
-  "title": "Pianos under the pads, and the site's look",
+  "title": "Hold a pad for its menu",
   "thisBuild": [
-    "Hold a pad (or tap Keys under the grid) to drop a piano for that pad below the pads. Up to four at once, every pad still there.",
-    "The pianos show an octave and a half at a time, C3 to C5 in all; slide across keys, play chords with more than one finger, and ◀ ▶ shifts the range. Chords and scale shading follow the dock.",
-    "The whole app now looks like Neat Shit and Dye: square cream buttons with pink shadows, Bungee headings, the dark lab, a bit louder.",
-    "From the site: Hush, Bottle it, Loop/Song in the top bar, 1 bar to 2 bars copies bar one, roll note lengths up to a whole bar, Clear notes, Rough it in.",
-    "Every screen now runs through an automatic test on each build."
+    "Hold any pad for its menu, like a right click: Piano, Doctor it, Hear it, Swap sound, Star, Clear pad.",
+    "Piano drops a keyboard right under that pad's row and lights the bottom of the pad. One per row, so four pads, a piano, four pads, a piano, and every pad stays put.",
+    "Every page has a scroll bar on the right: drag the pink handle, or tap the track to jump.",
+    "View size in the ☰ menu: zoom out to 70% to fit more of the machine on the screen."
   ],
   "watch": [
-    "Open two pianos for two pads and play both at once.",
-    "Hold Stutter and Tape stop while a loop plays.",
-    "If anything feels slow, send a Tuning note from the 🐞 right away so the speed numbers go with it."
+    "Put a melodic sound in each row, hold one pad per row and open its piano.",
+    "Try 80% view size and see if the pads are still easy to hit."
   ],
   "limits": [
     "Creature cards, the Ring, jams and duels stay on the site.",

@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -739,12 +740,28 @@ class AppState(private val app: Context) {
 
     /* ---------------- piano keyboards under the pads ---------------- */
 
+    /** Which pad's hold menu is open, or -1. */
+    var padMenu by mutableIntStateOf(-1)
+
+    /** One piano per row of pads: it drops right under the row its pad sits in. */
     fun toggleKeyboard(pad: Int) {
         if (pad in keyboards) { keyboards.remove(pad); return }
         if (project.kit[pad].isEmpty()) { say("Put a sound on pad ${pad + 1} first."); return }
-        if (keyboards.size >= 4) keyboards.removeAt(0)
+        val b = pad / Project.BANK
+        val row = (pad % Project.BANK) / 4
+        keyboards.removeAll { it / Project.BANK == b && (it % Project.BANK) / 4 == row }
         keyboards.add(pad)
-        notes.trail("keyboard pad ${pad + 1}")
+        if (bank != b) bank = b
+        notes.trail("piano pad ${pad + 1}")
+    }
+
+    /** View size, so more fits on the screen. 1 = normal. */
+    var uiScale by mutableFloatStateOf(prefs.getFloat("uiScale", 1f))
+        private set
+
+    fun setViewSize(v: Float) {
+        uiScale = v.coerceIn(.6f, 1.3f)
+        prefs.edit().putFloat("uiScale", uiScale).apply()
     }
 
     private fun pianoId(pad: Int, p: Int) = 1000 + pad * 32 + (p + 12)

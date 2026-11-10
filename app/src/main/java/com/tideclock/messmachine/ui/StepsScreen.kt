@@ -82,7 +82,7 @@ fun StepsScreen(state: AppState) {
     val P = state.project
     val pat = P.pat()
     val off = (if (pat.len == 32) state.page else 0) * 16
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {
+    ScrollPane {
         SlotBar(state)
         Row(Modifier.fillMaxWidth().padding(bottom = 12.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for (b in 0 until 4) {

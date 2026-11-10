@@ -1,6 +1,20 @@
 package com.tideclock.messmachine.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -243,6 +257,90 @@ fun SliderRow(label: String, value: Float, range: ClosedFloatingPointRange<Float
             onValueChangeFinished = onDone, steps = steps,
             colors = SliderDefaults.colors(thumbColor = accent, activeTrackColor = accent, inactiveTrackColor = C.Card2, activeTickColor = C.Ink, inactiveTickColor = C.Empty),
         )
+    }
+}
+
+/**
+ * A scrolling page with a scroll bar you can grab on the right: drag the pink thumb, or tap the
+ * track to jump. The content keeps clear of the bar.
+ */
+@Composable
+fun ScrollPane(modifier: Modifier = Modifier, hPad: Dp = 12.dp, vPad: Dp = 12.dp, tag: String = "scrollpane", content: @Composable ColumnScope.() -> Unit) {
+    val ss = rememberScrollState()
+    Box(modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().verticalScroll(ss).testTag(tag).padding(start = hPad, top = vPad, bottom = vPad + 24.dp, end = hPad + 14.dp), content = content)
+        ScrollBar(ss, Modifier.align(Alignment.CenterEnd))
+    }
+}
+
+@Composable
+fun ScrollBar(ss: ScrollState, modifier: Modifier = Modifier) {
+    val max = ss.maxValue
+    if (max <= 0 || max == Int.MAX_VALUE) return
+    val scope = rememberCoroutineScope()
+    Canvas(
+        modifier
+            .fillMaxHeight()
+            .width(24.dp)
+            .testTag("scrollbar")
+            .pointerInput(max) {
+                detectTapGestures { o ->
+                    val track = size.height.toFloat()
+                    val thumb = maxOf(56.dp.toPx(), track * track / (track + max))
+                    val f = ((o.y - thumb / 2) / (track - thumb)).coerceIn(0f, 1f)
+                    scope.launch { ss.animateScrollTo((f * max).toInt()) }
+                }
+            }
+            .pointerInput(max) {
+                detectVerticalDragGestures { change, dy ->
+                    change.consume()
+                    val track = size.height.toFloat()
+                    val thumb = maxOf(56.dp.toPx(), track * track / (track + max))
+                    scope.launch { ss.scrollBy(dy * max / maxOf(1f, track - thumb)) }
+                }
+            },
+    ) {
+        val track = size.height
+        val thumb = maxOf(56.dp.toPx(), track * track / (track + max))
+        val y = (track - thumb) * ss.value / max
+        val x = size.width - 10.dp.toPx()
+        drawLine(C.Empty, Offset(x + 3.dp.toPx(), 6f), Offset(x + 3.dp.toPx(), track - 6f), strokeWidth = 2.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f)))
+        drawRect(C.Black, topLeft = Offset(x + 2.dp.toPx(), y + 2.dp.toPx()), size = androidx.compose.ui.geometry.Size(6.dp.toPx(), thumb))
+        drawRect(C.Pink, topLeft = Offset(x, y), size = androidx.compose.ui.geometry.Size(6.dp.toPx(), thumb))
+        drawRect(C.Cream, topLeft = Offset(x, y), size = androidx.compose.ui.geometry.Size(6.dp.toPx(), thumb), style = Stroke(1.5.dp.toPx()))
+    }
+}
+
+/** The same bar for long lists (the jars). */
+@Composable
+fun LazyScrollBar(ls: LazyListState, count: Int, modifier: Modifier = Modifier) {
+    if (count <= 1) return
+    val scope = rememberCoroutineScope()
+    val visible = ls.layoutInfo.visibleItemsInfo.size.coerceAtLeast(1)
+    if (visible >= count) return
+    Canvas(
+        modifier
+            .fillMaxHeight()
+            .width(24.dp)
+            .testTag("scrollbar")
+            .pointerInput(count) {
+                detectTapGestures { o -> scope.launch { ls.scrollToItem(((o.y / size.height) * count).toInt().coerceIn(0, count - 1)) } }
+            }
+            .pointerInput(count) {
+                detectVerticalDragGestures { change, _ ->
+                    change.consume()
+                    scope.launch { ls.scrollToItem(((change.position.y / size.height) * count).toInt().coerceIn(0, count - 1)) }
+                }
+            },
+    ) {
+        val track = size.height
+        val thumb = maxOf(56.dp.toPx(), track * visible / count)
+        val y = (track - thumb) * (ls.firstVisibleItemIndex.toFloat() / maxOf(1, count - visible)).coerceIn(0f, 1f)
+        val x = size.width - 10.dp.toPx()
+        drawLine(C.Empty, Offset(x + 3.dp.toPx(), 6f), Offset(x + 3.dp.toPx(), track - 6f), strokeWidth = 2.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f)))
+        drawRect(C.Black, topLeft = Offset(x + 2.dp.toPx(), y + 2.dp.toPx()), size = androidx.compose.ui.geometry.Size(6.dp.toPx(), thumb))
+        drawRect(C.Pink, topLeft = Offset(x, y), size = androidx.compose.ui.geometry.Size(6.dp.toPx(), thumb))
+        drawRect(C.Cream, topLeft = Offset(x, y), size = androidx.compose.ui.geometry.Size(6.dp.toPx(), thumb), style = Stroke(1.5.dp.toPx()))
     }
 }
 

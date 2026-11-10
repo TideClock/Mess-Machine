@@ -158,7 +158,7 @@ fun PianoKeyboard(state: AppState, pad: Int) {
     var start by remember(pad) { mutableIntStateOf(-1) }
     var held by remember(pad) { mutableStateOf(setOf<Int>()) }
     val tm = rememberTextMeasurer()
-    BoxWithConstraints(Modifier.fillMaxWidth().padding(top = 16.dp).testTag("piano-$pad")) {
+    BoxWithConstraints(Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 6.dp).testTag("piano-$pad")) {
         val avail = maxWidth - 6.dp
         val wk = maxOf(34.dp, avail / whites.size)
         val visible = floor(avail / wk).toInt().coerceIn(1, whites.size)
@@ -258,7 +258,7 @@ fun PianoKeyboard(state: AppState, pad: Int) {
                     drawRect(C.Black, topLeft = Offset(x, 0f), size = Size(bw, bh), style = Stroke(width = 3f))
                 }
             }
-            Note("${Theory.noteName(shown.first())} to ${Theory.noteName(shown.last())} · slide across keys · ◀ ▶ to shift", modifier = Modifier.padding(top = 6.dp))
+            Note("${Theory.noteName(shown.first())} to ${Theory.noteName(shown.last())} · slide across keys · ◀ ▶ to shift", modifier = Modifier.padding(top = 4.dp))
         }
     }
 }
