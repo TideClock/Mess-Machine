@@ -80,13 +80,15 @@ fun SlotBar(state: AppState) {
                 }
             }
         }
-        Note("Editing loop ${Project.LETTERS[P.cur]}" + if (P.pat().len == 32) ", two bars" else "", modifier = Modifier.padding(top = 8.dp))
+        val bars = P.pat().len / 16
+        Note("Editing loop ${Project.LETTERS[P.cur]}" + if (bars > 1) ", $bars bars" else "", modifier = Modifier.padding(top = 8.dp))
+        // longer loops (up to 8 bars): pick the bar to see and edit
+        if (bars > 1) Row(Modifier.fillMaxWidth().padding(top = 8.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+            T("BAR", size = 11.sp, color = C.Dim, spacing = .1.em)
+            for (b in 0 until bars) Btn("${b + 1}", { state.page = b }, on = state.page == b, small = true, tag = if (b == 1) "page2" else "page-${b + 1}", modifier = Modifier.weight(1f))
+        }
         Wrap(Modifier.padding(top = 8.dp)) {
-            Btn(if (P.pat().len == 32) "2 bars" else "1 bar", { state.toggleLen() }, small = true, tag = "looplen")
-            if (P.pat().len == 32) {
-                Btn("1-16", { state.page = 0 }, on = state.page == 0, small = true)
-                Btn("17-32", { state.page = 1 }, on = state.page == 1, small = true, tag = "page2")
-            }
+            Btn(if (bars == 1) "1 bar" else "$bars bars", { state.toggleLen() }, small = true, tag = "looplen")
             Select("Copy to", (0 until Project.NSLOTS).filter { it != P.cur }.map { it to "Loop ${Project.LETTERS[it]}" }, { state.copySlotTo(it) })
             Btn("Clear loop", { state.clearSlot() }, small = true, enabled = P.pat().used(), tier = Tier.Danger)
             if (P.pat().hasMotion()) Btn("Clear moves", { state.clearMoves() }, small = true, tag = "clear-moves")
@@ -100,7 +102,7 @@ fun SlotBar(state: AppState) {
 fun StepsScreen(state: AppState) {
     val P = state.project
     val pat = P.pat()
-    val off = (if (pat.len == 32) state.page else 0) * 16
+    val off = state.page.coerceIn(0, pat.len / 16 - 1) * 16
     ScrollPane {
         SlotBar(state)
         Row(Modifier.fillMaxWidth().padding(bottom = 12.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {

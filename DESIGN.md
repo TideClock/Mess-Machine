@@ -167,3 +167,12 @@ pad card gone; Steps one row (unanswered, taken as yes); help behind ?; all five
 become shortcuts you choose), one 48 dp top bar, dock folds to an edge handle, Pads and Desk merge into
 one Play tab, Steps one row per sound, four button tiers, help behind a ? per screen, no allocation on
 the audio thread, targeted redraws with strong skipping back on. Build order: Smooth, Room, Tidy, Useful.
+
+Built 2026-11-10 (builds after 47): Smooth (no allocation on the audio thread for click, arp and roll;
+3-burst start buffer; chord tones fold onto the visible Padiano), Room (one-row top bar with ☰, Hush gone and
+Stop twice hushes, dock folded with a swipe handle and its own repeat rate, Settings sheet, how-to text behind ?
+and shown once per page), Tidy (Play tab with Pads / Keys / My Desk, pad card gone with Mute, Solo and Resample in
+the pad menu, Steps one row per sound, slim Padiano header, Doctor tabs, button tiers, Undo on every clear, lock
+edge, C minor default), Useful (1/2/4/8 bar loops, hold then slide to swap pads, desk copy/rename/delete, mess
+pictures, Share the song, pad buzz). Not done: re-enabling strong skipping (needs every screen on targeted state);
+pad menus still play the pad because pads play on touch.

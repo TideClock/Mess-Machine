@@ -5,6 +5,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.horizontalScroll
@@ -86,7 +88,10 @@ fun FilesScreen(state: AppState) {
         for (f in state.files) {
             Card(Modifier.fillMaxWidth().padding(bottom = 10.dp), color = if (f.id == state.fileId) C.Card2 else C.Card) {
                 Column {
-                    T(f.name, size = 16.sp, lines = 1)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        MessPicture(f, Modifier.padding(end = 10.dp))
+                        T(f.name, size = 16.sp, lines = 1, modifier = Modifier.weight(1f))
+                    }
                     T(
                         "${f.bpm} BPM · ${f.pads} pads · ${f.loops} loop${if (f.loops == 1) "" else "s"}" + (if (f.songBars > 0) " · ${f.songBars} bar song" else "") +
                             (if (f.at.length >= 10) " · ${f.at.substring(0, 10)}" else ""),
@@ -102,6 +107,29 @@ fun FilesScreen(state: AppState) {
             }
         }
         T(" ", size = 30.sp)
+    }
+}
+
+/** A saved mess's little picture: its pads (left) and its first loop's steps (right). */
+@Composable
+fun MessPicture(f: com.tideclock.messmachine.MessFile, modifier: Modifier = Modifier) {
+    androidx.compose.foundation.Canvas(modifier.size(width = 92.dp, height = 40.dp).testTag("mess-pic-${f.id}")) {
+        val cell = size.height / 4
+        for (k in 0 until 16) {
+            val c = f.colors.getOrNull(k) ?: 0
+            val x = (k % 4) * cell
+            val y = (k / 4) * cell
+            drawRect(if (c == 0) C.Card2 else padColor(androidx.compose.ui.graphics.Color(c)), topLeft = androidx.compose.ui.geometry.Offset(x + 1f, y + 1f), size = androidx.compose.ui.geometry.Size(cell - 2f, cell - 2f))
+        }
+        val gx = 4 * cell + 6f
+        val gw = size.width - gx
+        val rows = maxOf(1, f.grid.size)
+        val sw = gw / 16
+        val sh = size.height / rows
+        drawRect(C.Black, topLeft = androidx.compose.ui.geometry.Offset(gx, 0f), size = androidx.compose.ui.geometry.Size(gw, size.height))
+        f.grid.forEachIndexed { r, line ->
+            for (j in line.indices) if (line[j] == '1') drawRect(C.Yellow, topLeft = androidx.compose.ui.geometry.Offset(gx + j * sw + .5f, r * sh + .5f), size = androidx.compose.ui.geometry.Size(maxOf(1f, sw - 1f), maxOf(1f, sh - 1f)))
+        }
     }
 }
 
@@ -129,6 +157,8 @@ fun SettingsScreen(state: AppState) {
                     Btn("Tap start, tap stop", { state.switchRecordHold(false) }, on = !state.recordHold, onColor = C.Teal, small = true, tag = "set-rectap")
                     Btn("Hold to record", { state.switchRecordHold(true) }, on = state.recordHold, onColor = C.Teal, small = true, tag = "set-rechold")
                 }
+                Note("A short buzz when you hit a pad.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
+                Btn(if (state.buzz) "Pad buzz: on" else "Pad buzz: off", { state.switchBuzz(!state.buzz) }, on = state.buzz, onColor = C.Teal, small = true, tag = "set-buzz")
                 Note("Beat glow behind everything.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
                 Wrap {
                     for ((v, n) in listOf(0 to "Off", 1 to "Soft", 2 to "Full")) Btn(n, { state.setPulse(v) }, on = state.pulseLevel == v, small = true, tag = "set-pulse-$v")

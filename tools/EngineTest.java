@@ -199,6 +199,20 @@ public class EngineTest {
       Project gp = Project.starter();
       PadOpts go = new PadOpts(); go.glide = true; go.glideT = .3; gp.setOpt(7, go);
       check(Project.fromJson(gp.toJson(), null).project.opt(7).glide, "glide saves with the mess");
+      // loops up to 8 bars: a step in bar 7 saves, loads and plays
+      Project lp = new Project();
+      lp.kit[0] = p.kit[0];
+      lp.pat().len = 128;
+      lp.pat().setStep(lp.kit[0], 100, true);
+      Project lq = Project.fromJson(lp.toJson(), null).project;
+      check(lq.pat().len == 128 && lq.pat().step(lq.kit[0], 100), "an 8 bar loop keeps step 101 through save and load");
+      Engine el = new Engine(rate);
+      el.setSnapshot(Engine.Snapshot.build(lq, lib, new Engine.Live()));
+      el.play();
+      int hits = 0;
+      double spbFrames = rate * 60.0 / lq.bpm / 4.0;
+      for (int i = 0; i < (int) (spbFrames * 104 / 256); i++) { int before = el.triggers; el.render(buf, 256); hits += el.triggers - before; }
+      check(hits >= 1, "the 8 bar loop reaches step 101 and plays it (" + hits + " hits)");
       Engine ge = new Engine(rate); ge.setSnapshot(Engine.Snapshot.build(gp, lib, new Engine.Live()));
       float[] b = new float[256 * 2];
       ge.down(1, 7, new int[]{0}, true); for (int i = 0; i < 4; i++) ge.render(b, 256);

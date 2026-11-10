@@ -84,6 +84,7 @@ fun SongScreen(state: AppState) {
         }
         Wrap(Modifier.padding(top = 14.dp)) {
             Btn("Rough it in", { state.songFromLoops() }, small = true, color = C.Teal, tag = "rough")
+            Btn("Share the song", { state.bounce(true, 1) }, small = true, color = C.Pink, enabled = len > 0, tag = "share-song")
             Btn("Clear the song", { state.clearSong() }, small = true, enabled = len > 0, tier = Tier.Danger)
         }
         Help(

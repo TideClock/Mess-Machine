@@ -29,6 +29,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.CornerRadius
@@ -134,6 +137,7 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
     var pressed by remember { mutableStateOf(false) }
     var armed by remember { mutableStateOf(false) }
     val origin = remember { Origin() }
+    val view = androidx.compose.ui.platform.LocalView.current
     val keys = state.keysMode
     val i = state.bank * Project.BANK + d
     val key = if (keys) state.selKey() else P.kit[i]
@@ -180,6 +184,7 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
             }
             .then(if (!empty) Modifier.border(if (sel) 3.dp else 2.dp, if (sel) C.Cream else C.Black, RoundedCornerShape(7.dp)) else Modifier)
             .trackOrigin(origin)
+            .onGloballyPositioned { state.padRects[d] = androidx.compose.ui.geometry.Rect(it.positionInRoot(), it.size.toSize()) }
             .pointerInput(d) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
@@ -188,12 +193,16 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
                     pressed = true
                     armed = false
                     state.padDown(d)
+                    if (state.buzz && state.project.kit[state.bank * Project.BANK + d].isNotEmpty()) view.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
                     val slop = 10.dp.toPx()
                     var moved = false
                     val pi = state.bank * Project.BANK + d
                     val det = CircleDetector(40.dp.toPx())
                     var sph: AppState.Sphere? = null
                     var lastXy = 0f to 0f
+                    // hold still until the outline turns yellow, then slide: you're carrying the sound to another pad
+                    var carry = false
+                    var lastPos = down.position
                     // follows this finger until it lifts; any slide past the slop cancels the menu,
                     // and a circle opens the pad's XY as a sphere over it until the finger lifts
                     suspend fun androidx.compose.ui.input.pointer.AwaitPointerEventScope.follow() {
@@ -201,12 +210,16 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
                             val e = awaitPointerEvent()
                             val c = e.changes.firstOrNull { it.id == down.id } ?: return
                             if (!c.pressed) { c.consume(); return }
-                            if ((c.position - down.position).getDistance() > slop) { moved = true; armed = false }
+                            lastPos = c.position
+                            if ((c.position - down.position).getDistance() > slop) {
+                                if (armed && !carry && state.project.kit[pi].isNotEmpty()) { carry = true; state.say("Drop it on another pad to swap their sounds.") }
+                                moved = true; armed = false
+                            }
                             val s0 = sph
                             if (s0 != null) {
                                 lastXy = sphereXy(s0, state.xyOf(pi).four, origin.at + c.position)
                                 state.xyMove(pi, lastXy.first, lastXy.second, true)
-                            } else if (!state.keysMode && state.project.kit[pi].isNotEmpty() && det.add(c.position)) {
+                            } else if (!carry && !state.keysMode && state.project.kit[pi].isNotEmpty() && det.add(c.position)) {
                                 val cc = origin.at + det.center()
                                 val s1 = AppState.Sphere(pi, Int.MIN_VALUE, cc.x, cc.y, xyDp(state.xyOf(pi).size).toPx() * .5f)
                                 sph = s1
@@ -225,6 +238,11 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
                     state.padUp(d)
                     sph?.let { s0 -> state.xyMove(pi, lastXy.first, lastXy.second, false); if (state.sphere == s0) state.sphere = null }
                     if (armed && !moved) state.padMenu = pi
+                    if (carry) {
+                        val at = origin.at + lastPos
+                        val to = state.padRects.entries.firstOrNull { it.key != d && it.value.contains(at) }?.key
+                        if (to != null) state.swapPads(pi, state.bank * Project.BANK + to)
+                    }
                     armed = false
                 }
             }

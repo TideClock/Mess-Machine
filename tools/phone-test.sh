@@ -74,6 +74,9 @@ infront "relaunch"
 # a tap on a page can open a sheet over the tabs (build 46's run: the Desk page opened Sounds); Done closes it
 close_sheets() {
   for i in 1 2 3; do
+    # a popup list (a dropdown) has focus: Back closes just the popup (build 47's run: Steps' Copy to list)
+    f=$(adb shell dumpsys window | grep mCurrentFocus | tr -d '\r')
+    case "$f" in *$PKG*MainActivity*) ;; *PopupWindow*|*$PKG*) adb shell input keyevent KEYCODE_BACK; sleep 1; continue ;; esac
     d=$(centre done); [ -z "$d" ] && return
     adb shell input tap $d; sleep 1
   done
@@ -84,7 +87,6 @@ for t in tab-Pads view-desk tab-Steps tab-Roll tab-Song tab-Sounds; do
   xy=$(centre "$t")
   [ -z "$xy" ] && { note "$t: NOT FOUND"; fail=1; shot "04-$t"; continue; }
   adb shell input tap $xy; sleep 2
-  adb shell input tap $(( W / 2 )) $(( H / 3 )); sleep 1
   adb shell input swipe $(( W / 2 )) $(( H / 2 )) $(( W / 2 )) $(( H / 4 )) 300; sleep 1
   shot "04-$t"
   alive || { note "$t: NOT RUNNING"; fail=1; adb shell am start -n $PKG/.MainActivity; sleep 5; }

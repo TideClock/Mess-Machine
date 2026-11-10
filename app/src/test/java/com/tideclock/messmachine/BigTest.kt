@@ -833,6 +833,60 @@ class BigTest {
         shot("46-play-keys")
     }
 
+    @Test fun carryAPadOntoAnotherToSwap() {
+        val a = state.project.kit[4]
+        val b = state.project.kit[5]
+        assertTrue(a.isNotEmpty() && b.isNotEmpty())
+        // hold pad 5 still until it arms, then slide onto pad 6 and lift
+        at("pad-4").performTouchInput { down(center) }
+        rule.mainClock.advanceTimeBy(800)
+        settle()
+        val to = rule.onNodeWithTag("pad-5").fetchSemanticsNode().let { it.positionInRoot + androidx.compose.ui.geometry.Offset(it.size.width / 2f, it.size.height / 2f) }
+        rule.onNodeWithTag("pad-4").performTouchInput { moveTo(to - rule.onNodeWithTag("pad-4").fetchSemanticsNode().positionInRoot); up() }
+        settle()
+        assertEquals("pad 5 now has pad 6's sound", b, state.project.kit[4])
+        assertEquals("and pad 6 has pad 5's", a, state.project.kit[5])
+        assertEquals("no menu opened", -1, state.padMenu)
+        rule.onNodeWithTag("toast-undo").performClick()
+        settle()
+        assertEquals("Undo swaps them back", a, state.project.kit[4])
+    }
+
+    @Test fun longerLoopsDesksPicturesAndBuzz() {
+        tab("Steps")
+        repeat(3) { at("looplen").performClick(); settle() }
+        assertEquals("1, 2, 4, 8 bars", 128, state.project.pat().len)
+        at("page-8").performClick()
+        settle()
+        assertEquals(7, state.page)
+        shot("47-steps-eight-bars")
+        at("looplen").performClick()
+        settle()
+        assertEquals(16, state.project.pat().len)
+        // a saved copy of a desk
+        tab("Console")
+        val n = state.desks.size
+        at("console-edit").performClick()
+        settle()
+        at("desk-copy").performClick()
+        settle()
+        assertEquals(n + 1, state.desks.size)
+        shot("48-desk-copy")
+        at("desk-delete").performClick()
+        settle()
+        assertEquals(n, state.desks.size)
+        // the pad buzz setting, and a saved mess shows its picture
+        state.switchBuzz(true)
+        assertTrue(state.buzz)
+        state.saveMess("Picture mess", false)
+        waitFor("the save") { state.files.any { it.name == "Picture mess" } }
+        state.refreshFiles()
+        waitFor("the picture") { state.files.any { it.name == "Picture mess" && it.colors.any { c -> c != 0 } } }
+        state.overlay = Overlay.Files
+        settle()
+        shot("49-messes-with-pictures")
+    }
+
     @Test fun helpShowsOnceThenBehindTheQuestionMark() {
         tab("Steps")
         assertTrue("first visit to Steps shows its how-to", rule.onAllNodesWithTag("help").fetchSemanticsNodes().isNotEmpty())

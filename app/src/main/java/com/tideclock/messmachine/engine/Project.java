@@ -14,7 +14,7 @@ import java.util.Set;
  * between the site and the phone.
  */
 public final class Project {
-    public static final int NPADS = 64, BANK = 16, NSLOTS = 8, MAXSTEPS = 32, MAXSONG = 64;
+    public static final int NPADS = 64, BANK = 16, NSLOTS = 8, MAXSTEPS = 128, MAXSONG = 64;
     public static final String LETTERS = "ABCDEFGH";
     public static final String[] DEFAULT_KIT = {"basement-kick", "wet-clap", "pot-lid-hat", "bw-snare", "tom-of-doom", "bubble-pop", "spring-doink", "tape-wobble-chord"};
 
@@ -289,7 +289,9 @@ public final class Project {
             for (int i = 0; i < NSLOTS && i < pl.size(); i++) {
                 Map<String, Object> x = Json.map(pl.get(i));
                 Pattern P = p.pats[i];
-                P.len = Json.num(x.get("len"), 16) == 32 ? 32 : 16;
+                // 1, 2, 4 or 8 bars (the site plays 1 or 2; longer loops are app only)
+                int ln = (int) Json.num(x.get("len"), 16);
+                P.len = ln == 32 || ln == 64 || ln == 128 ? ln : 16;
                 decSteps(P, Json.map(x.get("steps")));
                 for (Map.Entry<String, Object> e : Json.map(x.get("motion")).entrySet()) {
                     float[] a = new float[MAXSTEPS];

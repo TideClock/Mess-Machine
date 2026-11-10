@@ -87,7 +87,7 @@ fun Roll(state: AppState) {
     val pat = P.pat()
     val k = state.selKey()
     val rows = (Theory.ROLL_HI downTo Theory.ROLL_LO).filter { !P.fold || Theory.inScale(it, P.scale, P.root) }
-    val off = (if (pat.len == 32) state.page else 0) * 16
+    val off = state.page.coerceIn(0, pat.len / 16 - 1) * 16
     val notes = pat.notes(k).map { Triple(it.s, it.p, it.l) }
     val tm = rememberTextMeasurer()
     val rowH = 30.dp

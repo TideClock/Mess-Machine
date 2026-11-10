@@ -78,7 +78,11 @@ sealed class Overlay {
     data class Xy(val pad: Int) : Overlay()
 }
 
-data class MessFile(val id: String, val name: String, val bpm: Int, val at: String, val pads: Int, val loops: Int, val songBars: Int)
+/** A saved mess in the list. colors and grid draw its little picture: bank 1's pads, and its first loop with something in it. */
+data class MessFile(
+    val id: String, val name: String, val bpm: Int, val at: String, val pads: Int, val loops: Int, val songBars: Int,
+    val colors: List<Int> = emptyList(), val grid: List<String> = emptyList(),
+)
 
 /**
  * Everything the screens read and every change they make. Edits go through edit { }, which
@@ -175,6 +179,10 @@ class AppState(private val app: Context) {
     var toastId by mutableIntStateOf(0)
     var busy by mutableStateOf<String?>(null)
     var playOnTap by mutableStateOf(prefs.getBoolean("poc", true))
+    /** A short buzz when a pad is hit (Settings, off to start). */
+    var buzz by mutableStateOf(prefs.getBoolean("buzz", false))
+        private set
+    fun switchBuzz(v: Boolean) { buzz = v; prefs.edit().putBoolean("buzz", v).apply() }
     var lastChord by mutableStateOf("")
     /** Bumped when the selected pad changes from the grid, so only the pads redraw. */
     var selV by mutableIntStateOf(0)
@@ -546,6 +554,18 @@ class AppState(private val app: Context) {
     }
 
     fun toggleMute(key: String) = edit { if (!mutes.remove(key)) mutes.add(key) }
+
+    /** Where each pad of the bank sits on screen, for carrying a sound onto another pad. */
+    val padRects = HashMap<Int, androidx.compose.ui.geometry.Rect>()
+
+    /** Swap two pads' sounds (a held pad carried onto another). The pads keep their own XY, glide and route. */
+    fun swapPads(a: Int, b: Int) {
+        if (a == b || a !in 0 until Project.NPADS || b !in 0 until Project.NPADS) return
+        notes.trail("swap pads ${a + 1} ${b + 1}")
+        edit { val t = kit[a]; kit[a] = kit[b]; kit[b] = t }
+        if (project.sel == a) selectPad(b, false)
+        sayUndo("Pads ${a + 1} and ${b + 1} swapped sounds.")
+    }
     fun toggleSolo(key: String) = edit { if (!solos.remove(key)) solos.add(key) }
 
     fun selectPad(i: Int, hear: Boolean) {
@@ -588,26 +608,36 @@ class AppState(private val app: Context) {
         page = 0
     }
 
-    /** Like the site: one bar to two copies bar one into bar two; two to one drops bar two. */
-    fun toggleLen() {
+    /** Loop length button: 1, 2, 4, 8 bars, then back to 1. */
+    fun toggleLen() = setLen(when (project.pat().len) { 16 -> 32; 32 -> 64; 64 -> 128; else -> 16 })
+
+    /**
+     * Loops of 1, 2, 4 or 8 bars. Longer copies what is there to fill the new bars (like the site's
+     * one to two); shorter drops the bars past the end.
+     */
+    fun setLen(n: Int) {
         val P = project.pat()
         val L = Project.LETTERS[project.cur]
-        if (P.len == 16) {
-            edit {
-                P.len = 32
-                for (a in P.steps.values) for (j in 0 until 16) a[j + 16] = a[j]
-                for (l in P.notes.values) { val copy = l.map { Project.Note(it.s + 16, it.p, it.l) }; l.addAll(copy) }
+        val old = P.len
+        if (n == old || n !in listOf(16, 32, 64, 128)) return
+        edit {
+            if (n > old) {
+                for (a in P.steps.values) for (j in old until n) a[j] = a[j % old]
+                for (l in P.notes.values) {
+                    val base = l.filter { it.s < old }
+                    for (rep in 1 until n / old) l.addAll(base.map { Project.Note(it.s + rep * old, it.p, it.l) })
+                }
+                for (a in P.motion.values) for (j in old until n) a[j] = a[j % old]
+            } else {
+                for (a in P.steps.values) for (j in n until a.size) a[j] = false
+                for (l in P.notes.values) { l.removeAll { it.s >= n }; for (x in l) x.l = minOf(x.l, n - x.s) }
+                for (a in P.motion.values) for (j in n until a.size) a[j] = Float.NaN
             }
-            say("Loop $L is two bars now. Bar one got copied into bar two.")
-        } else {
-            edit {
-                P.len = 16
-                for (a in P.steps.values) for (j in 16 until 32) a[j] = false
-                for (l in P.notes.values) { l.removeAll { it.s >= 16 }; for (n in l) n.l = minOf(n.l, 16 - n.s) }
-            }
-            page = 0
-            say("Loop $L is back to one bar.")
+            P.len = n
         }
+        page = page.coerceIn(0, n / 16 - 1)
+        val bars = n / 16
+        say(if (n > old) "Loop $L is $bars bars now. What was there got copied into the new bars." else "Loop $L is $bars bar${if (bars == 1) "" else "s"} now.")
     }
 
     /** Clear the roll notes for the picked pad in this loop. */
@@ -632,7 +662,7 @@ class AppState(private val app: Context) {
     /** The site's Bottle it: the loop to four bars (or the song), as a WAV. */
     fun bottleIt() {
         if (project.songMode && project.songLen() > 0) bounce(true, 1)
-        else bounce(false, if (project.pat().len == 32) 2 else 4)
+        else bounce(false, maxOf(1, 4 / (project.pat().len / 16)))
     }
 
     fun clearSlot() { edit { pat().clear() }; sayUndo("Loop ${Project.LETTERS[project.cur]} cleared.") }
@@ -723,10 +753,15 @@ class AppState(private val app: Context) {
                         Json.map(pm["steps"]).values.any { (it as? String)?.contains('1') == true } ||
                             Json.map(pm["notes"]).values.any { (it as? String)?.isNotEmpty() == true }
                     }
+                    // the picture: bank 1's 16 pad colours, and up to 8 rows of its first loop with steps in it
+                    val kit = Json.list(m["kit"]).map { (it as? String) ?: "" }
+                    val colors = (0 until 16).map { k -> kit.getOrNull(k)?.takeIf { it.isNotEmpty() }?.let { lib.colorOf(it) } ?: 0 }
+                    val first = pats.map { Json.map(it) }.firstOrNull { pm -> Json.map(pm["steps"]).values.any { (it as? String)?.contains('1') == true } }
+                    val grid = first?.let { pm -> Json.map(pm["steps"]).values.mapNotNull { it as? String }.filter { it.contains('1') }.take(8).map { it.take(16) } } ?: emptyList()
                     MessFile(
                         f.name.removeSuffix(".json"), Json.str(m["name"], "Untitled mess"), Json.num(m["bpm"], 112.0).toInt(),
-                        Json.str(m["at"], ""), Json.list(m["kit"]).count { (it as? String)?.isNotEmpty() == true }, loops,
-                        Json.str(m["song"], "").trimEnd('-').length
+                        Json.str(m["at"], ""), kit.count { it.isNotEmpty() }, loops,
+                        Json.str(m["song"], "").trimEnd('-').length, colors, grid,
                     )
                 } catch (_: Exception) { null }
             }.sortedByDescending { it.at }
@@ -1143,6 +1178,34 @@ class AppState(private val app: Context) {
 
     /** From the dock: the next layout, and the Desk page if you are somewhere else (and not locked). */
     fun nextDesk() { switchDesk((deskIdx + 1) % desks.size); if (!locked) tab = Tab.Console }
+
+    /** Keep the desk you have as a new saved desk, so you can change this one and still go back. */
+    fun copyDesk() {
+        saveConsole()
+        val d = desks[deskIdx]
+        desks.add(Desk((d.name + " copy").take(24), console.toList()))
+        switchDesk(desks.size - 1)
+        say("Saved a copy: ${desks[deskIdx].name}. Rename it while arranging.")
+    }
+
+    fun renameDesk(name: String) {
+        if (deskIdx !in desks.indices) return
+        val n = name.replace("~", " ").replace("#", " ").replace(";", " ").trim().take(24)
+        if (n.isEmpty()) return
+        desks[deskIdx] = desks[deskIdx].copy(name = n)
+        saveConsole()
+    }
+
+    /** Throw a saved desk away (the last one always stays). */
+    fun deleteDesk() {
+        if (desks.size <= 1) return
+        val gone = desks[deskIdx].name
+        desks.removeAt(deskIdx)
+        deskIdx = (deskIdx - 1).coerceAtLeast(0)
+        console.clear(); console.addAll(desks[deskIdx].mods)
+        saveConsole()
+        say("Desk $gone is gone.")
+    }
 
     fun newDesk() {
         saveConsole()

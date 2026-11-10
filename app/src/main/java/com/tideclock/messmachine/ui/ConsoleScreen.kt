@@ -75,6 +75,18 @@ fun ConsoleScreen(state: AppState) {
                 Select("+ Add", CONSOLE_TYPES, { state.addModule(it) }, color = C.Teal, modifier = Modifier.testTag("console-add"))
                 Btn("Start over", { state.resetConsole() }, small = true, tag = "console-reset")
             }
+            // this desk: its name, a saved copy, or throw it away
+            var deskName by remember(state.deskIdx) { mutableStateOf(state.desks.getOrNull(state.deskIdx)?.name ?: "") }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 10.dp)) {
+                androidx.compose.material3.OutlinedTextField(
+                    value = deskName, onValueChange = { deskName = it.take(24); state.renameDesk(deskName) }, singleLine = true,
+                    textStyle = androidx.compose.ui.text.TextStyle(color = C.Cream, fontFamily = Archivo, fontSize = 14.sp),
+                    colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(focusedBorderColor = C.Pink, unfocusedBorderColor = C.Card2, cursorColor = C.Pink),
+                    modifier = Modifier.weight(1f).testTag("desk-name"),
+                )
+                Btn("Save a copy", { state.copyDesk() }, small = true, tag = "desk-copy")
+                Btn("Delete", { state.deleteDesk() }, small = true, enabled = state.desks.size > 1, tier = Tier.Danger, tag = "desk-delete")
+            }
             Help("Drag a piece to move it, drag its pink corner to resize it. 📌 pins it in place, ⚙ picks its pad and size, ✕ takes it off. Pieces can overlap; the one you touched last sits on top.",
                 modifier = Modifier.padding(bottom = 10.dp))
         }
