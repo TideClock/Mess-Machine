@@ -103,3 +103,44 @@ The site's source is kept in `site/` (build with `python3 build.py` next to the 
 Ideas Tyler tags "wishlist" go here, not into the build.
 
 - (Started) Mess Machine as a standalone Android app. This repo.
+
+## Plan agreed 2026-11-09 (builds after 30)
+
+The proposal doc (claude.ai artifact 7DvA8tAeAYSUofSab1sWFG) is the short version; this is the full spec. Tyler's notes #1 to #6 are on GitHub.
+
+### Build A: fixes and safety
+- Pads redraw after any change (#6). Cause: Compose strong skipping skipped screens whose only input is the AppState object; they now read the change counter.
+- Hold holds one-shots (#4): a latched note on a one-shot loops its trimmed part while held. Doctor choice per sound, "When held": loop it, hold the tail (freeze near the end), or play once.
+- Hold "Last" (#1): a Hold count below 1. Only the newest note holds; the next note replaces it.
+- Tabs, sheets and menus act on lift with a short (about 150 ms) slide or fade (#5). Pads and keys still fire on touch down.
+- Pad menu: hold still about 0.45 s, then lift. Any move over about 10 dp cancels it, so drags and circles never open menus.
+- In key only (scale setting): the Padiano hides out-of-key notes; chords use only scale notes.
+- Empty pads record (setting, off by default). Mode: tap to start, tap again to stop (default) or hold to record.
+- Beat pulse behind the whole screen: off, soft or full (View size area of the menu).
+- Scrolling: anything you play (pads, Padiano, XY, sliders) never scrolls the page. Everything else scrolls with one finger; the scroll bar always works; Lock turns scrolling off.
+
+### Build B: Padiano, Glide, the dock and Lock
+- Piano becomes Padiano everywhere. Layouts: Squares (default, one row of small squares) and Keys (the old piano).
+- Padiano settings: semitones shown, 7 to 36; height S M L. Squares are never narrower than 28 dp; past that, ◀ ▶ shifts.
+- Glide: switch plus 0 to 1 s time, per pad, on the Padiano header and in the doctor. Legato only option. Off for drums by default.
+- Side dock on the left edge, folds to a tab: Lock, Hold, filter and resonance sliders (target the mix or one pad), XY preset picker, and any of Repeat, Hush, Rec, one effect, beat light.
+- Lock freezes the page (no scroll, tabs, menus, sheets, undo); playing still works. It also asks Android to pin the screen (Android asks each time). Hold the lock 1 s to unlock; unlocking unpins.
+
+### Build C: effects, routing and XY
+- Perform effects become editable: tap to hold, slide to set the amount, press and hold for settings (amount, tempo-synced time, tone, behaviour: held, stays on, follows slider).
+- Doctor effects per sound: Reverb, Echo, Dirty, Crush, Chorus, Wobble. Reverb and echo are shared sends. Save as new bakes them in. The site plays them plain.
+- Routing: each pad goes to the Mix or one of 4 FX buses. Stutter, tape stop, gate, ring mod and octave down get per-pad versions. Every effect, slider and XY direction picks a target: this pad, a bus, or the Mix.
+- XY belongs to the pad (set from the pad menu). Two-way (zero bottom-left) or four-way (zero in the middle, dead zone, M and L sizes only). Springs back or stays. Ring or square, S M L. Each direction has its own range.
+- XY targets: pitch (scale steps by default), filter, resonance, volume, pan, attack, release, start point, doctor effects, glide time, repeat rate, per-pad versions of the mix effects.
+- Draw a circle on a pad or a Padiano note: a mostly clear sphere appears over it, reaching past the pad's edges, until you lift. On one note it moves that note only where it can (pitch, filter, volume, pan, sends).
+- XY presets: Sweep (X filter, Y res), Dub (right echo, up reverb, left filter down, down crush), Bend (right pitch up, left pitch down, up chorus, down wobble), Lo-fi (X crush, Y dirty), Scrub (X start, Y pitch in scale steps), plus your own saved ones.
+
+### Build D: M(ess)(y) Desk and deeper menus
+- The Console becomes M(ess)(y) Desk (tab label DESK): Arrange mode, drag pieces on a grid, resize from a corner, float and overlap, pin. Several saved layouts, switchable from the dock.
+- Motion recording: with Rec on while playing, XY and slider moves record into the loop and play back.
+- Menus everywhere (#2): sound names in Steps and Roll, loop letters, song bars, picker rows, jar tiles; hold then lift.
+- Pitch strip in Steps (#3): tap a sound name for a one-row Padiano under its row; pick a step, then a note.
+
+### Known trade-offs
+- Starting a circle on the Padiano can touch a neighbour note before the circle is recognised; it then snaps back and silences the stray note.
+- The pad still sounds on touch before its menu opens (same as before).
