@@ -32,6 +32,10 @@ One line each, dated, with the reason and who decided (BT-2). Older decisions li
   groups, 1 tap while playing, 2 for settings, 3 at most.
 - 2026-11-10 Trace IDs on proposal items (Tyler): BT-1 to BT-10 for the skill proposal, used in commits and tests.
 - 2026-11-10 In key only: one home, the Padiano's settings (Claude, BT-1): it only changes the Padiano.
+- 2026-11-10 First design check (build 53): loop tools removed from Roll and Song (unsupported duplicates,
+  Claude, BT-1); scale pickers kept on Roll with a reason; Sounds' chip rows and list rows count once each.
+- 2026-11-10 The sheet backdrop no longer acts as one big button (Claude): it hid every sheet's controls from
+  screen readers and from the design check.
 
 ## Control map
 
@@ -45,10 +49,11 @@ so they never count as a second home. `design/exceptions.txt` holds the same rea
 | Hold | Keys bar | Dock, desk Hold piece | Shortcuts you choose |
 | Repeat and its rate | Dock | Desk Repeat piece | Shortcut you choose |
 | Filter and resonance | Dock | Desk pad filter piece, XY targets | Shortcut; XY moves it as one of its targets |
-| Root, scale, chords | Keys bar | Roll, desk Scale piece | Roll needs the scale to place notes; desk is a shortcut |
+| Root, scale, chords | Keys bar | Roll, desk Scale piece | Roll places and folds notes by the scale; desk is a shortcut |
 | In key only | Padiano settings | none | |
 | Bank 1 to 4 | Play tab (Pads) | Steps | Each page shows that bank's pads; switching tabs to change it would break the flow |
-| Loop letters A to H | Steps | Song palette | Song paints with loops; the palette is how you pick one there |
+| Loop letters A to H | Steps | Roll, Song, Song palette | Roll edits one loop and Song plays one: both need to pick it. The palette paints the song |
+| Loop tools (bars, Copy to, Clear loop, Bottle it) | Steps | none | Removed from Roll and Song 2026-11-10 (unsupported, BT-1) |
 | Resample the loop | Steps | Workbench (Sounds) | Flagged for Tyler |
 | Record a sound | Empty pads, pad menu | Sounds mic | Sounds records into the Workbench, not onto a pad |
 | Mute, solo | Pad menu | none | |

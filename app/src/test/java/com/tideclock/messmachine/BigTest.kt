@@ -854,11 +854,23 @@ class BigTest {
             settle()
             val groups = HashSet<Int>()
             val labels = ArrayList<String>()
+            val seen = HashSet<String>()
             for (n in rule.onAllNodes(androidx.compose.ui.test.hasClickAction()).fetchSemanticsNodes()) {
                 val tags = generateSequence(n) { it.parent }.mapNotNull { it.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.TestTag) }.toList()
                 if (!inside(tags) || tags.any { t -> surface.any { t.startsWith(it) } }) continue
                 val l = labelOf(n)
-                if (l.length <= 2) { if (groups.add(n.parent?.id ?: n.id)) labels.add("[row of short buttons]") } else labels.add(l)
+                val own = n.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.TestTag)
+                val chips = tags.firstOrNull { it.endsWith("-chips") }
+                val row = tags.firstOrNull { it.startsWith("row-") }
+                // a row of filter chips is one control; a button on every row of a list is one control
+                val key = when {
+                    chips != null -> "[chips: $chips]"
+                    row != null -> "[each row: ${l.split(" ").firstOrNull() ?: "?"}]"
+                    l.endsWith("▾") && own != null -> "[picker: $own]"   // a picker's label is its value; its tag is who it is
+                    l.length <= 2 -> if (groups.add(n.parent?.id ?: n.id)) "[row of short buttons]" else null
+                    else -> l
+                }
+                if (key != null && (key == "[row of short buttons]" || seen.add(key))) labels.add(key)
             }
             pages[name] = labels
         }
@@ -905,7 +917,7 @@ class BigTest {
         if (tabs > 5) problems.add("$tabs tabs (target 5)")
         if (menuItems > 8 && (okMenus["Pad menu"] ?: 0) < menuItems) problems.add("Pad menu has $menuItems items (target 8)")
         val where = HashMap<String, MutableSet<String>>()
-        for ((n, l) in pages) for (x in l) if (!x.startsWith("[")) where.getOrPut(x) { LinkedHashSet() }.add(n.substringBefore(":"))
+        for ((n, l) in pages) for (x in l) if (!x.startsWith("[") || x.startsWith("[picker:")) where.getOrPut(x) { LinkedHashSet() }.add(n.substringBefore(":"))
         val repeated = where.filter { it.value.size > 1 }
         out.append("\n## Labels on more than one screen\n\n")
         for ((x, w) in repeated.toSortedMap()) {

@@ -51,7 +51,8 @@ import com.tideclock.messmachine.engine.Project
 
 /** Loop slots A to H, length, copy, clear, bottle. Shared by Steps, Roll and Song. */
 @Composable
-fun SlotBar(state: AppState) {
+/** Loops A to H. The loop tools (length, copy, clear, bottle) live only on Steps, their home (BT-1). */
+fun SlotBar(state: AppState, tools: Boolean = false) {
     val P = state.project
     Column(Modifier.padding(bottom = 12.dp)) {
         Row(Modifier.fillMaxWidth().padding(bottom = 4.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -80,6 +81,7 @@ fun SlotBar(state: AppState) {
                 }
             }
         }
+        if (!tools) return@Column
         val bars = P.pat().len / 16
         Note("Editing loop ${Project.LETTERS[P.cur]}" + if (bars > 1) ", $bars bars" else "", modifier = Modifier.padding(top = 8.dp))
         // longer loops (up to 8 bars): pick the bar to see and edit
@@ -104,7 +106,7 @@ fun StepsScreen(state: AppState) {
     val pat = P.pat()
     val off = state.page.coerceIn(0, pat.len / 16 - 1) * 16
     ScrollPane {
-        SlotBar(state)
+        SlotBar(state, tools = true)
         Row(Modifier.fillMaxWidth().padding(bottom = 12.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
             T("BANK", size = 11.sp, color = C.Dim, spacing = .1.em)
             for (b in 0 until 4) {

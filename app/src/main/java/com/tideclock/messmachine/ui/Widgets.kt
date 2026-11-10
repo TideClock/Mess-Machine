@@ -254,11 +254,11 @@ fun Btn(
 @Composable
 fun <V> Select(
     label: String, options: List<Pair<V, String>>, onPick: (V) -> Unit, modifier: Modifier = Modifier,
-    small: Boolean = true, color: Color = C.Ink,
+    small: Boolean = true, color: Color = C.Ink, tag: String? = null,
 ) {
     var open by remember { mutableStateOf(false) }
     Box(modifier) {
-        Btn("$label ▾", { open = true }, small = small, color = color, enabled = !LocalLocked.current)
+        Btn("$label ▾", { open = true }, small = small, color = color, enabled = !LocalLocked.current, tag = tag)
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.background(C.Ink).border(2.dp, C.Cream)) {
             for ((v, name) in options) {
                 DropdownMenuItem(

@@ -2,6 +2,7 @@
   "title": "The overhaul, plus one home for each control",
   "thisBuild": [
     "One home per control: In key only now lives only in the Padiano's settings (gear on the Padiano), since it only changes the Padiano. Resample left the pad menu; it lives in Steps.",
+    "The loop tools (bars, Copy to, Clear loop, Bottle it) live only on Steps now. Roll and Song keep the loop letters A to H, so you can still pick a loop there.",
     "The pad menu is in groups: Play, Sound, then Clear at the bottom.",
     "Two buttons that shared a name with a different job got their own: the Padiano layout is Squares or Keyboard, and Roll's clear says Clear this sound's notes.",
     "Play tab: Pads and the desk are one tab now. At its top, Pads, Keys and My Desk switch what it shows; it reopens on the one you used last.",

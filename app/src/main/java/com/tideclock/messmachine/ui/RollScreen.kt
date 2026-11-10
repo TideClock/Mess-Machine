@@ -55,11 +55,11 @@ fun RollScreen(state: AppState) {
                 color = C.Teal,
             )
             Btn("✂", { state.overlay = com.tideclock.messmachine.Overlay.Doctor(k) }, small = true, enabled = k.isNotEmpty())
-            Select(Theory.NN[P.root], Theory.NN.mapIndexed { i, n -> i to n }, { state.setRoot(it) })
-            Select(P.scale, Theory.SCALES.keys.map { it to it }, { state.setScale(it) })
+            Select(Theory.NN[P.root], Theory.NN.mapIndexed { i, n -> i to n }, { state.setRoot(it) }, tag = "pick-root")
+            Select(P.scale, Theory.SCALES.keys.map { it to it }, { state.setScale(it) }, tag = "pick-scale")
         }
         Wrap(Modifier.padding(bottom = 10.dp)) {
-            Select(chordName(state.chordMode), chordOptions(P.scale, P.root), { state.pickChordMode(it) })
+            Select(chordName(state.chordMode), chordOptions(P.scale, P.root), { state.pickChordMode(it) }, tag = "pick-chord")
             Btn(if (P.fold) "Unfold" else "Fold to scale", { state.edit { fold = !fold } }, on = P.fold, small = true)
             Btn("Clear this sound's notes", { state.clearNotes() }, small = true, tier = Tier.Danger, enabled = k.isNotEmpty() && pat.notes(k).isNotEmpty(), tag = "roll-clear")
         }

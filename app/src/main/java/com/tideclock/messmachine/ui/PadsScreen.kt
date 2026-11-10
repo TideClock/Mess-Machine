@@ -95,9 +95,9 @@ fun KeysBar(state: AppState) {
     val P = state.project
     Column(Modifier.padding(bottom = 12.dp)) {
         Wrap(Modifier.padding(bottom = 4.dp)) {
-            Select(Theory.NN[P.root], Theory.NN.mapIndexed { i, n -> i to n }, { state.setRoot(it) })
-            Select(P.scale, Theory.SCALES.keys.map { it to it }, { state.setScale(it) })
-            Select(chordName(state.chordMode), chordOptions(P.scale, P.root), { state.pickChordMode(it) })
+            Select(Theory.NN[P.root], Theory.NN.mapIndexed { i, n -> i to n }, { state.setRoot(it) }, tag = "pick-root")
+            Select(P.scale, Theory.SCALES.keys.map { it to it }, { state.setScale(it) }, tag = "pick-scale")
+            Select(chordName(state.chordMode), chordOptions(P.scale, P.root), { state.pickChordMode(it) }, tag = "pick-chord")
             if (state.chordMode != "off") {
                 Btn("Play chord", { state.switchChordPlay(true) }, on = state.chordPlay, small = true, onColor = C.Teal, tag = "chord-play")
                 Btn("Show chord", { state.switchChordPlay(false) }, on = !state.chordPlay, small = true, onColor = C.Pink, tag = "chord-show")

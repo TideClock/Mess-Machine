@@ -6,3 +6,6 @@
 menu: Pad menu | 14 | The pad's one home for everything a pad does, now that the pad card is gone; split into Play, Sound and Clear groups
 label: Done | Closes the sheet it sits on; every sheet needs one
 label: Hear it | Each one plays the sound on its own screen (the pad, the library row, the doctor's edit)
+label: [picker: pick-root] | Roll places notes by the root; the Play tab's keys bar is the home
+label: [picker: pick-scale] | Roll places notes by the scale; the Play tab's keys bar is the home
+label: [picker: pick-chord] | Roll draws chords on the grid; the Play tab's keys bar is the home
