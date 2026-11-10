@@ -63,6 +63,8 @@ android {
                 it.maxHeapSize = "3g"
                 // each test class in its own JVM: a crash in one (the random run) cannot leave Compose broken for the other
                 it.forkEvery = 1
+                // DESIGN_CHECK=report makes the design check (BT-5) report without failing
+                it.environment("DESIGN_CHECK", System.getenv("DESIGN_CHECK") ?: "")
                 it.systemProperty("robolectric.graphicsMode", "NATIVE")
                 it.testLogging { events("passed", "failed", "skipped"); showStandardStreams = true; exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL }
             }

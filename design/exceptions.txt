@@ -1,0 +1,8 @@
+# Exceptions to the design guidelines (BT-1). The design check test (BT-5) reads this file.
+# Every line needs a reason; a line without one does not count.
+#   label: <button label> | <reason it is on more than one screen>
+#   screen: <screen name as in design-check.md> | <most controls allowed> | <reason>
+#   menu: <menu name> | <most items allowed> | <reason>
+menu: Pad menu | 14 | The pad's one home for everything a pad does, now that the pad card is gone; split into Play, Sound and Clear groups
+label: Done | Closes the sheet it sits on; every sheet needs one
+label: Hear it | Each one plays the sound on its own screen (the pad, the library row, the doctor's edit)

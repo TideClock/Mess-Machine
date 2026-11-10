@@ -295,7 +295,7 @@ fun PadianoSettings(state: AppState) {
     Column(Modifier.fillMaxWidth().padding(bottom = 8.dp).sticker(C.Black, shadow = 0.dp, border = 2.dp, borderColor = C.Teal).padding(8.dp)) {
         Wrap(gap = 6.dp) {
             Btn("Squares", { state.switchPadianoKeys(false) }, on = !state.padianoKeys, onColor = C.Teal, small = true, tag = "pset-squares")
-            Btn("Keys", { state.switchPadianoKeys(true) }, on = state.padianoKeys, onColor = C.Teal, small = true, tag = "pset-keys")
+            Btn("Keyboard", { state.switchPadianoKeys(true) }, on = state.padianoKeys, onColor = C.Teal, small = true, tag = "pset-keys")
             Btn("In key only", { state.switchInKey(!state.inKeyOnly) }, on = state.inKeyOnly, onColor = C.Yellow, small = true, tag = "pset-inkey")
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 8.dp)) {

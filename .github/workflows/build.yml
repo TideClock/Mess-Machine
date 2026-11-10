@@ -19,6 +19,13 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Quick checks (braces, stale test names, em dashes, guide rewritten)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash tools/precheck.sh
 
       - uses: actions/setup-java@v4
         with:
@@ -36,6 +43,9 @@ jobs:
       - name: The big test (every screen, with screenshots)
         id: bigtest
         continue-on-error: true
+        env:
+          # the design check (BT-5) only reports until design/exceptions.txt is filled from its first table
+          DESIGN_CHECK: report
         run: ./gradlew testDebugUnitTest --stacktrace
 
       - name: Publish the test screenshots
@@ -44,7 +54,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p shots
-          cp app/build/screens/*.png shots/ 2>/dev/null || true
+          cp app/build/screens/*.png app/build/screens/*.md shots/ 2>/dev/null || true
           cp app/build/test-results/testDebugUnitTest/*.xml shots/ 2>/dev/null || true
           (cd shots && zip -q -r ../test-screens.zip .) || true
           if [ -f test-screens.zip ]; then

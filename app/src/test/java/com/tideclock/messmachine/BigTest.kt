@@ -512,7 +512,10 @@ class BigTest {
         state.switchHold(false)
         // In key only: every square on the Padiano is in the scale
         state.setRoot(0); state.setScale("Major"); state.pickChordMode("off")
-        rule.onNodeWithTag("in-key").performScrollTo().performClick()
+        // In key only lives in the Padiano's settings now (its one home, BT-1)
+        rule.onNodeWithTag("piano-set-7").performScrollTo().performClick()
+        settle()
+        rule.onNodeWithTag("pset-inkey").performScrollTo().performClick()
         settle()
         assertTrue(state.inKeyOnly)
         rule.onNodeWithTag("piano-7").performScrollTo()
@@ -526,8 +529,7 @@ class BigTest {
             assertTrue("in key only plays only C major notes (got $name at $f)", name.isNotEmpty() && '#' !in name)
         }
         // Padiano settings: fewer notes, the Keys layout
-        rule.onNodeWithTag("in-key").performScrollTo().performClick()
-        rule.onNodeWithTag("piano-set-7").performScrollTo().performClick()
+        rule.onNodeWithTag("pset-inkey").performScrollTo().performClick()
         settle()
         repeat(4) { rule.onNodeWithTag("pset-n-down").performClick() }
         settle()
@@ -833,6 +835,91 @@ class BigTest {
         shot("46-play-keys")
     }
 
+    /**
+     * BT-1, BT-5: the design check. Walks every page and sheet, counts the controls outside the playing
+     * surface (a row of one- or two-character buttons like 1 2 3 4 or A to H counts once), and lists
+     * labels that show up on more than one page. Over a target, or repeated, needs a line with a reason in
+     * design/exceptions.txt. The table goes to build/screens/design-check.md (published with the screens).
+     * DESIGN_CHECK=report only reports.
+     */
+    @Test fun designCheck() {
+        val surface = listOf("pad-", "steps-", "piano-keys-", "roll", "bar-", "slot-", "mess-pic-")
+        val pages = linkedMapOf<String, List<String>>()
+        fun labelOf(n: androidx.compose.ui.semantics.SemanticsNode): String =
+            (n.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.Text)?.joinToString(" ") { it.text }
+                ?: n.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.ContentDescription)?.joinToString(" ") ?: "")
+                .trim().replace(Regex("\\s+"), " ")
+        fun grab(name: String, inside: (List<String>) -> Boolean) {
+            settle()
+            val groups = HashSet<Int>()
+            val labels = ArrayList<String>()
+            for (n in rule.onAllNodes(androidx.compose.ui.test.hasClickAction()).fetchSemanticsNodes()) {
+                val tags = generateSequence(n) { it.parent }.mapNotNull { it.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.TestTag) }.toList()
+                if (!inside(tags) || tags.any { t -> surface.any { t.startsWith(it) } }) continue
+                val l = labelOf(n)
+                if (l.length <= 2) { if (groups.add(n.parent?.id ?: n.id)) labels.add("[row of short buttons]") } else labels.add(l)
+            }
+            pages[name] = labels
+        }
+        fun page(name: String) = grab(name) { tags -> tags.any { it.startsWith("screen-") } && "sheet" !in tags }
+        fun sheet(name: String) = grab(name) { tags -> "sheet" in tags }
+
+        page("Play: Pads")
+        at("mode-keys").performClick(); page("Play: Keys")
+        at("mode-pads").performClick(); settle()
+        for (t in listOf("Steps", "Roll", "Song", "Sounds")) { tab(t); page(t) }
+        tab("Pads")
+        for ((n, o) in listOf("Messes" to Overlay.Files, "Settings" to Overlay.Settings, "Tempo" to Overlay.Tempo, "Notes for Claude" to Overlay.Notes)) {
+            state.overlay = o; sheet(n); state.overlay = null; settle()
+        }
+        state.overlay = Overlay.Doctor(state.project.kit[0])
+        for (d in listOf("trim", "shape", "fx", "tools")) { at("dtab-$d").performClick(); sheet("Doctor: $d") }
+        state.overlay = null; settle()
+        // the pad menu
+        longPress("pad-1")
+        val menu = rule.onAllNodes(androidx.compose.ui.test.hasTestTag("padmenu")).fetchSemanticsNodes().let { it.size }
+        val menuItems = rule.onAllNodes(androidx.compose.ui.test.hasClickAction()).fetchSemanticsNodes()
+            .count { n -> n.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.TestTag)?.startsWith("menu-") == true }
+        state.padMenu = -1; settle()
+        val tabs = rule.onAllNodes(androidx.compose.ui.test.hasClickAction()).fetchSemanticsNodes()
+            .count { n -> n.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.TestTag)?.startsWith("tab-") == true }
+
+        // exceptions, each with a reason
+        val ex = listOf(File("../design/exceptions.txt"), File("design/exceptions.txt")).firstOrNull { it.exists() }?.readLines().orEmpty()
+            .map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("#") }
+        fun parts(prefix: String) = ex.filter { it.startsWith(prefix) }.map { it.removePrefix(prefix).split("|").map { p -> p.trim() } }
+        val okLabels = parts("label:").filter { it.size >= 2 && it[1].isNotEmpty() }.map { it[0] }.toSet()
+        val okScreens = parts("screen:").filter { it.size >= 3 && it[2].isNotEmpty() }.associate { it[0] to (it[1].toIntOrNull() ?: 0) }
+        val okMenus = parts("menu:").filter { it.size >= 3 && it[2].isNotEmpty() }.associate { it[0] to (it[1].toIntOrNull() ?: 0) }
+
+        val problems = ArrayList<String>()
+        val out = StringBuilder("# Design check\n\nTargets: 5 tabs, about 12 controls per screen outside the playing surface, menus of 8.\n\n| Screen | Controls | |\n|---|---|---|\n")
+        for ((n, l) in pages) {
+            val over = l.size > 12
+            val allowed = okScreens[n]?.let { l.size <= it } ?: false
+            if (over && !allowed) problems.add("$n has ${l.size} controls (target 12): ${l.joinToString(", ")}")
+            out.append("| $n | ${l.size} | ${if (!over) "ok" else if (allowed) "over, with a reason" else "OVER"} |\n")
+        }
+        out.append("\nTabs: $tabs. Pad menu: $menuItems items.\n")
+        if (tabs > 5) problems.add("$tabs tabs (target 5)")
+        if (menuItems > 8 && (okMenus["Pad menu"] ?: 0) < menuItems) problems.add("Pad menu has $menuItems items (target 8)")
+        val where = HashMap<String, MutableSet<String>>()
+        for ((n, l) in pages) for (x in l) if (!x.startsWith("[")) where.getOrPut(x) { LinkedHashSet() }.add(n.substringBefore(":"))
+        val repeated = where.filter { it.value.size > 1 }
+        out.append("\n## Labels on more than one screen\n\n")
+        for ((x, w) in repeated.toSortedMap()) {
+            val ok = x in okLabels
+            if (!ok) problems.add("\"$x\" is on ${w.joinToString(", ")}")
+            out.append("- $x: ${w.joinToString(", ")}${if (ok) " (reason in exceptions)" else " (NO REASON)"}\n")
+        }
+        out.append("\n## Every screen\n\n")
+        for ((n, l) in pages) out.append("- **$n:** ${l.joinToString(", ")}\n")
+        File("build/screens").mkdirs()
+        File("build/screens/design-check.md").writeText(out.toString())
+        println(out)
+        if (System.getenv("DESIGN_CHECK") != "report") assertTrue("Design check:\n" + problems.joinToString("\n"), problems.isEmpty())
+    }
+
     @Test fun carryAPadOntoAnotherToSwap() {
         val a = state.project.kit[4]
         val b = state.project.kit[5]
@@ -1121,7 +1208,7 @@ class BigTest {
         settle()
         rule.onNodeWithTag("settings").performClick()
         settle()
-        rule.onNodeWithTag("set-inkey").assertExists()
+        rule.onNodeWithTag("set-buzz").assertExists()
         shot("15b-settings")
         rule.onNodeWithTag("done").performClick()
         settle()

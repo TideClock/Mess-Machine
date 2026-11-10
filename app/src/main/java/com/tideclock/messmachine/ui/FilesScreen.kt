@@ -163,8 +163,6 @@ fun SettingsScreen(state: AppState) {
                 Wrap {
                     for ((v, n) in listOf(0 to "Off", 1 to "Soft", 2 to "Full")) Btn(n, { state.setPulse(v) }, on = state.pulseLevel == v, small = true, tag = "set-pulse-$v")
                 }
-                Note("Pianos show only the scale's notes.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
-                Btn(if (state.inKeyOnly) "In key only: on" else "In key only: off", { state.switchInKey(!state.inKeyOnly) }, on = state.inKeyOnly, onColor = C.Yellow, small = true, tag = "set-inkey")
             }
         }
         Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {

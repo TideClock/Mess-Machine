@@ -61,7 +61,7 @@ fun RollScreen(state: AppState) {
         Wrap(Modifier.padding(bottom = 10.dp)) {
             Select(chordName(state.chordMode), chordOptions(P.scale, P.root), { state.pickChordMode(it) })
             Btn(if (P.fold) "Unfold" else "Fold to scale", { state.edit { fold = !fold } }, on = P.fold, small = true)
-            Btn("Clear notes", { state.clearNotes() }, small = true, enabled = k.isNotEmpty() && pat.notes(k).isNotEmpty(), tag = "roll-clear")
+            Btn("Clear this sound's notes", { state.clearNotes() }, small = true, tier = Tier.Danger, enabled = k.isNotEmpty() && pat.notes(k).isNotEmpty(), tag = "roll-clear")
         }
         Wrap(Modifier.padding(bottom = 12.dp)) {
             T("NOTE", size = 12.sp, color = C.Dim, spacing = .1.em)

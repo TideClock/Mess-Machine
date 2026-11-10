@@ -1,5 +1,64 @@
 # Mess Machine for Android: design doc
 
+## Now
+
+Rewritten at the end of every session and at each step of a long job (BT-2). Read this first.
+
+- **Live:** build 51 (all four overhaul chunks). Proposal docs: overhaul
+  https://claude.ai/artifact/2vcp2CcSo4nXTmVskaCpTS, bug testing skill next version
+  https://claude.ai/artifact/46YXJp4AuLNttREgpPhJ2W.
+- **In flight (2026-11-10):** the new rules applied here: control map below, design check test
+  (`designCheck` in BigTest, report only until `design/exceptions.txt` is filled from its first table),
+  `tools/precheck.sh` as CI's first step. Removed as unsupported duplicates: In key only from the keys bar and
+  Settings (home: Padiano settings), Resample from the pad menu (home: Steps). Renamed clashing labels:
+  Padiano layout "Keys" is "Keyboard", Roll's "Clear notes" is "Clear this sound's notes". Pad menu grouped.
+- **Next:** read the first design check table, fill `design/exceptions.txt` with reasons, remove anything
+  unsupported, switch the check to strict, then the skill package (BT-5 to BT-7 scripts).
+- **Promised to Tyler:** the new bug testing skill package as a file to upload; Mess Machine under the new rules.
+- **Not done, and why:** strong skipping stays off (every screen needs targeted state first, or pads stop
+  redrawing, note #6); pads still play when held for their menu (they play on touch, which keeps them quick);
+  Bad Mouse No Cheese not moved to the new rules yet (Tyler said Mess Machine first).
+- **Flagged for Tyler:** Resample in the Workbench (Sounds) repeats Steps' Resample to a pad. Keep or cut?
+
+## Decisions
+
+One line each, dated, with the reason and who decided (BT-2). Older decisions live in the plan sections below.
+
+- 2026-11-10 Overhaul built in full (Tyler): Play tab with Pads, Keys, My Desk; Hush gone; dock folded; C minor;
+  pad card gone; Steps one row (unanswered, taken as yes); help behind ?; all utility ideas; pad buzz.
+- 2026-11-10 Design guidelines, not hard rules (Tyler): one home per control; a second home needs a written
+  reason; unsupported duplicates are removed without asking and listed in the report; close calls come to Tyler.
+- 2026-11-10 Targets (Tyler): 5 tabs, about 12 controls per screen outside the playing surface, menus of 8 then
+  groups, 1 tap while playing, 2 for settings, 3 at most.
+- 2026-11-10 Trace IDs on proposal items (Tyler): BT-1 to BT-10 for the skill proposal, used in commits and tests.
+- 2026-11-10 In key only: one home, the Padiano's settings (Claude, BT-1): it only changes the Padiano.
+
+## Control map
+
+Every control's one home, any second access point and why (BT-1). The dock and My Desk are shortcuts you choose,
+so they never count as a second home. `design/exceptions.txt` holds the same reasons for the design check test.
+
+| Control | Home | Also at | Why the second spot |
+|---|---|---|---|
+| Play, Stop, Rec, Undo, tempo | Top bar | Desk transport piece | Shortcut you choose |
+| Undo after a clear | Top bar | The clear's message | Right where the clear happened, for a few seconds |
+| Hold | Keys bar | Dock, desk Hold piece | Shortcuts you choose |
+| Repeat and its rate | Dock | Desk Repeat piece | Shortcut you choose |
+| Filter and resonance | Dock | Desk pad filter piece, XY targets | Shortcut; XY moves it as one of its targets |
+| Root, scale, chords | Keys bar | Roll, desk Scale piece | Roll needs the scale to place notes; desk is a shortcut |
+| In key only | Padiano settings | none | |
+| Bank 1 to 4 | Play tab (Pads) | Steps | Each page shows that bank's pads; switching tabs to change it would break the flow |
+| Loop letters A to H | Steps | Song palette | Song paints with loops; the palette is how you pick one there |
+| Resample the loop | Steps | Workbench (Sounds) | Flagged for Tyler |
+| Record a sound | Empty pads, pad menu | Sounds mic | Sounds records into the Workbench, not onto a pad |
+| Mute, solo | Pad menu | none | |
+| Doctor | Pad menu | Sounds row menu | From a pad or from the library: different starting points |
+| Hear it | Pad menu | Sounds, Doctor | Each hears the thing on that screen |
+| Share a sound | Pad menu | Sounds, Doctor (as WAV) | Same: each shares what is on that screen |
+| Click | Tempo sheet | none | |
+| Messes, Settings, Redo, Notes for Claude | ☰ menu | none | |
+| How-to text | ? in the top bar | First visit to each page | Shown once, then hidden |
+
 ## The idea
 
 Keep the Mess Machine on the site as the place where ideas get tried, and make the phone app the version you play. Both read and write the same mess file, so the two never drift into different instruments.

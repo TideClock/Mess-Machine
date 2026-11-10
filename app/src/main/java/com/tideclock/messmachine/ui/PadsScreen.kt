@@ -98,7 +98,6 @@ fun KeysBar(state: AppState) {
             Select(Theory.NN[P.root], Theory.NN.mapIndexed { i, n -> i to n }, { state.setRoot(it) })
             Select(P.scale, Theory.SCALES.keys.map { it to it }, { state.setScale(it) })
             Select(chordName(state.chordMode), chordOptions(P.scale, P.root), { state.pickChordMode(it) })
-            Btn("In key only", { state.switchInKey(!state.inKeyOnly) }, on = state.inKeyOnly, small = true, onColor = C.Yellow, tag = "in-key")
             if (state.chordMode != "off") {
                 Btn("Play chord", { state.switchChordPlay(true) }, on = state.chordPlay, small = true, onColor = C.Teal, tag = "chord-play")
                 Btn("Show chord", { state.switchChordPlay(false) }, on = !state.chordPlay, small = true, onColor = C.Pink, tag = "chord-show")
@@ -342,25 +341,31 @@ fun PadMenu(state: AppState, i: Int) {
                 onClick = { close(); onClick() }, enabled = enabled, modifier = Modifier.testTag(tag),
             )
         }
+        // over 8 items, so in groups (BT-1): playing it, the sound itself, then clears last
+        @Composable
+        fun group(name: String) = T(name, size = 10.sp, color = C.Dim, spacing = .12.em, modifier = Modifier.padding(start = 14.dp, top = 8.dp, bottom = 2.dp))
         val recHere = state.micOn && state.micPad == i
-        item(if (recHere) "■ Stop recording" else "● Record onto this pad", "menu-record", enabled = !state.micOn || recHere) { state.askRecord(i) }
         if (k.isEmpty()) {
+            item(if (recHere) "■ Stop recording" else "● Record onto this pad", "menu-record", enabled = !state.micOn || recHere) { state.askRecord(i) }
             item("Pick a sound", "menu-pick") { state.selectPad(i, false); state.overlay = Overlay.Picker(i) }
         } else {
+            group("PLAY")
             item(if (i in state.keyboards) "🎹 Hide the Padiano" else "🎹 Padiano under this row", "menu-piano") { state.selectPad(i, false); state.toggleKeyboard(i) }
-            item("✂ Doctor it", "menu-doctor") { state.selectPad(i, false); state.overlay = Overlay.Doctor(k) }
+            item("Hear it", "menu-hear") { state.preview(k) }
             item(if (P.mutes.contains(k)) "Unmute" else "Mute", "menu-mute-$i") { state.toggleMute(k) }
             item(if (P.solos.contains(k)) "Unsolo" else "Solo", "menu-solo-$i") { state.toggleSolo(k) }
-            item("Hear it", "menu-hear") { state.preview(k) }
-            item("Swap sound", "menu-swap") { state.selectPad(i, false); state.overlay = Overlay.Picker(i) }
-            item(if (k in state.favs) "★ Unstar" else "☆ Star", "menu-star") { state.toggleFav(k) }
             item("XY setup (${state.xyOf(i).name})", "menu-xy") { state.selectPad(i, false); state.overlay = Overlay.Xy(i) }
             item("Route: " + (if (P.opt(i).route == 0) "mix" else "bus ${P.opt(i).route}") + " (tap for next)", "menu-route") { state.cycleRoute(i) }
+            group("SOUND")
+            item(if (recHere) "■ Stop recording" else "● Record onto this pad", "menu-record", enabled = !state.micOn || recHere) { state.askRecord(i) }
+            item("✂ Doctor it", "menu-doctor") { state.selectPad(i, false); state.overlay = Overlay.Doctor(k) }
+            item("Swap sound", "menu-swap") { state.selectPad(i, false); state.overlay = Overlay.Picker(i) }
+            item(if (k in state.favs) "★ Unstar" else "☆ Star", "menu-star") { state.toggleFav(k) }
             item("Keep in Your Workbench", "menu-keep") { state.keepInBench(i) }
             item("Share this sound", "menu-share") { state.shareSoundWav(k) }
+            group("CLEAR")
             if (P.pat().usedBy(k)) item("Clear it from loop ${com.tideclock.messmachine.engine.Project.LETTERS[P.cur]}", "menu-clearloop", danger = true) { state.clearSoundInLoop(i) }
-            if (P.pat().used()) item("Resample loop ${com.tideclock.messmachine.engine.Project.LETTERS[P.cur]} onto a free pad", "menu-resample") { state.resampleLoop() }
-        item("Clear pad", "menu-clear", danger = true) { state.clearPad(i) }
+            item("Clear pad", "menu-clear", danger = true) { state.clearPad(i) }
         }
     }
 }
