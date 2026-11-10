@@ -152,8 +152,8 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
                     }
                 }
             }
-            // locked: a pink edge round the whole screen, so it's clear why tabs and menus don't open
-            if (state.locked) Box(Modifier.fillMaxSize().border(4.dp, C.Pink).testTag("lock-edge"))
+            // locked: a yellow edge round the whole screen, so it's clear why tabs and menus don't open
+            if (state.locked) Box(Modifier.fillMaxSize().border(6.dp, C.Yellow).testTag("lock-edge"))
             state.busy?.let { msg ->
                 Box(Modifier.fillMaxSize().background(C.Black.copy(alpha = .65f)).clickable(enabled = true) { }, contentAlignment = Alignment.Center) {
                     Box(Modifier.sticker(C.Teal, shadow = 6.dp).padding(22.dp)) { T(msg.uppercase(), color = C.Ink, size = 18.sp, spacing = .08.em) }
