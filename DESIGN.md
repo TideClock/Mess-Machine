@@ -4,22 +4,16 @@
 
 Rewritten at the end of every session and at each step of a long job (BT-2). Read this first.
 
-- **Live:** build 51 (all four overhaul chunks). Proposal docs: overhaul
+- **Live:** build 56 (2026-11-10): the overhaul plus the new design rules. Proposal docs: overhaul
   https://claude.ai/artifact/2vcp2CcSo4nXTmVskaCpTS, bug testing skill next version
   https://claude.ai/artifact/46YXJp4AuLNttREgpPhJ2W.
-- **In flight (2026-11-10):** the new rules applied here: control map below, design check test
-  (`designCheck` in BigTest, report only until `design/exceptions.txt` is filled from its first table),
-  `tools/precheck.sh` as CI's first step. Removed as unsupported duplicates: In key only from the keys bar and
-  Settings (home: Padiano settings), Resample from the pad menu (home: Steps). Renamed clashing labels:
-  Padiano layout "Keys" is "Keyboard", Roll's "Clear notes" is "Clear this sound's notes". Pad menu grouped.
-- **Next:** the design check is strict from build 56: anything over a target or repeated needs a reason in
-  `design/exceptions.txt` or a change. Rows of choices are tagged `-chips` so they count once. Then Bad Mouse
-  No Cheese under the same rules, when Tyler says.
-- **Promised to Tyler:** Mess Machine under the new rules (in progress). The skill package was sent 2026-11-10
-  as bug-testing.skill for him to upload.
+- **In flight:** nothing. The design check (`designCheck` in BigTest) is strict and passing; `tools/precheck.sh`
+  runs first in CI and should be run before every push.
+- **Next:** Bad Mouse No Cheese under the same rules when Tyler says; watch the audio numbers in the phone test
+  (build 55 logged 1 underrun and a 103% peak on the emulator, build 56 see phone-screens).
+- **Promised to Tyler:** nothing open. The skill package went to him 2026-11-10 as bug-testing.skill to upload.
 - **Not done, and why:** strong skipping stays off (every screen needs targeted state first, or pads stop
-  redrawing, note #6); pads still play when held for their menu (they play on touch, which keeps them quick);
-  Bad Mouse No Cheese not moved to the new rules yet (Tyler said Mess Machine first).
+  redrawing, note #6); pads still play when held for their menu (they play on touch, which keeps them quick).
 - **Flagged for Tyler:** Resample in the Workbench (Sounds) repeats Steps' Resample to a pad. Keep or cut?
 
 ## Decisions
