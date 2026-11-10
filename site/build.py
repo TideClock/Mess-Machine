@@ -17,6 +17,9 @@ out = (src.replace('__RAMBLINGS__', ram)
           .replace('__QLAB__', json.dumps(qlab)))
 for k in ('__RAMBLINGS__', '__LOOPS__', '__CRATES__', '__QTRACKS__', '__QLAB__'):
     assert k not in out, k
+# a whole document: publishing needs the doctype, and phones need the viewport (the page used to rely on claude.ai's wrapper)
+out = ('<!DOCTYPE html>\n<html lang="en">\n<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n'
+       + out + '\n</html>\n')
 open(os.path.join(here, 'index.html'), 'w').write(out)
 print('built', len(out)//1024, 'KB')
 
