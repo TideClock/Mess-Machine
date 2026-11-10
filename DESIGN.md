@@ -121,7 +121,7 @@ The proposal doc (claude.ai artifact 7DvA8tAeAYSUofSab1sWFG) is the short versio
 
 ### Build B: Padiano, Glide, the dock and Lock
 - Piano becomes Padiano everywhere. Layouts: Squares (default, one row of small squares) and Keys (the old piano).
-- Padiano settings: semitones shown, 7 to 36; height S M L. Squares are never narrower than 28 dp; past that, ◀ ▶ shifts.
+- Padiano settings: semitones shown, 7 to 36; height S M L. Squares are never narrower than 22 dp; past that they wrap into even rows.
 - Glide: switch plus 0 to 1 s time, per pad, on the Padiano header and in the doctor. Legato only option. Off for drums by default.
 - Side dock on the left edge, folds to a tab: Lock, Hold, filter and resonance sliders (target the mix or one pad), XY preset picker, and any of Repeat, Hush, Rec, one effect, beat light.
 - Lock freezes the page (no scroll, tabs, menus, sheets, undo); playing still works. It also asks Android to pin the screen (Android asks each time). Hold the lock 1 s to unlock; unlocking unpins.

@@ -269,8 +269,10 @@ fun PadianoSquares(state: AppState, pad: Int, col: Color, base: Int) {
     val tm = rememberTextMeasurer()
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val avail = maxWidth - 6.dp
-        val perRow = maxOf(1, minOf(notes.size, floor(avail / 28.dp).toInt()))
-        val rows = (notes.size + perRow - 1) / perRow
+        // as many squares in a row as fit at 22 dp or wider; wrapped rows share the notes evenly
+        val fit = maxOf(1, floor(avail / 22.dp).toInt())
+        val rows = (notes.size + fit - 1) / fit
+        val perRow = (notes.size + rows - 1) / rows
         val rowH = listOf(40.dp, 54.dp, 74.dp)[state.padianoSize]
         Canvas(
             Modifier
