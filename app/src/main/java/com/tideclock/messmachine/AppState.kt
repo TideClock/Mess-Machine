@@ -945,8 +945,11 @@ class AppState(private val app: Context) {
 
     fun switchGuide(v: Boolean) { guideOn = v; prefs.edit().putBoolean("guideOn", v).apply() }
 
-    /** Device, audio and mess facts that go under every note. */
-    fun noteDetails(): String {
+    /**
+     * Device, audio and mess facts that go under a note. The repo is public (MM-18): the mess summary goes only
+     * with bug notes and crashes, and never the mess's name. Device and audio stay, since lag depends on them.
+     */
+    fun noteDetails(cat: String = "bug", crashed: Boolean = false): String {
         val p = project
         val loops = (0 until Project.NSLOTS).count { p.pats[it].used() }
         return "**Device:** ${NotesBook.device()}\n" +
@@ -954,9 +957,9 @@ class AppState(private val app: Context) {
             "**Lag:** ${lagText()}\n" +
             "**Long audio blocks:** ${audio.longBlocksText()}\n" +
             "**Screen:** $uiPerf\n" +
-            "**Mess:** \"${p.name.ifEmpty { "Untitled" }}\", ${p.bpm} BPM, swing ${p.swing}%, ${p.loadedCount()} pads, $loops loops, " +
+            (if (cat != "bug" && !crashed) "" else "**Mess:** ${p.bpm} BPM, swing ${p.swing}%, ${p.loadedCount()} pads, $loops loops, " +
             (if (p.songMode) "song mode (${p.songLen()} bars)" else "loop ${Project.LETTERS[p.cur]}") +
-            ", keys ${if (keysMode) "on" else "off"}, chords $chordMode, repeat ${if (live.nr) "on (${live.arp})" else "off"}\n"
+            ", keys ${if (keysMode) "on" else "off"}, chords $chordMode, repeat ${if (live.nr) "on (${live.arp})" else "off"}\n")
     }
 
     fun saveNote(cat: String, topic: String, text: String, send: Boolean) {
@@ -966,10 +969,10 @@ class AppState(private val app: Context) {
         crash = null
         notes.add(n)
         notes.trail("note ${catLabel(c)}")
-        if (send) notes.send(n, noteDetails()) else say("Saved on the phone. Send it when you are ready.")
+        if (send) notes.send(n, noteDetails(n.cat, n.extra.isNotEmpty())) else say("Saved on the phone. Send it when you are ready.")
     }
 
-    fun sendNote(n: MNote) = notes.send(n, noteDetails())
+    fun sendNote(n: MNote) = notes.send(n, noteDetails(n.cat, n.extra.isNotEmpty()))
 
     /* ---------------- favorites ---------------- */
 

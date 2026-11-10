@@ -1,0 +1,12 @@
+# Baseline Profile (MM-4): compiled ahead at install, so the sound engine and the first screens do not run
+# slowly in the interpreter while you play. Compose's own libraries ship their own profiles.
+HSPLcom/tideclock/messmachine/engine/**;->**(**)**
+Lcom/tideclock/messmachine/engine/**;
+HSPLcom/tideclock/messmachine/AudioOut;->**(**)**
+HSPLcom/tideclock/messmachine/AppState;->**(**)**
+HSPLcom/tideclock/messmachine/AppState$**;->**(**)**
+HSPLcom/tideclock/messmachine/MainActivity;->**(**)**
+HSPLcom/tideclock/messmachine/MessApp;->**(**)**
+HSPLcom/tideclock/messmachine/ui/**;->**(**)**
+Lcom/tideclock/messmachine/ui/**;
+Lcom/tideclock/messmachine/**;

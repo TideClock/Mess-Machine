@@ -127,7 +127,6 @@ fun SoundsScreen(state: AppState, pickFor: Int?) {
                     else if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) state.toggleMic()
                     else micPerm.launch(Manifest.permission.RECORD_AUDIO)
                 }, small = true, on = state.micOn, onColor = C.Riot, tag = "mic")
-                Btn("Resample loop ${Project.LETTERS[P.cur]}", { state.resampleLoop() }, small = true, enabled = P.pat().used())
             }
             Help("WAV, MP3, M4A, OGG or FLAC, up to a minute each. Mic takes stop at 30 seconds. Your sounds stay on this phone.", modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
         }

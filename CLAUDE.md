@@ -28,7 +28,7 @@ Before each push that Tyler will install, rewrite `app/src/main/assets/guide.jso
 
 Notes arrive as GitHub issues labeled `from-app` plus a category label. Read them with
 `gh api "repos/TideClock/Mess-Machine/issues?labels=from-app&state=open&per_page=100"`.
-Each body has the build, device, audio buffer and underruns, the mess summary, the last actions, a
+Each body has the build, device, audio buffer and underruns, the lag line and slow audio blocks, the mess summary (bug notes and crashes only), the last actions, a
 crash trace when there was one, and a hidden `mm-note:<id>` marker the app uses to find replies.
 
 Follow the bug-testing skill's triage rules:

@@ -271,37 +271,6 @@ fun PlayViews(state: AppState) {
     }
 }
 
-@Composable
-fun SelectedPad(state: AppState) {
-    @Suppress("UNUSED_VARIABLE") val sv = state.selV
-    val P = state.project
-    val k = P.kit[P.sel]
-    Card(Modifier.fillMaxWidth().padding(top = 18.dp)) {
-        Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.padding(end = 10.dp).size(18.dp).background(if (k.isEmpty()) C.Empty else padColor(Color(state.lib.colorOf(k)))).border(2.dp, C.Cream))
-                T("PAD ${P.sel + 1}", size = 14.sp, color = C.Yellow, spacing = .06.em)
-                T("  " + if (k.isEmpty()) "empty" else state.lib.titleOf(k), size = 15.sp, lines = 1, modifier = Modifier.weight(1f))
-            }
-            Wrap(Modifier.padding(top = 12.dp)) {
-                Btn(if (k.isEmpty()) "Pick a sound" else "Swap sound", { state.overlay = Overlay.Picker(P.sel) }, small = true, color = C.Teal, tag = "pick-sound")
-                Btn("✂ Doctor it", { state.overlay = Overlay.Doctor(k) }, small = true, color = C.Yellow, enabled = k.isNotEmpty(), tag = "doctor")
-                Btn(if (P.sel in state.keyboards) "Hide Padiano" else "🎹 Padiano", { state.toggleKeyboard(P.sel) }, small = true, enabled = k.isNotEmpty(), tag = "keys-for-pad")
-                Btn("Hear", { state.preview(k) }, small = true, enabled = k.isNotEmpty())
-                Btn("Clear pad", { state.clearPad(P.sel) }, small = true, enabled = k.isNotEmpty())
-                Btn(if (state.micOn && state.micPad == P.sel) "■ Stop" else "● Record onto it", { state.askRecord(P.sel) }, small = true, color = C.Riot,
-                    enabled = !state.micOn || state.micPad == P.sel, tag = "record-pad")
-            }
-            Dashed(Modifier.padding(vertical = 12.dp))
-            T("GET SOUNDS", size = 12.sp, color = C.Yellow, spacing = .1.em)
-            Wrap(Modifier.padding(top = 8.dp)) {
-                Btn("The jars", { state.tab = com.tideclock.messmachine.Tab.Sounds }, small = true)
-                Btn("Your Workbench", { state.openWorkbench() }, small = true)
-                Btn("Resample this loop", { state.resampleLoop() }, small = true, enabled = P.pat().used())
-            }
-        }
-    }
-}
 
 /** Hold: one tap on or off. The first N notes you play keep sounding; press one again to let it go. */
 @Composable

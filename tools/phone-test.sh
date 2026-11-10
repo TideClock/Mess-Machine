@@ -53,7 +53,8 @@ size=$(adb shell wm size | grep -o '[0-9]*x[0-9]*' | tail -1); W=${size%x*}; H=$
 note "screen ${W}x${H}"
 
 # 1. first launch of a new build: the start guide opens (build 41 crashed right here)
-adb shell am start -W -n $PKG/.MainActivity
+t=$(adb shell am start -W -n $PKG/.MainActivity | grep -E "TotalTime" | tr -d '\r')
+note "first launch (fresh install, nothing compiled yet): $t ms"
 sleep 10; shot 01-first-launch
 alive && note "first launch: running" || { note "first launch: NOT RUNNING"; fail=1; }
 
@@ -64,7 +65,13 @@ if [ -n "$xy" ]; then adb shell input tap $xy; else adb shell input keyevent KEY
 sleep 2; shot 02-guide-closed
 infront "guide closed"
 adb shell am force-stop $PKG; sleep 1
-adb shell am start -W -n $PKG/.MainActivity
+t=$(adb shell am start -W -n $PKG/.MainActivity | grep -E "TotalTime" | tr -d '\r')
+note "cold start before the Baseline Profile is compiled: $t ms"
+# MM-4, MM-7: compile the app the way Android does overnight (with the Baseline Profile), then time a cold start again
+adb shell cmd package compile -m speed-profile -f $PKG >/dev/null 2>&1
+adb shell am force-stop $PKG; sleep 1
+t=$(adb shell am start -W -n $PKG/.MainActivity | grep -E "TotalTime" | tr -d '\r')
+note "cold start after the Baseline Profile is compiled: $t ms"
 sleep 8; shot 03-relaunch
 alive && note "relaunch: running" || { note "relaunch: NOT RUNNING"; fail=1; }
 infront "relaunch"
@@ -133,6 +140,22 @@ if [ -n "$pl" ]; then
   j=$(adb shell dumpsys gfxinfo $PKG | grep -E "Total frames rendered|Janky frames" | tr -s ' ' | tr '\n' ';' | tr -d '\r')
   note "frames while playing: $j"
 else note "play button: NOT FOUND"; fail=1; fi
+
+# 3c. the shape of an unfolded Fold (MM-16): the inner screen is nearly square. Every tab once, then back.
+#     (Tyler's crash on Nov 10 came from resizing; this also checks the app survives the change of shape.)
+close_sheets
+adb shell wm size 1856x2160; sleep 4
+size=$(adb shell wm size | grep -o '[0-9]*x[0-9]*' | tail -1); note "unfolded shape: $size"
+for t in tab-Pads tab-Steps tab-Roll tab-Song tab-Sounds; do
+  close_sheets
+  xy=$(centre "$t")
+  [ -z "$xy" ] && { note "unfolded $t: NOT FOUND"; shot "09-unfolded-$t"; continue; }
+  adb shell input tap $xy; sleep 2; shot "09-unfolded-$t"
+  alive || { note "unfolded $t: NOT RUNNING"; fail=1; adb shell am start -n $PKG/.MainActivity; sleep 5; }
+done
+adb shell wm size reset; sleep 4
+alive && note "fold and unfold: running" || { note "fold and unfold: NOT RUNNING"; fail=1; adb shell am start -n $PKG/.MainActivity; sleep 5; }
+infront "after unfolding"
 
 # 4. two long random runs (different seeds), with a cold restart between them
 for seed in 11 2026; do

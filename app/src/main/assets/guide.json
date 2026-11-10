@@ -1,5 +1,5 @@
 {
-  "title": "Audio check: finding where the lag and clicks come from",
+  "title": "Audio check, a faster start, and fewer duplicates",
   "thisBuild": [
     "Audio check: open Notes for Claude, then Audio check under How it is running. It shows the buffer, the output delay from Android's own clock, dropouts and any slow audio blocks.",
     "Tap the square there ten times: each tap plays a click and times your touch reaching the app.",
@@ -7,7 +7,10 @@
     "Save as a note puts all of it in a note, ready to send.",
     "After a click (a dropout), the audio buffer grows as before, but now gives the extra back after a quiet minute instead of keeping the lag all session.",
     "On Android 12 and up the app asks the phone to keep the audio thread's CPU fast enough for each block, which should mean fewer clicks.",
-    "When an audio block runs slow, the app now notes what else was happening (loading a sound, the screen busy, the first minute). Every note carries the last few."
+    "When an audio block runs slow, the app now notes what else was happening (loading a sound, the screen busy, the first minute). Every note carries the last few.",
+    "Faster start and smoother first minutes: the app now ships a Baseline Profile, so Android compiles the sound engine and the screens ahead instead of while you play. It takes full effect after the phone's next idle tidy-up (overnight on the charger).",
+    "Resample is now only on Steps (Resample to a pad). The copy in Your Workbench is gone.",
+    "Notes are public on GitHub, so they no longer carry your mess's name, and the mess summary goes only with bug notes and crashes. The phone model and audio numbers stay: the lag depends on them."
   ],
   "watch": [
     "Run the Audio check: tap the square ten times, run the speaker test, then Save as a note and send it. That one note tells Claude what to fix next.",
