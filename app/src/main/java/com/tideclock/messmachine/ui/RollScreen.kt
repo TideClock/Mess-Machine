@@ -54,7 +54,6 @@ fun RollScreen(state: AppState) {
                 { state.selectPad(it, true); state.bank = it / Project.BANK },
                 color = C.Teal,
             )
-            Select(Theory.NN[P.root], Theory.NN.mapIndexed { i, n -> i to n }, { state.setRoot(it) })
             Btn("✂", { state.overlay = com.tideclock.messmachine.Overlay.Doctor(k) }, small = true, enabled = k.isNotEmpty())
             Select(Theory.NN[P.root], Theory.NN.mapIndexed { i, n -> i to n }, { state.setRoot(it) })
             Select(P.scale, Theory.SCALES.keys.map { it to it }, { state.setScale(it) })

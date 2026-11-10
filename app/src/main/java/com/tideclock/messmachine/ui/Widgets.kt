@@ -2,6 +2,12 @@ package com.tideclock.messmachine.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -401,3 +407,18 @@ fun HoldMenu(open: Boolean, title: String, onClose: () -> Unit, items: List<Trip
         }
     }
 }
+
+/** A sideways scroller whose right edge fades out while there is more to see, so a cut-off row reads as "scroll me". */
+fun Modifier.fadeScroll(scroll: ScrollState): Modifier = this
+    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+    .drawWithContent {
+        drawContent()
+        if (scroll.canScrollForward) {
+            val f = 28.dp.toPx().coerceAtMost(size.width / 3)
+            drawRect(
+                Brush.horizontalGradient(0f to Color.Black, ((size.width - f) / size.width) to Color.Black, 1f to Color.Transparent),
+                blendMode = BlendMode.DstIn,
+            )
+        }
+    }
+    .horizontalScroll(scroll)

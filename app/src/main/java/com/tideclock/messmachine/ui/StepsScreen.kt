@@ -52,14 +52,15 @@ import com.tideclock.messmachine.engine.Project
 fun SlotBar(state: AppState) {
     val P = state.project
     Column(Modifier.padding(bottom = 12.dp)) {
-        Wrap(Modifier.padding(bottom = 4.dp), gap = 6.dp) {
+        Row(Modifier.fillMaxWidth().padding(bottom = 4.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             for (i in 0 until Project.NSLOTS) {
                 val used = P.pats[i].used()
                 val playingHere = state.playing && state.heardPat == i
                 val on = i == P.cur
                 Box(
                     Modifier
-                        .size(36.dp)
+                        .weight(1f)
+                        .height(36.dp)
                         .sticker(if (on) C.Yellow else C.Ink, shadow = if (on) 1.dp else 3.dp, border = if (playingHere) 4.dp else 2.5.dp, borderColor = if (playingHere) C.Pink else C.Cream)
                         .tapOrHold(i, { state.selectSlot(i) }, { if (!state.locked) state.slotMenu = i })
                         .testTag("slot-$i"),
@@ -100,10 +101,10 @@ fun StepsScreen(state: AppState) {
     val off = (if (pat.len == 32) state.page else 0) * 16
     ScrollPane {
         SlotBar(state)
-        Row(Modifier.fillMaxWidth().padding(bottom = 12.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.fillMaxWidth().padding(bottom = 12.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            T("BANK", size = 11.sp, color = C.Dim, spacing = .1.em)
             for (b in 0 until 4) {
-                val n = (0 until Project.BANK).count { P.kit[b * Project.BANK + it].isNotEmpty() }
-                Btn("Bank ${b + 1}", modifier = Modifier.weight(1f), onClick = { state.bank = b }, on = state.bank == b, small = true)
+                Btn("${b + 1}", modifier = Modifier.weight(1f), onClick = { state.bank = b }, on = state.bank == b, small = true, tag = "steps-bank-$b")
             }
         }
         Wrap(Modifier.padding(bottom = 12.dp)) {

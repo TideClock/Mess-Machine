@@ -792,6 +792,19 @@ class BigTest {
 
     /* ---------- build D: menus everywhere, the pitch strip, motion recording ---------- */
 
+    @Test fun stepsHeaderFitsOnAPhone() {
+        tab("Steps")
+        // the eight loop letters sit on one line (build 44 wrapped H onto a second row)
+        val a = rule.onNodeWithTag("slot-0").fetchSemanticsNode().positionInRoot
+        val h = rule.onNodeWithTag("slot-7").fetchSemanticsNode().positionInRoot
+        assertEquals("loop H on the same line as A", a.y, h.y, 1f)
+        // banks read 1 2 3 4 like the Pads page, and switch the bank
+        at("steps-bank-2").performClick()
+        settle()
+        assertEquals(2, state.bank)
+        shot("44-steps-header")
+    }
+
     @Test fun menusEverywhereAndThePitchStrip() {
         tab("Steps")
         // hold a sound's name, then lift: its pad menu
