@@ -164,6 +164,7 @@ public final class Engine {
     private final ConcurrentLinkedQueue<Object[]> cmds = new ConcurrentLinkedQueue<>();
     private final ConcurrentLinkedQueue<RecEvent> recs = new ConcurrentLinkedQueue<>();
     private final Sample clickHi, clickLo;
+    private final PadSlot clickHiSlot, clickLoSlot;
 
     // clock state, audio thread only
     private boolean playing, paused, freeOn;
@@ -246,6 +247,8 @@ public final class Engine {
         for (int k = 0; k < pool.length; k++) pool[k] = new Voice();
         clickHi = tone("click-hi", 1760);
         clickLo = tone("click-lo", 1100);
+        clickHiSlot = new PadSlot(-2, "click", clickHi, SoundEdit.DEFAULT, true);
+        clickLoSlot = new PadSlot(-2, "click", clickLo, SoundEdit.DEFAULT, true);
         compAtk = (float) (1 - Math.exp(-1.0 / (.005 * rate)));
         compRel = (float) (1 - Math.exp(-1.0 / (.2 * rate)));
         dlyL = new float[(int) (2.0 * rate)];
@@ -581,8 +584,7 @@ public final class Engine {
     private void nrFree(Snapshot S) {
         double dur = Math.max(.5, S.live.nrRate) * spb(S) / rate * .9;
         if (!"rep".equals(S.live.arp)) {
-            Object[] n = arpNext(S);
-            if (n != null) trigger(((Held) n[0]).pad, oct() * Math.pow(2, (Integer) n[1] / 12.0), dur, true, .85f, 0, false);
+            if (arpNext(S)) trigger(arpHeld.pad, oct() * Math.pow(2, arpPitch / 12.0), dur, true, .85f, 0, false);
             return;
         }
         for (Held h : held.values()) {
@@ -591,19 +593,33 @@ public final class Engine {
         }
     }
 
-    private Object[] arpNext(Snapshot S) {
-        List<Object[]> L = new ArrayList<>();
-        for (Held h : held.values()) for (int p : h.pitches) L.add(new Object[]{h, p});
-        if (L.isEmpty()) return null;
-        L.sort((x, y) -> Integer.compare((Integer) x[1], (Integer) y[1]));
-        int n = L.size(), i;
+    // the arpeggio's notes, sorted low to high in place (no memory made on the audio thread)
+    private final Held[] arpH = new Held[256];
+    private final int[] arpP = new int[256];
+    private Held arpHeld;
+    private int arpPitch;
+
+    /** Picks the next arpeggio note into arpHeld / arpPitch; false when nothing is held. */
+    private boolean arpNext(Snapshot S) {
+        int n = 0;
+        for (Held h : held.values()) for (int p : h.pitches) {
+            if (n >= arpP.length) break;
+            int j = n++;
+            while (j > 0 && arpP[j - 1] > p) { arpP[j] = arpP[j - 1]; arpH[j] = arpH[j - 1]; j--; }
+            arpP[j] = p; arpH[j] = h;
+        }
+        if (n == 0) return false;
+        int i;
         String m = S.live.arp;
         if ("down".equals(m)) i = n - 1 - arpI % n;
         else if ("updown".equals(m)) { int per = Math.max(1, 2 * n - 2), x = arpI % per; i = x < n ? x : per - x; }
         else if ("rand".equals(m)) i = rnd.nextInt(n);
         else i = arpI % n;
         arpI++;
-        return L.get(Math.max(0, Math.min(n - 1, i)));
+        i = Math.max(0, Math.min(n - 1, i));
+        arpHeld = arpH[i]; arpPitch = arpP[i];
+        java.util.Arrays.fill(arpH, 0, n, null);
+        return true;
     }
 
     private void fireStep(Snapshot S) {
@@ -646,7 +662,7 @@ public final class Engine {
             if (lt == T_FILTER || lt == T_RES) filterFromMod(lp);
         }
         Live L = S.live;
-        if (L.click && s % 4 == 0) { Voice cv = trigger(new PadSlot(-2, "click", s == 0 ? clickHi : clickLo, SoundEdit.DEFAULT, true), 1, 0, false, 1f, delay, false, false); if (cv != null) cv.dry = true; }
+        if (L.click && s % 4 == 0) { Voice cv = trigger(s == 0 ? clickHiSlot : clickLoSlot, 1, 0, false, 1f, delay, false, false); if (cv != null) cv.dry = true; }
         if (L.nr && !held.isEmpty()) {
             double every = L.nrRate;
             if (every >= 1 ? s % (int) every == 0 : true) {
@@ -674,8 +690,7 @@ public final class Engine {
                 for (int p : h.pitches) nrOne(S, h, p, delay, s, pi, half, g, every, spb);
             }
         } else {
-            Object[] n = arpNext(S);
-            if (n != null) nrOne(S, (Held) n[0], (Integer) n[1], delay, s, pi, half, .85f, every, spb);
+            if (arpNext(S)) nrOne(S, arpHeld, arpPitch, delay, s, pi, half, .85f, every, spb);
         }
     }
 
@@ -1042,14 +1057,14 @@ public final class Engine {
             // roll: this pad's held notes retrigger, from every 2 steps up to every quarter step
             float roll = m[T_ROLL];
             if (roll > .05f && ps != null) {
-                List<Held> hs = null;
-                for (Held h : held.values()) if (h.pad.index == p) { if (hs == null) hs = new ArrayList<>(); hs.add(h); }
-                if (hs == null) { rollNext[p] = 0; continue; }
+                boolean any = false;
+                for (Held h : held.values()) if (h.pad.index == p) { any = true; break; }
+                if (!any) { rollNext[p] = 0; continue; }
                 double every = Math.pow(2, 1 - 3 * Math.min(1, roll)) * spbNow;
                 if (rollNext[p] < frame) rollNext[p] = frame;
                 while (rollNext[p] < frame + frames) {
                     long dl = rollNext[p] - frame;
-                    for (Held h : hs) for (int q : h.pitches) trigger(h.pad, oct() * Math.pow(2, q / 12.0), every * .9 / rate, true, Theory.chordGain(h.pitches.length), dl, false);
+                    for (Held h : held.values()) if (h.pad.index == p) for (int q : h.pitches) trigger(h.pad, oct() * Math.pow(2, q / 12.0), every * .9 / rate, true, Theory.chordGain(h.pitches.length), dl, false);
                     rollNext[p] += (long) Math.max(1, every);
                 }
             } else rollNext[p] = 0;

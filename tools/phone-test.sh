@@ -71,7 +71,15 @@ infront "relaunch"
 
 # 3. every tab, found by its tag (Back is never pressed here: with no sheet open it leaves the app,
 #    and build 44's run tapped the home screen for this whole section because of that)
+# a tap on a page can open a sheet over the tabs (build 46's run: the Desk page opened Sounds); Done closes it
+close_sheets() {
+  for i in 1 2 3; do
+    d=$(centre done); [ -z "$d" ] && return
+    adb shell input tap $d; sleep 1
+  done
+}
 for t in Pads Console Steps Roll Song Sounds; do
+  close_sheets
   xy=$(centre "tab-$t")
   [ -z "$xy" ] && { note "tab $t: NOT FOUND"; fail=1; shot "04-tab-$t"; continue; }
   adb shell input tap $xy; sleep 2
@@ -83,6 +91,7 @@ for t in Pads Console Steps Roll Song Sounds; do
 done
 
 # a long press on a pad opens its menu on lift; then a circle on a pad opens the sphere
+close_sheets
 adb shell input tap $(centre tab-Pads); sleep 2
 xy=$(centre pad-6)
 if [ -z "$xy" ]; then note "pad 6: NOT FOUND"; fail=1; else
@@ -102,6 +111,22 @@ if [ -z "$xy" ]; then note "pad 6: NOT FOUND"; fail=1; else
 fi
 alive && note "gestures: running" || { note "gestures: NOT RUNNING"; fail=1; adb shell am start -n $PKG/.MainActivity; sleep 5; }
 infront "gestures"
+
+# 3b. sound and smoothness: play the demo mess for 30 seconds, then read the audio log and the frame stats
+#     (reported, not failed on: the emulator has no real audio device or graphics chip)
+close_sheets
+adb shell input tap $(centre tab-Pads); sleep 1
+adb shell dumpsys gfxinfo $PKG reset >/dev/null 2>&1
+pl=$(centre play)
+if [ -n "$pl" ]; then
+  adb shell input tap $pl
+  sleep 30
+  adb shell input tap $pl; sleep 1
+  a=$(adb logcat -d -s MessAudio:I | tail -1 | sed 's/.*MessAudio: //')
+  note "sound while playing: ${a:-no audio log}"
+  j=$(adb shell dumpsys gfxinfo $PKG | grep -E "Total frames rendered|Janky frames" | tr -s ' ' | tr '\n' ';' | tr -d '\r')
+  note "frames while playing: $j"
+else note "play button: NOT FOUND"; fail=1; fi
 
 # 4. two long random runs (different seeds), with a cold restart between them
 for seed in 11 2026; do

@@ -74,6 +74,14 @@ public class EngineTest {
     e2.down(5, 7, new int[]{0, 4, 7}, true);
     int maxv = 0; for (int i = 0; i < 400; i++) { e2.render(buf, 256); maxv = Math.max(maxv, e2.activeVoices()); }
     check(maxv >= 1, "arp runs with the transport stopped, voices " + maxv);
+    // the arpeggio walks a held chord low to high (sorted on the audio thread without making new lists)
+    Engine e2b = new Engine(rate);
+    e2b.setSnapshot(Engine.Snapshot.build(p, lib, l2));
+    e2b.down(6, 7, new int[]{7, 0, 4}, true);
+    java.util.List<Double> incs = new java.util.ArrayList<>();
+    double lastSeen = 0;
+    for (int i = 0; i < 2000 && incs.size() < 4; i++) { e2b.render(buf, 256); double li = e2b.lastInc(); if (li != lastSeen && li > 0) { incs.add(li); lastSeen = li; } }
+    check(incs.size() >= 4 && incs.get(0) < incs.get(1) && incs.get(1) < incs.get(2) && incs.get(3) < incs.get(2), "arp up goes 0, 4, 7, then back to 0: " + incs);
     // timing benchmark: 1 second of the demo at 48k
     Engine e3 = new Engine(rate); e3.setSnapshot(Engine.Snapshot.build(p, lib, new Engine.Live())); e3.play();
     long t0 = System.nanoTime(); for (int i = 0; i < rate / 256 * 10; i++) e3.render(buf, 256); long t1 = System.nanoTime();

@@ -144,13 +144,28 @@ private val BLACK_PC = intArrayOf(1, 3, 6, 8, 10)
 private fun isBlack(p: Int) = Theory.pcOf(p) in BLACK_PC
 
 /** What the Padiano shows on each note: pressed, held, chord tones, scale, root. */
-private class NoteLook(state: AppState, pad: Int, fingers: Set<Int>) {
+/** Chord tones to light: each at its own spot when visible, else moved by octaves to the nearest visible copy. */
+internal fun chordOnScreen(tones: Iterable<Int>, down: Set<Int>, visible: Collection<Int>): Set<Int> {
+    val c = HashSet<Int>()
+    for (x in tones) {
+        val y = if (visible.isEmpty() || x in visible) x else visible.filter { Theory.pcOf(it - x) == 0 }.minByOrNull { kotlin.math.abs(it - x) } ?: x
+        if (y !in down) c.add(y)
+    }
+    return c
+}
+
+private class NoteLook(state: AppState, pad: Int, fingers: Set<Int>, visible: Collection<Int>) {
     val P = state.project
     val chromatic = P.scale == "Chromatic"
     val holding = state.heldPitches(pad)
     val down = fingers + holding
     val playsChord = state.chordPlay
-    val chord = HashSet<Int>().also { c -> for (h in down) for (x in state.chordFor(h)) if (x !in down) c.add(x) }
+    /**
+     * The chord's other notes, each moved by octaves onto a note you can see when its own spot is off
+     * screen (a one-row Padiano shows about an octave, so the chord of a higher note used to light
+     * nothing: only the lowest note's chord fit).
+     */
+    val chord = chordOnScreen(down.flatMap { state.chordFor(it).asIterable() }, down, visible)
     fun inScale(p: Int) = chromatic || Theory.inScale(p, P.scale, P.root)
     fun isRoot(p: Int) = Theory.pcOf(p - P.root) == 0
 }
@@ -330,7 +345,7 @@ fun PadianoSquares(state: AppState, pad: Int, col: Color, base: Int) {
                     }
                 }) { fingers = it },
         ) {
-            val L = NoteLook(state, pad, fingers)
+            val L = NoteLook(state, pad, fingers, notes)
             val w = size.width / perRow
             val h = size.height / rows
             notes.forEachIndexed { i, p ->
@@ -410,7 +425,7 @@ fun PadianoKeys(state: AppState, pad: Int, col: Color, keysHeight: Dp) {
                         }
                     }) { fingers = it },
             ) {
-                val L = NoteLook(state, pad, fingers)
+                val L = NoteLook(state, pad, fingers, (shown.first()..shown.last() + 1).toList())
                 val ww = size.width / visible
                 val bh = size.height * .6f
                 val bw = ww * .6f

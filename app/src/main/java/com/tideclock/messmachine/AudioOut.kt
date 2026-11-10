@@ -4,6 +4,7 @@ import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
 import android.os.Process
+import android.util.Log
 import com.tideclock.messmachine.engine.Engine
 
 /**
@@ -63,7 +64,7 @@ class AudioOut(private val engine: Engine, private val rate: Int, framesPerBurst
             running = false
             return
         }
-        var size = track.setBufferSizeInFrames(burst * 2)
+        var size = track.setBufferSizeInFrames(burst * 3)
         if (size <= 0) size = track.bufferSizeInFrames
         bufferFrames = size
         engine.setLatencyFrames(size + burst)
@@ -91,7 +92,11 @@ class AudioOut(private val engine: Engine, private val rate: Int, framesPerBurst
                         engine.setLatencyFrames(size + burst)
                     }
                     seen = u
-                    if (n % 1024 == 0) { loadPeak = peak; peak = 0.0 }
+                    if (n % 1024 == 0) {
+                        loadPeak = peak; peak = 0.0
+                        // read by the phone test (tools/phone-test.sh) to report clicks and load
+                        Log.i("MessAudio", "underruns=$u buffer=$size burst=$burst ${loadText()}")
+                    }
                 }
             }
         } finally {

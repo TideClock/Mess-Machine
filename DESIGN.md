@@ -159,10 +159,11 @@ All four builds are in (builds 31 to 40), each with big-test flows and engine te
 - Starting a circle on the Padiano can touch a neighbour note before the circle is recognised; it then snaps back and silences the stray note.
 - The pad still sounds on touch before its menu opens (same as before).
 
-## Overhaul proposal (2026-11-10, waiting on Tyler)
+## Overhaul (agreed 2026-11-10)
 
-Proposal doc: https://claude.ai/artifact/2vcp2CcSo4nXTmVskaCpTS. Not agreed yet; build nothing from it
-until Tyler answers its "Decisions for Tyler" list. Short version: one home per control (dock and desk
+Proposal doc: https://claude.ai/artifact/2vcp2CcSo4nXTmVskaCpTS. Tyler said build it all (2026-11-10): Play tab
+with a switch between the default Pads page and My Desk; Hush gone; dock folded by default; Minor on C;
+pad card gone; Steps one row (unanswered, taken as yes); help behind ?; all five utility ideas; pad buzz. Short version: one home per control (dock and desk
 become shortcuts you choose), one 48 dp top bar, dock folds to an edge handle, Pads and Desk merge into
 one Play tab, Steps one row per sound, four button tiers, help behind a ? per screen, no allocation on
 the audio thread, targeted redraws with strong skipping back on. Build order: Smooth, Room, Tidy, Useful.
