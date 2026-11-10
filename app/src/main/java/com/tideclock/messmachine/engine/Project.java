@@ -103,7 +103,7 @@ public final class Project {
     public final int[] song = new int[MAXSONG];
     public int bpm = 112, swing = 0, sel = 7, root = 0, cur = 0;
     public boolean fold = false, songMode = false;
-    public String scale = "Chromatic";
+    public String scale = "Minor"; // new messes start in C minor (Tyler, 2026-11-10); files without a scale still load as Chromatic
     public final Set<String> mutes = new LinkedHashSet<>(), solos = new LinkedHashSet<>();
     public final Map<String, SoundEdit> edits = new LinkedHashMap<>();
 

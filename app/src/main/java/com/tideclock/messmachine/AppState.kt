@@ -136,10 +136,19 @@ class AppState(private val app: Context) {
         if (page in helpSeen) return
         helpSeen.add(page); prefs.edit().putString("helpSeen", helpSeen.joinToString(",")).apply()
     }
+    /** The Play tab shows the pad grid (Pads or Keys) or My Desk; it opens on the one you used last. */
+    var playDesk by mutableStateOf(prefs.getBoolean("playDesk", false))
+        private set
     private val tabState = mutableStateOf(Tab.Pads)
     var tab: Tab
         get() = tabState.value
-        set(v) { if (v != tabState.value) { notes.trail("tab ${v.label}"); markHelpSeen(tabState.value.label) }; tabState.value = v }
+        set(v) {
+            if (v != tabState.value) { notes.trail("tab ${v.label}"); markHelpSeen(tabState.value.label) }
+            if (v == Tab.Pads || v == Tab.Console) { playDesk = v == Tab.Console; prefs.edit().putBoolean("playDesk", playDesk).apply() }
+            tabState.value = v
+        }
+    /** The Play tab in the tab bar: back to whichever view of it you had. */
+    fun openPlay() { tab = if (playDesk) Tab.Console else Tab.Pads }
     var bank by mutableIntStateOf(project.sel / Project.BANK)
     var keysMode by mutableStateOf(false)
     var chordMode by mutableStateOf(prefs.getString("chord", "off") ?: "off")
@@ -274,7 +283,10 @@ class AppState(private val app: Context) {
         rebuild()
     }
 
-    fun say(msg: String) { toast = msg; toastId++ }
+    fun say(msg: String) { toast = msg; toastUndo = false; toastId++ }
+    /** The message after a clear carries an Undo button for its few seconds on screen. */
+    var toastUndo by mutableStateOf(false)
+    fun sayUndo(msg: String) { toast = msg; toastUndo = true; toastId++ }
 
     /* ---------------- undo ---------------- */
 
@@ -498,7 +510,7 @@ class AppState(private val app: Context) {
         notes.trail("clear pad ${pad + 1}")
         val t = lib.titleOf(project.kit[pad])
         edit { this.clearPad(pad) }
-        say("Pad ${pad + 1} is empty again${if (t.isNotEmpty()) " ($t is back in its jar)" else ""}.")
+        sayUndo("Pad ${pad + 1} is empty again${if (t.isNotEmpty()) " ($t is back in its jar)" else ""}.")
     }
 
     fun setEdit(key: String, e: SoundEdit, commit: Boolean) = edit(commit) { this.setEdit(key, e) }
@@ -522,7 +534,7 @@ class AppState(private val app: Context) {
     fun clearAllNotes() {
         notes.trail("clear all notes")
         edit { for (l in pat().notes.values) l.clear() }
-        say("Pitches and roll notes cleared from loop ${Project.LETTERS[project.cur]}. Undo brings them back.")
+        sayUndo("Pitches and roll notes cleared from loop ${Project.LETTERS[project.cur]}.")
     }
 
     /** One sound's hits and notes in the current loop. */
@@ -530,7 +542,7 @@ class AppState(private val app: Context) {
         val k = project.kit[pad]
         padMenu = -1
         edit { pat().forget(k) }
-        say("Pad ${pad + 1} is out of loop ${Project.LETTERS[project.cur]}.")
+        sayUndo("Pad ${pad + 1} is out of loop ${Project.LETTERS[project.cur]}.")
     }
 
     fun toggleMute(key: String) = edit { if (!mutes.remove(key)) mutes.add(key) }
@@ -623,7 +635,7 @@ class AppState(private val app: Context) {
         else bounce(false, if (project.pat().len == 32) 2 else 4)
     }
 
-    fun clearSlot() = edit { pat().clear() }
+    fun clearSlot() { edit { pat().clear() }; sayUndo("Loop ${Project.LETTERS[project.cur]} cleared.") }
 
     /** The site's Random drums: fresh steps for every pad in this bank, busier on the first row. */
     fun randomDrums() {
@@ -655,7 +667,7 @@ class AppState(private val app: Context) {
     var barMenu by mutableIntStateOf(-1)
     fun clearBar(i: Int) = edit { song[i] = -1 }
     fun insertBar(i: Int) = edit { for (k in song.size - 1 downTo i + 1) song[k] = song[k - 1]; song[i] = -1 }
-    fun deleteBar(i: Int) = edit { for (k in i until song.size - 1) song[k] = song[k + 1]; song[song.size - 1] = -1 }
+    fun deleteBar(i: Int) { edit { for (k in i until song.size - 1) song[k] = song[k + 1]; song[song.size - 1] = -1 }; sayUndo("Bar ${i + 1} deleted.") }
 
     /** Loop letter menu. */
     var slotMenu by mutableIntStateOf(-1)
@@ -664,7 +676,7 @@ class AppState(private val app: Context) {
         edit { pats[to] = pats[i].copy() }
         say("Loop ${Project.LETTERS[i]} copied to ${Project.LETTERS[to]}.")
     }
-    fun clearSlotAt(i: Int) = edit { pats[i].clear() }
+    fun clearSlotAt(i: Int) { edit { pats[i].clear() }; sayUndo("Loop ${Project.LETTERS[i]} cleared.") }
 
     /** Steps: the pitch strip under one sound's row, and the step it is setting. */
     var stepStrip by mutableIntStateOf(-1)
@@ -685,7 +697,7 @@ class AppState(private val app: Context) {
 
     fun paintSong(i: Int) = edit { song[i] = if (song[i] == brush) -1 else brush }
 
-    fun clearSong() = edit { java.util.Arrays.fill(song, -1); songMode = false }
+    fun clearSong() { edit { java.util.Arrays.fill(song, -1); songMode = false }; sayUndo("Song cleared.") }
 
     /** Chain every loop that has something in it, in order. */
     fun songFromLoops() {
@@ -1210,7 +1222,7 @@ class AppState(private val app: Context) {
         recStep = heardStep
     }
 
-    fun clearMoves() = edit { pat().motion.clear() }
+    fun clearMoves() { edit { pat().motion.clear() }; sayUndo("XY moves cleared from loop ${Project.LETTERS[project.cur]}.") }
 
 
     /* ---------------- a live filter on one pad ---------------- */

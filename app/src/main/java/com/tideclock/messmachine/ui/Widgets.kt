@@ -214,22 +214,30 @@ fun Dashed(modifier: Modifier = Modifier, color: Color = C.Empty) {
     }
 }
 
+/**
+ * How loud a button looks. Primary: the few you reach for while playing (Play, Rec). Normal: the
+ * sticker look. Quiet: openers and settings (?, ☰, ⚙), thin and dim. Danger: clears, red text.
+ */
+enum class Tier { Primary, Normal, Quiet, Danger }
+
 /** Square, uppercase, cream outline, pink shadow; it sinks into its shadow when pressed. */
 @Composable
 fun Btn(
     text: String, onClick: () -> Unit, modifier: Modifier = Modifier, color: Color = C.Ink, on: Boolean = false,
-    onColor: Color = C.Yellow, enabled: Boolean = true, small: Boolean = false, tag: String? = null,
+    onColor: Color = C.Yellow, enabled: Boolean = true, small: Boolean = false, tag: String? = null, tier: Tier = Tier.Normal,
 ) {
     val src = remember { MutableInteractionSource() }
     val pressed by src.collectIsPressedAsState()
     val bg = if (on) onColor else color
-    val sh = if (small) 3.dp else 4.dp
-    val sink = if (pressed && enabled) sh else if (on) 1.dp else 0.dp
+    val sh = when (tier) { Tier.Primary -> if (small) 4.dp else 5.dp; Tier.Quiet -> 0.dp; else -> if (small) 3.dp else 4.dp }
+    val sink = if (pressed && enabled) (if (tier == Tier.Quiet) 1.dp else sh) else if (on && tier != Tier.Quiet) 1.dp else 0.dp
+    val edge = when (tier) { Tier.Primary -> if (small) 3.dp else 3.5.dp; Tier.Quiet -> 1.5.dp; else -> if (small) 2.5.dp else 3.dp }
+    val edgeColor = when { on -> C.Cream; tier == Tier.Quiet -> C.Empty; tier == Tier.Danger -> C.Riot; else -> C.Cream }
     Box(
         modifier
             .heightIn(min = if (small) 34.dp else 44.dp)
             .offset(sink, sink)
-            .sticker(bg, shadow = sh - sink, border = if (small) 2.5.dp else 3.dp)
+            .sticker(bg, shadow = sh - sink, border = edge, borderColor = edgeColor)
             .alpha(if (enabled) 1f else .38f)
             .clickable(src, indication = null, enabled = enabled) { onClick() }
             .then(if (tag != null) Modifier.testTag(tag) else Modifier)
@@ -237,7 +245,8 @@ fun Btn(
             .padding(horizontal = if (small) 10.dp else 14.dp, vertical = if (small) 6.dp else 9.dp),
         contentAlignment = Alignment.Center,
     ) {
-        T(text.uppercase(), color = ink(bg), size = if (small) 12.sp else 13.sp, lines = 1, spacing = .08.em)
+        T(text.uppercase(), color = if (on) ink(bg) else when (tier) { Tier.Quiet -> C.Dim; Tier.Danger -> C.Riot; else -> ink(bg) },
+            size = if (small) 12.sp else 13.sp, lines = 1, spacing = .08.em, weight = if (tier == Tier.Primary) FontWeight.Black else FontWeight.ExtraBold)
     }
 }
 

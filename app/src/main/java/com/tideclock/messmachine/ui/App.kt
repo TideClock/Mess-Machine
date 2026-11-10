@@ -144,11 +144,16 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
             SphereOverlay(state)
             state.toast?.let { msg ->
                 Box(Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = 84.dp)) {
-                    Box(Modifier.sticker(C.Yellow, shadow = 5.dp).clickable { state.toast = null }.testTag("toast").padding(horizontal = 14.dp, vertical = 11.dp)) {
-                        T(msg, color = C.Ink, size = 14.sp)
+                    Row(Modifier.sticker(C.Yellow, shadow = 5.dp).clickable { state.toast = null }.testTag("toast").padding(start = 14.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        T(msg, color = C.Ink, size = 14.sp, modifier = Modifier.weight(1f, fill = false).padding(vertical = 3.dp))
+                        // after a clear: Undo right here, so the clear buttons don't need to ask first
+                        if (state.toastUndo) Btn("Undo", { state.undo(); state.toast = null }, small = true, color = C.Ink, tag = "toast-undo", modifier = Modifier.padding(start = 10.dp))
                     }
                 }
             }
+            // locked: a pink edge round the whole screen, so it's clear why tabs and menus don't open
+            if (state.locked) Box(Modifier.fillMaxSize().border(4.dp, C.Pink).testTag("lock-edge"))
             state.busy?.let { msg ->
                 Box(Modifier.fillMaxSize().background(C.Black.copy(alpha = .65f)).clickable(enabled = true) { }, contentAlignment = Alignment.Center) {
                     Box(Modifier.sticker(C.Teal, shadow = 6.dp).padding(22.dp)) { T(msg.uppercase(), color = C.Ink, size = 18.sp, spacing = .08.em) }
@@ -199,7 +204,7 @@ fun Transport(state: AppState) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
-        Btn(if (state.playing) "❚❚" else "▶ Play", { state.togglePlay() }, color = C.Teal, on = state.playing, onColor = C.Yellow, small = true, tag = "play", modifier = Modifier.weight(1.25f))
+        Btn(if (state.playing) "❚❚" else "▶ Play", { state.togglePlay() }, color = C.Teal, on = state.playing, onColor = C.Yellow, small = true, tag = "play", tier = Tier.Primary, modifier = Modifier.weight(1.25f))
         Btn("■", { state.stop() }, small = true, tag = "stop", modifier = Modifier.weight(.55f))
         RecBtn(state, Modifier.weight(.95f))
         Btn("↶", { state.undo() }, enabled = state.canUndo && free, small = true, tag = "undo", modifier = Modifier.weight(.5f))
@@ -214,7 +219,7 @@ fun Transport(state: AppState) {
                 T(position(state), size = 10.sp, color = C.Yellow, lines = 1, family = Mono, weight = FontWeight.Bold, modifier = Modifier.testTag("position"))
             }
         }
-        Btn("?", { state.switchHelp() }, small = true, on = state.helpOn, onColor = C.Teal, tag = "help-toggle", modifier = Modifier.weight(.45f))
+        Btn("?", { state.switchHelp() }, small = true, on = state.helpOn, onColor = C.Teal, tag = "help-toggle", tier = Tier.Quiet, modifier = Modifier.weight(.45f))
         TopMenu(state, Modifier.weight(.5f))
     }
 }
@@ -225,7 +230,7 @@ fun TopMenu(state: AppState, modifier: Modifier = Modifier) {
     var open by remember { mutableStateOf(false) }
     val free = !state.locked
     Box(modifier) {
-        Btn("☰", { open = true }, small = true, enabled = free, color = if (state.crash != null) C.Riot else C.Ink, tag = "menu", modifier = Modifier.fillMaxWidth())
+        Btn("☰", { open = true }, small = true, enabled = free, color = if (state.crash != null) C.Riot else C.Ink, tag = "menu", tier = if (state.crash != null) Tier.Normal else Tier.Quiet, modifier = Modifier.fillMaxWidth())
         androidx.compose.material3.DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.background(C.Ink).border(3.dp, C.Cream).testTag("topmenu")) {
             for ((label, tag, act) in listOf(
                 Triple("☰  Messes", "messes") { state.refreshFiles(); state.overlay = Overlay.Files },
@@ -321,7 +326,7 @@ fun BeatLight(state: AppState, pulse: Animatable<Float, AnimationVector1D>) {
 fun RecBtn(state: AppState, modifier: Modifier = Modifier) {
     @Suppress("UNUSED_VARIABLE") val lv = state.liveV
     val pulse = beatPulse(state)
-    Btn("● Rec", { state.setLive { rec = !rec } }, on = state.live.rec, onColor = C.Riot, tag = "rec", modifier = modifier.recGlow(state, pulse))
+    Btn("● Rec", { state.setLive { rec = !rec } }, on = state.live.rec, onColor = C.Riot, small = true, tag = "rec", tier = Tier.Primary, modifier = modifier.recGlow(state, pulse))
 }
 
 /**
@@ -369,19 +374,21 @@ fun Tabs(state: AppState) {
     Row(Modifier.fillMaxWidth().background(C.Ink).drawBehind {
         drawLine(C.Pink, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 3.dp.toPx())
     }.padding(horizontal = 4.dp, vertical = 7.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-        for (t in Tab.entries) {
-            val on = state.tab == t
+        // Pads and Desk share one Play tab: its views (Pads, Keys, My Desk) switch at the top of the page
+        for (t in Tab.entries.filter { it != Tab.Console }) {
+            val play = t == Tab.Pads
+            val on = state.tab == t || (play && state.tab == Tab.Console)
             Box(
                 Modifier
                     .weight(1f)
                     .height(34.dp)
                     .background(if (on) C.Yellow else C.Ink)
                     .border(if (on) 3.dp else 0.dp, C.Cream)
-                    .clickable(enabled = !state.locked) { state.tab = t }
+                    .clickable(enabled = !state.locked) { if (play) state.openPlay() else state.tab = t }
                     .testTag("tab-${t.label}"),
                 contentAlignment = Alignment.Center,
             ) {
-                T(if (t == Tab.Console) "DESK" else t.label.uppercase(), size = 11.sp, color = if (on) C.Ink else if (state.locked) C.Empty else C.Dim, spacing = .02.em, lines = 1)
+                T(if (play) "PLAY" else t.label.uppercase(), size = 11.sp, color = if (on) C.Ink else if (state.locked) C.Empty else C.Dim, spacing = .02.em, lines = 1)
             }
         }
     }

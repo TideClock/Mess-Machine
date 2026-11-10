@@ -237,7 +237,7 @@ private fun Modifier.playNotes(state: AppState, pad: Int, key: Any, origin: Orig
  * out-of-key notes. Slide or play with several fingers.
  */
 @Composable
-fun PianoKeyboard(state: AppState, pad: Int, keysHeight: Dp = 132.dp, filter: Boolean = true, close: Boolean = true) {
+fun PianoKeyboard(state: AppState, pad: Int, keysHeight: Dp = 132.dp, filter: Boolean = false, close: Boolean = true) {
     val P = state.project
     val k = P.kit[pad]
     if (k.isEmpty()) return
@@ -247,20 +247,19 @@ fun PianoKeyboard(state: AppState, pad: Int, keysHeight: Dp = 132.dp, filter: Bo
     val squares = !state.padianoKeys || state.inKeyOnly
     val base = state.padianoBase[pad] ?: 0
     Column(Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 6.dp).testTag("piano-$pad")) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 6.dp)) {
+        // one thin header so the keys get the room: name, octave, Glide, XY, settings, close.
+        // Hold lives on the dock and the keys bar now; the pad filter is the dock's (aim it at this pad) or a desk piece.
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(bottom = 4.dp)) {
             Swatch(col)
-            T(" PADIANO ${pad + 1} · ${state.lib.titleOf(k).uppercase()}", size = 12.sp, color = C.Yellow, lines = 1, spacing = .06.em, modifier = Modifier.weight(1f))
-            Btn("⚙", { showSet = !showSet }, small = true, on = showSet, tag = "piano-set-$pad")
-            if (close) Btn("✕", { state.toggleKeyboard(pad) }, small = true, color = C.Riot, modifier = Modifier.padding(start = 6.dp), tag = "piano-close-$pad")
-        }
-        Wrap(Modifier.padding(bottom = 8.dp), gap = 6.dp) {
-            HoldToggle(state, tag = "piano-hold-$pad")
+            T(" ${pad + 1} ${state.lib.titleOf(k).uppercase()}", size = 11.sp, color = C.Yellow, lines = 1, spacing = .04.em, modifier = Modifier.weight(1f))
             if (squares) {
-                Btn("◀ 8va", { state.shiftPadiano(pad, -12) }, small = true, enabled = base > -36, tag = "piano-down-$pad")
-                Btn("8va ▶", { state.shiftPadiano(pad, 12) }, small = true, enabled = base < 24, tag = "piano-up-$pad")
+                Btn("◀", { state.shiftPadiano(pad, -12) }, small = true, enabled = base > -36, tag = "piano-down-$pad")
+                Btn("▶", { state.shiftPadiano(pad, 12) }, small = true, enabled = base < 24, tag = "piano-up-$pad")
             }
             PadianoExtras(state, pad)
             Btn("XY", { showXy = !showXy }, on = showXy, onColor = C.Pink, small = true, tag = "piano-xy-$pad")
+            Btn("⚙", { showSet = !showSet }, small = true, on = showSet, tag = "piano-set-$pad", tier = Tier.Quiet)
+            if (close) Btn("✕", { state.toggleKeyboard(pad) }, small = true, tag = "piano-close-$pad", tier = Tier.Quiet)
         }
         GlideRow(state, pad)
         if (showSet) PadianoSettings(state)
@@ -275,7 +274,7 @@ fun PianoKeyboard(state: AppState, pad: Int, keysHeight: Dp = 132.dp, filter: Bo
 @Composable
 fun PadianoExtras(state: AppState, pad: Int) {
     val o = state.project.opt(pad)
-    Btn(if (o.glide) "Glide ${(o.glideT * 1000).toInt()} ms" else "Glide", { state.setPadOpt(pad) { glide = !glide } }, on = o.glide, onColor = C.Teal, small = true, tag = "glide-$pad")
+    Btn("Glide", { state.setPadOpt(pad) { glide = !glide } }, on = o.glide, onColor = C.Teal, small = true, tag = "glide-$pad")
 }
 
 @Composable
@@ -326,7 +325,7 @@ fun PadianoSquares(state: AppState, pad: Int, col: Color, base: Int) {
         val fit = maxOf(1, floor(avail / 22.dp).toInt())
         val rows = (notes.size + fit - 1) / fit
         val perRow = (notes.size + rows - 1) / rows
-        val rowH = listOf(40.dp, 54.dp, 74.dp)[state.padianoSize]
+        val rowH = listOf(48.dp, 64.dp, 86.dp)[state.padianoSize]
         Canvas(
             Modifier
                 .fillMaxWidth()

@@ -52,17 +52,13 @@ import com.tideclock.messmachine.engine.Theory
 fun PadsScreen(state: AppState) {
     val P = state.project
     ScrollPane {
+        PlayViews(state)
         Row(Modifier.fillMaxWidth().padding(bottom = 12.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
             T("BANK", size = 11.sp, color = C.Dim, spacing = .1.em)
             for (b in 0 until 4) {
                 val n = (0 until Project.BANK).count { P.kit[b * Project.BANK + it].isNotEmpty() }
                 Btn("${b + 1}", modifier = Modifier.weight(1f), onClick = { state.bank = b }, on = state.bank == b && !state.keysMode, small = true, enabled = !state.keysMode, tag = "bank-$b")
             }
-        }
-        Wrap(Modifier.padding(bottom = 12.dp)) {
-            Btn("Pads", { state.keysMode = false }, on = !state.keysMode, small = true, tag = "mode-pads")
-            Btn("Keys", { state.keysMode = true }, on = state.keysMode, onColor = C.Teal, small = true, tag = "mode-keys")
-            Btn("FX", { state.showFx = !state.showFx }, on = state.showFx, onColor = C.Pink, small = true, tag = "fx-toggle")
         }
         if (state.keysMode || state.keyboards.isNotEmpty()) KeysBar(state)
         // zoomed out, the pad grid shrinks with everything else so more of the machine fits
@@ -80,7 +76,6 @@ fun PadsScreen(state: AppState) {
             }
         }
         if (state.showFx) FxPanel(state)
-        SelectedPad(state)
         if (!state.keysMode && state.keyboards.isEmpty()) {
             Help(
                 "Tap a pad to play it. Empty pads open the jars. Hold a pad still, then lift, for its menu: Padiano drops a keyboard right under that pad's row, one per row. " +
@@ -243,6 +238,21 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
     }
 }
 
+/**
+ * The top of the Play tab: what the page shows. Pads and Keys are the pad grid's two modes, My Desk is
+ * your own layout. FX opens the effects under the grid.
+ */
+@Composable
+fun PlayViews(state: AppState) {
+    val desk = state.tab == com.tideclock.messmachine.Tab.Console
+    Row(Modifier.fillMaxWidth().padding(bottom = 10.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Btn("Pads", { state.keysMode = false; state.tab = com.tideclock.messmachine.Tab.Pads }, on = !desk && !state.keysMode, small = true, tag = "mode-pads", modifier = Modifier.weight(1f))
+        Btn("Keys", { state.keysMode = true; state.tab = com.tideclock.messmachine.Tab.Pads }, on = !desk && state.keysMode, onColor = C.Teal, small = true, tag = "mode-keys", modifier = Modifier.weight(1f))
+        Btn("My Desk", { state.tab = com.tideclock.messmachine.Tab.Console }, on = desk, onColor = C.Teal, small = true, enabled = !state.locked, tag = "view-desk", modifier = Modifier.weight(1.4f))
+        Btn("FX", { state.showFx = !state.showFx }, on = state.showFx && !desk, onColor = C.Pink, small = true, enabled = !desk, tag = "fx-toggle", modifier = Modifier.weight(.8f))
+    }
+}
+
 @Composable
 fun SelectedPad(state: AppState) {
     @Suppress("UNUSED_VARIABLE") val sv = state.selV
@@ -308,9 +318,9 @@ fun PadMenu(state: AppState, i: Int) {
         T("PAD ${i + 1}" + if (k.isNotEmpty()) " · ${state.lib.titleOf(k).uppercase()}" else "", size = 12.sp, color = C.Yellow, lines = 1, spacing = .06.em,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
         @Composable
-        fun item(label: String, tag: String, enabled: Boolean = true, onClick: () -> Unit) {
+        fun item(label: String, tag: String, enabled: Boolean = true, danger: Boolean = false, onClick: () -> Unit) {
             DropdownMenuItem(
-                text = { T(label.uppercase(), size = 13.sp, color = if (enabled) C.Cream else C.Empty, spacing = .06.em) },
+                text = { T(label.uppercase(), size = 13.sp, color = if (!enabled) C.Empty else if (danger) C.Riot else C.Cream, spacing = .06.em) },
                 onClick = { close(); onClick() }, enabled = enabled, modifier = Modifier.testTag(tag),
             )
         }
@@ -321,6 +331,8 @@ fun PadMenu(state: AppState, i: Int) {
         } else {
             item(if (i in state.keyboards) "🎹 Hide the Padiano" else "🎹 Padiano under this row", "menu-piano") { state.selectPad(i, false); state.toggleKeyboard(i) }
             item("✂ Doctor it", "menu-doctor") { state.selectPad(i, false); state.overlay = Overlay.Doctor(k) }
+            item(if (P.mutes.contains(k)) "Unmute" else "Mute", "menu-mute-$i") { state.toggleMute(k) }
+            item(if (P.solos.contains(k)) "Unsolo" else "Solo", "menu-solo-$i") { state.toggleSolo(k) }
             item("Hear it", "menu-hear") { state.preview(k) }
             item("Swap sound", "menu-swap") { state.selectPad(i, false); state.overlay = Overlay.Picker(i) }
             item(if (k in state.favs) "★ Unstar" else "☆ Star", "menu-star") { state.toggleFav(k) }
@@ -328,8 +340,9 @@ fun PadMenu(state: AppState, i: Int) {
             item("Route: " + (if (P.opt(i).route == 0) "mix" else "bus ${P.opt(i).route}") + " (tap for next)", "menu-route") { state.cycleRoute(i) }
             item("Keep in Your Workbench", "menu-keep") { state.keepInBench(i) }
             item("Share this sound", "menu-share") { state.shareSoundWav(k) }
-            if (P.pat().usedBy(k)) item("Clear it from loop ${com.tideclock.messmachine.engine.Project.LETTERS[P.cur]}", "menu-clearloop") { state.clearSoundInLoop(i) }
-            item("Clear pad", "menu-clear") { state.clearPad(i) }
+            if (P.pat().usedBy(k)) item("Clear it from loop ${com.tideclock.messmachine.engine.Project.LETTERS[P.cur]}", "menu-clearloop", danger = true) { state.clearSoundInLoop(i) }
+            if (P.pat().used()) item("Resample loop ${com.tideclock.messmachine.engine.Project.LETTERS[P.cur]} onto a free pad", "menu-resample") { state.resampleLoop() }
+        item("Clear pad", "menu-clear", danger = true) { state.clearPad(i) }
         }
     }
 }

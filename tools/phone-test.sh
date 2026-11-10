@@ -78,21 +78,23 @@ close_sheets() {
     adb shell input tap $d; sleep 1
   done
 }
-for t in Pads Console Steps Roll Song Sounds; do
+# the Play tab holds the pads and My Desk (view-desk); the rest are tabs
+for t in tab-Pads view-desk tab-Steps tab-Roll tab-Song tab-Sounds; do
   close_sheets
-  xy=$(centre "tab-$t")
-  [ -z "$xy" ] && { note "tab $t: NOT FOUND"; fail=1; shot "04-tab-$t"; continue; }
+  xy=$(centre "$t")
+  [ -z "$xy" ] && { note "$t: NOT FOUND"; fail=1; shot "04-$t"; continue; }
   adb shell input tap $xy; sleep 2
   adb shell input tap $(( W / 2 )) $(( H / 3 )); sleep 1
   adb shell input swipe $(( W / 2 )) $(( H / 2 )) $(( W / 2 )) $(( H / 4 )) 300; sleep 1
-  shot "04-tab-$t"
-  alive || { note "tab $t: NOT RUNNING"; fail=1; adb shell am start -n $PKG/.MainActivity; sleep 5; }
-  infront "tab $t"
+  shot "04-$t"
+  alive || { note "$t: NOT RUNNING"; fail=1; adb shell am start -n $PKG/.MainActivity; sleep 5; }
+  infront "$t"
 done
 
 # a long press on a pad opens its menu on lift; then a circle on a pad opens the sphere
 close_sheets
 adb shell input tap $(centre tab-Pads); sleep 2
+adb shell input tap $(centre mode-pads); sleep 2
 xy=$(centre pad-6)
 if [ -z "$xy" ]; then note "pad 6: NOT FOUND"; fail=1; else
   set -- $xy

@@ -112,7 +112,11 @@ class BigTest {
     /** Scroll a node into view and let the page stop moving, so the next touch lands on it. */
     private fun at(tag: String) = rule.onNodeWithTag(tag).also { it.performScrollTo(); rule.mainClock.advanceTimeBy(600); settle() }
 
-    private fun tab(label: String) { rule.onNodeWithTag("tab-$label").performClick(); settle() }
+    /** Pads and Desk share the Play tab now: "Console" means the Play tab's My Desk view. */
+    private fun tab(label: String) {
+        if (label == "Console") { rule.onNodeWithTag("tab-Pads").performClick(); settle(); at("view-desk").performClick(); settle(); return }
+        rule.onNodeWithTag("tab-$label").performClick(); settle()
+    }
 
     private fun tapPad(d: Int) {
         at("pad-$d").performTouchInput { down(center) }
@@ -269,7 +273,7 @@ class BigTest {
         // the Hold switch on the piano itself: turning it off lets every held note go
         for (p in listOf(0, 4)) { state.pianoDown(7, p); state.pianoUp(7, p) }
         assertEquals(2, state.latched.size)
-        rule.onNodeWithTag("piano-hold-7").performScrollTo().performClick()
+        rule.onNodeWithTag("hold-toggle").performScrollTo().performClick()
         settle()
         assertFalse(state.holdOn)
         assertTrue(state.latched.isEmpty())
@@ -278,8 +282,11 @@ class BigTest {
     }
 
     @Test fun padFilterUnderThePiano() {
+        // the strip left the Padiano (the dock filter aims at one pad too); it stays as a desk piece
+        state.selectPad(7, false)
+        state.addModule("pfilt")
         state.toggleKeyboard(7)
-        settle()
+        tab("Console")
         // hold the strip near the left: pad 8's filter closes, nothing else's does
         at("pfilt-7").performTouchInput { down(Offset(width * .08f, height * .3f)) }
         settle()
@@ -288,7 +295,6 @@ class BigTest {
         assertTrue(state.engine.padFiltered(7) && !state.engine.padFiltered(0))
         state.pianoDown(7, 0)
         loudest(1024)
-        rule.onNodeWithTag("piano-7").performScrollTo()
         shot("21-pad-filter-held")
         state.pianoUp(7, 0)
         rule.onNodeWithTag("pfilt-7").performTouchInput { up() }
@@ -668,6 +674,8 @@ class BigTest {
         val k = state.project.kit[0]
         state.overlay = Overlay.Doctor(k)
         settle()
+        rule.onNodeWithTag("dtab-fx").performClick()
+        settle()
         rule.onNodeWithTag("dfx-rvb").performScrollTo().performClick()
         settle()
         rule.onNodeWithTag("dfx-chorus").performScrollTo().performClick()
@@ -807,6 +815,24 @@ class BigTest {
 
     /* ---------- build D: menus everywhere, the pitch strip, motion recording ---------- */
 
+    @Test fun playTabHoldsPadsKeysAndMyDesk() {
+        rule.onAllNodesWithTag("tab-Console").fetchSemanticsNodes().let { assertTrue("no separate Desk tab", it.isEmpty()) }
+        at("view-desk").performClick()
+        settle()
+        assertEquals(Tab.Console, state.tab)
+        rule.onNodeWithTag("tab-Steps").performClick()
+        settle()
+        rule.onNodeWithTag("tab-Pads").performClick()
+        settle()
+        assertEquals("Play reopens on the view you used last", Tab.Console, state.tab)
+        at("mode-keys").performClick()
+        settle()
+        assertEquals(Tab.Pads, state.tab)
+        assertTrue(state.keysMode)
+        rule.onAllNodesWithTag("pick-sound").fetchSemanticsNodes().let { assertTrue("the pad card is gone", it.isEmpty()) }
+        shot("46-play-keys")
+    }
+
     @Test fun helpShowsOnceThenBehindTheQuestionMark() {
         tab("Steps")
         assertTrue("first visit to Steps shows its how-to", rule.onAllNodesWithTag("help").fetchSemanticsNodes().isNotEmpty())
@@ -908,7 +934,9 @@ class BigTest {
         rule.onNodeWithTag("random").performClick()
         settle()
         assertTrue(state.project.pat().used())
-        rule.onNodeWithTag("mute-0").performClick()
+        // M, S and the doctor live in the sound's menu now (one row per sound)
+        longPress("steps-name-0")
+        rule.onNodeWithTag("menu-mute-0").performClick()
         settle()
         assertTrue(state.project.mutes.contains(state.project.kit[0]))
         rule.onNodeWithTag("looplen").performClick()
@@ -1017,7 +1045,9 @@ class BigTest {
 
     @Test fun doctorChopsAndSaves() {
         state.selectPad(7, false)
-        rule.onNodeWithTag("doctor").performScrollTo().performClick()
+        // the pad card is gone: the doctor opens from the pad's menu (hold, then lift)
+        longPress("pad-7")
+        rule.onNodeWithTag("menu-doctor").performClick()
         settle()
         waitFor("the waveform") { state.lib.loaded(state.project.kit[7]) }
         shot("14-doctor")

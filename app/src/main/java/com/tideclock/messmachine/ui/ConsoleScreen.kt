@@ -60,6 +60,7 @@ fun ConsoleScreen(state: AppState) {
     @Suppress("UNUSED_VARIABLE") val sv = state.selV
     val arranging = state.consoleEdit && !state.locked
     ScrollPane(tag = "console") {
+        PlayViews(state)
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
             Heading("M(ess)(y) Desk", size = 18.sp, modifier = Modifier.weight(1f))
             Btn(if (arranging) "Done" else "Arrange", { state.consoleEdit = !state.consoleEdit }, small = true,

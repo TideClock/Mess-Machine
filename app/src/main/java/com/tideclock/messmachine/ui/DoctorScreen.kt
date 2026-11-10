@@ -52,6 +52,8 @@ fun DoctorScreen(state: AppState, key: String) {
     var sens by remember { mutableStateOf(.5f) }
     var lazyT0 by remember { mutableStateOf(0L) }
     var fitBars by remember { mutableStateOf(1.0) }
+    // the table in four tabs under a waveform that always stays on screen
+    var dtab by remember { mutableStateOf("trim") }
     LaunchedEffect(key) {
         if (smp == null) smp = withContext(Dispatchers.IO) { try { state.lib.load(key) } catch (_: Exception) { null } }
     }
@@ -135,7 +137,20 @@ fun DoctorScreen(state: AppState, key: String) {
             drawLine(C.Yellow, Offset(xs, 0f), Offset(xs, size.height), strokeWidth = 6f)
             drawLine(C.Pink, Offset(xe, 0f), Offset(xe, size.height), strokeWidth = 6f)
         }
-        Help("Drag the yellow line to trim the front, the pink one to trim the back.", modifier = Modifier.padding(top = 6.dp, bottom = 8.dp))
+        Wrap(Modifier.padding(top = 8.dp, bottom = 8.dp)) {
+            Btn("Hear it", { looping = false; state.engine.stopPreviews(); state.preview(key) }, color = C.Teal, small = true)
+            Btn(if (looping) "■ Stop loop" else "Loop the trim", {
+                looping = !looping
+                if (looping) smp?.let { state.engine.preview(it, e, 0, true) } else state.engine.stopPreviews()
+            }, on = looping, onColor = C.Pink, small = true)
+        }
+        Row(Modifier.fillMaxWidth().padding(bottom = 10.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            for ((t, n) in listOf("trim" to "Trim", "shape" to "Shape", "fx" to "Effects", "tools" to "Tools")) {
+                Btn(n, { dtab = t }, on = dtab == t, onColor = C.Yellow, small = true, tag = "dtab-$t", modifier = Modifier.weight(1f))
+            }
+        }
+        if (dtab == "trim") {
+        Help("Drag the yellow line to trim the front, the pink one to trim the back.", modifier = Modifier.padding(bottom = 8.dp))
         Wrap(Modifier.padding(bottom = 8.dp)) {
             Btn("Zoom to trim", {
                 val pad = (e.en - e.st) * .08
@@ -145,16 +160,13 @@ fun DoctorScreen(state: AppState, key: String) {
             Btn("Snap to zero", { snap = !snap }, on = snap, onColor = C.Teal, small = true)
         }
         Wrap(Modifier.padding(bottom = 8.dp)) {
-            Btn("Hear it", { looping = false; state.engine.stopPreviews(); state.preview(key) }, color = C.Teal, small = true)
-            Btn(if (looping) "■ Stop loop" else "Loop the trim", {
-                looping = !looping
-                if (looping) smp?.let { state.engine.preview(it, e, 0, true) } else state.engine.stopPreviews()
-            }, on = looping, onColor = C.Pink, small = true)
             Btn("Reverse", { upd(true) { rev = !rev } }, on = e.rev, small = true)
             Btn("Loop", { upd(true) { loop = !loop } }, on = e.loop, small = true)
             Btn(if (e.mode == "gate") "Gate" else "One shot", { upd(true) { mode = if (mode == "gate") "one" else "gate" } }, on = e.mode == "gate", small = true)
             Btn("Normalize", { upd(true) { norm = !norm } }, on = e.norm, small = true)
         }
+        }
+        if (dtab == "shape") {
         SliderRow("Volume", e.vol.toFloat(), 0f..2f, { "${(it * 100).roundToInt()}%" }, { v -> upd(false) { vol = v.toDouble() } }, { upd(true) {} })
         SliderRow("Tune", e.tune.toFloat(), -24f..24f, { "${if (it > 0) "+" else ""}${it.roundToInt()} st" }, { v -> upd(false) { tune = v.roundToInt().toDouble() } }, { upd(true) {} }, steps = 47)
         SliderRow("Fine", e.fine.toFloat(), -100f..100f, { "${it.roundToInt()} ct" }, { v -> upd(false) { fine = v.roundToInt().toDouble() } }, { upd(true) {} })
@@ -170,8 +182,8 @@ fun DoctorScreen(state: AppState, key: String) {
         Wrap(Modifier) {
             for ((v, n) in listOf("loop" to "Loop it", "tail" to "Hold the tail", "once" to "Play once")) Btn(n, { upd(true) { held = v } }, on = e.held == v, small = true, tag = "held-$v")
         }
-
-        Section("Effects")
+        }
+        if (dtab == "fx") {
         Help("These stay with the sound wherever it plays. Reverb and echo share one space each; the sound you played last sets its size and time.", modifier = Modifier.padding(bottom = 6.dp))
         val pct = { v: Float -> "${(v * 100).roundToInt()}%" }
         @Composable
@@ -205,7 +217,8 @@ fun DoctorScreen(state: AppState, key: String) {
             SliderRow("Depth", e.wob.toFloat(), 0f..1f, pct, { v -> upd(false) { wob = v.toDouble() } }, { upd(true) {} }, accent = C.Pink)
             SliderRow("Speed", e.wobRate.toFloat(), 0f..1f, { "%.1f Hz".format(.3f + it * 5.7f) }, { v -> upd(false) { wobRate = v.toDouble() } }, { upd(true) {} }, accent = C.Pink)
         }
-
+        }
+        if (dtab == "tools") {
         Section("Re-pitch to fit")
         Wrap(Modifier) {
             for ((b, label) in listOf(.25 to "1 beat", .5 to "2 beats", 1.0 to "1 bar", 2.0 to "2 bars", 4.0 to "4 bars")) {
@@ -240,7 +253,7 @@ fun DoctorScreen(state: AppState, key: String) {
         }
         Wrap(Modifier.padding(top = 10.dp)) {
             T("${cuts.count { it > e.st && it < e.en } + 1} slices", size = 13.sp, color = C.Yellow)
-            Btn("Clear cuts", { cuts = emptyList() }, small = true)
+            Btn("Clear cuts", { cuts = emptyList() }, small = true, tier = Tier.Danger)
             Btn("Chop to pads", { state.chopToPads(key, cuts); state.overlay = null }, small = true, color = C.Pink)
         }
 
@@ -256,8 +269,10 @@ fun DoctorScreen(state: AppState, key: String) {
             }
         }
         Row(Modifier.padding(top = 14.dp, bottom = 30.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Btn("Reset everything", { val n = SoundEdit(); e = n; state.setEdit(key, n, true); state.preview(key) }, small = true, color = C.Riot)
+            Btn("Reset everything", { val n = SoundEdit(); e = n; state.setEdit(key, n, true); state.preview(key) }, small = true, tier = Tier.Danger)
         }
+        }
+        T(" ", size = 24.sp)
     }
 }
 

@@ -84,7 +84,7 @@ fun SongScreen(state: AppState) {
         }
         Wrap(Modifier.padding(top = 14.dp)) {
             Btn("Rough it in", { state.songFromLoops() }, small = true, color = C.Teal, tag = "rough")
-            Btn("Clear the song", { state.clearSong() }, small = true, enabled = len > 0)
+            Btn("Clear the song", { state.clearSong() }, small = true, enabled = len > 0, tier = Tier.Danger)
         }
         Help(
             "Each square is one loop's worth. Tap a square to paint the loop you picked; tap it again to make it a rest. " +

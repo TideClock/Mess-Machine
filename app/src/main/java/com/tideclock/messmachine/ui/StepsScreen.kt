@@ -2,6 +2,8 @@ package com.tideclock.messmachine.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.em
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -86,7 +88,7 @@ fun SlotBar(state: AppState) {
                 Btn("17-32", { state.page = 1 }, on = state.page == 1, small = true, tag = "page2")
             }
             Select("Copy to", (0 until Project.NSLOTS).filter { it != P.cur }.map { it to "Loop ${Project.LETTERS[it]}" }, { state.copySlotTo(it) })
-            Btn("Clear loop", { state.clearSlot() }, small = true, enabled = P.pat().used())
+            Btn("Clear loop", { state.clearSlot() }, small = true, enabled = P.pat().used(), tier = Tier.Danger)
             if (P.pat().hasMotion()) Btn("Clear moves", { state.clearMoves() }, small = true, tag = "clear-moves")
             Btn("Bottle it", { state.bottleIt() }, small = true, color = C.Pink, enabled = P.pat().used() || P.songLen() > 0, tag = "bottle")
         }
@@ -110,7 +112,7 @@ fun StepsScreen(state: AppState) {
         Wrap(Modifier.padding(bottom = 12.dp)) {
             Btn("Random drums", { state.randomDrums() }, small = true, tag = "random")
             Btn("Resample to a pad", { state.resampleLoop() }, small = true, enabled = pat.used())
-            Btn("Clear notes", { state.clearAllNotes() }, small = true, enabled = pat.notes.values.any { it.isNotEmpty() }, tag = "clear-all-notes")
+            Btn("Clear notes", { state.clearAllNotes() }, small = true, tier = Tier.Danger, enabled = pat.notes.values.any { it.isNotEmpty() }, tag = "clear-all-notes")
         }
         val rows = (0 until Project.BANK).map { state.bank * Project.BANK + it }.filter { P.kit[it].isNotEmpty() }
         if (rows.isEmpty()) Note("Bank ${state.bank + 1} is empty. Put sounds on its pads from the Pads or Sounds tab.", color = C.Yellow)
@@ -118,25 +120,33 @@ fun StepsScreen(state: AppState) {
             val k = P.kit[i]
             val col = padColor(Color(state.lib.colorOf(k)))
             val audible = P.audible(k)
-            Column(Modifier.fillMaxWidth().padding(bottom = 6.dp).alpha(if (audible) 1f else .45f)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            val muted = P.mutes.contains(k)
+            val solo = P.solos.contains(k)
+            // one row per sound: the name, then its 16 steps. Mute, solo and the doctor are in the name's menu.
+            Column(Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     // tap the name for its pitch strip; hold still and lift for the pad's menu
-                    Row(Modifier.weight(1f).tapOrHold(i, { state.openStepStrip(i) }, { if (!state.locked) state.padMenu = i }).testTag("steps-name-$i"), verticalAlignment = Alignment.CenterVertically) {
-                        Swatch(col)
-                        T("${i + 1}", size = 11.sp, color = C.Dim, family = Mono, weight = FontWeight.Bold, modifier = Modifier.padding(start = 6.dp, end = 6.dp))
-                        T(state.lib.titleOf(k).uppercase() + if (state.stepStrip == i) "  ▾" else "", size = 13.sp, lines = 1, spacing = .04.em, color = if (i == P.sel) C.Yellow else C.Cream)
+                    Row(
+                        Modifier.width(76.dp).height(30.dp).alpha(if (audible) 1f else .45f)
+                            .tapOrHold(i, { state.openStepStrip(i) }, { if (!state.locked) state.padMenu = i }).testTag("steps-name-$i"),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(Modifier.width(4.dp).fillMaxHeight().background(col))
+                        Column(Modifier.padding(start = 5.dp, end = 3.dp)) {
+                            T(
+                                (if (muted) "M " else "") + (if (solo) "S " else "") + "${i + 1}" + if (state.stepStrip == i) " ▾" else "",
+                                size = 9.sp, color = if (muted) C.Riot else if (solo) C.Yellow else C.Dim, family = Mono, weight = FontWeight.Bold, lines = 1,
+                            )
+                            T(state.lib.titleOf(k).uppercase(), size = 9.sp, lines = 1, spacing = .02.em, color = if (i == P.sel) C.Yellow else C.Cream)
+                        }
                         Box { PadMenu(state, i) }
                     }
-                    Btn("M", { state.toggleMute(k) }, on = P.mutes.contains(k), onColor = C.Riot, small = true, tag = "mute-$i")
-                    Btn("S", { state.toggleSolo(k) }, on = P.solos.contains(k), onColor = C.Yellow, small = true)
-                    Btn("✂", { state.overlay = Overlay.Doctor(k) }, small = true)
+                    Box(Modifier.weight(1f).alpha(if (audible) 1f else .45f).testTag("steps-$i")) { StepRow(state, k, col, off, state.version) }
                 }
-                Box(Modifier.testTag("steps-$i")) { StepRow(state, k, col, off, state.version) }
                 if (state.stepStrip == i) StepPitchStrip(state, i, k, col)
-                Dashed(Modifier.padding(top = 10.dp))
             }
         }
-        Help("Tap a sound's name to give its steps pitches. Hold its name, then lift, for its menu. M mutes, S solos, ✂ opens the doctor. A dot means a step has a pitch or roll notes; tap it to clear it, or Clear notes for the whole loop.", modifier = Modifier.padding(top = 4.dp))
+        Help("Tap a sound's name to give its steps pitches. Hold its name, then lift, for its menu: mute, solo, the doctor and more. A red M or yellow S by the number shows a muted or soloed sound. A dot means a step has a pitch or roll notes; tap it to clear it, or Clear notes for the whole loop.", modifier = Modifier.padding(top = 4.dp))
     }
 }
 
@@ -150,7 +160,6 @@ fun StepRow(state: AppState, k: String, col: Color, off: Int, ver: Int) {
     Canvas(
         Modifier
             .fillMaxWidth()
-            .padding(top = 8.dp)
             .height(30.dp)
             .pointerInput(k, off, P.cur, ver) {
                 detectTapGestures { o ->
