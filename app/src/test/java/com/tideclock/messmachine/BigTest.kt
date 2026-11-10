@@ -136,6 +136,8 @@ class BigTest {
             assertEquals("holding pad ${d + 1} opens its menu", d, state.padMenu)
             if (d == 1) shot("02-pad-menu")
             rule.onNodeWithTag("menu-piano").performClick()
+            // let the menu finish closing before the next press
+            rule.mainClock.advanceTimeBy(1000)
             settle()
         }
         assertEquals(listOf(1, 5, 8, 13), state.keyboards.toList())
