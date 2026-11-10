@@ -1034,11 +1034,11 @@ class AppState(private val app: Context) {
 
     /** How tall a piece starts, in desk rows (24 dp each). */
     fun defaultH(m: Module, w: Int): Int = when (m.type) {
-        "pads" -> if (w >= 9) 17 else 10
+        "pads" -> if (w >= 9) 16 else 10
         "row" -> 4
-        "piano" -> 9
+        "piano" -> 12
         "pfilt" -> 4
-        "hold" -> if (w >= 9) 2 else 4
+        "hold" -> if (w >= 9) 4 else 6
         "fx" -> if (w >= 9) 10 else 14
         "fx1" -> listOf(3, 4, 6)[m.size]
         "xy", "xyp" -> listOf(8, 10, 13)[m.size]
