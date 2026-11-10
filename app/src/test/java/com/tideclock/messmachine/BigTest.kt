@@ -996,7 +996,9 @@ class BigTest {
         assertEquals(Overlay.AudioCheck, state.overlay)
         rule.onNodeWithTag("check-pad").performClick()
         settle()
-        assertTrue("a tap was timed", state.touchMs() >= 0)
+        // the test's clock is not the phone's, so the touch time itself is only checked on a real phone; the click must play
+        loudest(2048)
+        assertTrue("the tap played a click and timed its wait for a block", state.engine.hits > 0)
         assertTrue("the notes carry the lag line", state.noteDetails().contains("**Lag:**"))
         shot("50-audio-check")
         val before = state.notes.notes.size
