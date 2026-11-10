@@ -30,6 +30,7 @@ sealed class Overlay {
     data class Doctor(val key: String) : Overlay()
     data object Files : Overlay()
     data object Tempo : Overlay()
+    data object Notes : Overlay()
 }
 
 data class MessFile(val id: String, val name: String, val bpm: Int, val at: String, val pads: Int, val loops: Int, val songBars: Int)
@@ -59,14 +60,27 @@ class AppState(private val app: Context) {
     var liveV by mutableIntStateOf(0)
         private set
 
-    var tab by mutableStateOf(Tab.Pads)
+    val notes = NotesBook(app)
+    private val tabState = mutableStateOf(Tab.Pads)
+    var tab: Tab
+        get() = tabState.value
+        set(v) { if (v != tabState.value) notes.trail("tab ${v.label}"); tabState.value = v }
     var bank by mutableIntStateOf(project.sel / Project.BANK)
     var keysMode by mutableStateOf(false)
     var chordMode by mutableStateOf(prefs.getString("chord", "off") ?: "off")
     var noteLen by mutableIntStateOf(1)
     var page by mutableIntStateOf(0)
     var brush by mutableIntStateOf(0)
-    var overlay by mutableStateOf<Overlay?>(null)
+    private val overlayState = mutableStateOf<Overlay?>(null)
+    var overlay: Overlay?
+        get() = overlayState.value
+        set(v) { if (v != overlayState.value) notes.trail(if (v == null) "close panel" else "open ${overlayName(v)}"); overlayState.value = v }
+    /** A crash from last time, waiting to become a bug note. */
+    var crash by mutableStateOf<String?>(null)
+    var guide: Map<String, Any?> = emptyMap()
+        private set
+    var guideOn by mutableStateOf(prefs.getBoolean("guideOn", true))
+        private set
     var toast by mutableStateOf<String?>(null)
     var toastId by mutableIntStateOf(0)
     var busy by mutableStateOf<String?>(null)
@@ -97,6 +111,15 @@ class AppState(private val app: Context) {
     private val downIds = IntArray(16) { -1 }
 
     init {
+        try {
+            val f = File(app.filesDir, "last_crash.txt")
+            if (f.exists()) { crash = f.readText(); f.delete() }
+        } catch (_: Exception) {}
+        try { guide = Json.map(Json.parse(app.assets.open("guide.json").use { String(it.readBytes()) })) } catch (_: Exception) {}
+        val seen = prefs.getInt("guideSeen", 0)
+        if (crash != null) overlay = Overlay.Notes
+        else if (guideOn && seen != BuildConfig.VERSION_CODE && guide.isNotEmpty()) overlay = Overlay.Notes
+        prefs.edit().putInt("guideSeen", BuildConfig.VERSION_CODE).apply()
         commitUndo()
         rebuild()
         loadKit()
@@ -162,6 +185,7 @@ class AppState(private val app: Context) {
 
     fun setLive(block: Engine.Live.() -> Unit) {
         live.block()
+        notes.trail("live rec=${live.rec} click=${live.click} repeat=${live.nr} ${live.arp} ${live.nrRate}")
         liveV++
         rebuild()
     }
@@ -182,8 +206,8 @@ class AppState(private val app: Context) {
 
     private fun undoFlags() { canUndo = hi > 0; canRedo = hi < hist.size - 1 }
 
-    fun undo() { if (hi > 0) { hi--; restore(hist[hi]) } }
-    fun redo() { if (hi < hist.size - 1) { hi++; restore(hist[hi]) } }
+    fun undo() { notes.trail("undo"); if (hi > 0) { hi--; restore(hist[hi]) } }
+    fun redo() { notes.trail("redo"); if (hi < hist.size - 1) { hi++; restore(hist[hi]) } }
 
     private fun restore(j: String) {
         project = Project.fromJson(j, lib::has).project
@@ -242,6 +266,7 @@ class AppState(private val app: Context) {
     /* ---------------- transport ---------------- */
 
     fun togglePlay() {
+        notes.trail(if (playing) "pause" else "play")
         if (playing) { engine.pause(); playing = false }
         else {
             if (project.songMode && project.songLen() == 0) view { songMode = false }
@@ -250,7 +275,7 @@ class AppState(private val app: Context) {
         }
     }
 
-    fun stop() { engine.stop(); playing = false }
+    fun stop() { notes.trail("stop"); engine.stop(); playing = false }
 
     fun setBpm(v: Int) = edit { bpm = v.coerceIn(60, 180) }
 
@@ -278,6 +303,7 @@ class AppState(private val app: Context) {
             val ps = Theory.chordOf(p, d, chordMode, project.scale, project.root)
             lastChord = if (ps.size > 1) Theory.chordLabel(p, d, chordMode, project.scale, project.root) + " · " + Theory.chordNotes(ps) else Theory.noteName(p)
             downIds[d] = 100 + d
+            notes.trail("key ${Theory.noteName(p)}")
             engine.down(100 + d, pad, ps, true)
             return
         }
@@ -285,6 +311,7 @@ class AppState(private val app: Context) {
         if (project.sel != i) view { sel = i }
         if (project.kit[i].isEmpty()) { overlay = Overlay.Picker(i); return }
         downIds[d] = d
+        notes.trail("pad ${i + 1}")
         engine.down(d, i, intArrayOf(0), false)
     }
 
@@ -302,6 +329,14 @@ class AppState(private val app: Context) {
     fun keyOffset(d: Int): Int = Theory.keyNote(d, project.scale, project.root)
 
     fun pickChordMode(m: String) {
+        if (m.startsWith("set:")) {
+            val set = Theory.CHORDSETS[m.substring(4)]
+            if (set != null && !Theory.setFits(set, project.scale)) {
+                edit { scale = set.home }
+                say("${m.substring(4)} was written in ${set.home.lowercase()}, so the scale moved to ${Theory.NN[project.root]} ${set.home.lowercase()}.")
+            }
+        }
+        notes.trail("chords $m")
         chordMode = m
         prefs.edit().putString("chord", m).apply()
         version++
@@ -330,6 +365,7 @@ class AppState(private val app: Context) {
     /* ---------------- sounds on pads ---------------- */
 
     fun putOnPad(pad: Int, key: String) {
+        notes.trail("put ${lib.titleOf(key)} on pad ${pad + 1}")
         edit { this.assign(pad, key) }
         bank = pad / Project.BANK
         preview(key)
@@ -337,6 +373,7 @@ class AppState(private val app: Context) {
     }
 
     fun clearPad(pad: Int) {
+        notes.trail("clear pad ${pad + 1}")
         val t = lib.titleOf(project.kit[pad])
         edit { this.clearPad(pad) }
         say("Pad ${pad + 1} is empty again${if (t.isNotEmpty()) " ($t is back in its jar)" else ""}.")
@@ -347,6 +384,7 @@ class AppState(private val app: Context) {
     /* ---------------- steps ---------------- */
 
     fun toggleStep(key: String, j: Int) {
+        notes.trail("step ${lib.titleOf(key)} ${j + 1}")
         val P = project.pat()
         val on = !P.step(key, j)
         edit { P.setStep(key, j, on) }
@@ -364,6 +402,7 @@ class AppState(private val app: Context) {
     /* ---------------- roll ---------------- */
 
     fun rollTap(p: Int, st: Int) {
+        notes.trail("roll ${Theory.noteName(p)} step ${st + 1}")
         val k = selKey()
         if (k.isEmpty()) { say("Pick a pad with a sound on it first."); return }
         val P = project.pat()
@@ -389,6 +428,7 @@ class AppState(private val app: Context) {
     /* ---------------- loops and the song ---------------- */
 
     fun selectSlot(i: Int) {
+        notes.trail("loop ${Project.LETTERS[i]}")
         if (playing && project.songMode) follow = false
         view { cur = i }
         page = 0
@@ -397,6 +437,20 @@ class AppState(private val app: Context) {
     fun toggleLen() = edit { pat().len = if (pat().len == 32) 16 else 32 }
 
     fun clearSlot() = edit { pat().clear() }
+
+    /** The site's Random drums: fresh steps for every pad in this bank, busier on the first row. */
+    fun randomDrums() {
+        val rows = (0 until Project.BANK).map { bank * Project.BANK + it }.filter { project.kit[it].isNotEmpty() }
+        if (rows.isEmpty()) { say("Bank ${bank + 1} is empty."); return }
+        notes.trail("random drums")
+        edit {
+            val P = pat()
+            rows.forEachIndexed { n, i ->
+                val k = kit[i]
+                for (j in 0 until P.len) P.setStep(k, j, Math.random() < (if (n == 0) .3 else .14))
+            }
+        }
+    }
 
     fun copySlotTo(to: Int) {
         if (to == project.cur) return
@@ -450,6 +504,7 @@ class AppState(private val app: Context) {
     }
 
     fun saveMess(name: String, asNew: Boolean) {
+        notes.trail("save mess")
         val nm = name.trim().ifEmpty { project.name.ifEmpty { "Untitled mess" } }
         project.name = nm
         val id = if (asNew || fileId == null) System.currentTimeMillis().toString(36) else fileId!!
@@ -465,6 +520,7 @@ class AppState(private val app: Context) {
     }
 
     fun openMess(id: String) {
+        notes.trail("open mess")
         worker.execute {
             try {
                 val p = Project.fromJson(File(messDir, "$id.json").readText(), lib::has).project
@@ -488,6 +544,7 @@ class AppState(private val app: Context) {
 
     /** A mess in the site's JSON, from a file or a share. */
     fun importText(text: String) {
+        notes.trail("import mess")
         try {
             val l = Project.fromJson(text.trim(), lib::has)
             replaceProject(l.project, null)
@@ -529,6 +586,7 @@ class AppState(private val app: Context) {
     }
 
     fun bounce(song: Boolean, loops: Int) {
+        notes.trail("bounce ${if (song) "song" else "loop x$loops"}")
         if (song && project.songLen() == 0) { say("The song lane is empty."); return }
         if (!song && !project.pat().used()) { say("Loop ${Project.LETTERS[project.cur]} is empty."); return }
         busy = "Bouncing…"
@@ -546,4 +604,43 @@ class AppState(private val app: Context) {
             }
         }
     }
+
+    /* ---------------- notes for Claude ---------------- */
+
+    val buildName: String get() = "${BuildConfig.VERSION_NAME} (${BuildConfig.GIT_SHA})"
+
+    fun screenName(): String = tab.label + (overlay?.let { " > " + overlayName(it) } ?: "")
+
+    private fun overlayName(o: Overlay): String = when (o) {
+        is Overlay.Picker -> "sound picker (pad ${o.pad + 1})"
+        is Overlay.Doctor -> "doctor (${lib.titleOf(o.key)})"
+        Overlay.Files -> "messes"
+        Overlay.Tempo -> "tempo"
+        Overlay.Notes -> "notes"
+    }
+
+    fun switchGuide(v: Boolean) { guideOn = v; prefs.edit().putBoolean("guideOn", v).apply() }
+
+    /** Device, audio and mess facts that go under every note. */
+    fun noteDetails(): String {
+        val p = project
+        val loops = (0 until Project.NSLOTS).count { p.pats[it].used() }
+        return "**Device:** ${NotesBook.device()}\n" +
+            "**Audio:** ${rate} Hz, buffer ${audio.bufferFrames} frames, burst ${burst}, underruns ${audio.underruns}\n" +
+            "**Mess:** \"${p.name.ifEmpty { "Untitled" }}\", ${p.bpm} BPM, swing ${p.swing}%, ${p.loadedCount()} pads, $loops loops, " +
+            (if (p.songMode) "song mode (${p.songLen()} bars)" else "loop ${Project.LETTERS[p.cur]}") +
+            ", keys ${if (keysMode) "on" else "off"}, chords $chordMode, repeat ${if (live.nr) "on (${live.arp})" else "off"}\n"
+    }
+
+    fun saveNote(cat: String, topic: String, text: String, send: Boolean) {
+        val (c, tp, tx) = notes.parsePrefix(text, cat, topic)
+        if (tx.isBlank() && crash == null) { say("Write or say something first."); return }
+        val n = MNote(NotesBook.newId(), c, tp.trim(), tx, System.currentTimeMillis(), buildName, screenName(), extra = crash ?: "")
+        crash = null
+        notes.add(n)
+        notes.trail("note ${catLabel(c)}")
+        if (send) notes.send(n, noteDetails()) else say("Saved on the phone. Send it when you are ready.")
+    }
+
+    fun sendNote(n: MNote) = notes.send(n, noteDetails())
 }

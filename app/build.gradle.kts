@@ -15,6 +15,7 @@ android {
         // CI passes the run number so every build installs over the last one
         versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
         versionName = "0.1." + (System.getenv("GITHUB_RUN_NUMBER") ?: "0")
+        buildConfigField("String", "GIT_SHA", "\"" + (System.getenv("GITHUB_SHA") ?: "local").take(7) + "\"")
     }
 
     signingConfigs {
@@ -49,6 +50,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     androidResources {
         // the sounds are already as small as they get; storing them raw lets the app read them faster

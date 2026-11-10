@@ -66,6 +66,7 @@ fun MessMachineApp(state: AppState) {
                 is Overlay.Doctor -> Sheet(state, "The doctor's table") { DoctorScreen(state, o.key) }
                 Overlay.Files -> Sheet(state, "Messes") { FilesScreen(state) }
                 Overlay.Tempo -> Sheet(state, "Tempo and feel") { TempoScreen(state) }
+                Overlay.Notes -> Sheet(state, "Notes for Claude") { NotesScreen(state) }
                 null -> {}
             }
             state.toast?.let { msg ->
@@ -108,11 +109,11 @@ fun Transport(state: AppState) {
             Btn("■", { state.stop() })
             Btn("● Rec", { state.setLive { rec = !rec } }, on = state.live.rec, onColor = C.Riot)
             Btn("${P.bpm} BPM", { state.overlay = Overlay.Tempo })
-            Spacer(Modifier.weight(1f))
-            Btn("☰", { state.refreshFiles(); state.overlay = Overlay.Files })
         }
         Spacer(Modifier.height(8.dp))
         Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Btn("☰", { state.refreshFiles(); state.overlay = Overlay.Files }, small = true)
+            Btn("🐞", { state.overlay = Overlay.Notes }, small = true, color = if (state.crash != null) C.Riot else C.Card2)
             T(position(state), size = 13.sp, color = C.Yellow, modifier = Modifier.width(92.dp), lines = 1)
             Btn("Click", { state.setLive { click = !click } }, on = state.live.click, small = true)
             Btn("Repeat", { state.setLive { nr = !nr } }, on = state.live.nr, onColor = C.Pink, small = true)

@@ -77,6 +77,7 @@ fun StepsScreen(state: AppState) {
                 Btn("Bank ${b + 1} · $n", { state.bank = b }, on = state.bank == b, small = true)
             }
             Btn("Hear on tap", { state.switchPlayOnTap(!state.playOnTap) }, on = state.playOnTap, onColor = C.Teal, small = true)
+            Btn("Random drums", { state.randomDrums() }, small = true)
         }
         val rows = (0 until Project.BANK).map { state.bank * Project.BANK + it }.filter { P.kit[it].isNotEmpty() }
         if (rows.isEmpty()) {

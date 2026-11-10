@@ -17,6 +17,8 @@ class AudioOut(private val engine: Engine, private val rate: Int, framesPerBurst
 
     @Volatile var bufferFrames = 0
         private set
+    @Volatile var underruns = 0
+        private set
 
     fun start() {
         if (running) return
@@ -61,7 +63,7 @@ class AudioOut(private val engine: Engine, private val rate: Int, framesPerBurst
         bufferFrames = size
         engine.setLatencyFrames(size + burst)
         val buf = FloatArray(burst * 2)
-        var underruns = track.underrunCount
+        var seen = track.underrunCount
         var n = 0
         track.play()
         try {
@@ -70,13 +72,14 @@ class AudioOut(private val engine: Engine, private val rate: Int, framesPerBurst
                 track.write(buf, 0, buf.size, AudioTrack.WRITE_BLOCKING)
                 if (++n % 64 == 0) {
                     val u = track.underrunCount
-                    if (u > underruns && size < track.bufferCapacityInFrames) {
+                    underruns = u
+                    if (u > seen && size < track.bufferCapacityInFrames) {
                         val grown = track.setBufferSizeInFrames(size + burst)
                         if (grown > 0) size = grown
                         bufferFrames = size
                         engine.setLatencyFrames(size + burst)
                     }
-                    underruns = u
+                    seen = u
                 }
             }
         } finally {

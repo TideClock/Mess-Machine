@@ -49,6 +49,21 @@ How a sound plays follows `voiceEd()` on the site: trim, reverse, tune and fine,
 7. **"Send to phone" on the site:** a button that downloads the current mess as a file the app opens.
 8. **MIDI:** plug in a pad controller or keyboard over USB.
 
+## Notes for Claude (the bug button)
+
+The 🐞 button opens the notes panel. A note has a category (Bug, Tuning, Feature, Question, Discuss with a topic, Wishlist), text typed or spoken through Android's speech app, and is kept on the phone. Send opens GitHub's new-issue page filled in with the note, the build, the phone, the audio buffer and underruns, a summary of the mess, the last 40 or so actions and any crash trace; Tyler taps Submit. Claude reads the `from-app` issues, answers in comments, and Check for replies pulls those comments back under each note. Triage rules are in CLAUDE.md and match the bug-testing skill. The start guide (what changed, what to try, what is not in yet) comes from `assets/guide.json` and shows once per new build.
+
+Trade-off: the repo is public, so notes are public. Making it private would hide them, but then the app could not read replies without a sign-in.
+
+## Not carried over from the site yet
+
+- Perform FX bus: stutter, echo, crush, tape stop, gate, dirt, ring mod, octave down, reverse, and the filter XY pad.
+- Your Workbench: importing sounds, mic takes, saving a trimmed sound as a new one, chops and resamples.
+- Doctor extras: zoom, snap to zero crossing, loop preview, fit to tempo (bars), chop to pads.
+- The keys strip under the pads (Keys mode on the grid covers the same notes).
+- Saving messes to the site's cloud (the app saves on the phone and moves messes as files).
+- Specimen Lab extras: favorites, creature cards, the Ring, jams and duels with other visitors.
+
 ## Differences from the site, on purpose
 
 - Workbench sounds (chops, resamples, uploads, mic takes) live in the site's browser storage, so they do not come across yet. Those pads load empty and the app says how many.

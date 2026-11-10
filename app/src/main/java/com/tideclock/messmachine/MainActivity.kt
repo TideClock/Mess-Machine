@@ -12,6 +12,20 @@ import com.tideclock.messmachine.ui.MessMachineApp
 /** Holds the one AppState so it outlives the screen. */
 class MessApp : Application() {
     val state: AppState by lazy { AppState(this) }
+
+    override fun onCreate() {
+        super.onCreate()
+        // keep the crash for the next launch, so it can go to Claude as a bug note
+        val prev = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { t, e ->
+            try {
+                val sw = java.io.StringWriter()
+                e.printStackTrace(java.io.PrintWriter(sw))
+                java.io.File(filesDir, "last_crash.txt").writeText(sw.toString())
+            } catch (_: Throwable) {}
+            prev?.uncaughtException(t, e)
+        }
+    }
 }
 
 class MainActivity : ComponentActivity() {

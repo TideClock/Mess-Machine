@@ -1,0 +1,21 @@
+{
+  "title": "Notes for Claude, and two bits from the site",
+  "thisBuild": [
+    "The bug button (top row, second line): write or speak a note, pick Bug, Tuning, Feature, Question, Discuss or Wishlist, and send it to Claude.",
+    "Claude's replies show up under each note after you tap Check for replies.",
+    "If the app crashes, the next launch opens this panel so the crash can go along with a note.",
+    "Random drums on the Steps tab, like the site.",
+    "Picking a chord set that does not fit your scale moves the scale to the one it was written in, like the site."
+  ],
+  "watch": [
+    "Tap pads fast with two fingers. Does anything lag or click?",
+    "Turn on Repeat, pick Arp up, switch to Keys and hold a chord.",
+    "Send one note to make sure GitHub opens signed in as TideClock."
+  ],
+  "limits": [
+    "No performance effects yet (stutter, tape stop, echo, crush and the rest).",
+    "No importing your own sounds or recording from the mic yet.",
+    "Chop to pads and fit to tempo from the doctor's table are not in yet.",
+    "It stops playing a while after you leave the app."
+  ]
+}
