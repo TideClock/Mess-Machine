@@ -59,20 +59,80 @@ jobs:
       - name: Build the APK
         run: ./gradlew assembleRelease --stacktrace
 
-      - name: Keep the APK with this run
+      - name: Keep the APK and its symbol map with this run
         uses: actions/upload-artifact@v4
         with:
           name: MessMachine-apk
-          path: app/build/outputs/apk/release/app-release.apk
+          path: |
+            app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/mapping/release/mapping.txt
 
-      - name: Publish the phone download
-        if: github.ref == 'refs/heads/main'
+  phone:
+    # the release APK on a real Android emulator: fresh launch, every tab, gestures, long random runs
+    needs: apk
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: MessMachine-apk
+          path: built
+
+      - name: Let the emulator use the processor directly
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: The phone test
+        id: phone
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: bash tools/phone-test.sh $(find built -name app-release.apk | head -1)
+
+      - name: Turn any crash back into readable names
+        if: failure()
+        run: |
+          MAP=$(find built -name mapping.txt | head -1)
+          RT=$(ls $ANDROID_HOME/cmdline-tools/*/bin/retrace 2>/dev/null | head -1)
+          if [ -n "$RT" ] && [ -s phone-out/crashes.txt ]; then $RT "$MAP" phone-out/crashes.txt | head -150; fi
+
+      - name: Publish the phone test screenshots
+        if: always()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/release/app-release.apk MessMachine.apk
-          gh release delete latest --yes --cleanup-tag || true
-          gh release create latest MessMachine.apk \
+          (cd phone-out && zip -q -r ../phone-screens.zip .) || true
+          if [ -f phone-screens.zip ]; then
+            gh release delete phone-screens --yes --cleanup-tag || true
+            gh release create phone-screens phone-screens.zip --title "Phone test" --notes "Emulator run for build ${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7})." --prerelease
+          fi
+
+  publish:
+    needs: [apk, phone]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: MessMachine-apk
+          path: built
+
+      - name: Publish the phone download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp $(find built -name app-release.apk | head -1) MessMachine.apk
+          cp $(find built -name mapping.txt | head -1) mapping.txt
+          gh release delete latest --yes --cleanup-tag -R ${{ github.repository }} || true
+          gh release create latest MessMachine.apk mapping.txt -R ${{ github.repository }} \
             --title "Mess Machine, latest build" \
-            --notes "Build ${GITHUB_RUN_NUMBER} from ${GITHUB_SHA::7}. On your phone, tap MessMachine.apk below, open it, and allow installs from your browser if Android asks. It installs over the last build and keeps your messes." \
+            --notes "Build ${GITHUB_RUN_NUMBER} from ${GITHUB_SHA::7}. Passed the big test and the phone test. On your phone, tap MessMachine.apk below, open it, and allow installs from your browser if Android asks. It installs over the last build and keeps your messes." \
             --prerelease

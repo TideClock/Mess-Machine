@@ -6,6 +6,9 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.swipe
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -348,6 +351,151 @@ class BigTest {
         val afterCrash = AppState(ctx)
         assertEquals(Overlay.Notes, afterCrash.overlay)
         assertTrue(afterCrash.crash?.contains("test crash") == true)
+    }
+
+    @Test fun launchesWithEveryKindOfSavedState() {
+        // a phone carries settings from older builds: every combination must still start
+        val ctx = ApplicationProvider.getApplicationContext<Context>()
+        val prefs = ctx.getSharedPreferences("mess", 0)
+        val shapes = listOf(
+            mapOf("console" to "pads,-1,1,0;hold,-1,1,0;piano,7,1,0;fx,-1,1,1"),
+            mapOf("desks" to "Perform~pads,-1,1,0,0,0,12,16,0;piano,7,2,0,0,16,12,12,1##Mine~xyp,7,1,1,3,4,5,9,0", "deskIdx" to "1"),
+            mapOf("desks" to "broken~nonsense;;,,,", "deskIdx" to "9"),
+            mapOf("fxsets" to "crush:0.5:stays:66:1;gate:1.0:slider:-1:2;bad", "myxy" to "Mine 1|4|s|o|2|t|0:7.0,9:1.0,0:-12.0,13:1.0;;junk", "dock" to "lock,xy,desk,nothing"),
+            mapOf("holdOn" to "true", "holdN" to "0", "padKeys" to "true", "padN" to "99", "inKey" to "true", "emptyRec" to "true", "pulse" to "2", "uiScale" to "0.7"),
+        )
+        for ((n, m) in shapes.withIndex()) {
+            val e = prefs.edit().clear()
+            for ((k, v) in m) when {
+                v == "true" || v == "false" -> e.putBoolean(k, v.toBoolean())
+                k == "uiScale" -> e.putFloat(k, v.toFloat())
+                v.toIntOrNull() != null -> e.putInt(k, v.toInt())
+                else -> e.putString(k, v)
+            }
+            e.remove("guideSeen").commit()
+            val st = AppState(ctx)
+            assertTrue("saved state $n starts with a desk", st.console.isNotEmpty() || st.desks.isNotEmpty())
+            println("LAUNCH $n ok: desks=${st.desks.map { it.name }} dock=${st.dockItems.toList()}")
+        }
+    }
+
+    @Test fun deskPiecesSurviveEverySize() {
+        // note #8: squeezing a piece (a Padiano) down to its smallest crashed; try every piece at every extreme
+        tab("Console")
+        for ((type, _) in CONSOLE_TYPES) {
+            for ((w, h) in listOf(2 to 2, 12 to 2, 2 to 30, 3 to 3)) {
+                state.console.clear()
+                state.addModule(type)
+                state.changeModule(0, state.console[0].copy(w = w, h = h))
+                settle()
+                rule.onNodeWithTag("mod-0").assertExists()
+            }
+        }
+        state.consoleEdit = true
+        state.console.clear(); state.addModule("piano")
+        settle()
+        // drag the corner far past the minimum, like a thumb would
+        at("mod-size-0").performTouchInput { down(center); moveBy(Offset(-40f, -40f)); moveBy(Offset(-900f, -900f)); up() }
+        settle()
+        assertTrue("it stops at the smallest size", state.console[0].w >= 2 && state.console[0].h >= 2)
+        shot("40-desk-smallest-padiano")
+        state.resetConsole()
+    }
+
+    @Test fun dockLightsFollowRepeatAndRec() {
+        // note #7: RPT on the dock did not light up when Repeat came on
+        rule.onNodeWithTag("repeat").performClick()
+        settle()
+        rule.onNodeWithTag("dock-repeat").assertIsSelected()
+        rule.onNodeWithTag("dock-repeat").performClick()
+        settle()
+        rule.onNodeWithTag("repeat").assertIsNotSelected()
+        state.toggleDockItem("rec")
+        settle()
+        rule.onNodeWithTag("rec").performClick()
+        settle()
+        rule.onNodeWithTag("dock-rec").assertIsSelected()
+        // Rec glows with the beat while the loop plays
+        state.togglePlay()
+        repeat(4) { loudest(2048); state.tick(System.nanoTime()) }
+        settle()
+        shot("41-rec-glow")
+        state.stop()
+        rule.onNodeWithTag("rec").performClick()
+        settle()
+    }
+
+    @Test fun stepDotsClearOnTap() {
+        // note #9: a dot (a pitched step or roll notes) could not be taken off
+        tab("Steps")
+        val k = state.project.kit[7]
+        state.setStepPitch(k, 4, 5)
+        settle()
+        assertTrue(state.project.pat().hasNoteAt(k, 4))
+        at("steps-7").performTouchInput { click(Offset(width * (4.5f / 16f), height / 2f)) }
+        settle()
+        assertFalse("tapping a dot clears it", state.project.pat().hasNoteAt(k, 4) || state.project.pat().step(k, 4))
+        // and Clear notes takes every pitch and roll note out of the loop
+        state.setStepPitch(k, 2, 3); state.setStepPitch(state.project.kit[0], 6, 0)
+        settle()
+        at("clear-all-notes").performClick()
+        settle()
+        assertTrue(state.project.pat().notes.values.all { it.isEmpty() })
+        assertTrue("plain hits stay", state.project.pat().used())
+    }
+
+    @Test fun monkeyRunsEverywhere() {
+        // a long seeded run of random taps, holds, slides and circles on every page, with the loop
+        // starting and stopping, sheets opening and Lock going on and off; any crash fails the test
+        val rnd = java.util.Random(20261110)
+        val tabs = Tab.entries.map { it.label }
+        fun mainRoot(): androidx.compose.ui.test.SemanticsNodeInteraction {
+            val roots = rule.onAllNodes(androidx.compose.ui.test.isRoot()).fetchSemanticsNodes()
+            val big = roots.indices.maxByOrNull { roots[it].size.width * roots[it].size.height } ?: 0
+            return rule.onAllNodes(androidx.compose.ui.test.isRoot())[big]
+        }
+        var actions = 0
+        repeat(450) { n ->
+            if (n % 30 == 0) {
+                state.padMenu = -1; state.slotMenu = -1; state.barMenu = -1; state.fxEditing = null
+                if (state.locked) state.unlock()
+                state.overlay = null
+                state.sphere = null
+            }
+            when (rnd.nextInt(14)) {
+                0 -> tab(tabs[rnd.nextInt(tabs.size)])
+                1 -> state.togglePlay()
+                2 -> if (rnd.nextBoolean()) state.undo() else state.redo()
+                3 -> state.setLive { nr = rnd.nextBoolean(); rec = rnd.nextInt(4) == 0 }
+                4 -> if (rnd.nextInt(5) == 0) state.hush()
+                5 -> state.toggleKeyboard(rnd.nextInt(8))
+                else -> {
+                    val x = rnd.nextFloat(); val y = rnd.nextFloat(); val x2 = rnd.nextFloat(); val y2 = rnd.nextFloat()
+                    val kind = rnd.nextInt(5)
+                    mainRoot().performTouchInput {
+                        val a = Offset(x * width, y * height)
+                        when (kind) {
+                            0, 1 -> click(a)
+                            2 -> { down(a); advanceEventTime(700); up() }
+                            3 -> swipe(a, Offset(x2 * width, y2 * height), 300L)
+                            else -> {
+                                val r = 40f
+                                down(a + Offset(r, 0f))
+                                for (k in 1..22) { val t = k * (2 * Math.PI / 18); moveTo(a + Offset((r * kotlin.math.cos(t)).toFloat(), (r * kotlin.math.sin(t)).toFloat())) }
+                                up()
+                            }
+                        }
+                    }
+                }
+            }
+            settle()
+            val pk = loudest(512)
+            assertTrue("the sound stays sane after action $n (peak $pk)", !pk.isNaN() && pk < 8f)
+            state.tick(System.nanoTime())
+            actions++
+        }
+        println("MONKEY $actions actions, tab=${state.tab}, desk=${state.console.size} pieces, pads=${state.project.kit.count { it.isNotEmpty() }}")
+        shot("42-after-monkey")
     }
 
     /* ---------- build A: fixes and safety ---------- */

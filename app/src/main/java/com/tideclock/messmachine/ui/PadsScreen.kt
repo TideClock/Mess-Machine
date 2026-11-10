@@ -328,6 +328,7 @@ fun PadMenu(state: AppState, i: Int) {
             item("Route: " + (if (P.opt(i).route == 0) "mix" else "bus ${P.opt(i).route}") + " (tap for next)", "menu-route") { state.cycleRoute(i) }
             item("Keep in Your Workbench", "menu-keep") { state.keepInBench(i) }
             item("Share this sound", "menu-share") { state.shareSoundWav(k) }
+            if (P.pat().usedBy(k)) item("Clear it from loop ${com.tideclock.messmachine.engine.Project.LETTERS[P.cur]}", "menu-clearloop") { state.clearSoundInLoop(i) }
             item("Clear pad", "menu-clear") { state.clearPad(i) }
         }
     }

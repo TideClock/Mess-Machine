@@ -40,6 +40,8 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.runtime.compositionLocalOf
@@ -218,6 +220,7 @@ fun Btn(
             .alpha(if (enabled) 1f else .38f)
             .clickable(src, indication = null, enabled = enabled) { onClick() }
             .then(if (tag != null) Modifier.testTag(tag) else Modifier)
+            .semantics { selected = on }
             .padding(horizontal = if (small) 10.dp else 14.dp, vertical = if (small) 6.dp else 9.dp),
         contentAlignment = Alignment.Center,
     ) {

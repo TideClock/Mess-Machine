@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenu
@@ -114,7 +115,10 @@ private fun DeskPiece(state: AppState, i: Int, m: Module, col: Dp, unit: Dp, arr
             .testTag("mod-$i"),
     ) {
         // no scrolling inside a piece (a scroll inside a scrolling page fights your thumb): resize it instead
-        Box(Modifier.fillMaxSize().clipToBounds()) { Column { ModuleBody(state, m) } }
+        // measured at full height and clipped (note #8: squeezing a piece's content below zero crashed)
+        Box(Modifier.fillMaxSize().clipToBounds()) {
+            Column(Modifier.fillMaxWidth().wrapContentHeight(align = Alignment.Top, unbounded = true)) { ModuleBody(state, m) }
+        }
         if (arranging) {
             Box(
                 Modifier

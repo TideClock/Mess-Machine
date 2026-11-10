@@ -492,9 +492,29 @@ class AppState(private val app: Context) {
     fun toggleStep(key: String, j: Int) {
         notes.trail("step ${lib.titleOf(key)} ${j + 1}")
         val P = project.pat()
+        // a step with a pitch or roll notes on it (a dot) clears on tap, note #9
+        if (P.hasNoteAt(key, j)) {
+            edit { P.notes(key).removeAll { it.s == j }; P.setStep(key, j, false) }
+            return
+        }
         val on = !P.step(key, j)
         edit { P.setStep(key, j, on) }
         if (on && playOnTap && !playing) preview(key)
+    }
+
+    /** Every pitch and roll note in the current loop, for every sound (plain hits stay). */
+    fun clearAllNotes() {
+        notes.trail("clear all notes")
+        edit { for (l in pat().notes.values) l.clear() }
+        say("Pitches and roll notes cleared from loop ${Project.LETTERS[project.cur]}. Undo brings them back.")
+    }
+
+    /** One sound's hits and notes in the current loop. */
+    fun clearSoundInLoop(pad: Int) {
+        val k = project.kit[pad]
+        padMenu = -1
+        edit { pat().forget(k) }
+        say("Pad ${pad + 1} is out of loop ${Project.LETTERS[project.cur]}.")
     }
 
     fun toggleMute(key: String) = edit { if (!mutes.remove(key)) mutes.add(key) }

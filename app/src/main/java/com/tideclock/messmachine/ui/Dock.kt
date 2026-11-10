@@ -89,12 +89,14 @@ fun Dock(state: AppState) {
 }
 
 @Composable
-private fun DockBtn(label: String, onClick: () -> Unit, tag: String, on: Boolean = false, color: androidx.compose.ui.graphics.Color = C.Ink, onColor: androidx.compose.ui.graphics.Color = C.Yellow, enabled: Boolean = true) {
-    Btn(label, onClick, modifier = Modifier.fillMaxWidth(), small = true, on = on, color = color, onColor = onColor, enabled = enabled, tag = tag)
+private fun DockBtn(label: String, onClick: () -> Unit, tag: String, on: Boolean = false, color: androidx.compose.ui.graphics.Color = C.Ink, onColor: androidx.compose.ui.graphics.Color = C.Yellow, enabled: Boolean = true, modifier: Modifier = Modifier) {
+    Btn(label, onClick, modifier = modifier.fillMaxWidth(), small = true, on = on, color = color, onColor = onColor, enabled = enabled, tag = tag)
 }
 
 @Composable
 private fun DockItem(state: AppState, t: String) {
+    // Repeat and Rec live outside the mess: read their change counter so the dock lights up with them (note #7)
+    @Suppress("UNUSED_VARIABLE") val lv = state.liveV
     when (t) {
         "lock" -> LockButton(state)
         "hold" -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -105,7 +107,7 @@ private fun DockItem(state: AppState, t: String) {
         "filter" -> DockFilter(state)
         "repeat" -> DockBtn("RPT", { state.setLive { nr = !nr } }, tag = "dock-repeat", on = state.live.nr, onColor = C.Pink)
         "hush" -> DockBtn("✕", { state.hush() }, tag = "dock-hush", color = C.Riot)
-        "rec" -> DockBtn("●", { state.setLive { rec = !rec } }, tag = "dock-rec", on = state.live.rec, onColor = C.Riot)
+        "rec" -> { val pulse = beatPulse(state); DockBtn("●", { state.setLive { rec = !rec } }, tag = "dock-rec", on = state.live.rec, onColor = C.Riot, modifier = Modifier.recGlow(state, pulse)) }
         "beat" -> BeatLight(state, beatPulse(state))
         "stutter", "echo" -> FxButton(state, t, if (t == "echo") "ECHO" else "STUT", Modifier.fillMaxWidth().testTag("dock-$t"), if (t == "echo") C.Teal else C.Pink, height = 46.dp)
         "desk" -> Column(horizontalAlignment = Alignment.CenterHorizontally) {

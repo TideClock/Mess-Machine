@@ -16,6 +16,11 @@ every screen driven by touch, checks on the mess and the engine, and screenshots
 `test-screens` release (download its zip with `gh api` and look at them). Add a flow there for
 anything new.
 
+After the big test, a phone test runs the release APK (the file Tyler installs) on an Android emulator
+(`tools/phone-test.sh`: fresh launch with the start guide, relaunch, every tab, gestures, two long monkey
+runs). The build only publishes if it passes. Its screenshots and logcat go to the `phone-screens`
+release; `mapping.txt` rides along in `latest` for turning Tyler's crash traces back into names.
+
 Before each push that Tyler will install, rewrite `app/src/main/assets/guide.json`
 (`title`, `thisBuild`, `watch`, `limits`). The app shows it once per new build.
 

@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.em
@@ -47,6 +48,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.semantics.testTagsAsResourceId
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalDensity
@@ -63,6 +66,7 @@ import com.tideclock.messmachine.Tab
 import com.tideclock.messmachine.engine.Project
 import kotlinx.coroutines.delay
 
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun MessMachineApp(state: AppState, ticker: Boolean = true) {
     MaterialTheme(colorScheme = darkColorScheme(primary = C.Pink, secondary = C.Teal, background = C.Paper, surface = C.Card)) {
@@ -96,7 +100,8 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
         @Suppress("UNUSED_VARIABLE") val v = state.version
         val dn = LocalDensity.current
         CompositionLocalProvider(LocalDensity provides Density(dn.density * state.uiScale, dn.fontScale), LocalLocked provides state.locked) {
-        Box(Modifier.fillMaxSize().background(C.Paper).grit().statusBarsPadding().navigationBarsPadding()) {
+        // test tags show up as view ids, so the phone test on the emulator can find things by name
+        Box(Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }.background(C.Paper).grit().statusBarsPadding().navigationBarsPadding()) {
             PulseBackdrop(state)
             Column(Modifier.fillMaxSize()) {
                 Transport(state)
@@ -281,10 +286,30 @@ fun BeatLight(state: AppState, pulse: Animatable<Float, AnimationVector1D>) {
 /** Rec blinks on the beat while it is armed and the loop plays. */
 @Composable
 fun RecBtn(state: AppState, modifier: Modifier = Modifier) {
-    val armed = state.live.rec
-    val blink = armed && state.playing && state.heardStep % 4 >= 2
-    Btn("● Rec", { state.setLive { rec = !rec } }, on = armed, onColor = if (blink) C.Cream else C.Riot, tag = "rec", modifier = modifier)
+    @Suppress("UNUSED_VARIABLE") val lv = state.liveV
+    val pulse = beatPulse(state)
+    Btn("● Rec", { state.setLive { rec = !rec } }, on = state.live.rec, onColor = C.Riot, tag = "rec", modifier = modifier.recGlow(state, pulse))
 }
+
+/**
+ * Rec's light (note #10): armed, it stays red; while the loop plays it flares on every beat at the same
+ * moment as the beat light and the glow (brighter on the one), with a red halo around it.
+ */
+fun Modifier.recGlow(state: AppState, pulse: Animatable<Float, AnimationVector1D>): Modifier = this
+    .drawBehind {
+        if (!state.live.rec) return@drawBehind
+        val v = if (state.playing) pulse.value else .35f
+        if (v < .01f) return@drawBehind
+        val r = size.maxDimension * (.7f + .25f * v)
+        drawCircle(Brush.radialGradient(listOf(C.Riot.copy(alpha = .55f * v), Color.Transparent), center = center, radius = r), radius = r, center = center)
+    }
+    .drawWithContent {
+        drawContent()
+        if (!state.live.rec || !state.playing) return@drawWithContent
+        val v = pulse.value
+        val one = state.heardStep >= 0 && state.heardStep % 16 < 4
+        if (v > .01f) drawRect(Color.White.copy(alpha = (if (one) .42f else .26f) * v))
+    }
 
 @Composable
 fun PositionText(state: AppState) {
