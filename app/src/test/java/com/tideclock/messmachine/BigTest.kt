@@ -146,8 +146,9 @@ class BigTest {
         }
         assertEquals(listOf(1, 5, 8, 13), state.keyboards.toList())
         // each piano sits between its own row and the next one
-        fun top(t: String) = rule.onNodeWithTag(t).fetchSemanticsNode().boundsInRoot.top
-        fun bottom(t: String) = rule.onNodeWithTag(t).fetchSemanticsNode().boundsInRoot.bottom
+        // unclipped edges: the taller pianos run past the screen
+        fun top(t: String) = rule.onNodeWithTag(t).fetchSemanticsNode().positionInRoot.y
+        fun bottom(t: String) = rule.onNodeWithTag(t).fetchSemanticsNode().let { it.positionInRoot.y + it.size.height }
         rule.onNodeWithTag("pad-0").performScrollTo()
         assertTrue("piano 1 is under row 1", top("piano-1") >= bottom("pad-1") && bottom("piano-1") <= top("pad-4"))
         rule.onNodeWithTag("pad-4").performScrollTo()
