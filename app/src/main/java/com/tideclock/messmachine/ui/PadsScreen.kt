@@ -46,8 +46,10 @@ fun PadsScreen(state: AppState) {
                 Btn("Bank ${b + 1} · $n", { state.bank = b }, on = state.bank == b && !state.keysMode, small = true, enabled = !state.keysMode)
             }
             Btn(if (state.keysMode) "Keys" else "Pads", { state.keysMode = !state.keysMode }, on = state.keysMode, onColor = C.Teal, small = true)
+            Btn("Strip", { state.showStrip = !state.showStrip }, on = state.showStrip, onColor = C.Teal, small = true)
+            Btn("FX", { state.showFx = !state.showFx }, on = state.showFx, onColor = C.Pink, small = true)
         }
-        if (state.keysMode) KeysBar(state)
+        if (state.keysMode || state.showStrip) KeysBar(state)
         // the grid
         Box(Modifier.fillMaxWidth().widthIn(max = 560.dp).align(Alignment.CenterHorizontally)) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -58,6 +60,8 @@ fun PadsScreen(state: AppState) {
                 }
             }
         }
+        if (state.showStrip) KeysStrip(state)
+        if (state.showFx) FxPanel(state)
         SelectedPad(state)
         if (!state.keysMode) {
             T(

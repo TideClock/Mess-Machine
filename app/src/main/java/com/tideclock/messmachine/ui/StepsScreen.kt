@@ -68,6 +68,7 @@ fun SlotBar(state: AppState) {
             }
             Select("Copy to", (0 until Project.NSLOTS).filter { it != P.cur }.map { it to "Loop ${Project.LETTERS[it]}" }, { state.copySlotTo(it) })
             Btn("Clear loop", { state.clearSlot() }, small = true, enabled = P.pat().used())
+            Btn("Resample to a pad", { state.resampleLoop() }, small = true, enabled = P.pat().used())
         }
     }
 }

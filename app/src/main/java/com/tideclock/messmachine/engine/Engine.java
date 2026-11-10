@@ -127,7 +127,7 @@ public final class Engine {
     /* ================= voices ================= */
 
     static final class Voice {
-        boolean active, preview, hold, releasing, choked;
+        boolean active, preview, hold, releasing, choked, dry;
         float[] d;
         int a, zEnd, choke, pad;
         double pos, len, inc;
@@ -155,6 +155,45 @@ public final class Engine {
     private long fired, stopAfter = -1;
     private final Map<Integer, Held> held = new LinkedHashMap<>();
     private final java.util.Random rnd = new java.util.Random();
+
+    // perform FX state (audio thread)
+    private boolean fxStut, fxTape, fxOct, fxRev, fxCrush, fxDirt, fxRing, fxGate, fxEcho, xyOn, xyHP, filtSlow;
+    private int stutA, stutB, lastStep;
+    private double tapeAt;
+    private float wCrush, wDirt, wRing, wGate, wSend;
+    private double ringPh, ringHz = 220, gatePh, gateHz = 8;
+    private final float[] dlyL, dlyR;
+    private int dlyW;
+    private float hpL, hpR, hpXL, hpXR;
+    private double filtFreq = 20000, filtTarget = 20000, filtQ = .7, qTarget = .7;
+    private float[] fzL = new float[4], fzR = new float[4];
+    private float[] dryBuf = new float[0];
+    private boolean bypassMaster;
+
+    private double oct() { return fxOct ? .5 : 1; }
+
+    private void fxSet(Snapshot S, String n, boolean on) {
+        switch (n) {
+            case "stutter":
+                if (on && playing && !fxStut) { stutA = lastStep - (lastStep % 2); stutB = step; }
+                fxStut = on && playing;
+                break;
+            case "tape":
+                if (on && playing && !fxTape) tapeAt = nextStepAt;
+                fxTape = on && playing;
+                break;
+            case "oct": fxOct = on; break;
+            case "rev": fxRev = on; break;
+            case "crush": fxCrush = on; break;
+            case "dirty": fxDirt = on; break;
+            case "ring": if (on && !fxRing) ringHz = 110 + rnd.nextDouble() * 440; fxRing = on; break;
+            case "gate": fxGate = on; gateHz = 1.0 / (60.0 / Math.max(40, S.bpm) / 4); break;
+            case "echo": fxEcho = on; break;
+        }
+    }
+
+    /** Which effects are held right now, for the UI and tests. */
+    public boolean fxActive() { return fxStut || fxTape || fxOct || fxRev || fxCrush || fxDirt || fxRing || fxGate || fxEcho || xyOn; }
 
     // master bus
     private float compEnv;
@@ -184,6 +223,8 @@ public final class Engine {
         clickLo = tone("click-lo", 1100);
         compAtk = (float) (1 - Math.exp(-1.0 / (.005 * rate)));
         compRel = (float) (1 - Math.exp(-1.0 / (.2 * rate)));
+        dlyL = new float[(int) (2.0 * rate)];
+        dlyR = new float[(int) (2.0 * rate)];
         snap = Snapshot.build(new Project(), k -> null, null);
     }
 
@@ -211,7 +252,15 @@ public final class Engine {
     public void up(int id) { cmds.add(new Object[]{"up", id, System.nanoTime()}); }
 
     /** Hear a sound with its doctor settings, outside the mess (browsing, editing, toggling a step). */
-    public void preview(Sample s, SoundEdit e, int semis) { if (s != null) cmds.add(new Object[]{"preview", s, e == null ? SoundEdit.DEFAULT : e.copy(), semis}); }
+    public void preview(Sample s, SoundEdit e, int semis) { preview(s, e, semis, false); }
+    /** hold = keep looping the trim until stopPreviews(), for the doctor's loop preview. */
+    public void preview(Sample s, SoundEdit e, int semis, boolean hold) { if (s != null) cmds.add(new Object[]{"preview", s, e == null ? SoundEdit.DEFAULT : e.copy(), semis, hold}); }
+
+    /* ---------- perform FX, held from the UI ---------- */
+    public void fx(String name, boolean on) { cmds.add(new Object[]{"fx", name, on}); }
+    /** The filter pad: x 0..1 is cutoff, y 0..1 is resonance (top = more). on = finger down. */
+    public void xy(float x, float y, boolean on) { cmds.add(new Object[]{"xy", x, y, on}); }
+    public void xyHighPass(boolean hp) { cmds.add(new Object[]{"xyhp", hp}); }
     public void stopPreviews() { cmds.add(new Object[]{"stopprev"}); }
 
     public RecEvent pollRec() { return recs.poll(); }
@@ -240,6 +289,8 @@ public final class Engine {
         Object[] c;
         while ((c = cmds.poll()) != null) command(S, c, nanos);
         java.util.Arrays.fill(out, 0, frames * 2, 0f);
+        if (dryBuf.length < frames * 2) dryBuf = new float[frames * 2];
+        java.util.Arrays.fill(dryBuf, 0, frames * 2, 0f);
         int done = 0;
         while (done < frames) {
             int chunk = frames - done;
@@ -256,7 +307,9 @@ public final class Engine {
             done += chunk;
             frame += chunk;
         }
-        master(out, frames);
+        effects(S, out, frames);
+        for (int k = 0; k < frames * 2; k++) out[k] += dryBuf[k];
+        if (!bypassMaster) master(out, frames);
         uiFrame = frame - frames;
         uiNanos = nanos;
         uiPlaying = playing;
@@ -292,6 +345,7 @@ public final class Engine {
                 break;
             case "stop":
                 if (!playing && !paused) releaseAll(.03f);
+                fxStut = false; fxTape = false;
                 playing = false; paused = false; step = 0; songPos = 0; freeOn = !held.isEmpty() && S.live.nr;
                 hHead = -1;
                 break;
@@ -303,13 +357,26 @@ public final class Engine {
             case "up": padUp(S, (Integer) c[1], (Long) c[2], renderNanos); break;
             case "preview": {
                 Sample s = (Sample) c[1];
-                PadSlot ps = new PadSlot(-1, s.key, s, (SoundEdit) c[2], true);
                 for (Voice v : pool) if (v.active && v.preview) v.active = false;
-                Voice v = trigger(ps, Math.pow(2, (Integer) c[3] / 12.0), 0, false, .85f, 0, false);
-                if (v != null) v.preview = true;
+                boolean hold = c.length > 4 && (Boolean) c[4];
+                SoundEdit pe = (SoundEdit) c[2];
+                if (hold) { pe = pe.copy(); pe.loop = true; }
+                Voice v = trigger(new PadSlot(-1, s.key, s, pe, true), Math.pow(2, (Integer) c[3] / 12.0), 0, false, .85f, 0, hold, false);
+                if (v != null) { v.preview = true; v.dry = true; }
                 break;
             }
             case "stopprev": for (Voice v : pool) if (v.active && v.preview) startRelease(v, .03f); break;
+            case "fx": fxSet(S, (String) c[1], (Boolean) c[2]); break;
+            case "xy":
+                xyOn = (Boolean) c[3];
+                if (xyOn) {
+                    double x = (Float) c[1], y = (Float) c[2];
+                    filtTarget = xyHP ? 20 * Math.pow(6000.0 / 20, x) : 120 * Math.pow(18000.0 / 120, x);
+                    qTarget = .7 + (1 - y) * 14;
+                    filtSlow = false;
+                } else { filtTarget = xyHP ? 10 : 20000; qTarget = .7; filtSlow = true; }
+                break;
+            case "xyhp": xyHP = (Boolean) c[1]; filtFreq = filtTarget = xyHP ? 10 : 20000; filtQ = qTarget = .7; fzL = new float[4]; fzR = new float[4]; break;
         }
     }
 
@@ -329,7 +396,7 @@ public final class Engine {
         boolean arpLive = L.nr && !"rep".equals(L.arp);
         if (!(L.nr && playing) && !arpLive) {
             float g = mel ? Theory.chordGain(pitches.length) : .85f;
-            for (int p : pitches) { Voice v = trigger(ps, Math.pow(2, p / 12.0), 0, false, g, 0, h.holdV); if (v != null) h.voices.add(v); }
+            for (int p : pitches) { Voice v = trigger(ps, oct() * Math.pow(2, p / 12.0), 0, false, g, 0, h.holdV); if (v != null) h.voices.add(v); }
         }
         if (L.nr && !playing && !freeOn) {
             freeOn = true;
@@ -371,12 +438,12 @@ public final class Engine {
         double dur = Math.max(.5, S.live.nrRate) * spb(S) / rate * .9;
         if (!"rep".equals(S.live.arp)) {
             Object[] n = arpNext(S);
-            if (n != null) trigger(((Held) n[0]).pad, Math.pow(2, (Integer) n[1] / 12.0), dur, true, .85f, 0, false);
+            if (n != null) trigger(((Held) n[0]).pad, oct() * Math.pow(2, (Integer) n[1] / 12.0), dur, true, .85f, 0, false);
             return;
         }
         for (Held h : held.values()) {
             float g = Theory.chordGain(h.pitches.length);
-            for (int p : h.pitches) trigger(h.pad, Math.pow(2, p / 12.0), dur, h.mel || p != 0, g, 0, false);
+            for (int p : h.pitches) trigger(h.pad, oct() * Math.pow(2, p / 12.0), dur, h.mel || p != 0, g, 0, false);
         }
     }
 
@@ -401,20 +468,29 @@ public final class Engine {
         int len = P != null ? P.len : 16;
         if (step >= len) step = 0;
         if (stopAfter >= 0 && fired >= stopAfter) { playing = false; return; }
-        double spb = spb(S);
+        double spb = spb(S), rateMul = oct();
+        boolean mute = false;
+        if (fxTape) {
+            double f = Math.min(1, Math.max(0, (nextStepAt - tapeAt) / (1.1 * rate)));
+            rateMul *= 1 - .82 * f;
+            spb = spb / Math.max(.18, 1 - .82 * f);
+            mute = f >= .97;
+        }
         int s = step;
+        if (fxStut) { s = stutA + Math.floorMod(step - stutB, 2); if (s >= len) s = 0; }
+        lastStep = s;
         double at = nextStepAt - frame + (s % 2 == 1 ? S.swing / 100.0 * spb * .5 : 0);
         long delay = Math.max(0, Math.round(at));
-        if (P != null) {
+        if (P != null && !mute) {
             for (Track t : P.tracks) {
                 if (!t.pad.audible) continue;
-                if (t.steps[s]) trigger(t.pad, 1, t.gap[s] * spb / rate, false, .85f, delay, false);
+                if (t.steps[s]) trigger(t.pad, rateMul, t.gap[s] * spb / rate, false, .85f, delay, false);
                 int[] nt = t.notes[s];
-                for (int k = 0; k < nt.length; k += 2) trigger(t.pad, Math.pow(2, nt[k] / 12.0), nt[k + 1] * spb / rate, true, .78f, delay, false);
+                for (int k = 0; k < nt.length; k += 2) trigger(t.pad, rateMul * Math.pow(2, nt[k] / 12.0), (fxStut ? Math.min(nt[k + 1], 2) : nt[k + 1]) * spb / rate, true, .78f, delay, false);
             }
         }
         Live L = S.live;
-        if (L.click && s % 4 == 0) trigger(new PadSlot(-2, "click", s == 0 ? clickHi : clickLo, SoundEdit.DEFAULT, true), 1, 0, false, 1f, delay, false);
+        if (L.click && s % 4 == 0) { Voice cv = trigger(new PadSlot(-2, "click", s == 0 ? clickHi : clickLo, SoundEdit.DEFAULT, true), 1, 0, false, 1f, delay, false, false); if (cv != null) cv.dry = true; }
         if (L.nr && !held.isEmpty()) {
             double every = L.nrRate;
             if (every >= 1 ? s % (int) every == 0 : true) {
@@ -448,7 +524,7 @@ public final class Engine {
     }
 
     private void nrOne(Snapshot S, Held h, int p, long delay, int s, int pi, boolean half, float g, double every, double spb) {
-        trigger(h.pad, Math.pow(2, p / 12.0), spb * .9 * Math.max(1, every >= 1 ? every : 1) / rate, h.mel || p != 0, g, delay, false);
+        trigger(h.pad, oct() * Math.pow(2, p / 12.0), spb * .9 * Math.max(1, every >= 1 ? every : 1) / rate, h.mel || p != 0, g, delay, false);
         if (S.live.rec && pi >= 0 && !half) {
             if (h.mel) recs.add(new RecEvent(RecEvent.NOTES, pi, h.pad.key, s, new int[]{p}, every >= 2 ? 2 : 1));
             else recs.add(new RecEvent(RecEvent.STEP, pi, h.pad.key, s, null, 1));
@@ -458,11 +534,15 @@ public final class Engine {
     /* ---------- starting one voice, voiceEd() from the site ---------- */
 
     private Voice trigger(PadSlot ps, double rateMul, double durSec, boolean gate, float gain, long delay, boolean hold) {
+        return trigger(ps, rateMul, durSec, gate, gain, delay, hold, fxRev);
+    }
+
+    private Voice trigger(PadSlot ps, double rateMul, double durSec, boolean gate, float gain, long delay, boolean hold, boolean flip) {
         SoundEdit e = ps.edit;
         Sample s = ps.sample;
         int N = s.data.length;
         if (N < 2) return null;
-        boolean rev = e.rev;
+        boolean rev = e.rev != flip;
         float[] d = rev ? s.reversedData() : s.data;
         double a = e.st * N, z = e.en * N;
         if (rev) { double a2 = N - z; z = N - a; a = a2; }
@@ -476,7 +556,7 @@ public final class Engine {
         double fade = Math.min(Math.max(e.rel, .004), Math.max(.002, play - att));
 
         Voice v = freeVoice();
-        v.active = true; v.preview = false; v.hold = hold; v.releasing = false; v.choked = false;
+        v.active = true; v.preview = false; v.dry = false; v.hold = hold; v.releasing = false; v.choked = false;
         v.d = d; v.a = (int) Math.max(0, Math.floor(a)); v.len = len; v.zEnd = (int) Math.min(N, Math.ceil(a + len));
         v.pos = 0; v.inc = r * s.rate / rate; v.loop = e.loop;
         v.delay = delay; v.t = 0;
@@ -580,13 +660,74 @@ public final class Engine {
                 }
                 smp *= env;
                 int o = (off + k) * 2;
-                out[o] += smp * v.gl;
-                out[o + 1] += smp * v.gr;
+                float[] dst = v.dry ? dryBuf : out;
+                dst[o] += smp * v.gl;
+                dst[o + 1] += smp * v.gr;
                 v.pos += v.inc;
                 v.t++;
             }
         }
     }
+
+    /**
+     * The live bus from the site, in its order: filter pad, dirt, ring mod, gate, crush, then an echo
+     * send whose tail keeps ringing after you let go. Wet amounts glide over about 10 ms so nothing clicks.
+     */
+    private void effects(Snapshot S, float[] out, int frames) {
+        // filter pad: glide the cutoff once per block
+        double glide = 1 - Math.exp(-frames / ((filtSlow ? .12 : .02) * rate));
+        filtFreq += (filtTarget - filtFreq) * glide;
+        filtQ += (qTarget - filtQ) * glide;
+        boolean filt = xyHP ? filtFreq > 11 : filtFreq < 19900;
+        float b0 = 0, b1 = 0, b2 = 0, a1 = 0, a2 = 0;
+        if (filt) {
+            double f = Math.min(filtFreq, rate * .45), w = 2 * Math.PI * f / rate, cs = Math.cos(w), al = Math.sin(w) / (2 * filtQ), a0 = 1 + al;
+            if (xyHP) { b0 = (float) ((1 + cs) / 2 / a0); b1 = (float) (-(1 + cs) / a0); }
+            else { b0 = (float) ((1 - cs) / 2 / a0); b1 = (float) ((1 - cs) / a0); }
+            b2 = b0; a1 = (float) (-2 * cs / a0); a2 = (float) ((1 - al) / a0);
+        }
+        float k = (float) (1 - Math.exp(-1.0 / (.01 * rate)));
+        double spb = 60.0 / Math.max(40, S.bpm) / 4;
+        int dt = (int) Math.min(dlyL.length - 1, Math.round(Math.min(1.9, spb * 3) * rate));
+        float hpK = (float) Math.exp(-2 * Math.PI * 350 / rate);
+        double ringInc = 2 * Math.PI * ringHz / rate, gateInc = gateHz / rate;
+        boolean idle = !filt && !fxCrush && !fxDirt && !fxRing && !fxGate && !fxEcho && wCrush < 1e-4f && wDirt < 1e-4f && wRing < 1e-4f && wGate < 1e-4f && wSend < 1e-4f;
+        for (int i = 0; i < frames; i++) {
+            wCrush += ((fxCrush ? 1 : 0) - wCrush) * k;
+            wDirt += ((fxDirt ? 1 : 0) - wDirt) * k;
+            wRing += ((fxRing ? 1 : 0) - wRing) * k;
+            wGate += ((fxGate ? 1 : 0) - wGate) * k * 2;
+            wSend += ((fxEcho ? 1 : 0) - wSend) * k * .5f;
+            float l = out[i * 2], r = out[i * 2 + 1];
+            if (!idle) {
+                if (filt) {
+                    float yl = b0 * l + b1 * fzL[0] + b2 * fzL[1] - a1 * fzL[2] - a2 * fzL[3];
+                    fzL[1] = fzL[0]; fzL[0] = l; fzL[3] = fzL[2]; fzL[2] = yl; l = yl;
+                    float yr = b0 * r + b1 * fzR[0] + b2 * fzR[1] - a1 * fzR[2] - a2 * fzR[3];
+                    fzR[1] = fzR[0]; fzR[0] = r; fzR[3] = fzR[2]; fzR[2] = yr; r = yr;
+                }
+                if (wDirt > 1e-4f) { l = l * (1 - wDirt) + drive(l) * .55f * wDirt; r = r * (1 - wDirt) + drive(r) * .55f * wDirt; }
+                if (wRing > 1e-4f) { float m = (float) Math.sin(ringPh); l = l * (1 - wRing) + l * m * wRing; r = r * (1 - wRing) + r * m * wRing; }
+                ringPh += ringInc; if (ringPh > 2 * Math.PI) ringPh -= 2 * Math.PI;
+                gatePh += gateInc; if (gatePh >= 1) gatePh -= 1;
+                if (wGate > 1e-4f) { float g = (1 - wGate) + wGate * (gatePh < .5 ? 1f : 0f); l *= g; r *= g; }
+                if (wCrush > 1e-4f) { l = l * (1 - wCrush) + crush(l) * .9f * wCrush; r = r * (1 - wCrush) + crush(r) * .9f * wCrush; }
+            }
+            // echo: always running so tails finish after you let go
+            int rd = dlyW - dt; if (rd < 0) rd += dlyL.length;
+            float el = dlyL[rd], er = dlyR[rd];
+            float hl = hpK * (hpL + el - hpXL), hr = hpK * (hpR + er - hpXR);
+            hpXL = el; hpXR = er; hpL = hl; hpR = hr;
+            dlyL[dlyW] = l * wSend * .85f + hl * .55f;
+            dlyR[dlyW] = r * wSend * .85f + hr * .55f;
+            if (++dlyW >= dlyL.length) dlyW = 0;
+            out[i * 2] = l + hl;
+            out[i * 2 + 1] = r + hr;
+        }
+    }
+
+    private static float drive(float x) { return (float) (Math.tanh(9 * x) / Math.tanh(9)); }
+    private static float crush(float x) { float c = Math.max(-1f, Math.min(1f, x)); return Math.round(c * 8f) / 8f; }
 
     /** A gentle compressor (about where the site's sits) and a soft clip, so stacked pads do not crack. */
     private void master(float[] out, int frames) {
@@ -615,7 +756,31 @@ public final class Engine {
     /* ================= bouncing to a file ================= */
 
     /** Render the mess offline. song = the whole song lane, otherwise the current loop, loops times. */
-    public static float[] bounce(Project p, SampleSource src, int rate, boolean song, int loops) {
+    public static float[] bounce(Project p, SampleSource src, int rate, boolean song, int loops) { return bounce(p, src, rate, song, loops, false); }
+
+    /** Render one sound with its doctor settings baked in, mono, no master bus. */
+    public static Sample renderOne(String key, Sample s, SoundEdit e) {
+        Engine en = new Engine(s.rate);
+        en.bypassMaster = true;
+        Voice v = en.trigger(new PadSlot(-1, key, s, e, true), 1, 0, false, 1f, 0, false, false);
+        if (v == null) return new Sample(key, new float[1], s.rate);
+        int block = 1024;
+        float[] buf = new float[block * 2];
+        List<float[]> parts = new ArrayList<>();
+        int total = 0;
+        while (en.activeVoices() > 0 && total < s.rate * 60) { en.render(buf, block); parts.add(buf.clone()); total += block; }
+        float[] lr = new float[total * 2];
+        int at = 0;
+        for (float[] b : parts) { System.arraycopy(b, 0, lr, at, b.length); at += b.length; }
+        // drop the silent end
+        int last = total - 1;
+        while (last > 0 && Math.abs(lr[last * 2]) < 1e-5f && Math.abs(lr[last * 2 + 1]) < 1e-5f) last--;
+        float[] cut = java.util.Arrays.copyOf(lr, (last + 1) * 2);
+        return Sample.fromStereo(key, cut, s.rate);
+    }
+
+    /** exact = stop right at the loop's end with no tail, for resampling a loop into a sound. */
+    public static float[] bounce(Project p, SampleSource src, int rate, boolean song, int loops, boolean exact) {
         Project q = p.copy();
         q.songMode = song && q.songLen() > 0;
         Snapshot S = Snapshot.build(q, src, new Live());
@@ -636,12 +801,13 @@ public final class Engine {
             e.render(buf, block);
             parts.add(buf.clone());
             rendered += block;
+            if (exact && rendered >= total * stepFrames + .004 * rate) break;
             if (!e.playing && e.fired >= total) {
                 if (e.activeVoices() == 0) { if (quietSince < 0) quietSince = rendered; if (rendered - quietSince > .05 * rate) break; }
                 if (rendered > total * stepFrames + 4.0 * rate) break;
             }
         }
-        long keep = Math.max((long) Math.ceil(total * stepFrames), rendered);
+        long keep = exact ? Math.min(rendered, (long) Math.ceil(total * stepFrames + .004 * rate)) : Math.max((long) Math.ceil(total * stepFrames), rendered);
         float[] all = new float[(int) (keep * 2)];
         int at = 0;
         for (float[] b : parts) { int n = Math.min(b.length, all.length - at); if (n <= 0) break; System.arraycopy(b, 0, all, at, n); at += n; }

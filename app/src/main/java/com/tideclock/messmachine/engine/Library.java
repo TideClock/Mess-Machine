@@ -27,16 +27,18 @@ public final class Library implements Engine.SampleSource {
     public static final class Sound {
         public final String key, title, cab, file, group, album;
         public final double a, d;
-        Sound(String key, String title, String cab, String file, double a, double d, String group, String album) {
+        public Sound(String key, String title, String cab, String file, double a, double d, String group, String album) {
             this.key = key; this.title = title; this.cab = cab; this.file = file; this.a = a; this.d = d; this.group = group; this.album = album;
         }
         public boolean sliced() { return d > 0; }
     }
 
-    public final List<Cab> cabs = new ArrayList<>();
-    public final List<Sound> sounds = new ArrayList<>();
-    private final Map<String, Sound> byKey = new LinkedHashMap<>();
-    private final Map<String, Cab> cabById = new LinkedHashMap<>();
+    public final List<Cab> cabs = new java.util.concurrent.CopyOnWriteArrayList<>();
+    public final List<Sound> sounds = new java.util.concurrent.CopyOnWriteArrayList<>();
+    /** chop:<id> sounds play a region of another sound; this maps them to it. */
+    private final Map<String, String> chopBase = new ConcurrentHashMap<>();
+    private final Map<String, Sound> byKey = new ConcurrentHashMap<>();
+    private final Map<String, Cab> cabById = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Sample> cache = new ConcurrentHashMap<>();
     private final Map<String, SoftReference<Sample>> sprites = new LinkedHashMap<>();
     private final Opener opener;
@@ -54,6 +56,9 @@ public final class Library implements Engine.SampleSource {
             cabs.add(cab);
             cabById.put(cab.id, cab);
         }
+        Cab mine = new Cab("mine", "Your Workbench", 0xFFFFB547);
+        cabs.add(mine);
+        cabById.put(mine.id, mine);
         for (Object o : Json.list(m.get("sounds"))) {
             Map<String, Object> s = Json.map(o);
             Sound snd = new Sound(Json.str(s.get("k"), ""), Json.str(s.get("t"), ""), Json.str(s.get("c"), ""), Json.str(s.get("f"), ""),
@@ -85,13 +90,41 @@ public final class Library implements Engine.SampleSource {
 
     public boolean loaded(String key) { return cache.containsKey(key); }
 
+    /** Your own sounds (imports, mic takes, resamples, saved edits): file is a full path on the phone. */
+    public void addUser(Sound s, String chopOf) {
+        if (byKey.containsKey(s.key)) return;
+        sounds.add(s);
+        byKey.put(s.key, s);
+        if (chopOf != null) chopBase.put(s.key, chopOf);
+    }
+
+    public void removeUser(String key) {
+        Sound s = byKey.remove(key);
+        if (s != null) sounds.remove(s);
+        chopBase.remove(key);
+        cache.remove(key);
+    }
+
+    public void putSample(String key, Sample s) { cache.put(key, s); }
+
+    public String chopOf(String key) { return chopBase.get(key); }
+
     /** Decode a sound (blocking, call off the main thread). */
     public Sample load(String key) throws IOException {
         Sample s = cache.get(key);
         if (s != null) return s;
+        String parent = chopBase.get(key);
+        if (parent != null) {
+            Sample b = load(parent);
+            if (b == null) return null;
+            cache.put(key, b);
+            return b;
+        }
         Sound snd = byKey.get(key);
         if (snd == null) return null;
-        if (snd.sliced()) {
+        if (snd.file.startsWith("/")) {
+            try (InputStream in = new java.io.FileInputStream(snd.file)) { s = Wav.read(key, in); }
+        } else if (snd.sliced()) {
             Sample sprite = sprite(snd.file);
             s = Sample.slice(key, sprite, snd.a, snd.d);
         } else {

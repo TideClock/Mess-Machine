@@ -67,7 +67,26 @@ public final class Wav {
         os.write(buf, 0, n);
     }
 
-    static byte[] readAll(InputStream in) throws IOException {
+    /** Mono floats to a 16-bit mono WAV. */
+    public static void writeMono16(OutputStream os, float[] d, int rate) throws IOException {
+        int dataLen = d.length * 2;
+        byte[] h = new byte[44];
+        put(h, 0, "RIFF"); le32(h, 4, 36 + dataLen); put(h, 8, "WAVE"); put(h, 12, "fmt ");
+        le32(h, 16, 16); le16(h, 20, 1); le16(h, 22, 1); le32(h, 24, rate); le32(h, 28, rate * 2); le16(h, 32, 2); le16(h, 34, 16);
+        put(h, 36, "data"); le32(h, 40, dataLen);
+        os.write(h);
+        byte[] buf = new byte[8192];
+        int n = 0;
+        for (float v : d) {
+            int s = Math.round(Math.max(-1f, Math.min(1f, v)) * 32767f);
+            buf[n++] = (byte) s;
+            buf[n++] = (byte) (s >> 8);
+            if (n == buf.length) { os.write(buf, 0, n); n = 0; }
+        }
+        os.write(buf, 0, n);
+    }
+
+    public static byte[] readAll(InputStream in) throws IOException {
         ByteArrayOutputStream o = new ByteArrayOutputStream(1 << 16);
         byte[] buf = new byte[1 << 16];
         int r;

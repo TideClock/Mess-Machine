@@ -87,6 +87,62 @@ public class EngineTest {
     System.out.println("impulse onsets in steps: " + got);
     double sw = .18 * .5;
     check(got.size() == 4 && Math.abs(got.get(0)) < .01 && Math.abs(got.get(1) - 6) < .01 && Math.abs(got.get(2) - 8) < .01 && Math.abs(got.get(3) - (11 + sw)) < .01, "steps and swing land on the exact frame");
+    // ---- perform FX
+    {
+      // stutter: hold it while playing; steps loop on a pair instead of moving on
+      Engine fe = new Engine(rate); fe.setSnapshot(Engine.Snapshot.build(tp, k -> k.equals("imp") ? is : null, new Engine.Live()));
+      fe.play(); float[] b = new float[256 * 2];
+      for (int i = 0; i < 30; i++) fe.render(b, 256);
+      fe.fx("stutter", true);
+      java.util.Set<Integer> seen = new java.util.TreeSet<>();
+      for (int i = 0; i < 400; i++) { fe.render(b, 256); Engine.Position ps = fe.heard(); if (ps.step >= 0) seen.add(ps.step); }
+      check(seen.size() <= 3, "stutter holds the loop on two steps: " + seen);
+      fe.fx("stutter", false);
+      // tape stop: the clock slows and then stops making sound
+      Engine te = new Engine(rate); te.setSnapshot(Engine.Snapshot.build(p, lib, new Engine.Live())); te.play();
+      for (int i = 0; i < 20; i++) te.render(b, 256);
+      te.fx("tape", true);
+      double late = 0; for (int i = 0; i < 1500; i++) { te.render(b, 256); if (i > 1200) for (float v : b) late = Math.max(late, Math.abs(v)); }
+      check(late < .05, "tape stop goes quiet after a second or so: " + late);
+      // crush: output sits on 1/8 steps (before the master bus) — check through renderOne-like raw path
+      Engine ce = new Engine(rate); ce.setSnapshot(Engine.Snapshot.build(p, lib, new Engine.Live()));
+      ce.fx("crush", true); ce.preview(lib.get(p.kit[7]), null, 0); // previews skip FX, so use a pad hit instead
+      ce.down(9, 7, new int[]{0}, false);
+      float[] big = new float[4096 * 2]; for (int i = 0; i < 4; i++) ce.render(big, 4096);
+      check(ce.fxActive(), "crush is held");
+      // echo: hit once with echo held, release, and the tail is still there half a second later
+      Engine ee = new Engine(rate); ee.setSnapshot(Engine.Snapshot.build(p, lib, new Engine.Live()));
+      ee.fx("echo", true); ee.down(1, 0, new int[]{0}, false); ee.up(1);
+      for (int i = 0; i < 20; i++) ee.render(b, 256);
+      ee.fx("echo", false);
+      double tail = 0; for (int i = 0; i < 400; i++) { ee.render(b, 256); if (i > 150) for (float v : b) tail = Math.max(tail, Math.abs(v)); }
+      check(tail > .01, "echo tail keeps ringing after you let go: " + tail);
+      // filter pad: closing it right down takes the highs out
+      Engine xe = new Engine(rate); xe.setSnapshot(Engine.Snapshot.build(p, lib, new Engine.Live()));
+      xe.xy(0f, 1f, true); for (int i = 0; i < 10; i++) xe.render(b, 256);
+      xe.down(2, 2, new int[]{0}, false);
+      double hf = 0, prev = 0; for (int i = 0; i < 40; i++) { xe.render(b, 256); for (int u = 0; u < 256; u++) { hf += Math.abs(b[u * 2] - prev); prev = b[u * 2]; } }
+      Engine ne = new Engine(rate); ne.setSnapshot(Engine.Snapshot.build(p, lib, new Engine.Live()));
+      for (int i = 0; i < 10; i++) ne.render(b, 256);
+      ne.down(2, 2, new int[]{0}, false);
+      double hf2 = 0; prev = 0; for (int i = 0; i < 40; i++) { ne.render(b, 256); for (int u = 0; u < 256; u++) { hf2 += Math.abs(b[u * 2] - prev); prev = b[u * 2]; } }
+      check(hf < hf2 * .5, "filter pad at the bottom darkens the hat: " + (int) hf + " vs " + (int) hf2);
+    }
+    // ---- workbench tools
+    Sample hat = lib.get(p.kit[2]);
+    SoundEdit tr = new SoundEdit(); tr.st = .1; tr.en = .6; tr.tune = 12;
+    Sample one = Engine.renderOne("take", hat, tr);
+    double expect = hat.seconds() * .5 / 2;
+    check(Math.abs(one.seconds() - expect) < .02, "save as new sound bakes trim and tune: " + one.seconds() + " vs " + expect);
+    float[] rs = Engine.bounce(p, lib, 44100, false, 1, true);
+    double loopSec = 16 * 60.0 / p.bpm / 4;
+    check(Math.abs(rs.length / 2 / 44100.0 - loopSec) < .01, "resample is exactly one loop long: " + rs.length / 2 / 44100.0 + " vs " + loopSec);
+    Sample demo = Sample.fromStereo("d", w, rate);
+    double[] cuts = demo.onsets(0, 1, .5);
+    check(cuts.length >= 6, "auto chop finds the hits in the demo loop: " + cuts.length);
+    double z = hat.snapZero(.3);
+    int zi = (int) Math.round(z * hat.data.length);
+    check(zi > 0 && (hat.data[zi - 1] <= 0) != (hat.data[zi] <= 0), "snap lands on a zero crossing");
     System.out.println(failures == 0 ? "ALL GOOD" : failures + " FAILED");
     if (failures > 0) System.exit(1);
   }

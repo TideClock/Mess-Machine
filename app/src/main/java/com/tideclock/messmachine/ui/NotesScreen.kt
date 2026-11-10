@@ -19,6 +19,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,6 +55,7 @@ fun NotesScreen(state: AppState) {
     val fieldColors = OutlinedTextFieldDefaults.colors(focusedBorderColor = C.Pink, unfocusedBorderColor = C.Card2, cursorColor = C.Pink)
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 14.dp)) {
         Guide(state)
+        SpeedCard(state)
         state.crash?.let {
             Card(Modifier.fillMaxWidth().padding(bottom = 12.dp), color = C.Riot) {
                 T("The app crashed last time. Say what you were doing and send it; the crash details go along with your note.", color = C.Ink, size = 13.sp)
@@ -161,6 +164,24 @@ fun Guide(state: AppState) {
             Row(Modifier.padding(top = 10.dp)) {
                 Btn(if (state.guideOn) "Shows on each new build" else "Hidden on new builds", { state.switchGuide(!state.guideOn) }, on = state.guideOn, onColor = C.Teal, small = true)
             }
+        }
+    }
+}
+
+/** How the app is running right now, the same numbers every note carries. */
+@Composable
+fun SpeedCard(state: AppState) {
+    var text by remember { mutableStateOf("") }
+    LaunchedEffect(Unit) {
+        while (true) {
+            text = "Screen: ${state.uiPerf}\nSound engine: ${state.audio.loadText()}\nAudio buffer: ${state.audio.bufferFrames} frames at ${state.rate} Hz, dropouts ${state.audio.underruns}"
+            delay(1000)
+        }
+    }
+    Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
+        Column {
+            T("How it is running", size = 13.sp, color = C.Dim)
+            T(text, size = 13.sp, weight = FontWeight.Medium, modifier = Modifier.padding(top = 4.dp))
         }
     }
 }
