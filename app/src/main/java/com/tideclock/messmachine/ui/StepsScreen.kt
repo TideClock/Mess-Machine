@@ -1,6 +1,14 @@
 package com.tideclock.messmachine.ui
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -83,7 +91,6 @@ fun StepsScreen(state: AppState) {
         if (rows.isEmpty()) {
             T("Bank ${state.bank + 1} is empty. Put sounds on its pads from the Pads or Sounds tab.", color = C.Dim, weight = FontWeight.Medium)
         }
-        val playStep = if (state.playing && state.heardPat == P.cur) state.heardStep else -1
         for (i in rows) {
             val k = P.kit[i]
             val col = Color(state.lib.colorOf(k))
@@ -100,27 +107,44 @@ fun StepsScreen(state: AppState) {
                         Btn("S", { state.toggleSolo(k) }, on = P.solos.contains(k), onColor = C.Yellow, small = true)
                         Btn("✂", { state.overlay = Overlay.Doctor(k) }, small = true)
                     }
-                    Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                        for (j in off until off + 16) {
-                            val on = pat.step(k, j)
-                            val beat = j % 4 == 0
-                            val now = j == playStep
-                            Box(
-                                Modifier
-                                    .weight(1f)
-                                    .aspectRatio(.8f)
-                                    .background(if (on) col else if (beat) C.Card2 else C.Paper, RoundedCornerShape(5.dp))
-                                    .border(if (now) 3.dp else 1.5.dp, if (now) C.Yellow else C.Black, RoundedCornerShape(5.dp))
-                                    .clickable { state.toggleStep(k, j) },
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                if (pat.hasNoteAt(k, j)) Box(Modifier.size(6.dp).background(if (on) C.Ink else C.Cream, CircleShape))
-                            }
-                        }
-                    }
+                    StepRow(state, k, col, off, state.version)
                 }
             }
         }
         T("M mutes, S solos, ✂ opens the doctor. A dot means the pad has piano roll notes on that step.", size = 12.sp, color = C.Dim, weight = FontWeight.Medium)
+    }
+}
+
+/** One pad's 16 steps, drawn in one go. The playhead is read while drawing, so it repaints without rebuilding the screen. */
+@Composable
+fun StepRow(state: AppState, k: String, col: Color, off: Int, ver: Int) {
+    val P = state.project
+    val pat = P.pat()
+    val on = BooleanArray(16) { pat.step(k, off + it) }
+    val dot = BooleanArray(16) { pat.hasNoteAt(k, off + it) }
+    Canvas(
+        Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp)
+            .height(30.dp)
+            .pointerInput(k, off, P.cur, ver) {
+                detectTapGestures { o ->
+                    val j = (o.x / (size.width / 16f)).toInt().coerceIn(0, 15)
+                    state.toggleStep(k, off + j)
+                }
+            },
+    ) {
+        val cw = size.width / 16f
+        val gap = 3.dp.toPx()
+        val r = CornerRadius(5.dp.toPx())
+        val now = if (state.playing && state.heardPat == P.cur) state.heardStep - off else -1
+        for (c in 0 until 16) {
+            val tl = Offset(c * cw + gap / 2, 0f)
+            val sz = Size(cw - gap, size.height)
+            drawRoundRect(if (on[c]) col else if ((off + c) % 4 == 0) C.Card2 else C.Paper, tl, sz, r)
+            val hot = c == now
+            drawRoundRect(if (hot) C.Yellow else C.Black, tl, sz, r, style = Stroke(width = if (hot) 3.dp.toPx() else 1.5.dp.toPx()))
+            if (dot[c]) drawCircle(if (on[c]) C.Ink else C.Cream, radius = 3.dp.toPx(), center = Offset(tl.x + sz.width / 2, sz.height / 2))
+        }
     }
 }

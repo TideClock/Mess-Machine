@@ -1,16 +1,12 @@
 {
-  "title": "Notes for Claude, and two bits from the site",
+  "title": "Faster screens",
   "thisBuild": [
-    "The bug button (top row, second line): write or speak a note, pick Bug, Tuning, Feature, Question, Discuss or Wishlist, and send it to Claude.",
-    "Claude's replies show up under each note after you tap Check for replies.",
-    "If the app crashes, the next launch opens this panel so the crash can go along with a note.",
-    "Random drums on the Steps tab, like the site.",
-    "Picking a chord set that does not fit your scale moves the scale to the one it was written in, like the site."
+    "Tapping pads no longer rebuilds the whole screen, so the grid should feel quicker.",
+    "The step grid and the roll redraw only the playhead while playing.",
+    "The bug panel now shows how smooth the screen is and how hard the sound engine works, and every note carries those numbers."
   ],
   "watch": [
-    "Tap pads fast with two fingers. Does anything lag or click?",
-    "Turn on Repeat, pick Arp up, switch to Keys and hold a chord.",
-    "Send one note to make sure GitHub opens signed in as TideClock."
+    "Drum on the pads and switch tabs while a loop plays. Still slow? Send a Tuning note from the \ud83d\udc1e button right after, so the speed numbers go with it."
   ],
   "limits": [
     "No performance effects yet (stutter, tape stop, echo, crush and the rest).",

@@ -71,6 +71,7 @@ fun PadsScreen(state: AppState) {
 
 @Composable
 fun KeysBar(state: AppState) {
+    @Suppress("UNUSED_VARIABLE") val sv = state.selV
     val P = state.project
     Column(Modifier.padding(bottom = 10.dp)) {
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -104,6 +105,7 @@ fun chordOptions(scale: String, root: Int): List<Pair<String, String>> {
 
 @Composable
 fun Pad(state: AppState, d: Int, modifier: Modifier) {
+    @Suppress("UNUSED_VARIABLE") val sv = state.selV
     val P = state.project
     var pressed by remember { mutableStateOf(false) }
     val keys = state.keysMode
@@ -151,6 +153,7 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
 
 @Composable
 fun SelectedPad(state: AppState) {
+    @Suppress("UNUSED_VARIABLE") val sv = state.selV
     val P = state.project
     val k = P.kit[P.sel]
     Card(Modifier.fillMaxWidth().padding(top = 14.dp)) {

@@ -86,6 +86,9 @@ class AppState(private val app: Context) {
     var busy by mutableStateOf<String?>(null)
     var playOnTap by mutableStateOf(prefs.getBoolean("poc", true))
     var lastChord by mutableStateOf("")
+    /** Bumped when the selected pad changes from the grid, so only the pads redraw. */
+    var selV by mutableIntStateOf(0)
+        private set
     var follow = true
 
     var playing by mutableStateOf(false)
@@ -235,7 +238,29 @@ class AppState(private val app: Context) {
     /* ---------------- the playhead, recorded hits ---------------- */
 
     /** Called every frame by the UI. */
-    fun tick() {
+    private var lastFrame = 0L
+    private var winStart = 0L
+    private var frames = 0
+    private var slow = 0
+    private var worst = 0L
+    /** Screen smoothness over the last 10 seconds: frames, slow frames (over 33 ms), worst gap. */
+    var uiPerf = "measuring"
+        private set
+
+    fun tick(now: Long) {
+        if (lastFrame != 0L) {
+            val dt = now - lastFrame
+            frames++
+            if (dt > 33_000_000L) slow++
+            if (dt > worst) worst = dt
+        }
+        lastFrame = now
+        if (winStart == 0L) winStart = now
+        if (now - winStart > 10_000_000_000L) {
+            val secs = (now - winStart) / 1e9
+            uiPerf = "%.0f fps, %d slow frames, worst %d ms".format(frames / secs, slow, worst / 1_000_000)
+            winStart = now; frames = 0; slow = 0; worst = 0
+        }
         val p = engine.heard()
         if (playing != p.playing) playing = p.playing
         val st = if (p.playing) p.step else -1
@@ -308,7 +333,7 @@ class AppState(private val app: Context) {
             return
         }
         val i = bank * Project.BANK + d
-        if (project.sel != i) view { sel = i }
+        if (project.sel != i) { project.sel = i; selV++; scheduleSave() }
         if (project.kit[i].isEmpty()) { overlay = Overlay.Picker(i); return }
         downIds[d] = d
         notes.trail("pad ${i + 1}")
@@ -626,7 +651,8 @@ class AppState(private val app: Context) {
         val p = project
         val loops = (0 until Project.NSLOTS).count { p.pats[it].used() }
         return "**Device:** ${NotesBook.device()}\n" +
-            "**Audio:** ${rate} Hz, buffer ${audio.bufferFrames} frames, burst ${burst}, underruns ${audio.underruns}\n" +
+            "**Audio:** ${rate} Hz, buffer ${audio.bufferFrames} frames, burst ${burst}, underruns ${audio.underruns}, engine load ${audio.loadText()}\n" +
+            "**Screen:** $uiPerf\n" +
             "**Mess:** \"${p.name.ifEmpty { "Untitled" }}\", ${p.bpm} BPM, swing ${p.swing}%, ${p.loadedCount()} pads, $loops loops, " +
             (if (p.songMode) "song mode (${p.songLen()} bars)" else "loop ${Project.LETTERS[p.cur]}") +
             ", keys ${if (keysMode) "on" else "off"}, chords $chordMode, repeat ${if (live.nr) "on (${live.arp})" else "off"}\n"

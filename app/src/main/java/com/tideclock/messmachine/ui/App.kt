@@ -21,7 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.withFrameMillis
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -38,8 +38,8 @@ fun MessMachineApp(state: AppState) {
     MaterialTheme(colorScheme = darkColorScheme(primary = C.Pink, secondary = C.Teal, background = C.Paper, surface = C.Card)) {
         LaunchedEffect(Unit) {
             while (true) {
-                withFrameMillis { }
-                state.tick()
+                val t = withFrameNanos { it }
+                state.tick(t)
             }
         }
         LaunchedEffect(state.toastId) {
@@ -114,7 +114,7 @@ fun Transport(state: AppState) {
         Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Btn("☰", { state.refreshFiles(); state.overlay = Overlay.Files }, small = true)
             Btn("🐞", { state.overlay = Overlay.Notes }, small = true, color = if (state.crash != null) C.Riot else C.Card2)
-            T(position(state), size = 13.sp, color = C.Yellow, modifier = Modifier.width(92.dp), lines = 1)
+            PositionText(state)
             Btn("Click", { state.setLive { click = !click } }, on = state.live.click, small = true)
             Btn("Repeat", { state.setLive { nr = !nr } }, on = state.live.nr, onColor = C.Pink, small = true)
             Select(
@@ -130,6 +130,11 @@ fun Transport(state: AppState) {
             Btn("↷", { state.redo() }, enabled = state.canRedo, small = true)
         }
     }
+}
+
+@Composable
+fun PositionText(state: AppState) {
+    T(position(state), size = 13.sp, color = C.Yellow, modifier = Modifier.width(92.dp), lines = 1)
 }
 
 fun arpName(a: String) = when (a) { "up" -> "Arp up"; "down" -> "Arp down"; "updown" -> "Arp up-down"; "rand" -> "Arp random"; else -> "Repeat notes" }

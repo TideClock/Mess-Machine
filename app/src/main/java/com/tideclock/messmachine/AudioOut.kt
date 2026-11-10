@@ -19,6 +19,11 @@ class AudioOut(private val engine: Engine, private val rate: Int, framesPerBurst
         private set
     @Volatile var underruns = 0
         private set
+    @Volatile private var loadAvg = 0.0
+    @Volatile private var loadPeak = 0.0
+
+    /** Share of each buffer's time the engine spends making sound. Over 100% means dropouts. */
+    fun loadText(): String = "%.0f%% average, %.0f%% peak".format(loadAvg * 100, loadPeak * 100)
 
     fun start() {
         if (running) return
@@ -67,8 +72,14 @@ class AudioOut(private val engine: Engine, private val rate: Int, framesPerBurst
         var n = 0
         track.play()
         try {
+            val budget = burst * 1e9 / rate
+            var peak = 0.0
             while (running) {
+                val t0 = System.nanoTime()
                 engine.render(buf, burst)
+                val load = (System.nanoTime() - t0) / budget
+                loadAvg += (load - loadAvg) * .01
+                if (load > peak) peak = load
                 track.write(buf, 0, buf.size, AudioTrack.WRITE_BLOCKING)
                 if (++n % 64 == 0) {
                     val u = track.underrunCount
@@ -80,6 +91,7 @@ class AudioOut(private val engine: Engine, private val rate: Int, framesPerBurst
                         engine.setLatencyFrames(size + burst)
                     }
                     seen = u
+                    if (n % 1024 == 0) { loadPeak = peak; peak = 0.0 }
                 }
             }
         } finally {
