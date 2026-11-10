@@ -207,6 +207,54 @@ public class EngineTest {
       le2.down(2, 7, new int[]{12}, true); le2.render(b, 256);
       check(Math.abs(le2.lastInc() / b2 - 2) < .01, "legato only: separate notes jump straight to pitch");
     }
+    // ---- build C: doctor effects, per-pad and per-bus effects, live control
+    {
+      float[] b = new float[256 * 2];
+      java.util.function.Function<Engine, double[]> run = (en) -> { double sum = 0, tail = 0; for (int i = 0; i < 400; i++) { en.render(b, 256); for (int u = 0; u < 512; u++) { double x = Math.abs(b[u]); sum += x; if (i > 120) tail += x; } } return new double[]{sum, tail}; };
+      Project fp = Project.starter();
+      Engine dry = new Engine(rate); dry.setSnapshot(Engine.Snapshot.build(fp, lib, new Engine.Live()));
+      dry.down(1, 0, new int[]{0}, false); double[] d0 = run.apply(dry);
+      SoundEdit wet = new SoundEdit(); wet.rvb = .7; wet.rvbSize = .8; fp.setEdit(fp.kit[0], wet);
+      Engine rv = new Engine(rate); rv.setSnapshot(Engine.Snapshot.build(fp, lib, new Engine.Live()));
+      rv.down(1, 0, new int[]{0}, false); double[] r0 = run.apply(rv);
+      check(r0[1] > d0[1] * 20 + 1e-3, String.format("reverb leaves a tail after the kick (%.3f vs %.3f)", r0[1], d0[1]));
+      SoundEdit ec = new SoundEdit(); ec.echo = .6; fp.setEdit(fp.kit[0], ec);
+      Engine ee = new Engine(rate); ee.setSnapshot(Engine.Snapshot.build(fp, lib, new Engine.Live()));
+      ee.down(1, 0, new int[]{0}, false); double[] e0 = run.apply(ee);
+      check(e0[1] > d0[1] * 20 + 1e-3, String.format("echo repeats after the kick (%.3f)", e0[1]));
+      check(Engine.renderOne("k", lib.get(fp.kit[0]), wet).seconds() > lib.get(fp.kit[0]).seconds() + .3, "save as new bakes the reverb tail in");
+      SoundEdit dt = new SoundEdit(); dt.dirt = 1; dt.crush = .8; dt.chorus = .6; dt.wob = .5;
+      check(SoundEdit.fromMap(dt.toMap()).crush == .8 && SoundEdit.fromMap(dt.toMap()).chorus == .6, "doctor effects save with the mess");
+      Project fp2 = Project.starter(); fp2.setEdit(fp2.kit[2], dt);
+      Engine de = new Engine(rate); de.setSnapshot(Engine.Snapshot.build(fp2, lib, new Engine.Live()));
+      de.down(1, 2, new int[]{0}, false); double[] dd = run.apply(de);
+      Engine dn = new Engine(rate); dn.setSnapshot(Engine.Snapshot.build(Project.starter(), lib, new Engine.Live()));
+      dn.down(1, 2, new int[]{0}, false); double[] dn0 = run.apply(dn);
+      check(Math.abs(dd[0] - dn0[0]) > dn0[0] * .1, String.format("dirty, crush, chorus and wobble change the hat (%.2f vs %.2f)", dd[0], dn0[0]));
+      // a perform effect aimed at one pad leaves the others alone; aimed at a bus it reaches only that bus's pads
+      Project rp = Project.starter();
+      PadOpts bus1 = new PadOpts(); bus1.route = 1; rp.setOpt(2, bus1);
+      java.util.function.BiFunction<Integer, Integer, Double> hit = (pad, target) -> {
+        Engine en = new Engine(rate); en.setSnapshot(Engine.Snapshot.build(rp, lib, new Engine.Live()));
+        if (target >= 0) en.fxTo("crush", target, 1f);
+        en.render(b, 256); en.down(1, pad, new int[]{0}, false);
+        return run.apply(en)[0];
+      };
+      double k0 = hit.apply(0, -1), k1 = hit.apply(0, 2), k2 = hit.apply(0, 65), h0 = hit.apply(2, -1), h1 = hit.apply(2, 65);
+      check(Math.abs(k0 - k1) < 1e-6 && Math.abs(k0 - k2) < 1e-6, "crush on pad 3 or bus 1 leaves the kick alone");
+      check(Math.abs(h0 - h1) > h0 * .02, String.format("crush on bus 1 reaches the hat routed there (%.2f vs %.2f)", h1, h0));
+      // live control: pitch and volume move a pad as it plays
+      Engine me = new Engine(rate); me.setSnapshot(Engine.Snapshot.build(Project.starter(), lib, new Engine.Live()));
+      me.mod(7, Engine.T_PITCH, 12f); me.mod(7, Engine.T_VOL, -1f); me.render(b, 256);
+      check(Math.abs(me.padRate(7) - 2) < 1e-6 && me.padLevel(7) == 0f && me.padRate(0) == 1, "XY pitch and volume move just that pad");
+      me.fxTo("tape", 7, 1f); for (int i = 0; i < (int) (1.3 * rate / 256); i++) me.render(b, 256);
+      check(me.padRate(7) < .5, "tape stop on one pad winds it down: " + me.padRate(7));
+      // roll: a held note retriggers faster as the roll grows
+      Engine re = new Engine(rate); re.setSnapshot(Engine.Snapshot.build(Project.starter(), lib, new Engine.Live()));
+      re.mod(7, Engine.T_ROLL, 1f); re.down(1, 7, new int[]{0}, true);
+      int rt0 = re.triggers; for (int i = 0; i < (int) (rate / 256); i++) re.render(b, 256);
+      check(re.triggers - rt0 >= 12, "a full roll retriggers a held note many times a second: " + (re.triggers - rt0));
+    }
     // ---- workbench tools
     Sample hat = lib.get(p.kit[2]);
     SoundEdit tr = new SoundEdit(); tr.st = .1; tr.en = .6; tr.tune = 12;

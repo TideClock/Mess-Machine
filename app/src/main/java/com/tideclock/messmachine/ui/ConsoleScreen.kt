@@ -72,7 +72,7 @@ fun ConsoleScreen(state: AppState) {
     }
 }
 
-private fun needsPad(t: String) = t == "piano" || t == "pfilt"
+private fun needsPad(t: String) = t == "piano" || t == "pfilt" || t == "xyp"
 
 @Composable
 private fun ModuleBox(state: AppState, i: Int, m: Module) {
@@ -135,13 +135,14 @@ private fun ModuleBody(state: AppState, m: Module) {
             val h = pick(m.size, 44.dp, 58.dp, 80.dp)
             val cols = if (m.half) 2 else 3
             Column {
+                FxEditor(state)
                 for (r in 0 until (FX_NAMES.size + cols - 1) / cols) {
                     Row(Modifier.padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         for (c in 0 until cols) {
                             val k = r * cols + c
                             if (k < FX_NAMES.size) {
                                 val (id, label) = FX_NAMES[k]
-                                HoldButton(label, Modifier.weight(1f).testTag("cfx-$id"), C.Letters[k % C.Letters.size], height = h) { on -> state.fx(id, on) }
+                                FxButton(state, id, label, Modifier.weight(1f).testTag("cfx-$id"), C.Letters[k % C.Letters.size], height = h)
                             } else Spacer(Modifier.weight(1f))
                         }
                     }
@@ -150,8 +151,10 @@ private fun ModuleBody(state: AppState, m: Module) {
         }
         "fx1" -> {
             val (id, label) = FX_NAMES.getOrElse(m.pad) { FX_NAMES[0] }
-            HoldButton(label, Modifier.fillMaxWidth().testTag("cfx1-$id"), C.Letters[m.pad.coerceAtLeast(0) % C.Letters.size], height = pick(m.size, 58.dp, 90.dp, 140.dp)) { on -> state.fx(id, on) }
+            FxButton(state, id, label, Modifier.fillMaxWidth().testTag("cfx1-$id"), C.Letters[m.pad.coerceAtLeast(0) % C.Letters.size], height = pick(m.size, 58.dp, 90.dp, 140.dp))
         }
+        "xyp" -> if (m.pad in 0 until Project.NPADS && P.kit[m.pad].isNotEmpty()) PadXy(state, m.pad, tag = "cxyp-${m.pad}", size = pick(m.size, 130.dp, 190.dp, 260.dp))
+            else EmptyModule("Pad ${m.pad + 1} is empty. Edit to point this XY at another pad.")
         "xy" -> Column {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 6.dp)) {
                 T(if (state.xyHP) "THIN" else "MUD", size = 12.sp, color = C.Yellow, spacing = .1.em, modifier = Modifier.weight(1f))

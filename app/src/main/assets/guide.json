@@ -1,20 +1,23 @@
 {
-  "title": "The side dock, Lock and Glide",
+  "title": "Effects you can edit, routing and XY pads",
   "thisBuild": [
-    "A dock on the left edge of every page: Lock, Hold, a filter and resonance pair, Repeat and Hush. ⋯ at the bottom adds Rec, the beat light, Stutter or Echo, and ◀ folds it away.",
-    "Lock freezes the page: no scrolling, tabs, menus or sheets, and back does nothing. Pads, the Padiano and effects still play. It also pins the screen (Android asks first); turn that off from ⋯. Hold the lock for a second to unlock.",
-    "The dock's sliders: the left one is the cutoff, the right one the resonance. They spring back when you let go, or stay put if you tap SPRING to make it STAY. Tap MIX to aim them at the pad you last picked.",
-    "Glide on every Padiano: each note slides in from the last one. Set the time (up to 1 second), and Legato only to slide just when notes overlap. It saves with the pad.",
-    "From the last build: Hold keeps short sounds going, Hold Last, menus open when you lift, the Padiano squares, In key only, and empty pads that record."
+    "Perform effects: hold one to use it, slide along it while you hold to set how much, and tap ✎ in its corner for settings: While held, Stays on or Slider, and where it acts (the mix, Bus 1 to 4, or one pad).",
+    "Stutter, tape stop, gate, ring mod, octave down, crush, dirty, echo and reverse all work on one pad or one bus as well as the whole mix.",
+    "Routing: hold a pad, then Route, to send it to a bus. The pad shows B1 to B4.",
+    "Doctor's table, Effects: Reverb (amount and space), Echo (amount and 1/16 to 1/4), Dirty, Crush, Chorus and Wobble. Save as a new sound bakes them in, tails and all.",
+    "Every pad has an XY setup (hold a pad, then XY setup): two-way, or four-way with zero in the middle. Pick what each direction moves: pitch, filter, resonance, volume, pan, attack, release, start point, any doctor effect, glide, a repeat roll, gate, ring, stutter or tape stop.",
+    "Presets: Sweep, Dub, Bend, Lo-fi and Scrub, plus Save as mine.",
+    "Draw a circle on a pad or a Padiano note: a clear sphere opens over it, bigger than the pad. Keep moving to play its XY; lift to close it. On a Padiano note it bends that note only.",
+    "XY on a Padiano header shows the pad's XY under it. The dock can hold an XY button that flips through presets for the pad you picked."
   ],
   "watch": [
-    "Lock the screen mid-jam and try to knock it off the page.",
-    "Glide a bassline on a Padiano with Hold Last on.",
-    "Sweep the dock filter over a running loop."
+    "Put the hats on Bus 1, aim Stutter at Bus 1, and play with the loop running.",
+    "Give a pad the Bend preset, then circle a Padiano note and swing it around.",
+    "Add reverb in the doctor and save it as a new sound."
   ],
   "limits": [
-    "Glide works on notes you play, not on the roll's notes yet.",
-    "Android's own unpin gesture also ends the pin.",
-    "The new effects, routing and XY pads come next."
+    "Reverb and echo are shared spaces: the sound you played last sets their size and time.",
+    "On a single Padiano note, the sphere moves that note's pitch and level; other targets move the whole pad.",
+    "The site plays these sounds without the new effects."
   ]
 }

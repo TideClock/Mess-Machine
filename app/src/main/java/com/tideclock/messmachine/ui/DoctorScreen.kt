@@ -171,6 +171,41 @@ fun DoctorScreen(state: AppState, key: String) {
             for ((v, n) in listOf("loop" to "Loop it", "tail" to "Hold the tail", "once" to "Play once")) Btn(n, { upd(true) { held = v } }, on = e.held == v, small = true, tag = "held-$v")
         }
 
+        Section("Effects")
+        Note("These stay with the sound wherever it plays. Reverb and echo share one space each; the sound you played last sets its size and time.", modifier = Modifier.padding(bottom = 6.dp))
+        val pct = { v: Float -> "${(v * 100).roundToInt()}%" }
+        @Composable
+        fun fxRow(name: String, tag: String, amount: Double, toggle: () -> Unit, body: @Composable () -> Unit) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
+                Btn(name, toggle, on = amount > 0, onColor = C.Teal, small = true, tag = tag)
+                if (amount > 0) Note("  ${(amount * 100).roundToInt()}%", color = C.Yellow)
+            }
+            if (amount > 0) body()
+        }
+        fxRow("Reverb", "dfx-rvb", e.rvb, { upd(true) { rvb = if (rvb > 0) 0.0 else .4 } }) {
+            SliderRow("Amount", e.rvb.toFloat(), 0f..1f, pct, { v -> upd(false) { rvb = v.toDouble() } }, { upd(true) {} }, accent = C.Teal)
+            SliderRow("Space", e.rvbSize.toFloat(), 0f..1f, { if (it < .33f) "small room" else if (it < .66f) "hall" else "cave" }, { v -> upd(false) { rvbSize = v.toDouble() } }, { upd(true) {} }, accent = C.Teal)
+        }
+        fxRow("Echo", "dfx-echo", e.echo, { upd(true) { echo = if (echo > 0) 0.0 else .4 } }) {
+            SliderRow("Amount", e.echo.toFloat(), 0f..1f, pct, { v -> upd(false) { echo = v.toDouble() } }, { upd(true) {} }, accent = C.Teal)
+            Wrap(Modifier.padding(bottom = 4.dp), gap = 6.dp) {
+                for ((t, n) in listOf(0 to "1/16", 1 to "1/8", 2 to "3/16", 3 to "1/4")) Btn(n, { upd(true) { echoT = t } }, on = e.echoT == t, small = true)
+            }
+        }
+        fxRow("Dirty", "dfx-dirt", e.dirt, { upd(true) { dirt = if (dirt > 0) 0.0 else .5 } }) {
+            SliderRow("Drive", e.dirt.toFloat(), 0f..1f, pct, { v -> upd(false) { dirt = v.toDouble() } }, { upd(true) {} }, accent = C.Riot)
+        }
+        fxRow("Crush", "dfx-crush", e.crush, { upd(true) { crush = if (crush > 0) 0.0 else .5 } }) {
+            SliderRow("Bits and rate", e.crush.toFloat(), 0f..1f, pct, { v -> upd(false) { crush = v.toDouble() } }, { upd(true) {} }, accent = C.Riot)
+        }
+        fxRow("Chorus", "dfx-chorus", e.chorus, { upd(true) { chorus = if (chorus > 0) 0.0 else .5 } }) {
+            SliderRow("Depth", e.chorus.toFloat(), 0f..1f, pct, { v -> upd(false) { chorus = v.toDouble() } }, { upd(true) {} }, accent = C.Pink)
+        }
+        fxRow("Wobble", "dfx-wob", e.wob, { upd(true) { wob = if (wob > 0) 0.0 else .5 } }) {
+            SliderRow("Depth", e.wob.toFloat(), 0f..1f, pct, { v -> upd(false) { wob = v.toDouble() } }, { upd(true) {} }, accent = C.Pink)
+            SliderRow("Speed", e.wobRate.toFloat(), 0f..1f, { "%.1f Hz".format(.3f + it * 5.7f) }, { v -> upd(false) { wobRate = v.toDouble() } }, { upd(true) {} }, accent = C.Pink)
+        }
+
         Section("Re-pitch to fit")
         Wrap(Modifier) {
             for ((b, label) in listOf(.25 to "1 beat", .5 to "2 beats", 1.0 to "1 bar", 2.0 to "2 bars", 4.0 to "4 bars")) {

@@ -52,10 +52,11 @@ import com.tideclock.messmachine.engine.Theory
 fun PadsScreen(state: AppState) {
     val P = state.project
     ScrollPane {
-        Row(Modifier.fillMaxWidth().padding(bottom = 12.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.fillMaxWidth().padding(bottom = 12.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            T("BANK", size = 11.sp, color = C.Dim, spacing = .1.em)
             for (b in 0 until 4) {
                 val n = (0 until Project.BANK).count { P.kit[b * Project.BANK + it].isNotEmpty() }
-                Btn("Bank ${b + 1}", modifier = Modifier.weight(1f), onClick = { state.bank = b }, on = state.bank == b && !state.keysMode, small = true, enabled = !state.keysMode, tag = "bank-$b")
+                Btn("${b + 1}", modifier = Modifier.weight(1f), onClick = { state.bank = b }, on = state.bank == b && !state.keysMode, small = true, enabled = !state.keysMode, tag = "bank-$b")
             }
         }
         Wrap(Modifier.padding(bottom = 12.dp)) {
@@ -137,6 +138,7 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
     val P = state.project
     var pressed by remember { mutableStateOf(false) }
     var armed by remember { mutableStateOf(false) }
+    val origin = remember { Origin() }
     val keys = state.keysMode
     val i = state.bank * Project.BANK + d
     val key = if (keys) state.selKey() else P.kit[i]
@@ -182,6 +184,7 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
                 }
             }
             .then(if (!empty) Modifier.border(if (sel) 3.dp else 2.dp, if (sel) C.Cream else C.Black, RoundedCornerShape(7.dp)) else Modifier)
+            .trackOrigin(origin)
             .pointerInput(d) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
@@ -192,13 +195,28 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
                     state.padDown(d)
                     val slop = 10.dp.toPx()
                     var moved = false
-                    // follows this finger until it lifts; any slide past the slop cancels the menu
+                    val pi = state.bank * Project.BANK + d
+                    val det = CircleDetector(40.dp.toPx())
+                    var sph: AppState.Sphere? = null
+                    var lastXy = 0f to 0f
+                    // follows this finger until it lifts; any slide past the slop cancels the menu,
+                    // and a circle opens the pad's XY as a sphere over it until the finger lifts
                     suspend fun androidx.compose.ui.input.pointer.AwaitPointerEventScope.follow() {
                         while (true) {
                             val e = awaitPointerEvent()
                             val c = e.changes.firstOrNull { it.id == down.id } ?: return
                             if (!c.pressed) { c.consume(); return }
                             if ((c.position - down.position).getDistance() > slop) { moved = true; armed = false }
+                            val s0 = sph
+                            if (s0 != null) {
+                                lastXy = sphereXy(s0, state.xyOf(pi).four, origin.at + c.position)
+                                state.xyMove(pi, lastXy.first, lastXy.second, true)
+                            } else if (!state.keysMode && state.project.kit[pi].isNotEmpty() && det.add(c.position)) {
+                                val cc = origin.at + det.center()
+                                val s1 = AppState.Sphere(pi, Int.MIN_VALUE, cc.x, cc.y, xyDp(state.xyOf(pi).size).toPx() * .5f)
+                                sph = s1
+                                state.sphere = s1
+                            }
                             c.consume()
                         }
                     }
@@ -210,7 +228,8 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
                     }
                     pressed = false
                     state.padUp(d)
-                    if (armed && !moved) state.padMenu = state.bank * Project.BANK + d
+                    sph?.let { s0 -> state.xyMove(pi, lastXy.first, lastXy.second, false); if (state.sphere == s0) state.sphere = null }
+                    if (armed && !moved) state.padMenu = pi
                     armed = false
                 }
             }
@@ -218,8 +237,9 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
     ) {
         T(top, size = 11.sp, color = if (empty) C.Empty else ink(fill).copy(alpha = .75f), modifier = Modifier.align(Alignment.TopStart))
         if (!keys && !empty && P.edits.containsKey(key)) T("✂", size = 12.sp, color = ink(fill), modifier = Modifier.align(Alignment.TopEnd))
+        if (!keys && !empty && P.opt(i).route > 0) T("B${P.opt(i).route}", size = 10.sp, color = ink(fill), family = Mono, modifier = Modifier.align(Alignment.TopCenter))
         if (!keys) PadMenu(state, i)
-        T(main, size = if (keys) 18.sp else 11.sp, color = if (empty) C.Empty else ink(fill), weight = FontWeight.Black, lines = 3, modifier = Modifier.align(Alignment.BottomStart))
+        T(main, size = if (keys) 18.sp else if (state.dockOpen) 9.5.sp else 11.sp, color = if (empty) C.Empty else ink(fill), weight = FontWeight.Black, lines = 3, modifier = Modifier.align(Alignment.BottomStart))
     }
 }
 
@@ -304,6 +324,8 @@ fun PadMenu(state: AppState, i: Int) {
             item("Hear it", "menu-hear") { state.preview(k) }
             item("Swap sound", "menu-swap") { state.selectPad(i, false); state.overlay = Overlay.Picker(i) }
             item(if (k in state.favs) "★ Unstar" else "☆ Star", "menu-star") { state.toggleFav(k) }
+            item("XY setup (${state.xyOf(i).name})", "menu-xy") { state.selectPad(i, false); state.overlay = Overlay.Xy(i) }
+            item("Route: " + (if (P.opt(i).route == 0) "mix" else "bus ${P.opt(i).route}") + " (tap for next)", "menu-route") { state.cycleRoute(i) }
             item("Keep in Your Workbench", "menu-keep") { state.keepInBench(i) }
             item("Share this sound", "menu-share") { state.shareSoundWav(k) }
             item("Clear pad", "menu-clear") { state.clearPad(i) }

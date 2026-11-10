@@ -128,12 +128,14 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
                 when (o) {
                     is Overlay.Picker -> Sheet(state, "Pick a sound for pad ${o.pad + 1}") { SoundsScreen(state, o.pad) }
                     is Overlay.Doctor -> Sheet(state, "Doctor's table") { DoctorScreen(state, o.key) }
+                    is Overlay.Xy -> Sheet(state, "XY for pad ${o.pad + 1}") { XyEditor(state, o.pad) }
                     Overlay.Files -> Sheet(state, "Messes") { FilesScreen(state) }
                     Overlay.Tempo -> Sheet(state, "Tempo + feel") { TempoScreen(state) }
                     Overlay.Notes -> Sheet(state, "Notes for Claude") { NotesScreen(state) }
                     null -> Box(Modifier) {}
                 }
             }
+            SphereOverlay(state)
             state.toast?.let { msg ->
                 Box(Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = 84.dp)) {
                     Box(Modifier.sticker(C.Yellow, shadow = 5.dp).clickable { state.toast = null }.testTag("toast").padding(horizontal = 14.dp, vertical = 11.dp)) {

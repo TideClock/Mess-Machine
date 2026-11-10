@@ -45,14 +45,14 @@ data class Module(val type: String, val pad: Int = -1, val size: Int = 1, val ha
 /** What can sit on the side dock. */
 val DOCK_TYPES = listOf(
     "lock" to "Lock", "hold" to "Hold", "filter" to "Filter + resonance", "repeat" to "Repeat", "hush" to "Hush",
-    "rec" to "Rec", "beat" to "Beat light", "stutter" to "Stutter", "echo" to "Echo throw",
+    "rec" to "Rec", "beat" to "Beat light", "stutter" to "Stutter", "echo" to "Echo throw", "xy" to "XY setup for the picked pad",
 )
 
 /** Every module you can add, with its name. */
 val CONSOLE_TYPES = listOf(
     "transport" to "Transport", "pads" to "Pads (4 x 4)", "row" to "One row of pads", "piano" to "Padiano for a pad",
     "pfilt" to "Filter for a pad", "hold" to "Hold", "fx" to "Effects (all nine)", "fx1" to "One effect", "xy" to "Filter pad (everything)",
-    "repeat" to "Repeat + arp", "loops" to "Loops A to H", "scale" to "Scale + chords", "beat" to "Beat light",
+    "repeat" to "Repeat + arp", "loops" to "Loops A to H", "scale" to "Scale + chords", "beat" to "Beat light", "xyp" to "XY for a pad",
 )
 
 /** The site's perform effects, in the order the panels show them. */
@@ -68,6 +68,7 @@ sealed class Overlay {
     data object Files : Overlay()
     data object Tempo : Overlay()
     data object Notes : Overlay()
+    data class Xy(val pad: Int) : Overlay()
 }
 
 data class MessFile(val id: String, val name: String, val bpm: Int, val at: String, val pads: Int, val loops: Int, val songBars: Int)
@@ -562,6 +563,7 @@ class AppState(private val app: Context) {
         if (playing) { engine.pause(); playing = false }
         engine.panic()
         latched.clear()
+        fxOn.clear(); fxLive.clear(); xyLive.clear(); sphere = null
         for (p in padFilt.keys.toList()) openPadFilter(p)
         for (d in 0 until 16) downIds[d] = -1
         say("Hushed. Everything is quiet. Play picks up where it paused.")
@@ -750,6 +752,7 @@ class AppState(private val app: Context) {
 
     private fun overlayName(o: Overlay): String = when (o) {
         is Overlay.Picker -> "sound picker (pad ${o.pad + 1})"
+        is Overlay.Xy -> "XY setup (pad ${o.pad + 1})"
         is Overlay.Doctor -> "doctor (${lib.titleOf(o.key)})"
         Overlay.Files -> "messes"
         Overlay.Tempo -> "tempo"
@@ -929,11 +932,7 @@ class AppState(private val app: Context) {
 
     /* ---------------- perform FX ---------------- */
 
-    fun fx(name: String, on: Boolean) {
-        if (on && (name == "stutter" || name == "tape") && !playing) { say("Stutter and tape stop work while the loop plays."); return }
-        if (on) notes.trail("fx $name")
-        engine.fx(name, on)
-    }
+    fun fx(name: String, on: Boolean) = fxPress(name, on)
 
     fun xy(x: Float, y: Float, on: Boolean) = engine.xy(x, y, on)
 
@@ -966,7 +965,7 @@ class AppState(private val app: Context) {
 
     fun addModule(type: String) {
         val pad = when (type) {
-            "piano", "pfilt" -> project.sel.takeIf { project.kit[it].isNotEmpty() } ?: firstTonalPad()
+            "piano", "pfilt", "xyp" -> project.sel.takeIf { project.kit[it].isNotEmpty() } ?: firstTonalPad()
             "row", "fx1" -> 0
             else -> -1
         }
@@ -1117,6 +1116,149 @@ class AppState(private val app: Context) {
         dockTarget = if (t < 0 && project.kit[project.sel].isNotEmpty()) project.sel else -1
         dockCut = 1f; dockRes = 0f
     }
+
+    /* ---------------- perform effects you can edit ---------------- */
+
+    /** How one perform effect behaves: amount 0..1, held / stays / slider, where it acts, and the gate's length in steps. */
+    data class FxSet(val amount: Float = 1f, val behave: String = "held", val target: Int = -1, val steps: Int = 1)
+
+    val fxSets = mutableStateMapOf<String, FxSet>().also { m ->
+        for (part in (prefs.getString("fxsets", "") ?: "").split(";")) {
+            val f = part.split(":")
+            if (f.size == 5) try { m[f[0]] = FxSet(f[1].toFloat(), f[2], f[3].toInt(), f[4].toInt()) } catch (_: Exception) {}
+        }
+    }
+    /** Effects switched on and staying on (behave = stays or slider), and the one being edited. */
+    val fxOn = mutableStateListOf<String>()
+    var fxEditing by mutableStateOf<String?>(null)
+    /** Live amount while a finger slides along an effect. */
+    val fxLive = mutableStateMapOf<String, Float>()
+
+    fun fxSet(name: String): FxSet = fxSets[name] ?: FxSet()
+
+    fun changeFx(name: String, s: FxSet) {
+        val was = fxSet(name)
+        if (name in fxOn && was.target != s.target) { sendFx(name, was, false, 0f); fxOn.remove(name) }
+        fxSets[name] = s
+        prefs.edit().putString("fxsets", fxSets.entries.joinToString(";") { (k, v) -> "$k:${v.amount}:${v.behave}:${v.target}:${v.steps}" }).apply()
+        if (name == "gate") engine.gateLength(s.steps)
+    }
+
+    private fun sendFx(name: String, s: FxSet, on: Boolean, amt: Float) {
+        if (s.target < 0) {
+            engine.fxAmount(name, amt)
+            engine.fx(name, on)
+        } else engine.fxTo(name, s.target, if (on) amt.coerceAtLeast(.01f) else 0f)
+    }
+
+    /** A finger on an effect: on = down/up, amount = where the finger is (null = the set amount). */
+    fun fxPress(name: String, on: Boolean, amount: Float? = null) {
+        val s = fxSet(name)
+        if (on && (name == "stutter" || name == "tape") && !playing && s.target < 0) { say("Stutter and tape stop work while the loop plays."); return }
+        val amt = amount ?: s.amount
+        when (s.behave) {
+            "stays" -> if (on) {
+                if (name in fxOn) { fxOn.remove(name); sendFx(name, s, false, 0f) }
+                else { fxOn.add(name); sendFx(name, s, true, amt); notes.trail("fx $name on") }
+            }
+            "slider" -> {
+                if (amount != null) {
+                    fxLive[name] = amount
+                    if (amount > .02f) { if (name !in fxOn) fxOn.add(name); sendFx(name, s, true, amount) }
+                    else { fxOn.remove(name); sendFx(name, s, false, 0f) }
+                }
+            }
+            else -> {
+                if (on) notes.trail("fx $name")
+                sendFx(name, s, on, amt)
+                if (!on) fxLive.remove(name)
+            }
+        }
+    }
+
+    /** The finger slid along a held effect: change how much it does, live. */
+    fun fxSlide(name: String, amount: Float) {
+        val s = fxSet(name)
+        fxLive[name] = amount
+        if (s.behave == "slider") { fxPress(name, true, amount); return }
+        sendFx(name, s, true, amount)
+    }
+
+    fun fxTargetName(t: Int): String = when { t < 0 -> "Mix"; t >= 65 -> "Bus ${t - 64}"; else -> "Pad ${t + 1}" }
+
+    /* ---------------- routing ---------------- */
+
+    fun routeOf(pad: Int): Int = project.opt(pad).route
+    fun cycleRoute(pad: Int) { padMenu = -1; setPadOpt(pad) { route = (route + 1) % 5 }; say("Pad ${pad + 1} goes to " + (if (routeOf(pad) == 0) "the mix." else "bus ${routeOf(pad)}.")) }
+
+    /* ---------------- XY: a pad's own control surface ---------------- */
+
+    fun xyOf(pad: Int): XySetup = XySetup.parse(project.opt(pad).xy) ?: XySetup.PRESETS[0]
+    fun setXy(pad: Int, x: XySetup) = setPadOpt(pad) { xy = x.code() }
+
+    /** Your own saved setups. */
+    val myXy = mutableStateListOf<XySetup>().also { l -> (prefs.getString("myxy", "") ?: "").split(";;").mapNotNull { XySetup.parse(it) }.forEach { l.add(it) } }
+    fun saveMyXy(x: XySetup) {
+        val named = x.copy(name = "Mine ${myXy.size + 1}")
+        myXy.add(named)
+        prefs.edit().putString("myxy", myXy.joinToString(";;") { it.code() }).apply()
+        say("Saved as ${named.name}.")
+    }
+    fun allXy(): List<XySetup> = XySetup.PRESETS + myXy
+
+    /** Next setup in the list, for the dock's XY button. */
+    fun cycleXy(pad: Int) {
+        val all = allXy()
+        val i = all.indexOfFirst { it.name == xyOf(pad).name }
+        setXy(pad, all[(i + 1) % all.size])
+    }
+
+    private val xyUsed = HashMap<Int, Set<Int>>()
+
+    /**
+     * A finger on a pad's XY: fx, fy are two-way 0..1 from the bottom left, or four-way -1..1 from the
+     * middle. on = false: the finger lifted (spring back unless the setup stays). note >= 0 moves one
+     * Padiano note's pitch and level instead of the whole pad's.
+     */
+    fun xyMove(pad: Int, fx: Float, fy: Float, on: Boolean, note: Int = Int.MIN_VALUE) {
+        val x = xyOf(pad)
+        val vals = if (on || !x.spring) x.values(fx, fy) else emptyMap()
+        val used = x.targets() + (xyUsed[pad] ?: emptySet())
+        for (t in used) {
+            var v = vals[t] ?: 0f
+            when (t) {
+                Engine.T_FILTER, Engine.T_RES -> {}
+                Engine.T_PITCH -> {
+                    if (x.steps && v != 0f) v = snapToScale(v)
+                    if (note != Int.MIN_VALUE) engine.noteMod(10000 + pad * 100 + (note + 48), v, 1f + (vals[Engine.T_VOL] ?: 0f))
+                    else engine.mod(pad, t, v)
+                }
+                Engine.T_VOL -> if (note == Int.MIN_VALUE) engine.mod(pad, t, v)
+                else -> engine.mod(pad, t, v)
+            }
+        }
+        val cut = vals[Engine.T_FILTER] ?: 0f
+        val res = vals[Engine.T_RES] ?: 0f
+        if (cut > 0f || res > 0f) { padFilt[pad] = (1f - cut).coerceIn(0f, 1f) to res.coerceIn(0f, 1f); engine.padFilter(pad, (1f - cut).coerceIn(0f, 1f), res.coerceIn(0f, 1f), true) }
+        else if (Engine.T_FILTER in used || Engine.T_RES in used) { if (pad !in padFiltStay) { padFilt.remove(pad); engine.padFilter(pad, 1f, 0f, false) } }
+        xyUsed[pad] = if (on || !x.spring) x.targets() else emptySet()
+        xyLive[pad] = if (on) fx to fy else if (x.spring) null else fx to fy
+    }
+
+    /** Where each pad's XY finger is, for drawing. */
+    val xyLive = mutableStateMapOf<Int, Pair<Float, Float>?>()
+
+    /** Round a bend to the nearest step of the scale (counted from the root). */
+    private fun snapToScale(semis: Float): Float {
+        if (project.scale == "Chromatic") return Math.round(semis).toFloat()
+        var best = 0; var bd = 99f
+        for (c in -36..36) if (Theory.inScale(c + project.root, project.scale, project.root)) { val d = kotlin.math.abs(c - semis); if (d < bd) { bd = d; best = c } }
+        return best.toFloat()
+    }
+
+    /** A circle drawn on a pad or a Padiano key: the sphere it opened, in screen pixels. */
+    data class Sphere(val pad: Int, val note: Int, val cx: Float, val cy: Float, val r: Float)
+    var sphere by mutableStateOf<Sphere?>(null)
 
     /* ---------------- per-pad settings: glide, routing, XY ---------------- */
 

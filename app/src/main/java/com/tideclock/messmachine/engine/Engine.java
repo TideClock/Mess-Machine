@@ -141,6 +141,10 @@ public final class Engine {
         boolean filt;
         float b0, b1, b2, a1, a2, x1, x2, y1, y2;
         float px1, px2, py1, py2;
+        float fxRvb, fxEcho, fxDirt, fxCrush, fxChorus, fxWob, fxWobRate, crushVal, volMul = 1;
+        double wobPh, chPh, bendMul = 1, panX;
+        float[] chBuf;
+        int chW, crushCnt;
         float lastEnv;
     }
 
@@ -238,6 +242,17 @@ public final class Engine {
         dlyR = new float[(int) (2.0 * rate)];
         java.util.Arrays.fill(pfFreq, 20000); java.util.Arrays.fill(pfTarget, 20000);
         java.util.Arrays.fill(lastP, Double.NaN);
+        java.util.Arrays.fill(padRateFrom, 1); java.util.Arrays.fill(padRateTo, 1); java.util.Arrays.fill(padVol, 1);
+        for (int c = 0; c < 4; c++) {
+            combL[c] = new float[Math.max(1, COMB[c] * rate / 44100)];
+            combR[c] = new float[Math.max(1, (COMB[c] + 23) * rate / 44100)];
+        }
+        for (int a = 0; a < 2; a++) {
+            apL[a] = new float[Math.max(1, ALLP[a] * rate / 44100)];
+            apR[a] = new float[Math.max(1, (ALLP[a] + 23) * rate / 44100)];
+        }
+        sEchoL = new float[(int) (2.2 * rate)];
+        sEchoR = new float[(int) (2.2 * rate)];
         java.util.Arrays.fill(pfQ, .7); java.util.Arrays.fill(pfQT, .7);
         snap = Snapshot.build(new Project(), k -> null, null);
     }
@@ -313,7 +328,11 @@ public final class Engine {
         java.util.Arrays.fill(out, 0, frames * 2, 0f);
         if (dryBuf.length < frames * 2) dryBuf = new float[frames * 2];
         java.util.Arrays.fill(dryBuf, 0, frames * 2, 0f);
+        if (rvbIn.length < frames * 2) { rvbIn = new float[frames * 2]; echoIn = new float[frames * 2]; }
+        java.util.Arrays.fill(rvbIn, 0, frames * 2, 0f);
+        java.util.Arrays.fill(echoIn, 0, frames * 2, 0f);
         padFilters(frames);
+        padBlock(S, frames);
         int done = 0;
         while (done < frames) {
             int chunk = frames - done;
@@ -330,6 +349,7 @@ public final class Engine {
             done += chunk;
             frame += chunk;
         }
+        soundBuses(out, frames);
         effects(S, out, frames);
         for (int k = 0; k < frames * 2; k++) out[k] += dryBuf[k];
         if (!bypassMaster) master(out, frames);
@@ -392,6 +412,8 @@ public final class Engine {
                 break;
             case "panic":
                 for (Voice v : pool) v.active = false;
+                for (float[] m : pMod) java.util.Arrays.fill(m, 0f);
+                for (float[] m : tFx) java.util.Arrays.fill(m, 0f);
                 held.clear(); freeOn = false;
                 break;
             case "down": padDown(S, (Integer) c[1], (Integer) c[2], (int[]) c[3], (Boolean) c[4], (Long) c[5], renderNanos, c.length > 6 && (Boolean) c[6]); break;
@@ -414,6 +436,23 @@ public final class Engine {
             }
             case "stopprev": for (Voice v : pool) if (v.active && v.preview) startRelease(v, .03f); break;
             case "fx": fxSet(S, (String) c[1], (Boolean) c[2]); break;
+            case "mod": {
+                int pd = (Integer) c[1], t = (Integer) c[2];
+                if (pd >= 0 && pd < 64 && t >= 0 && t < NT) pMod[pd][t] = (Float) c[3];
+                break;
+            }
+            case "fxt": {
+                int k = fxIndex((String) c[1]), t = (Integer) c[2];
+                if (k >= 0 && t >= 0 && t < tFx.length) tFx[t][k] = Math.max(0, Math.min(1, (Float) c[3]));
+                break;
+            }
+            case "famt": { int k = fxIndex((String) c[1]); if (k >= 0) mixAmt[k] = Math.max(0, Math.min(1, (Float) c[2])); break; }
+            case "gatelen": gateSteps = Math.max(1, (Integer) c[1]); gateHz = 1.0 / (60.0 / Math.max(40, S.bpm) / 4 * gateSteps); break;
+            case "nmod": {
+                Held h = held.get((Integer) c[1]);
+                if (h != null) for (Voice v : h.voices) { v.bendMul = Math.pow(2, (Float) c[2] / 12.0); v.volMul = Math.max(0, (Float) c[3]); }
+                break;
+            }
             case "xy":
                 xyOn = (Boolean) c[3];
                 if (xyOn) {
@@ -464,7 +503,8 @@ public final class Engine {
         if (old != null) for (Voice v : old.voices) startRelease(v, .02f);
         // glide: slide in from the pad's last note (legato: only while another note of this pad is down)
         double from = Double.NaN;
-        if (mel && pad >= 0 && pad < lastP.length && ps.opts.glide && ps.opts.glideT > .001 && !Double.isNaN(lastP[pad])) {
+        double gT = pad >= 0 && pad < 64 && pMod[pad][T_GLIDE] > .001 ? pMod[pad][T_GLIDE] : ps.opts.glide ? ps.opts.glideT : 0;
+        if (mel && pad >= 0 && pad < lastP.length && gT > .001 && !Double.isNaN(lastP[pad])) {
             boolean overlap = false;
             for (Held o : held.values()) if (o.pad.index == pad) { overlap = true; break; }
             if (!ps.opts.legato || overlap) from = lastP[pad];
@@ -479,7 +519,7 @@ public final class Engine {
                 Voice v = trigger(ps, oct() * Math.pow(2, p / 12.0), 0, false, g, 0, h.holdV);
                 if (v == null) continue;
                 // Hold keeps a one-shot going: loop its trim, or freeze its tail
-                if (!Double.isNaN(from)) glide(v, from + (p - pitches[0]) - p, ps.opts.glideT);
+                if (!Double.isNaN(from)) glide(v, from + (p - pitches[0]) - p, gT);
                 if (latch && !v.loop && !"once".equals(ps.edit.held)) {
                     v.loop = true;
                     if ("tail".equals(ps.edit.held)) v.loopFrom = Math.max(v.len * .7, v.len - .12 * ps.sample.rate);
@@ -569,13 +609,16 @@ public final class Engine {
         int s = step;
         if (fxStut) { s = stutA + Math.floorMod(step - stutB, 2); if (s >= len) s = 0; }
         lastStep = s;
+        final int s0 = s;
         double at = nextStepAt - frame + (s % 2 == 1 ? S.swing / 100.0 * spb * .5 : 0);
         long delay = Math.max(0, Math.round(at));
         if (P != null && !mute) {
             for (Track t : P.tracks) {
                 if (!t.pad.audible) continue;
-                if (t.steps[s]) trigger(t.pad, rateMul, t.gap[s] * spb / rate, false, .85f, delay, false);
-                int[] nt = t.notes[s];
+                int ti = t.pad.index, ts = s0;
+                if (ti >= 0 && ti < 64 && padStut[ti] && !fxStut) { ts = pStutA[ti] + Math.floorMod(step - pStutB[ti], 2); if (ts >= len) ts = 0; }
+                if (t.steps[ts]) trigger(t.pad, rateMul, t.gap[ts] * spb / rate, false, .85f, delay, false);
+                int[] nt = t.notes[ts];
                 for (int k = 0; k < nt.length; k += 2) trigger(t.pad, rateMul * Math.pow(2, nt[k] / 12.0), (fxStut ? Math.min(nt[k + 1], 2) : nt[k + 1]) * spb / rate, true, .78f, delay, false);
             }
         }
@@ -624,7 +667,8 @@ public final class Engine {
     /* ---------- starting one voice, voiceEd() from the site ---------- */
 
     private Voice trigger(PadSlot ps, double rateMul, double durSec, boolean gate, float gain, long delay, boolean hold) {
-        return trigger(ps, rateMul, durSec, gate, gain, delay, hold, fxRev);
+        boolean flip = fxRev || (ps.index >= 0 && ps.index < 64 && padRev[ps.index]);
+        return trigger(ps, rateMul, durSec, gate, gain, delay, hold, flip);
     }
 
     private Voice trigger(PadSlot ps, double rateMul, double durSec, boolean gate, float gain, long delay, boolean hold, boolean flip) {
@@ -635,6 +679,8 @@ public final class Engine {
         boolean rev = e.rev != flip;
         float[] d = rev ? s.reversedData() : s.data;
         double a = e.st * N, z = e.en * N;
+        float[] pm = ps.index >= 0 && ps.index < 64 ? pMod[ps.index] : null;
+        if (pm != null && pm[T_START] > 0) a = Math.min(z - .005 * s.rate, a + (z - a) * Math.min(.95, pm[T_START]));
         if (rev) { double a2 = N - z; z = N - a; a = a2; }
         double len = Math.max(.005 * s.rate, z - a);
         double r = Math.max(.05, rateMul * Math.pow(2, (e.tune + e.fine / 100.0) / 12.0));
@@ -642,8 +688,8 @@ public final class Engine {
         double natural = len / s.rate / r;
         boolean g = "gate".equals(e.mode) || gate;
         double play = hold ? 600 : e.loop ? (durSec > 0 ? durSec : natural) : (g && durSec > 0 ? Math.min(durSec, natural) : natural);
-        double att = Math.min(e.att, play * .9);
-        double fade = Math.min(Math.max(e.rel, .004), Math.max(.002, play - att));
+        double att = Math.min(e.att + (pm != null ? Math.max(0, pm[T_ATT]) : 0), play * .9);
+        double fade = Math.min(Math.max(e.rel + (pm != null ? Math.max(0, pm[T_REL]) : 0), .004), Math.max(.002, play - att));
 
         Voice v = freeVoice();
         v.active = true; v.preview = false; v.dry = false; v.hold = hold; v.releasing = false; v.choked = false;
@@ -659,6 +705,13 @@ public final class Engine {
         v.pad = ps.index; v.choke = e.choke; v.startAbs = frame + delay; v.chokeAt = Long.MAX_VALUE; v.chokeG = 1; v.lastEnv = 0;
         v.relLeft = 0; v.relLen = 1; v.relFrom = 0;
         v.px1 = v.px2 = v.py1 = v.py2 = 0;
+        v.fxRvb = (float) e.rvb; v.fxEcho = (float) e.echo; v.fxDirt = (float) e.dirt; v.fxCrush = (float) e.crush;
+        v.fxChorus = (float) e.chorus; v.fxWob = (float) e.wob; v.fxWobRate = (float) e.wobRate;
+        v.wobPh = 0; v.chPh = 0; v.chW = 0; v.crushCnt = 0; v.crushVal = 0; v.bendMul = 1; v.volMul = 1; v.panX = e.pan;
+        if (v.chBuf != null) java.util.Arrays.fill(v.chBuf, 0f);
+        if (e.rvb > 0) rvbSizeT = (float) e.rvbSize;
+        if (e.echo > 0) sEchoDiv = e.echoT;
+        triggers++;
         setFilter(v, e.tone);
         if (e.choke > 0) {
             for (Voice o : pool) if (o != v && o.active && !o.preview && o.choke == e.choke && o.startAbs < v.startAbs) o.chokeAt = Math.min(o.chokeAt, v.startAbs);
@@ -707,6 +760,7 @@ public final class Engine {
 
     private void mix(float[] out, int off, int n) {
         float chokeK = (float) Math.exp(-1.0 / (.006 * rate));
+        double gateDiv = Math.max(1, spbNow * gateSteps);
         for (Voice v : pool) {
             if (!v.active) continue;
             int k = 0;
@@ -717,6 +771,26 @@ public final class Engine {
                 if (v.delay > 0) continue;
             }
             float[] d = v.d;
+            int p = v.pad >= 0 && v.pad < 64 ? v.pad : -1;
+            // what this pad adds right now (XY, per-pad and per-bus effects)
+            float dirt = v.fxDirt + (p >= 0 ? padDirt[p] : 0), crush = v.fxCrush + (p >= 0 ? padCrush[p] : 0);
+            float chorus = v.fxChorus + (p >= 0 ? padChorus[p] : 0), wob = v.fxWob + (p >= 0 ? padWob[p] : 0);
+            float gate = p >= 0 ? padGate[p] : 0, ring = p >= 0 ? padRing[p] : 0;
+            float rvbS = Math.min(1, v.fxRvb + (p >= 0 ? padRvb[p] : 0)), echoS = Math.min(1, v.fxEcho + (p >= 0 ? padEcho[p] : 0));
+            float vol = (p >= 0 ? padVol[p] : 1) * v.volMul;
+            float gl = v.gl, gr = v.gr;
+            if (p >= 0 && padPan[p] != 0) {
+                double x = Math.max(0, Math.min(1, (v.panX + padPan[p] + 1) / 2));
+                gl = (float) Math.min(1, Math.sqrt(2) * Math.cos(x * Math.PI / 2));
+                gr = (float) Math.min(1, Math.sqrt(2) * Math.sin(x * Math.PI / 2));
+            }
+            if (dirt > 1) dirt = 1; if (crush > 1) crush = 1; if (chorus > 1) chorus = 1; if (wob > 1) wob = 1;
+            float drive = 1 + dirt * 9, driveN = (float) (1 / Math.tanh(drive));
+            int hold = 1 + (int) (crush * 11);
+            float step = crush > 0 ? (float) Math.pow(2, -(15 - crush * 12)) : 0;
+            if (chorus > 0 && v.chBuf == null) v.chBuf = new float[2048];
+            double wobInc = 2 * Math.PI * (.3 + v.fxWobRate * 5.7) / rate, chInc = 2 * Math.PI * .8 / rate;
+            float[] dst = v.dry ? dryBuf : out;
             for (; k < n; k++) {
                 // envelope
                 float env;
@@ -750,22 +824,200 @@ public final class Engine {
                     float y = v.b0 * smp + v.b1 * v.x1 + v.b2 * v.x2 - v.a1 * v.y1 - v.a2 * v.y2;
                     v.x2 = v.x1; v.x1 = smp; v.y2 = v.y1; v.y1 = y; smp = y;
                 }
-                if (v.pad >= 0 && v.pad < 64) {
-                    if (pfOn[v.pad]) {
-                        float[] c = pfC[v.pad];
+                if (p >= 0) {
+                    if (pfOn[p]) {
+                        float[] c = pfC[p];
                         float y = c[0] * smp + c[1] * v.px1 + c[2] * v.px2 - c[3] * v.py1 - c[4] * v.py2;
                         v.px2 = v.px1; v.px1 = smp; v.py2 = v.py1; v.py1 = y; smp = y;
                     } else { v.px2 = v.px1 = v.py2 = v.py1 = smp; }
                 }
-                smp *= env;
+                // the doctor's effects and the pad's live ones
+                if (dirt > 0) smp = (float) Math.tanh(smp * drive) * driveN * (1 - dirt * .35f);
+                if (crush > 0) {
+                    if (--v.crushCnt <= 0) { v.crushCnt = hold; v.crushVal = Math.round(smp / step) * step; }
+                    smp = v.crushVal;
+                }
+                if (ring > 0) smp = smp * (1 - ring) + smp * (float) Math.sin(2 * Math.PI * ringHz * (frame + k) / rate) * ring;
+                if (gate > 0 && ((frame + k) % (long) gateDiv) >= gateDiv / 2) smp *= 1 - gate;
+                smp *= env * vol;
+                float sl = smp, sr = smp;
+                if (chorus > 0) {
+                    float[] cb = v.chBuf;
+                    cb[v.chW & 2047] = smp;
+                    double m = Math.sin(v.chPh);
+                    double dl = (.012 + .006 * m) * rate, dr = (.012 - .006 * m) * rate;
+                    float tl = chRead(cb, v.chW - dl), tr = chRead(cb, v.chW - dr);
+                    v.chW++;
+                    v.chPh += chInc;
+                    sl = smp * (1 - .5f * chorus) + tl * .7f * chorus;
+                    sr = smp * (1 - .5f * chorus) + tr * .7f * chorus;
+                }
                 int o = (off + k) * 2;
-                float[] dst = v.dry ? dryBuf : out;
-                dst[o] += smp * v.gl;
-                dst[o + 1] += smp * v.gr;
-                v.pos += v.inc;
+                float ol = sl * gl, or = sr * gr;
+                dst[o] += ol;
+                dst[o + 1] += or;
+                if (rvbS > 0) { rvbIn[o] += ol * rvbS; rvbIn[o + 1] += or * rvbS; }
+                if (echoS > 0) { echoIn[o] += ol * echoS; echoIn[o + 1] += or * echoS; }
+                double rm = v.bendMul;
+                if (p >= 0) rm *= padRateFrom[p] + (padRateTo[p] - padRateFrom[p]) * ((frame + k - blockStart) / (double) Math.max(1, blockLen));
+                if (wob > 0) { rm *= 1 + wob * .025 * Math.sin(v.wobPh); v.wobPh += wobInc; }
+                v.pos += v.inc * rm;
                 if (v.glideLeft > 0) { v.inc *= v.glideMul; v.glideLeft--; }
                 v.t++;
             }
+        }
+    }
+
+    private static float chRead(float[] b, double at) {
+        int i = (int) Math.floor(at);
+        float f = (float) (at - i);
+        float a = b[i & 2047], c = b[(i + 1) & 2047];
+        return a + (c - a) * f;
+    }
+
+    /* ---------- the sound effects' two shared spaces: a reverb and a tempo echo ---------- */
+
+    private static final int[] COMB = {1116, 1188, 1277, 1356}, ALLP = {556, 441};
+    private final float[][] combL = new float[4][], combR = new float[4][], apL = new float[2][], apR = new float[2][];
+    private final int[] combI = new int[4], apI = new int[2];
+    private final float[] combZL = new float[4], combZR = new float[4];
+    private float rvbSize = .5f, rvbSizeT = .5f;
+    private final float[] sEchoL, sEchoR;
+    private int sEchoW;
+    private double sEchoT = -1;
+    private int sEchoDiv = 1;
+    private float[] rvbIn = new float[0], echoIn = new float[0];
+    private float busLevel;
+
+    private void soundBuses(float[] out, int frames) {
+        float peak = 0;
+        for (int k = 0; k < frames * 2; k++) peak = Math.max(peak, Math.max(Math.abs(rvbIn[k]), Math.abs(echoIn[k])));
+        if (peak < 1e-7f && busLevel < 1e-6f) return;
+        busLevel = 0;
+        rvbSize += (rvbSizeT - rvbSize) * .1f;
+        float fb = .72f + rvbSize * .26f, damp = .25f, wet = .9f;
+        double div = new double[]{1, 2, 3, 4}[sEchoDiv];
+        int dt = (int) Math.min(sEchoL.length - 1, Math.round(spbNow * div));
+        for (int k = 0; k < frames; k++) {
+            float in = (rvbIn[k * 2] + rvbIn[k * 2 + 1]) * .03f;
+            float yl = 0, yr = 0;
+            for (int c = 0; c < 4; c++) {
+                float[] bl = combL[c], br = combR[c];
+                int i = combI[c];
+                float ol = bl[i], or = br[i];
+                combZL[c] = ol * (1 - damp) + combZL[c] * damp;
+                combZR[c] = or * (1 - damp) + combZR[c] * damp;
+                bl[i] = in + combZL[c] * fb;
+                br[i] = in + combZR[c] * fb;
+                combI[c] = (i + 1) % bl.length;
+                yl += ol; yr += or;
+            }
+            for (int a = 0; a < 2; a++) {
+                float[] bl = apL[a], br = apR[a];
+                int i = apI[a];
+                float bo = bl[i], bro = br[i];
+                bl[i] = yl + bo * .5f; br[i] = yr + bro * .5f;
+                yl = bo - yl; yr = bro - yr;
+                apI[a] = (i + 1) % bl.length;
+            }
+            // the echo: tempo-timed, a little darker each repeat
+            int r = Math.floorMod(sEchoW - dt, sEchoL.length);
+            float el = sEchoL[r], er = sEchoR[r];
+            sEchoL[sEchoW] = echoIn[k * 2] + er * .45f;
+            sEchoR[sEchoW] = echoIn[k * 2 + 1] + el * .45f;
+            sEchoW = (sEchoW + 1) % sEchoL.length;
+            float l = yl * wet + el, rr = yr * wet + er;
+            out[k * 2] += l; out[k * 2 + 1] += rr;
+            busLevel = Math.max(busLevel, Math.abs(l) + Math.abs(rr));
+        }
+    }
+
+    /** True when the reverb and echo have died away (for bouncing and baking). */
+    public boolean busesQuiet() { return busLevel < 1e-5f; }
+
+    /* ---------- per-pad live control: XY moves, routing, per-pad and per-bus effects ---------- */
+
+    /** What an XY direction (or any live control) can move on one pad. */
+    public static final int T_PITCH = 0, T_FILTER = 1, T_RES = 2, T_VOL = 3, T_PAN = 4, T_ATT = 5, T_REL = 6, T_START = 7,
+        T_RVB = 8, T_ECHO = 9, T_DIRT = 10, T_CRUSH = 11, T_CHORUS = 12, T_WOB = 13, T_GLIDE = 14, T_ROLL = 15,
+        T_GATE = 16, T_RING = 17, T_STUT = 18, T_TAPE = 19, NT = 20;
+    /** The perform effects, in the order the buttons show them. */
+    public static final String[] FXN = {"stutter", "echo", "crush", "tape", "gate", "dirty", "ring", "oct", "rev"};
+    private static final float[] ZERO9 = new float[9];
+    private final float[][] pMod = new float[64][NT];
+    private final float[][] tFx = new float[69][9];
+    private final float[] padDirt = new float[64], padCrush = new float[64], padChorus = new float[64], padWob = new float[64],
+        padGate = new float[64], padRing = new float[64], padRvb = new float[64], padEcho = new float[64],
+        padVol = new float[64], padPan = new float[64], tapeF = new float[64];
+    private final double[] padRateFrom = new double[64], padRateTo = new double[64];
+    private final boolean[] padStut = new boolean[64], padRev = new boolean[64];
+    private final int[] pStutA = new int[64], pStutB = new int[64];
+    private final long[] rollNext = new long[64];
+    private long blockStart;
+    private int blockLen = 1;
+    private double spbNow = 1000;
+    private int gateSteps = 1;
+    private final float[] mixAmt = {1, 1, 1, 1, 1, 1, 1, 1, 1};
+    public int triggers;
+
+    /** Move one thing on one pad: semitones for pitch, -1..1 for volume and pan, seconds for attack, release and glide, 0..1 for the rest. */
+    public void mod(int pad, int what, float value) { cmds.add(new Object[]{"mod", pad, what, value}); }
+    /** A perform effect on one pad (0..63) or one bus (65..68 = buses 1..4); amount 0 turns it off. */
+    public void fxTo(String name, int target, float amount) { cmds.add(new Object[]{"fxt", name, target, amount}); }
+    /** Bend and level for one held note only (a circle drawn on a Padiano key). */
+    public void noteMod(int id, float semis, float vol) { cmds.add(new Object[]{"nmod", id, semis, vol}); }
+    /** How much a mix effect does when held, 0..1, and the gate's length in steps. */
+    public void fxAmount(String name, float amount) { cmds.add(new Object[]{"famt", name, amount}); }
+    public void gateLength(int steps) { cmds.add(new Object[]{"gatelen", steps}); }
+
+    private static int fxIndex(String n) { for (int k = 0; k < FXN.length; k++) if (FXN[k].equals(n)) return k; return -1; }
+
+    /** The rate a pad plays at right now (XY pitch, tape, octave), for tests. */
+    public double padRate(int pad) { return pad >= 0 && pad < 64 ? padRateTo[pad] : 1; }
+    public float padLevel(int pad) { return pad >= 0 && pad < 64 ? padVol[pad] : 1; }
+
+    private void padBlock(Snapshot S, int frames) {
+        blockStart = frame;
+        blockLen = frames;
+        spbNow = spb(S);
+        for (int p = 0; p < 64; p++) {
+            PadSlot ps = S.pads[p];
+            int bus = ps != null ? ps.opts.route : 0;
+            float[] a = tFx[p], b = bus > 0 ? tFx[64 + bus] : ZERO9, m = pMod[p];
+            padDirt[p] = Math.max(a[5], b[5]) + m[T_DIRT];
+            padCrush[p] = Math.max(a[2], b[2]) + m[T_CRUSH];
+            padGate[p] = Math.min(1, Math.max(a[4], b[4]) + m[T_GATE]);
+            padRing[p] = Math.min(1, Math.max(a[6], b[6]) + m[T_RING]);
+            padEcho[p] = Math.max(a[1], b[1]) + m[T_ECHO];
+            padRvb[p] = m[T_RVB];
+            padChorus[p] = m[T_CHORUS];
+            padWob[p] = m[T_WOB];
+            boolean stut = (Math.max(a[0], b[0]) > 0 || m[T_STUT] > .5f) && playing;
+            if (stut && !padStut[p]) { pStutA[p] = lastStep - (lastStep % 2); pStutB[p] = step; }
+            padStut[p] = stut;
+            padRev[p] = Math.max(a[8], b[8]) > 0;
+            boolean oct = Math.max(a[7], b[7]) > 0;
+            // a held tape stop winds the pad down over about a second; XY tape sets it directly
+            tapeF[p] = Math.max(a[3], b[3]) > 0 ? Math.min(1, tapeF[p] + frames / (1.1f * rate)) : 0;
+            float tape = Math.max(tapeF[p], Math.min(1, m[T_TAPE]));
+            padRateFrom[p] = padRateTo[p];
+            padRateTo[p] = Math.pow(2, m[T_PITCH] / 12.0) * (oct ? .5 : 1) * (1 - .82 * tape);
+            padVol[p] = Math.max(0, 1 + m[T_VOL]) * (tape >= .97f ? 0 : 1);
+            padPan[p] = Math.max(-1, Math.min(1, m[T_PAN]));
+            // roll: this pad's held notes retrigger, from every 2 steps up to every quarter step
+            float roll = m[T_ROLL];
+            if (roll > .05f && ps != null) {
+                List<Held> hs = null;
+                for (Held h : held.values()) if (h.pad.index == p) { if (hs == null) hs = new ArrayList<>(); hs.add(h); }
+                if (hs == null) { rollNext[p] = 0; continue; }
+                double every = Math.pow(2, 1 - 3 * Math.min(1, roll)) * spbNow;
+                if (rollNext[p] < frame) rollNext[p] = frame;
+                while (rollNext[p] < frame + frames) {
+                    long dl = rollNext[p] - frame;
+                    for (Held h : hs) for (int q : h.pitches) trigger(h.pad, oct() * Math.pow(2, q / 12.0), every * .9 / rate, true, Theory.chordGain(h.pitches.length), dl, false);
+                    rollNext[p] += (long) Math.max(1, every);
+                }
+            } else rollNext[p] = 0;
         }
     }
 
@@ -793,11 +1045,11 @@ public final class Engine {
         double ringInc = 2 * Math.PI * ringHz / rate, gateInc = gateHz / rate;
         boolean idle = !filt && !fxCrush && !fxDirt && !fxRing && !fxGate && !fxEcho && wCrush < 1e-4f && wDirt < 1e-4f && wRing < 1e-4f && wGate < 1e-4f && wSend < 1e-4f;
         for (int i = 0; i < frames; i++) {
-            wCrush += ((fxCrush ? 1 : 0) - wCrush) * k;
-            wDirt += ((fxDirt ? 1 : 0) - wDirt) * k;
-            wRing += ((fxRing ? 1 : 0) - wRing) * k;
-            wGate += ((fxGate ? 1 : 0) - wGate) * k * 2;
-            wSend += ((fxEcho ? 1 : 0) - wSend) * k * .5f;
+            wCrush += ((fxCrush ? mixAmt[2] : 0) - wCrush) * k;
+            wDirt += ((fxDirt ? mixAmt[5] : 0) - wDirt) * k;
+            wRing += ((fxRing ? mixAmt[6] : 0) - wRing) * k;
+            wGate += ((fxGate ? mixAmt[4] : 0) - wGate) * k * 2;
+            wSend += ((fxEcho ? mixAmt[1] : 0) - wSend) * k * .5f;
             float l = out[i * 2], r = out[i * 2 + 1];
             if (!idle) {
                 if (filt) {
@@ -868,7 +1120,7 @@ public final class Engine {
         float[] buf = new float[block * 2];
         List<float[]> parts = new ArrayList<>();
         int total = 0;
-        while (en.activeVoices() > 0 && total < s.rate * 60) { en.render(buf, block); parts.add(buf.clone()); total += block; }
+        while ((en.activeVoices() > 0 || !en.busesQuiet()) && total < s.rate * 60) { en.render(buf, block); parts.add(buf.clone()); total += block; }
         float[] lr = new float[total * 2];
         int at = 0;
         for (float[] b : parts) { System.arraycopy(b, 0, lr, at, b.length); at += b.length; }
@@ -903,7 +1155,7 @@ public final class Engine {
             rendered += block;
             if (exact && rendered >= total * stepFrames + .004 * rate) break;
             if (!e.playing && e.fired >= total) {
-                if (e.activeVoices() == 0) { if (quietSince < 0) quietSince = rendered; if (rendered - quietSince > .05 * rate) break; }
+                if (e.activeVoices() == 0 && e.busesQuiet()) { if (quietSince < 0) quietSince = rendered; if (rendered - quietSince > .05 * rate) break; }
                 if (rendered > total * stepFrames + 4.0 * rate) break;
             }
         }

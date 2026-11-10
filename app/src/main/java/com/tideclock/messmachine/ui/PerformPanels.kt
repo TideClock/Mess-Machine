@@ -47,12 +47,13 @@ fun FxPanel(state: AppState) {
     Card(Modifier.fillMaxWidth().padding(top = 18.dp)) {
         Column {
             Heading("Perform", size = 18.sp)
-            Note("Hold an effect while you play. Let go and it stops; echo tails keep ringing.", modifier = Modifier.padding(top = 4.dp, bottom = 10.dp))
+            Note("Hold an effect while you play. Slide along it to set how much. ✎ in its corner: stays on, slider, or aim it at one pad or a bus.", modifier = Modifier.padding(top = 4.dp, bottom = 10.dp))
+            FxEditor(state)
             for (r in 0 until 3) {
                 Row(Modifier.padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     for (c in 0 until 3) {
                         val (id, label) = names[r * 3 + c]
-                        HoldButton(label, Modifier.weight(1f).testTag("fx-$id"), C.Letters[(r * 3 + c) % C.Letters.size]) { on -> state.fx(id, on) }
+                        FxButton(state, id, label, Modifier.weight(1f).testTag("fx-$id"), C.Letters[(r * 3 + c) % C.Letters.size])
                     }
                 }
             }
@@ -154,29 +155,62 @@ private class NoteLook(state: AppState, pad: Int, fingers: Set<Int>) {
     fun isRoot(p: Int) = Theory.pcOf(p - P.root) == 0
 }
 
-/** Multi-finger play with slides: each finger plays the note under it and changes note as it slides. */
-private fun Modifier.playNotes(state: AppState, pad: Int, key: Any, hit: androidx.compose.ui.input.pointer.PointerInputScope.(Offset) -> Int?, onFingers: (Set<Int>) -> Unit): Modifier =
+/**
+ * Multi-finger play with slides: each finger plays the note under it and changes note as it slides.
+ * A finger that draws a circle snaps back to the note it started on and opens a sphere: from then on it
+ * moves that note (pitch, level) and the pad's XY until it lifts.
+ */
+private fun Modifier.playNotes(state: AppState, pad: Int, key: Any, origin: Origin, hit: androidx.compose.ui.input.pointer.PointerInputScope.(Offset) -> Int?, onFingers: (Set<Int>) -> Unit): Modifier =
     this.pointerInput(pad, key) {
         awaitEachGesture {
             val active = HashMap<PointerId, Int>()
+            val starts = HashMap<PointerId, Int>()
+            val dets = HashMap<PointerId, CircleDetector>()
+            val spheres = HashMap<PointerId, AppState.Sphere>()
+            val lastXy = HashMap<PointerId, Pair<Float, Float>>()
             do {
                 val ev = awaitPointerEvent()
                 for (c in ev.changes) {
                     val cur = active[c.id]
+                    val sp = spheres[c.id]
+                    if (c.pressed && sp != null) {
+                        val v = sphereXy(sp, state.xyOf(pad).four, origin.at + c.position)
+                        lastXy[c.id] = v
+                        state.xyMove(pad, v.first, v.second, true, note = sp.note)
+                        c.consume()
+                        continue
+                    }
                     if (c.pressed) {
                         val p = hit(c.position)
                         if (p != cur) {
                             if (cur != null) state.pianoUp(pad, cur)
-                            if (p != null) { state.pianoDown(pad, p); active[c.id] = p } else active.remove(c.id)
+                            if (p != null) { state.pianoDown(pad, p); active[c.id] = p; if (c.id !in starts) starts[c.id] = p } else active.remove(c.id)
+                        }
+                        val det = dets.getOrPut(c.id) { CircleDetector(36.dp.toPx()) }
+                        val start = starts[c.id]
+                        if (start != null && det.add(c.position)) {
+                            val now = active[c.id]
+                            if (now != start) { if (now != null) state.pianoUp(pad, now); state.pianoDown(pad, start); active[c.id] = start }
+                            val cc = origin.at + det.center()
+                            val sp2 = AppState.Sphere(pad, start, cc.x, cc.y, xyDp(state.xyOf(pad).size).toPx() * .5f)
+                            spheres[c.id] = sp2
+                            state.sphere = sp2
                         }
                         c.consume()
-                    } else if (cur != null) {
-                        state.pianoUp(pad, cur)
-                        active.remove(c.id)
+                    } else {
+                        spheres.remove(c.id)?.let { s0 ->
+                            val v = lastXy[c.id] ?: (0f to 0f)
+                            state.xyMove(pad, v.first, v.second, false, note = s0.note)
+                            if (state.sphere == s0) state.sphere = null
+                        }
+                        if (cur != null) { state.pianoUp(pad, cur); active.remove(c.id) }
+                        dets.remove(c.id); starts.remove(c.id)
                     }
                 }
                 onFingers(active.values.toSet())
             } while (ev.changes.any { it.pressed })
+            for ((id, s0) in spheres) { val v = lastXy[id] ?: (0f to 0f); state.xyMove(pad, v.first, v.second, false, note = s0.note) }
+            if (spheres.isNotEmpty()) state.sphere = null
             for (p in active.values) state.pianoUp(pad, p)
             onFingers(emptySet())
         }
@@ -194,6 +228,7 @@ fun PianoKeyboard(state: AppState, pad: Int, keysHeight: Dp = 132.dp, filter: Bo
     if (k.isEmpty()) return
     val col = padColor(Color(state.lib.colorOf(k)))
     var showSet by remember(pad) { mutableStateOf(false) }
+    var showXy by remember(pad) { mutableStateOf(false) }
     val squares = !state.padianoKeys || state.inKeyOnly
     val base = state.padianoBase[pad] ?: 0
     Column(Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 6.dp).testTag("piano-$pad")) {
@@ -210,11 +245,13 @@ fun PianoKeyboard(state: AppState, pad: Int, keysHeight: Dp = 132.dp, filter: Bo
                 Btn("8va ▶", { state.shiftPadiano(pad, 12) }, small = true, enabled = base < 24, tag = "piano-up-$pad")
             }
             PadianoExtras(state, pad)
+            Btn("XY", { showXy = !showXy }, on = showXy, onColor = C.Pink, small = true, tag = "piano-xy-$pad")
         }
         GlideRow(state, pad)
         if (showSet) PadianoSettings(state)
         if (squares) PadianoSquares(state, pad, col, base)
         else PadianoKeys(state, pad, col, if (keysHeight != 132.dp) keysHeight else listOf(96.dp, 132.dp, 176.dp)[state.padianoSize])
+        if (showXy) PadXy(state, pad, Modifier.padding(top = 8.dp))
         if (filter) PadFilterStrip(state, pad, Modifier.padding(top = 8.dp))
     }
 }
@@ -264,6 +301,7 @@ fun PadianoSettings(state: AppState) {
 fun PadianoSquares(state: AppState, pad: Int, col: Color, base: Int) {
     val P = state.project
     var fingers by remember(pad) { mutableStateOf(setOf<Int>()) }
+    val origin = remember { Origin() }
     val notes = (base until base + state.padianoN).filter { !state.inKeyOnly || P.scale == "Chromatic" || Theory.inScale(it, P.scale, P.root) }
     if (notes.isEmpty()) return
     val tm = rememberTextMeasurer()
@@ -281,7 +319,8 @@ fun PadianoSquares(state: AppState, pad: Int, col: Color, base: Int) {
                 .height(rowH * rows)
                 .sticker(C.Ink, shadow = 5.dp, shadowColor = col)
                 .testTag("piano-keys-$pad")
-                .playNotes(state, pad, notes, { o ->
+                .trackOrigin(origin)
+                .playNotes(state, pad, notes, origin, { o ->
                     if (o.x < 0 || o.x > size.width || o.y < 0 || o.y > size.height) null
                     else {
                         val r = (o.y / (size.height / rows.toFloat())).toInt().coerceIn(0, rows - 1)
@@ -332,6 +371,7 @@ fun PadianoKeys(state: AppState, pad: Int, col: Color, keysHeight: Dp) {
     val whites = (Theory.ROLL_LO..Theory.ROLL_HI).filter { !isBlack(it) }
     var start by remember(pad) { mutableIntStateOf(-1) }
     var fingers by remember(pad) { mutableStateOf(setOf<Int>()) }
+    val origin = remember { Origin() }
     val tm = rememberTextMeasurer()
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val avail = maxWidth - 6.dp
@@ -352,7 +392,8 @@ fun PadianoKeys(state: AppState, pad: Int, col: Color, keysHeight: Dp) {
                     .height(keysHeight)
                     .sticker(C.Ink, shadow = 6.dp, shadowColor = col)
                     .testTag("piano-keys-$pad")
-                    .playNotes(state, pad, listOf(first, visible), { o ->
+                    .trackOrigin(origin)
+                    .playNotes(state, pad, listOf(first, visible), origin, { o ->
                         val ww = size.width / visible.toFloat()
                         val bh = size.height * .6f
                         if (o.x < 0 || o.x > size.width || o.y < 0 || o.y > size.height) null

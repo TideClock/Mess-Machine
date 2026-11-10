@@ -510,6 +510,113 @@ class BigTest {
         assertTrue(state.dockOpen)
     }
 
+    /* ---------- build C: effects, routing, XY ---------- */
+
+    @Test fun effectsYouCanEdit() {
+        rule.onNodeWithTag("fx-toggle").performScrollTo().performClick()
+        settle()
+        rule.onNodeWithTag("fxedit-crush").performScrollTo().performClick()
+        settle()
+        rule.onNodeWithTag("fx-editor").assertExists()
+        rule.onNodeWithTag("fxb-crush-stays").performScrollTo().performClick()
+        rule.onNodeWithTag("fxt-crush-pad").performScrollTo().performClick()
+        settle()
+        assertEquals("stays", state.fxSet("crush").behave)
+        assertEquals(state.project.sel, state.fxSet("crush").target)
+        rule.onNodeWithTag("fx-editor").performScrollTo()
+        shot("35-fx-editor")
+        // Stays on: one tap on, the next off
+        at("fx-crush").performTouchInput { down(Offset(width * .3f, height * .6f)); up() }
+        settle()
+        assertTrue("crush" in state.fxOn)
+        at("fx-crush").performTouchInput { down(Offset(width * .3f, height * .6f)); up() }
+        settle()
+        assertFalse("crush" in state.fxOn)
+        // slide along Echo while holding it: the amount follows the finger
+        at("fx-echo").performTouchInput { down(Offset(width * .2f, height * .6f)); moveTo(Offset(width * .85f, height * .6f)) }
+        settle()
+        assertTrue("sliding sets how much (${state.fxLive["echo"]})", (state.fxLive["echo"] ?: 0f) > .6f)
+        rule.onNodeWithTag("fx-echo").performTouchInput { up() }
+        settle()
+    }
+
+    @Test fun doctorEffects() {
+        val k = state.project.kit[0]
+        state.overlay = Overlay.Doctor(k)
+        settle()
+        rule.onNodeWithTag("dfx-rvb").performScrollTo().performClick()
+        settle()
+        rule.onNodeWithTag("dfx-chorus").performScrollTo().performClick()
+        settle()
+        assertTrue("reverb and chorus are on the kick", state.project.edit(k).rvb > 0 && state.project.edit(k).chorus > 0)
+        rule.onNodeWithTag("dfx-chorus").performScrollTo()
+        shot("36-doctor-effects")
+        state.overlay = null
+        settle()
+    }
+
+    @Test fun routingAndPadXy() {
+        longPress("pad-7")
+        rule.onNodeWithTag("menu-route").performClick()
+        settle()
+        assertEquals(1, state.routeOf(7))
+        rule.mainClock.advanceTimeBy(1000); settle()
+        longPress("pad-7")
+        rule.onNodeWithTag("menu-xy").performClick()
+        settle()
+        assertEquals(Overlay.Xy(7), state.overlay)
+        rule.onNodeWithTag("xy-preset-Bend").performScrollTo().performClick()
+        settle()
+        assertTrue(state.xyOf(7).four)
+        shot("37-xy-editor")
+        // the try-out pad: right bends the pitch up, and letting go springs it back
+        at("xy-try").performTouchInput { down(Offset(width * .98f, height / 2f)) }
+        settle(); loudest(1024)
+        assertTrue("right on Bend raises pad 8's pitch (${state.engine.padRate(7)})", state.engine.padRate(7) > 1.3)
+        rule.onNodeWithTag("xy-try").performTouchInput { up() }
+        settle(); loudest(1024)
+        assertEquals(1.0, state.engine.padRate(7), 1e-6)
+        state.overlay = null
+        settle()
+    }
+
+    @Test fun drawACircleForTheSphere() {
+        state.setXy(7, XySetup.PRESETS[2])
+        settle()
+        // a circle on a pad opens its XY as a sphere; it never opens the menu
+        at("pad-7").performTouchInput {
+            val c = center
+            val r = width * .3f
+            down(c + Offset(r, 0f))
+            for (k in 1..22) { val a = k * (2 * Math.PI / 18); moveTo(c + Offset((r * kotlin.math.cos(a)).toFloat(), (r * kotlin.math.sin(a)).toFloat())) }
+        }
+        settle()
+        val sp = state.sphere
+        assertTrue("a circle opens the sphere", sp != null)
+        rule.onNodeWithTag("pad-7").performTouchInput { moveTo(center + Offset(sp!!.r * .9f, 0f)) }
+        settle(); loudest(1024)
+        shot("38-sphere-on-pad")
+        assertTrue("moving right inside the sphere bends the pad up (${state.engine.padRate(7)})", state.engine.padRate(7) > 1.2)
+        rule.onNodeWithTag("pad-7").performTouchInput { up() }
+        settle(); loudest(1024)
+        assertEquals("lifting closes the sphere", null, state.sphere)
+        assertEquals("a circle never opens the menu", -1, state.padMenu)
+        // on a Padiano note too
+        state.toggleKeyboard(7)
+        settle()
+        at("piano-keys-7").performTouchInput {
+            val c = Offset(width * .5f, height * .5f)
+            val r = height * .35f
+            down(c + Offset(r, 0f))
+            for (k in 1..22) { val a = k * (2 * Math.PI / 18); moveTo(c + Offset((r * kotlin.math.cos(a)).toFloat(), (r * kotlin.math.sin(a)).toFloat())) }
+        }
+        settle()
+        assertTrue("a circle on a Padiano note opens a sphere for that note", (state.sphere?.note ?: Int.MIN_VALUE) != Int.MIN_VALUE)
+        rule.onNodeWithTag("piano-keys-7").performTouchInput { up() }
+        settle()
+        assertEquals(null, state.sphere)
+    }
+
     /* ---------- your console ---------- */
 
     @Test fun consoleBuildsAndPlays() {
