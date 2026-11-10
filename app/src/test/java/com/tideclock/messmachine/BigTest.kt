@@ -105,10 +105,13 @@ class BigTest {
         settle()
     }
 
+    /** Scroll a node into view and let the page stop moving, so the next touch lands on it. */
+    private fun at(tag: String) = rule.onNodeWithTag(tag).also { it.performScrollTo(); rule.mainClock.advanceTimeBy(600); settle() }
+
     private fun tab(label: String) { rule.onNodeWithTag("tab-$label").performClick(); settle() }
 
     private fun tapPad(d: Int) {
-        rule.onNodeWithTag("pad-$d").performScrollTo().performTouchInput { down(center) }
+        at("pad-$d").performTouchInput { down(center) }
         settle()
         rule.onNodeWithTag("pad-$d").performTouchInput { up() }
         settle()
@@ -157,7 +160,7 @@ class BigTest {
 
         // play a key on the first piano
         loudest()
-        rule.onNodeWithTag("piano-keys-1").performScrollTo().performTouchInput { down(Offset(width * .5f, height * .85f)) }
+        at("piano-keys-1").performTouchInput { down(Offset(width * .5f, height * .85f)) }
         settle()
         val key = loudest()
         rule.onNodeWithTag("piano-keys-1").performTouchInput { up() }
@@ -165,7 +168,7 @@ class BigTest {
         assertTrue("a piano key plays its pad (peak $key)", key > .02f)
 
         // slide across the keys: the note changes without lifting
-        rule.onNodeWithTag("piano-keys-5").performScrollTo().performTouchInput {
+        at("piano-keys-5").performTouchInput {
             down(Offset(width * .1f, height * .85f)); moveTo(Offset(width * .9f, height * .85f)); up()
         }
         settle()
@@ -176,7 +179,7 @@ class BigTest {
         settle()
         state.engine.panic()
         loudest(1024)
-        rule.onNodeWithTag("piano-keys-5").performScrollTo().performTouchInput { down(Offset(width * .35f, height * .85f)) }
+        at("piano-keys-5").performTouchInput { down(Offset(width * .35f, height * .85f)) }
         settle()
         loudest(1024)
         assertEquals("show chord plays one note", 1, state.engine.activeVoices())
@@ -273,7 +276,7 @@ class BigTest {
         state.toggleKeyboard(7)
         settle()
         // hold the strip near the left: pad 8's filter closes, nothing else's does
-        rule.onNodeWithTag("pfilt-7").performScrollTo().performTouchInput { down(Offset(width * .08f, height * .3f)) }
+        at("pfilt-7").performTouchInput { down(Offset(width * .08f, height * .3f)) }
         settle()
         assertTrue(7 in state.padFilt)
         loudest(2048)
@@ -516,14 +519,14 @@ class BigTest {
         // it plays: a pad, the piano, an effect
         loudest()
         tapPad(0)
-        rule.onNodeWithTag("cfx-crush").performScrollTo().performTouchInput { down(center) }
+        at("cfx-crush").performTouchInput { down(center) }
         settle()
         loudest(1024)
         assertTrue("an effect held on the console", state.engine.fxActive())
         rule.onNodeWithTag("cfx-crush").performTouchInput { up() }
         settle()
         val pp = state.console[2].pad
-        rule.onNodeWithTag("piano-keys-$pp").performScrollTo().performTouchInput { down(Offset(width * .5f, height * .85f)) }
+        at("piano-keys-$pp").performTouchInput { down(Offset(width * .5f, height * .85f)) }
         settle()
         val key = loudest()
         rule.onNodeWithTag("piano-keys-$pp").performTouchInput { up() }
@@ -595,7 +598,7 @@ class BigTest {
         state.pickChordMode("off")
         val k = state.selKey()
         val before = state.project.pat().notes(k).size
-        rule.onNodeWithTag("roll").performScrollTo().performTouchInput { click(Offset(width * .6f, height * .5f)) }
+        at("roll").performTouchInput { click(Offset(width * .6f, height * .5f)) }
         settle()
         assertEquals(before + 1, state.project.pat().notes(k).size)
         shot("07-roll")
@@ -668,14 +671,14 @@ class BigTest {
         settle()
         state.togglePlay()
         loudest(4800)
-        rule.onNodeWithTag("fx-stutter").performScrollTo().performTouchInput { down(center) }
+        at("fx-stutter").performTouchInput { down(center) }
         settle()
         loudest(512)
         assertTrue("stutter is held", state.engine.fxActive())
         rule.onNodeWithTag("fx-stutter").performTouchInput { up() }
         settle()
         loudest(512)
-        rule.onNodeWithTag("xy").performScrollTo().performTouchInput { down(Offset(width * .2f, height * .3f)); moveTo(Offset(width * .6f, height * .4f)) }
+        at("xy").performTouchInput { down(Offset(width * .2f, height * .3f)); moveTo(Offset(width * .6f, height * .4f)) }
         settle()
         loudest(512)
         assertTrue("the filter pad is down", state.engine.fxActive())
