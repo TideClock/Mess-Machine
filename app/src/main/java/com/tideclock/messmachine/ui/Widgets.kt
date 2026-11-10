@@ -9,7 +9,6 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -250,8 +249,8 @@ fun SliderRow(label: String, value: Float, range: ClosedFloatingPointRange<Float
 /** Buttons that wrap onto a new line instead of hiding off the right edge. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun Wrap(modifier: Modifier = Modifier, gap: Dp = 8.dp, content: @Composable FlowRowScope.() -> Unit) {
-    FlowRow(modifier.padding(end = 4.dp), horizontalArrangement = Arrangement.spacedBy(gap), verticalArrangement = Arrangement.spacedBy(gap), content = content)
+fun Wrap(modifier: Modifier = Modifier, gap: Dp = 8.dp, content: @Composable () -> Unit) {
+    FlowRow(modifier.padding(end = 4.dp), horizontalArrangement = Arrangement.spacedBy(gap), verticalArrangement = Arrangement.spacedBy(gap)) { content() }
 }
 
 @Composable
