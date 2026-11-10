@@ -43,9 +43,6 @@ jobs:
       - name: The big test (every screen, with screenshots)
         id: bigtest
         continue-on-error: true
-        env:
-          # the design check (BT-5) only reports until design/exceptions.txt is filled from its first table
-          DESIGN_CHECK: report
         run: ./gradlew testDebugUnitTest --stacktrace
 
       - name: Publish the test screenshots

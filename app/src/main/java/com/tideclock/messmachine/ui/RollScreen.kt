@@ -63,7 +63,7 @@ fun RollScreen(state: AppState) {
             Btn(if (P.fold) "Unfold" else "Fold to scale", { state.edit { fold = !fold } }, on = P.fold, small = true)
             Btn("Clear this sound's notes", { state.clearNotes() }, small = true, tier = Tier.Danger, enabled = k.isNotEmpty() && pat.notes(k).isNotEmpty(), tag = "roll-clear")
         }
-        Wrap(Modifier.padding(bottom = 12.dp)) {
+        Wrap(Modifier.padding(bottom = 12.dp).testTag("notelen-chips")) {
             T("NOTE", size = 12.sp, color = C.Dim, spacing = .1.em)
             for ((l, name) in listOf(1 to "1 step", 2 to "2 steps", 4 to "1 beat", 8 to "Half a bar", 16 to "Whole bar")) {
                 Btn(name, { state.noteLen = l }, on = state.noteLen == l, onColor = C.Teal, small = true)

@@ -9,3 +9,5 @@ label: Hear it | Each one plays the sound on its own screen (the pad, the librar
 label: [picker: pick-root] | Roll places notes by the root; the Play tab's keys bar is the home
 label: [picker: pick-scale] | Roll places notes by the scale; the Play tab's keys bar is the home
 label: [picker: pick-chord] | Roll draws chords on the grid; the Play tab's keys bar is the home
+label: DONE | Closes the sheet it sits on; every sheet needs its own
+screen: Doctor: tools | 13 | Three tools share the tab (fit to tempo, chop to pads, keep it); a fourth tab level would be deeper, not simpler

@@ -22,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -144,7 +145,7 @@ fun DoctorScreen(state: AppState, key: String) {
                 if (looping) smp?.let { state.engine.preview(it, e, 0, true) } else state.engine.stopPreviews()
             }, on = looping, onColor = C.Pink, small = true)
         }
-        Row(Modifier.fillMaxWidth().padding(bottom = 10.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.fillMaxWidth().padding(bottom = 10.dp, end = 4.dp).testTag("dtab-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for ((t, n) in listOf("trim" to "Trim", "shape" to "Shape", "fx" to "Effects", "tools" to "Tools")) {
                 Btn(n, { dtab = t }, on = dtab == t, onColor = C.Yellow, small = true, tag = "dtab-$t", modifier = Modifier.weight(1f))
             }
@@ -175,7 +176,7 @@ fun DoctorScreen(state: AppState, key: String) {
         SliderRow("Attack", e.att.toFloat(), 0f..1f, { "${(it * 1000).roundToInt()} ms" }, { v -> upd(false) { att = v.toDouble() } }, { upd(true) {} }, accent = C.Yellow)
         SliderRow("Release", e.rel.toFloat(), 0f..1.5f, { "${(it * 1000).roundToInt()} ms" }, { v -> upd(false) { rel = v.toDouble() } }, { upd(true) {} }, accent = C.Yellow)
         Help("Choke group: sounds in the same group cut each other off, like an open and closed hat.", modifier = Modifier.padding(top = 4.dp, bottom = 6.dp))
-        Wrap(Modifier) {
+        Wrap(Modifier.testTag("choke-chips")) {
             for (g in 0..6) Btn(if (g == 0) "Off" else "$g", { upd(true) { choke = g } }, on = e.choke == g, small = true)
         }
         Help("When Hold keeps this sound: loop its trim, freeze its tail, or let it play once.", modifier = Modifier.padding(top = 10.dp, bottom = 6.dp))
@@ -220,21 +221,21 @@ fun DoctorScreen(state: AppState, key: String) {
         }
         if (dtab == "tools") {
         Section("Re-pitch to fit")
-        Wrap(Modifier) {
+        Wrap(Modifier.testTag("fit-chips")) {
             for ((b, label) in listOf(.25 to "1 beat", .5 to "2 beats", 1.0 to "1 bar", 2.0 to "2 bars", 4.0 to "4 bars")) {
                 Btn(label, { fitBars = b }, on = fitBars == b, onColor = C.Teal, small = true)
             }
-            Btn("Fit", { state.fitToTempo(key, fitBars); e = state.project.edit(key).copy() }, small = true, color = C.Pink)
         }
+        Btn("Fit", { state.fitToTempo(key, fitBars); e = state.project.edit(key).copy() }, small = true, color = C.Pink, modifier = Modifier.padding(top = 6.dp))
 
         Section("Chop to pads")
-        Wrap(Modifier) {
+        Wrap(Modifier.testTag("chop-chips")) {
             for ((m, label) in listOf("equal" to "Equal", "auto" to "Auto (by hits)", "tap" to "Tap the wave", "lazy" to "Lazy (while it plays)")) {
                 Btn(label, { chopMode = m; cuts = emptyList(); refreshCuts() }, on = chopMode == m, onColor = C.Teal, small = true)
             }
         }
         when (chopMode) {
-            "equal" -> Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            "equal" -> Row(Modifier.padding(top = 8.dp).testTag("slice-chips"), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 for (n in listOf(2, 4, 8, 16)) Btn("$n slices", { chopN = n; cuts = equalCuts(n) }, on = chopN == n, small = true)
             }
             "auto" -> SliderRow("Sensitivity", sens, 0f..1f, { "${(it * 100).roundToInt()}" }, { sens = it }, { refreshCuts() }, accent = C.Teal)
