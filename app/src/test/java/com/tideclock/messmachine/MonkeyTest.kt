@@ -11,6 +11,7 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -114,7 +115,12 @@ class MonkeyTest {
 
     /** Pads and Desk share the Play tab: "Console" means the Play tab's My Desk view. */
     private fun tab(label: String) {
-        if (label == "Console") { rule.onNodeWithTag("tab-Pads").performClick(); settle(); at("view-desk").performClick(); settle(); return }
+        if (label == "Console") {
+            rule.onNodeWithTag("tab-Pads").performClick(); settle()
+            // locked, or a sheet over the page: the switch isn't there to press, like for a finger
+            if (rule.onAllNodesWithTag("view-desk").fetchSemanticsNodes().isNotEmpty()) { at("view-desk").performClick(); settle() }
+            return
+        }
         rule.onNodeWithTag("tab-$label").performClick(); settle()
     }
 
