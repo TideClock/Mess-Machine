@@ -92,7 +92,11 @@ class BigTest {
 
     /** Hold a finger on something long enough for its menu, moving the test clock so the timer fires. */
     private fun longPress(tag: String) {
-        rule.onNodeWithTag(tag).performScrollTo().performTouchInput { down(center) }
+        rule.onNodeWithTag(tag).performScrollTo()
+        // a touch while the page is still gliding only stops the glide, like on a phone: let it land first
+        rule.mainClock.advanceTimeBy(600)
+        settle()
+        rule.onNodeWithTag(tag).performTouchInput { down(center) }
         rule.mainClock.advanceTimeBy(800)
         settle()
         println("LONGPRESS $tag menu while held=${state.padMenu}")
