@@ -1,22 +1,19 @@
 {
-  "title": "Everything from the site's Mess Machine",
+  "title": "Pianos under the pads, and the site's look",
   "thisBuild": [
-    "FX button on the Pads tab: hold Stutter, Echo throw, Crush, Tape stop, Gate, Dirt, Ring mod, Octave down or Reverse while you play, plus the filter pad (low or high pass).",
-    "Strip button: the keys strip under the pads, with chords.",
-    "Sounds tab, Your Workbench jar: import sounds (WAV, MP3, M4A, OGG, FLAC), record from the mic, resample a loop into one sound.",
-    "Doctor's table: zoom to the trim, snap to zero, loop the trim, re-pitch to fit 1 beat to 4 bars, chop to pads (equal, by hits, tap the wave, or tap while it plays), save the edit as a new sound, share it as a WAV.",
-    "Star sounds; the Starred jar keeps them together.",
-    "On the site, Save as file and Open a file move a mess between the site and the app.",
-    "Faster: tapping pads no longer rebuilds the whole screen."
+    "Hold a pad (or tap Keys under the grid) to drop a piano for that pad below the pads. Up to four at once, every pad still there.",
+    "The pianos show an octave and a half at a time, C3 to C5 in all; slide across keys, play chords with more than one finger, and ◀ ▶ shifts the range. Chords and scale shading follow the dock.",
+    "The whole app now looks like Neat Shit and Dye: square cream buttons with pink shadows, Bungee headings, the dark lab, a bit louder.",
+    "From the site: Hush, Bottle it, Loop/Song in the top bar, 1 bar to 2 bars copies bar one, roll note lengths up to a whole bar, Clear notes, Rough it in.",
+    "Every screen now runs through an automatic test on each build."
   ],
   "watch": [
+    "Open two pianos for two pads and play both at once.",
     "Hold Stutter and Tape stop while a loop plays.",
-    "Record a mic take, then chop it to pads with Auto.",
-    "If anything feels slow, send a Tuning note right away so the speed numbers go with it."
+    "If anything feels slow, send a Tuning note from the 🐞 right away so the speed numbers go with it."
   ],
   "limits": [
-    "Creature cards and the Ring are not in the app yet.",
-    "Jams and duels need claude.ai's shared rooms, so they stay on the site.",
+    "Creature cards, the Ring, jams and duels stay on the site.",
     "It stops playing a while after you leave the app."
   ]
 }

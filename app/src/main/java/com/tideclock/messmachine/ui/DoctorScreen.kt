@@ -41,7 +41,7 @@ import kotlin.math.roundToInt
 @Composable
 fun DoctorScreen(state: AppState, key: String) {
     var e by remember(key) { mutableStateOf(state.project.edit(key).copy()) }
-    var smp by remember(key) { mutableStateOf<Sample?>(null) }
+    var smp by remember(key) { mutableStateOf<Sample?>(state.lib.get(key)) }
     var v0 by remember(key) { mutableStateOf(0.0) }
     var v1 by remember(key) { mutableStateOf(1.0) }
     var snap by remember { mutableStateOf(true) }
@@ -53,7 +53,7 @@ fun DoctorScreen(state: AppState, key: String) {
     var lazyT0 by remember { mutableStateOf(0L) }
     var fitBars by remember { mutableStateOf(1.0) }
     LaunchedEffect(key) {
-        smp = withContext(Dispatchers.IO) { try { state.lib.load(key) } catch (_: Exception) { null } }
+        if (smp == null) smp = withContext(Dispatchers.IO) { try { state.lib.load(key) } catch (_: Exception) { null } }
     }
     DisposableEffect(key) { onDispose { state.engine.stopPreviews() } }
     val wave = remember(smp, v0, v1) { smp?.overview(v0, v1, 260) }

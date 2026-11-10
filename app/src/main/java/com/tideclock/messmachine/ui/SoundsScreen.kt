@@ -130,7 +130,7 @@ fun SoundsScreen(state: AppState, pickFor: Int?) {
 private fun JarTab(id: String, name: String, col: Color, on: Boolean, art: Int?, onClick: () -> Unit) {
     Column(
         Modifier
-            .width(92.dp)
+            .width(104.dp)
             .padding(end = 4.dp, bottom = 4.dp)
             .sticker(if (on) col else C.Ink, shadow = if (on) 2.dp else 4.dp)
             .clickable { onClick() }
@@ -140,7 +140,7 @@ private fun JarTab(id: String, name: String, col: Color, on: Boolean, art: Int?,
     ) {
         if (art != null) Image(painterResource(art), contentDescription = null, modifier = Modifier.height(64.dp), contentScale = ContentScale.Fit)
         else Box(Modifier.height(64.dp), contentAlignment = Alignment.Center) { T("★", size = 40.sp, color = if (on) C.Ink else C.Yellow) }
-        T(name.uppercase(), size = 10.sp, color = if (on) ink(col) else C.Cream, lines = 2, spacing = .04.em)
+        T(name.uppercase(), size = 10.sp, color = if (on) ink(col) else C.Cream, lines = 2)
     }
 }
 

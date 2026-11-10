@@ -181,7 +181,7 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
         T(top, size = 11.sp, color = if (empty) C.Empty else ink(fill).copy(alpha = .75f), modifier = Modifier.align(Alignment.TopStart))
         if (hasKeys) T("🎹", size = 12.sp, modifier = Modifier.align(Alignment.TopEnd))
         else if (!keys && !empty && P.edits.containsKey(key)) T("✂", size = 12.sp, color = ink(fill), modifier = Modifier.align(Alignment.TopEnd))
-        T(main, size = if (keys) 18.sp else 12.sp, color = if (empty) C.Empty else ink(fill), weight = FontWeight.Black, lines = 3, spacing = .02.em, modifier = Modifier.align(Alignment.BottomStart))
+        T(main, size = if (keys) 18.sp else 11.sp, color = if (empty) C.Empty else ink(fill), weight = FontWeight.Black, lines = 3, modifier = Modifier.align(Alignment.BottomStart))
     }
 }
 

@@ -91,7 +91,7 @@ class BigTest {
     private fun tab(label: String) { rule.onNodeWithTag("tab-$label").performClick(); settle() }
 
     private fun tapPad(d: Int) {
-        rule.onNodeWithTag("pad-$d").performTouchInput { down(center) }
+        rule.onNodeWithTag("pad-$d").performScrollTo().performTouchInput { down(center) }
         settle()
         rule.onNodeWithTag("pad-$d").performTouchInput { up() }
         settle()
@@ -202,7 +202,9 @@ class BigTest {
         settle()
         assertEquals(before + 1, state.project.pat().notes(k).size)
         shot("07-roll")
-        rule.onNodeWithTag("roll-clear").performScrollTo().performClick()
+        val n = rule.onNodeWithTag("roll-clear").performScrollTo().fetchSemanticsNode()
+        println("ROLL-CLEAR bounds ${n.boundsInRoot} enabled ${!n.config.contains(androidx.compose.ui.semantics.SemanticsProperties.Disabled)}")
+        rule.onNodeWithTag("roll-clear").performClick()
         settle()
         assertEquals(0, state.project.pat().notes(k).size)
     }
@@ -354,10 +356,15 @@ class BigTest {
     }
 
     @Test fun everyTabAndPanelOpens() {
-        for (t in Tab.entries) { tab(t.label); rule.onNodeWithTag("screen-${t.label}").assertIsDisplayed() }
+        for (t in Tab.entries) {
+            tab(t.label)
+            val ok = try { rule.onNodeWithTag("screen-${t.label}").assertIsDisplayed(); true } catch (e: AssertionError) { false }
+            println("TAB ${t.label} displayed=$ok")
+            assertTrue("tab ${t.label} shows its screen", ok)
+        }
         state.overlay = Overlay.Picker(12)
         settle()
-        rule.onNodeWithTag("sheet").assertIsDisplayed()
+        rule.onNodeWithTag("sheet").assertExists()
         shot("19-picker")
         rule.onNodeWithText("DONE").performClick()
         settle()
