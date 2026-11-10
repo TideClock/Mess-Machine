@@ -15,6 +15,8 @@ public final class SoundEdit {
     public double tune = 0, fine = 0;    // semitones, cents
     public double vol = 1, pan = 0, tone = 0; // tone < 0 darker (low pass), > 0 thinner (high pass)
     public int choke = 0;                // 0 = none, 1..4 groups
+    /** App only: what a one-shot does while Hold keeps it: "loop" its trim, hold the "tail", or play "once". */
+    public String held = "loop";
 
     public static final SoundEdit DEFAULT = new SoundEdit();
 
@@ -22,12 +24,13 @@ public final class SoundEdit {
         SoundEdit e = new SoundEdit();
         e.st = st; e.en = en; e.att = att; e.rel = rel; e.rev = rev; e.loop = loop; e.norm = norm;
         e.mode = mode; e.tune = tune; e.fine = fine; e.vol = vol; e.pan = pan; e.tone = tone; e.choke = choke;
+        e.held = held;
         return e;
     }
 
     public boolean isDefault() {
         return st == 0 && en == 1 && att == 0 && rel == 0 && !rev && !loop && !norm && "one".equals(mode)
-                && tune == 0 && fine == 0 && vol == 1 && pan == 0 && tone == 0 && choke == 0;
+                && tune == 0 && fine == 0 && vol == 1 && pan == 0 && tone == 0 && choke == 0 && "loop".equals(held);
     }
 
     public boolean holds() { return !"one".equals(mode) || loop; }
@@ -37,6 +40,7 @@ public final class SoundEdit {
         m.put("st", st); m.put("en", en); m.put("att", att); m.put("rel", rel); m.put("rev", rev); m.put("loop", loop);
         m.put("mode", mode); m.put("tune", tune); m.put("fine", fine); m.put("vol", vol); m.put("pan", pan);
         m.put("tone", tone); m.put("norm", norm); m.put("choke", (double) choke);
+        if (!"loop".equals(held)) m.put("held", held);
         return m;
     }
 
@@ -57,6 +61,8 @@ public final class SoundEdit {
         e.pan = clamp(Json.num(m.get("pan"), 0), -1, 1);
         e.tone = clamp(Json.num(m.get("tone"), 0), -1, 1);
         e.choke = (int) clamp(Json.num(m.get("choke"), 0), 0, 8);
+        Object h = m.get("held");
+        e.held = "tail".equals(h) || "once".equals(h) ? (String) h : "loop";
         return e;
     }
 

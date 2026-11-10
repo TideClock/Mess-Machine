@@ -128,7 +128,7 @@ private fun ModuleBody(state: AppState, m: Module) {
         }
         "piano" -> if (m.pad in 0 until Project.NPADS && P.kit[m.pad].isNotEmpty()) {
             PianoKeyboard(state, m.pad, keysHeight = pick(m.size, 92.dp, 132.dp, 184.dp), filter = false, close = false)
-        } else EmptyModule("Pad ${m.pad + 1} is empty. Edit to point this piano at another pad.")
+        } else EmptyModule("Pad ${m.pad + 1} is empty. Edit to point this Padiano at another pad.")
         "pfilt" -> PadFilterStrip(state, m.pad, height = pick(m.size, 42.dp, 64.dp, 110.dp))
         "hold" -> HoldBar(state, Modifier.padding(top = 0.dp))
         "fx" -> {

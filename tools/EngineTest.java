@@ -166,6 +166,26 @@ public class EngineTest {
       for (int i = 0; i < 40; i++) he.render(b, 256);
       check(he.activeVoices() == 0, "a normal note on a looping sound stops on lift: " + he.activeVoices());
     }
+    // ---- hold keeps a one-shot sounding (note #4); "once" lets it end
+    {
+      Project op = Project.starter();
+      float[] b = new float[256 * 2];
+      Engine oe = new Engine(rate); oe.setSnapshot(Engine.Snapshot.build(op, lib, new Engine.Live()));
+      oe.down(1600, 0, new int[]{0}, true, true); oe.up(1600);
+      double kickSec = lib.get(op.kit[0]).seconds();
+      int blocks = (int) Math.ceil((kickSec + 1.0) * rate / 256);
+      for (int i = 0; i < blocks; i++) oe.render(b, 256);
+      check(oe.activeVoices() >= 1, "a held one-shot keeps sounding past its end (" + String.format("%.2f", kickSec) + " s kick)");
+      oe.unlatch(1600); for (int i = 0; i < 40; i++) oe.render(b, 256);
+      check(oe.activeVoices() == 0, "letting go of a held one-shot stops it");
+      SoundEdit once = new SoundEdit(); once.held = "once"; op.setEdit(op.kit[0], once);
+      oe.setSnapshot(Engine.Snapshot.build(op, lib, new Engine.Live()));
+      oe.down(1601, 0, new int[]{0}, true, true); oe.up(1601);
+      for (int i = 0; i < blocks; i++) oe.render(b, 256);
+      check(oe.activeVoices() == 0, "When held: play once lets the one-shot end");
+      SoundEdit tail = new SoundEdit(); tail.held = "tail"; op.setEdit(op.kit[0], tail);
+      check(SoundEdit.fromMap(tail.toMap()).held.equals("tail") && SoundEdit.fromMap(new SoundEdit().toMap()).held.equals("loop"), "When held saves with the mess");
+    }
     // ---- workbench tools
     Sample hat = lib.get(p.kit[2]);
     SoundEdit tr = new SoundEdit(); tr.st = .1; tr.en = .6; tr.tune = 12;

@@ -1,6 +1,12 @@
 package com.tideclock.messmachine.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.togetherWith
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
@@ -77,28 +83,39 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
         val dn = LocalDensity.current
         CompositionLocalProvider(LocalDensity provides Density(dn.density * state.uiScale, dn.fontScale)) {
         Box(Modifier.fillMaxSize().background(C.Paper).grit().statusBarsPadding().navigationBarsPadding()) {
+            PulseBackdrop(state)
             Column(Modifier.fillMaxSize()) {
                 Transport(state)
                 if (state.micOn) RecordingBanner(state)
                 Box(Modifier.weight(1f).fillMaxWidth().testTag("screen-${state.tab.label}")) {
-                    when (state.tab) {
-                        Tab.Pads -> PadsScreen(state)
-                        Tab.Console -> ConsoleScreen(state)
-                        Tab.Steps -> StepsScreen(state)
-                        Tab.Roll -> RollScreen(state)
-                        Tab.Song -> SongScreen(state)
-                        Tab.Sounds -> SoundsScreen(state, null)
+                    // pages change with a short fade instead of a hard cut (note #5)
+                    Crossfade(targetState = state.tab, animationSpec = tween(150), label = "tab") { t ->
+                        when (t) {
+                            Tab.Pads -> PadsScreen(state)
+                            Tab.Console -> ConsoleScreen(state)
+                            Tab.Steps -> StepsScreen(state)
+                            Tab.Roll -> RollScreen(state)
+                            Tab.Song -> SongScreen(state)
+                            Tab.Sounds -> SoundsScreen(state, null)
+                        }
                     }
                 }
                 Tabs(state)
             }
-            when (val o = state.overlay) {
-                is Overlay.Picker -> Sheet(state, "Pick a sound for pad ${o.pad + 1}") { SoundsScreen(state, o.pad) }
-                is Overlay.Doctor -> Sheet(state, "Doctor's table") { DoctorScreen(state, o.key) }
-                Overlay.Files -> Sheet(state, "Messes") { FilesScreen(state) }
-                Overlay.Tempo -> Sheet(state, "Tempo + feel") { TempoScreen(state) }
-                Overlay.Notes -> Sheet(state, "Notes for Claude") { NotesScreen(state) }
-                null -> {}
+            // sheets slide up a little and fade, instead of snapping in
+            AnimatedContent(
+                targetState = state.overlay,
+                transitionSpec = { (slideInVertically(tween(150)) { it / 12 } + fadeIn(tween(150))) togetherWith fadeOut(tween(120)) },
+                label = "sheet",
+            ) { o ->
+                when (o) {
+                    is Overlay.Picker -> Sheet(state, "Pick a sound for pad ${o.pad + 1}") { SoundsScreen(state, o.pad) }
+                    is Overlay.Doctor -> Sheet(state, "Doctor's table") { DoctorScreen(state, o.key) }
+                    Overlay.Files -> Sheet(state, "Messes") { FilesScreen(state) }
+                    Overlay.Tempo -> Sheet(state, "Tempo + feel") { TempoScreen(state) }
+                    Overlay.Notes -> Sheet(state, "Notes for Claude") { NotesScreen(state) }
+                    null -> Box(Modifier) {}
+                }
             }
             state.toast?.let { msg ->
                 Box(Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = 84.dp)) {
@@ -193,6 +210,22 @@ fun RecordingBanner(state: AppState) {
     ) {
         T("● RECORDING" + (if (state.micPad >= 0) " ONTO PAD ${state.micPad + 1}" else "") + " · TAP TO STOP", size = 14.sp, color = C.Cream, spacing = .06.em, lines = 1)
     }
+}
+
+/** The beat glow behind everything: a soft wash from the middle, pink on the one, yellow on the other beats. */
+@Composable
+fun PulseBackdrop(state: AppState) {
+    if (state.pulseLevel == 0) return
+    val pulse = beatPulse(state)
+    val strength = if (state.pulseLevel == 2) .30f else .14f
+    Box(Modifier.fillMaxSize().testTag("pulse").drawBehind {
+        val v = pulse.value
+        if (v < .01f) return@drawBehind
+        val down = state.heardStep >= 0 && state.heardStep % 16 < 4
+        val c = if (down) C.Pink else C.Yellow
+        drawRect(c.copy(alpha = strength * .35f * v))
+        drawRect(Brush.radialGradient(listOf(c.copy(alpha = strength * v), Color.Transparent), center = center, radius = size.maxDimension * .7f))
+    })
 }
 
 fun arpShort(a: String) = when (a) { "up" -> "UP"; "down" -> "DN"; "updown" -> "UD"; "rand" -> "RND"; else -> "" }

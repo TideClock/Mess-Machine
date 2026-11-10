@@ -332,6 +332,99 @@ class BigTest {
         shot("24-workbench-share")
     }
 
+    /* ---------- build A: fixes and safety ---------- */
+
+    @Test fun padsRedrawAfterAChange() {
+        // note #6: a pad that is not the selected one shows its new sound straight away
+        val key = "samples/goblin-burp.wav"
+        state.putOnPad(5, key)
+        waitFor("the burp to load") { state.lib.loaded(key) }
+        rule.onNodeWithText(state.lib.titleOf(key).uppercase(), useUnmergedTree = true).assertExists()
+    }
+
+    @Test fun menusOpenOnLiftNotOnDrag() {
+        // held still: nothing until the finger lifts, then the menu
+        rule.onNodeWithTag("pad-2").performScrollTo()
+        rule.mainClock.advanceTimeBy(600); settle()
+        rule.onNodeWithTag("pad-2").performTouchInput { down(center) }
+        rule.mainClock.advanceTimeBy(800); settle()
+        assertEquals("no menu while the finger is still down", -1, state.padMenu)
+        rule.onNodeWithTag("pad-2").performTouchInput { up() }
+        settle()
+        assertEquals("the menu opens on lift", 2, state.padMenu)
+        state.padMenu = -1
+        rule.mainClock.advanceTimeBy(1000); settle()
+        // a drag never opens it, however long it lasts
+        rule.onNodeWithTag("pad-3").performTouchInput { down(center) }
+        rule.onNodeWithTag("pad-3").performTouchInput { moveBy(Offset(0f, 60f)) }
+        rule.mainClock.advanceTimeBy(800); settle()
+        rule.onNodeWithTag("pad-3").performTouchInput { up() }
+        settle()
+        assertEquals("a drag never opens the menu", -1, state.padMenu)
+    }
+
+    @Test fun holdLastAndInKeyOnly() {
+        state.toggleKeyboard(7)
+        settle()
+        // Hold Last: only the newest note holds
+        state.switchHold(true)
+        rule.onNodeWithTag("hold-down").performScrollTo()
+        repeat(3) { rule.onNodeWithTag("hold-down").performClick() }
+        settle()
+        assertEquals(0, state.holdCount)
+        state.pianoDown(7, 0); state.pianoUp(7, 0)
+        assertEquals(setOf(0), state.heldPitches(7))
+        state.pianoDown(7, 4); state.pianoUp(7, 4)
+        assertEquals("the new note takes over", setOf(4), state.heldPitches(7))
+        state.pianoDown(7, 4); state.pianoUp(7, 4)
+        assertTrue("pressing it again lets it go", state.heldPitches(7).isEmpty())
+        state.switchHold(false)
+        // In key only: every square on the Padiano is in the scale
+        state.setRoot(0); state.setScale("Major"); state.pickChordMode("off")
+        rule.onNodeWithTag("in-key").performScrollTo().performClick()
+        settle()
+        assertTrue(state.inKeyOnly)
+        rule.onNodeWithTag("piano-7").performScrollTo()
+        shot("25-padiano-in-key-only")
+        for (f in listOf(.03f, .3f, .55f, .8f, .97f)) {
+            rule.onNodeWithTag("piano-keys-7").performTouchInput { down(Offset(width * f, height * .5f)) }
+            settle()
+            val name = state.lastChord
+            rule.onNodeWithTag("piano-keys-7").performTouchInput { up() }
+            settle()
+            assertTrue("in key only plays only C major notes (got $name at $f)", name.isNotEmpty() && '#' !in name)
+        }
+        // Padiano settings: fewer notes, the Keys layout
+        rule.onNodeWithTag("in-key").performScrollTo().performClick()
+        rule.onNodeWithTag("piano-set-7").performScrollTo().performClick()
+        settle()
+        repeat(4) { rule.onNodeWithTag("pset-n-down").performClick() }
+        settle()
+        assertEquals(9, state.padianoN)
+        rule.onNodeWithTag("piano-7").performScrollTo()
+        shot("26-padiano-settings-9-notes")
+        rule.onNodeWithTag("pset-keys").performClick()
+        settle()
+        rule.onNodeWithTag("piano-keys-7").performScrollTo()
+        shot("27-padiano-keys-layout")
+        state.switchPadianoKeys(false)
+    }
+
+    @Test fun emptyPadsRecordWhenSwitchedOn() {
+        shadowOf(ApplicationProvider.getApplicationContext<android.app.Application>()).grantPermissions(android.Manifest.permission.RECORD_AUDIO)
+        state.switchEmptyRecord(true)
+        settle()
+        tapPad(12)
+        println("EMPTYREC mic=${state.micOn} pad=${state.micPad} overlay=${state.overlay}")
+        assertEquals("an empty pad no longer opens the jars", null, state.overlay)
+        assertTrue("tapping an empty pad starts recording onto it", state.micPad == 12 || state.toast?.contains("mic") == true)
+        if (state.micOn) tapPad(12)
+        waitFor("the mic to stop") { !state.micOn }
+        state.switchEmptyRecord(false)
+        tapPad(12)
+        assertEquals("switched off, empty pads open the jars again", Overlay.Picker(12), state.overlay)
+    }
+
     /* ---------- your console ---------- */
 
     @Test fun consoleBuildsAndPlays() {

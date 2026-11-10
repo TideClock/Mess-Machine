@@ -1,20 +1,22 @@
 {
-  "title": "Your Console, pad filters and record onto a pad",
+  "title": "Fixes from your notes, and the Padiano",
   "thisBuild": [
-    "Console tab: a page you build yourself. Tap Edit, then + Add any piece: pads, a single row of pads, a piano for any pad, a filter for any pad, Hold, all nine effects or just one, the big filter pad, repeat and arp, loops, scale and chords, the beat light. Move pieces with ▲ ▼, size them S M L, and set ½ to put two side by side. It starts as a Perform layout and is saved on your phone.",
-    "Every piano has a filter strip under it that only touches that pad: slide left to close it, up for more resonance. Lift and it opens again, or turn on Stay to leave it where it is.",
-    "Hold is now one tap: the Hold switch sits on every piano and next to the scale. + and − still set how many notes hold, and turning Hold off lets them all go.",
-    "Hold a pad: Record onto this pad samples the mic straight onto it. A red bar shows while it records; tap it to stop. The take also goes to Your Workbench.",
-    "Hold a pad: Keep in Your Workbench saves the sound as you have it set. Share this sound sends it as a WAV to anyone or any app. Workbench sounds have a Share button too."
+    "Pads redraw straight away after you change a sound (note #6).",
+    "Hold now holds short sounds too: a held one-shot loops until you let go (note #4). In the doctor, When held picks loop it, hold the tail, or play once.",
+    "Hold has a Last setting below 1: only your newest note holds, and the next one takes over (note #1).",
+    "Pad menus open when you lift after holding still. A slide never opens a menu, and a pad you play never scrolls the page.",
+    "Pages and sheets fade and slide instead of snapping (note #5).",
+    "The piano is now the Padiano. It opens as one row of small squares; ⚙ sets how many notes (7 to 36), the size, Squares or Keys, and In key only.",
+    "In key only hides out-of-key notes. It's in the scale bar and the ☰ menu.",
+    "☰ menu, Playing: Empty pads record (tap to start, tap to stop, or hold to record) and the beat glow behind everything (off, soft, full)."
   ],
   "watch": [
-    "Open a piano, hold a chord with Hold on, and sweep its filter strip.",
-    "Build a console with two pianos and their filters, then play it.",
-    "Record your voice onto an empty pad and play it from a piano."
+    "Turn Hold on, play a short drum hit, and lift: it should keep going until you press it again.",
+    "Try In key only with a minor scale on the Padiano.",
+    "Swap a pad's sound from the picker and check that the pad's name changes."
   ],
   "limits": [
-    "Sharing goes through Android's share menu. The site's shared jar is not reachable from the app.",
-    "Pieces stack top to bottom and pair up at half width. You cannot drag them freely yet.",
+    "Glide, the side dock, Lock, the new effects and XY pads are coming in the next builds.",
     "Creature cards, the Ring, jams and duels stay on the site."
   ]
 }

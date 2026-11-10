@@ -75,6 +75,13 @@ android {
     }
 }
 
+composeCompiler {
+    // Every screen takes the one AppState. With strong skipping, a screen whose only input is that
+    // same object skips its redraw after a change to the mess (note #6: pads kept showing the old sound).
+    @Suppress("DEPRECATION")
+    enableStrongSkippingMode.set(false)
+}
+
 dependencies {
     implementation(platform("androidx.compose:compose-bom:2024.09.00"))
     implementation("androidx.compose.ui:ui")

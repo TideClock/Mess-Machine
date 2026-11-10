@@ -50,6 +50,23 @@ fun FilesScreen(state: AppState) {
         }
         Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
             Column {
+                T("PLAYING", size = 12.sp, color = C.Yellow, spacing = .1.em)
+                Note("Empty pads record: an empty pad becomes a record button for the mic.", modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
+                Wrap {
+                    Btn(if (state.emptyRecord) "Empty pads record: on" else "Empty pads record: off", { state.switchEmptyRecord(!state.emptyRecord) }, on = state.emptyRecord, onColor = C.Riot, small = true, tag = "set-emptyrec")
+                    Btn("Tap start, tap stop", { state.switchRecordHold(false) }, on = !state.recordHold, onColor = C.Teal, small = true, tag = "set-rectap")
+                    Btn("Hold to record", { state.switchRecordHold(true) }, on = state.recordHold, onColor = C.Teal, small = true, tag = "set-rechold")
+                }
+                Note("Beat glow behind everything.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
+                Wrap {
+                    for ((v, n) in listOf(0 to "Off", 1 to "Soft", 2 to "Full")) Btn(n, { state.setPulse(v) }, on = state.pulseLevel == v, small = true, tag = "set-pulse-$v")
+                }
+                Note("Pianos show only the scale's notes.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
+                Btn(if (state.inKeyOnly) "In key only: on" else "In key only: off", { state.switchInKey(!state.inKeyOnly) }, on = state.inKeyOnly, onColor = C.Yellow, small = true, tag = "set-inkey")
+            }
+        }
+        Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
+            Column {
                 T("THIS MESS", size = 12.sp, color = C.Yellow, spacing = .1.em)
                 OutlinedTextField(
                     value = name, onValueChange = { name = it.take(48) }, singleLine = true,

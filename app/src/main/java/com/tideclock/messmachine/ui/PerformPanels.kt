@@ -35,6 +35,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.Dp
 import com.tideclock.messmachine.AppState
 import com.tideclock.messmachine.engine.Theory
 import kotlin.math.floor
@@ -141,21 +142,179 @@ fun XyPad(state: AppState, height: androidx.compose.ui.unit.Dp = 180.dp) {
 private val BLACK_PC = intArrayOf(1, 3, 6, 8, 10)
 private fun isBlack(p: Int) = Theory.pcOf(p) in BLACK_PC
 
+/** What the Padiano shows on each note: pressed, held, chord tones, scale, root. */
+private class NoteLook(state: AppState, pad: Int, fingers: Set<Int>) {
+    val P = state.project
+    val chromatic = P.scale == "Chromatic"
+    val holding = state.heldPitches(pad)
+    val down = fingers + holding
+    val playsChord = state.chordPlay
+    val chord = HashSet<Int>().also { c -> for (h in down) for (x in state.chordFor(h)) if (x !in down) c.add(x) }
+    fun inScale(p: Int) = chromatic || Theory.inScale(p, P.scale, P.root)
+    fun isRoot(p: Int) = Theory.pcOf(p - P.root) == 0
+}
+
+/** Multi-finger play with slides: each finger plays the note under it and changes note as it slides. */
+private fun Modifier.playNotes(state: AppState, pad: Int, key: Any, hit: androidx.compose.ui.input.pointer.PointerInputScope.(Offset) -> Int?, onFingers: (Set<Int>) -> Unit): Modifier =
+    this.pointerInput(pad, key) {
+        awaitEachGesture {
+            val active = HashMap<PointerId, Int>()
+            do {
+                val ev = awaitPointerEvent()
+                for (c in ev.changes) {
+                    val cur = active[c.id]
+                    if (c.pressed) {
+                        val p = hit(c.position)
+                        if (p != cur) {
+                            if (cur != null) state.pianoUp(pad, cur)
+                            if (p != null) { state.pianoDown(pad, p); active[c.id] = p } else active.remove(c.id)
+                        }
+                        c.consume()
+                    } else if (cur != null) {
+                        state.pianoUp(pad, cur)
+                        active.remove(c.id)
+                    }
+                }
+                onFingers(active.values.toSet())
+            } while (ev.changes.any { it.pressed })
+            for (p in active.values) state.pianoUp(pad, p)
+            onFingers(emptySet())
+        }
+    }
+
 /**
- * A piano for one pad, dropped below the grid. Two octaves around the sound's own pitch (C3 to C5),
- * at least an octave and a half on screen, slide or multi-finger, shaded for the scale.
+ * The Padiano: a keyboard for one pad, dropped under its row of pads. Squares (the default) is a row
+ * of small squares, as many semitones as you set; Keys is a piano from C3 to C5. In key only hides
+ * out-of-key notes. Slide or play with several fingers.
  */
 @Composable
-fun PianoKeyboard(state: AppState, pad: Int, keysHeight: androidx.compose.ui.unit.Dp = 132.dp, filter: Boolean = true, close: Boolean = true) {
+fun PianoKeyboard(state: AppState, pad: Int, keysHeight: Dp = 132.dp, filter: Boolean = true, close: Boolean = true) {
     val P = state.project
     val k = P.kit[pad]
     if (k.isEmpty()) return
     val col = padColor(Color(state.lib.colorOf(k)))
+    var showSet by remember(pad) { mutableStateOf(false) }
+    val squares = !state.padianoKeys || state.inKeyOnly
+    val base = state.padianoBase[pad] ?: 0
+    Column(Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 6.dp).testTag("piano-$pad")) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 6.dp)) {
+            Swatch(col)
+            T(" PADIANO ${pad + 1} · ${state.lib.titleOf(k).uppercase()}", size = 12.sp, color = C.Yellow, lines = 1, spacing = .06.em, modifier = Modifier.weight(1f))
+            Btn("⚙", { showSet = !showSet }, small = true, on = showSet, tag = "piano-set-$pad")
+            if (close) Btn("✕", { state.toggleKeyboard(pad) }, small = true, color = C.Riot, modifier = Modifier.padding(start = 6.dp), tag = "piano-close-$pad")
+        }
+        Wrap(Modifier.padding(bottom = 8.dp), gap = 6.dp) {
+            HoldToggle(state, tag = "piano-hold-$pad")
+            if (squares) {
+                Btn("◀ 8va", { state.shiftPadiano(pad, -12) }, small = true, enabled = base > -36, tag = "piano-down-$pad")
+                Btn("8va ▶", { state.shiftPadiano(pad, 12) }, small = true, enabled = base < 24, tag = "piano-up-$pad")
+            }
+            PadianoExtras(state, pad)
+        }
+        if (showSet) PadianoSettings(state)
+        if (squares) PadianoSquares(state, pad, col, base)
+        else PadianoKeys(state, pad, col, if (keysHeight != 132.dp) keysHeight else listOf(96.dp, 132.dp, 176.dp)[state.padianoSize])
+        if (filter) PadFilterStrip(state, pad, Modifier.padding(top = 8.dp))
+    }
+}
+
+/** Room for more controls on the Padiano header (Glide lands here). */
+@Composable
+fun PadianoExtras(state: AppState, pad: Int) {}
+
+@Composable
+fun PadianoSettings(state: AppState) {
+    Column(Modifier.fillMaxWidth().padding(bottom = 8.dp).sticker(C.Black, shadow = 0.dp, border = 2.dp, borderColor = C.Teal).padding(8.dp)) {
+        Wrap(gap = 6.dp) {
+            Btn("Squares", { state.switchPadianoKeys(false) }, on = !state.padianoKeys, onColor = C.Teal, small = true, tag = "pset-squares")
+            Btn("Keys", { state.switchPadianoKeys(true) }, on = state.padianoKeys, onColor = C.Teal, small = true, tag = "pset-keys")
+            Btn("In key only", { state.switchInKey(!state.inKeyOnly) }, on = state.inKeyOnly, onColor = C.Yellow, small = true, tag = "pset-inkey")
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 8.dp)) {
+            T("NOTES", size = 11.sp, color = C.Dim, spacing = .1.em)
+            Btn("−", { state.changePadianoN(state.padianoN - 1) }, small = true, enabled = state.padianoN > 7, tag = "pset-n-down")
+            T("${state.padianoN}", size = 14.sp, color = C.Yellow, family = Mono)
+            Btn("+", { state.changePadianoN(state.padianoN + 1) }, small = true, enabled = state.padianoN < 36, tag = "pset-n-up")
+            T("SIZE", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(start = 8.dp))
+            for (z in 0..2) Btn("SML"[z].toString(), { state.changePadianoSize(z) }, on = state.padianoSize == z, small = true)
+        }
+        Note("Fewer notes make bigger squares. Squares wrap to a second row before they get too small to hit.", modifier = Modifier.padding(top = 6.dp))
+    }
+}
+
+/** Squares: one row of small squares; light for white-key notes, dark for black-key ones. */
+@Composable
+fun PadianoSquares(state: AppState, pad: Int, col: Color, base: Int) {
+    val P = state.project
+    var fingers by remember(pad) { mutableStateOf(setOf<Int>()) }
+    val notes = (base until base + state.padianoN).filter { !state.inKeyOnly || P.scale == "Chromatic" || Theory.inScale(it, P.scale, P.root) }
+    if (notes.isEmpty()) return
+    val tm = rememberTextMeasurer()
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val avail = maxWidth - 6.dp
+        val perRow = maxOf(1, minOf(notes.size, floor(avail / 28.dp).toInt()))
+        val rows = (notes.size + perRow - 1) / perRow
+        val rowH = listOf(40.dp, 54.dp, 74.dp)[state.padianoSize]
+        Canvas(
+            Modifier
+                .fillMaxWidth()
+                .padding(end = 6.dp, bottom = 6.dp)
+                .height(rowH * rows)
+                .sticker(C.Ink, shadow = 5.dp, shadowColor = col)
+                .testTag("piano-keys-$pad")
+                .playNotes(state, pad, notes, { o ->
+                    if (o.x < 0 || o.x > size.width || o.y < 0 || o.y > size.height) null
+                    else {
+                        val r = (o.y / (size.height / rows.toFloat())).toInt().coerceIn(0, rows - 1)
+                        val inRow = if (r == rows - 1) notes.size - r * perRow else perRow
+                        val c = (o.x / (size.width / perRow.toFloat())).toInt()
+                        if (c >= inRow) null else notes[r * perRow + c]
+                    }
+                }) { fingers = it },
+        ) {
+            val L = NoteLook(state, pad, fingers)
+            val w = size.width / perRow
+            val h = size.height / rows
+            notes.forEachIndexed { i, p ->
+                val x = (i % perRow) * w
+                val y = (i / perRow) * h
+                val blk = isBlack(p)
+                val inS = L.inScale(p)
+                val fill = when {
+                    p in L.down -> col
+                    p in L.chord && L.playsChord -> lerp(col, C.Cream, .25f)
+                    blk -> if (inS) lerp(C.Card2, col, .35f) else lerp(C.Ink, C.Paper, .5f)
+                    else -> if (inS) lerp(C.Cream, col, .18f) else lerp(C.Cream, C.Ink, .5f)
+                }
+                drawRect(fill, topLeft = Offset(x + 2f, y + 2f), size = Size(w - 4f, h - 4f))
+                if (!L.chromatic && inS && p !in L.down) drawRect(col, topLeft = Offset(x + 4f, y + h - 9f), size = Size(w - 8f, 5f))
+                if (L.isRoot(p)) drawCircle(C.Pink, radius = minOf(w, h) * .11f, center = Offset(x + w / 2, y + h * .62f))
+                if (p in L.chord && !L.playsChord) drawRect(C.Pink, topLeft = Offset(x + 3f, y + 3f), size = Size(w - 6f, h - 6f), style = Stroke(width = 5f))
+                if (p in L.holding) drawRect(C.Yellow, topLeft = Offset(x + 4f, y + 4f), size = Size(w - 8f, 8f))
+                drawRect(C.Black, topLeft = Offset(x + 1f, y + 1f), size = Size(w - 2f, h - 2f), style = Stroke(width = 2.5f))
+                if (Theory.pcOf(p) == 0 || L.isRoot(p) || i == 0) {
+                    drawText(tm, Theory.noteName(p), topLeft = Offset(x + 4f, y + 5f),
+                        style = TextStyle(color = if (blk && p !in L.down) C.Cream else C.Ink, fontSize = 9.sp, fontFamily = Mono, fontWeight = FontWeight.Bold))
+                }
+            }
+        }
+    }
+    Note(
+        "${Theory.NN[P.root]} ${P.scale.lowercase()} · " + (if (state.chordMode == "off") "single notes" else chordName(state.chordMode).lowercase() + if (state.chordPlay) ", playing" else ", showing") +
+            " · ${Theory.noteName(notes.first())} to ${Theory.noteName(notes.last())}" + if (state.inKeyOnly) " · in key only" else "",
+        modifier = Modifier.padding(top = 4.dp),
+    )
+}
+
+/** Keys: the piano, two octaves around the sound's own pitch, about an octave and a half on screen. */
+@Composable
+fun PadianoKeys(state: AppState, pad: Int, col: Color, keysHeight: Dp) {
+    val P = state.project
     val whites = (Theory.ROLL_LO..Theory.ROLL_HI).filter { !isBlack(it) }
     var start by remember(pad) { mutableIntStateOf(-1) }
-    var held by remember(pad) { mutableStateOf(setOf<Int>()) }
+    var fingers by remember(pad) { mutableStateOf(setOf<Int>()) }
     val tm = rememberTextMeasurer()
-    BoxWithConstraints(Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 6.dp).testTag("piano-$pad")) {
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
         val avail = maxWidth - 6.dp
         val wk = maxOf(34.dp, avail / whites.size)
         val visible = floor(avail / wk).toInt().coerceIn(1, whites.size)
@@ -163,13 +322,9 @@ fun PianoKeyboard(state: AppState, pad: Int, keysHeight: androidx.compose.ui.uni
         val first = if (start < 0) (whites.indexOf(0) - 2).coerceIn(0, maxStart) else start.coerceIn(0, maxStart)
         val shown = whites.subList(first, first + visible)
         Column {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
-                Swatch(col)
-                T(" PAD ${pad + 1} · ${state.lib.titleOf(k).uppercase()}", size = 12.sp, color = C.Yellow, lines = 1, spacing = .06.em, modifier = Modifier.weight(1f))
-                HoldToggle(state, tag = "piano-hold-$pad", modifier = Modifier.padding(end = 6.dp))
+            Row(Modifier.padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Btn("◀", { start = (first - 3).coerceAtLeast(0) }, small = true, enabled = first > 0)
-                Btn("▶", { start = (first + 3).coerceAtMost(maxStart) }, small = true, enabled = first < maxStart, modifier = Modifier.padding(start = 6.dp))
-                if (close) Btn("✕", { state.toggleKeyboard(pad) }, small = true, color = C.Riot, modifier = Modifier.padding(start = 6.dp), tag = "piano-close-$pad")
+                Btn("▶", { start = (first + 3).coerceAtMost(maxStart) }, small = true, enabled = first < maxStart)
             }
             Canvas(
                 Modifier
@@ -178,80 +333,47 @@ fun PianoKeyboard(state: AppState, pad: Int, keysHeight: androidx.compose.ui.uni
                     .height(keysHeight)
                     .sticker(C.Ink, shadow = 6.dp, shadowColor = col)
                     .testTag("piano-keys-$pad")
-                    .pointerInput(pad, first, visible) {
+                    .playNotes(state, pad, listOf(first, visible), { o ->
                         val ww = size.width / visible.toFloat()
                         val bh = size.height * .6f
-                        fun hit(o: Offset): Int? {
-                            if (o.x < 0 || o.x > size.width || o.y < 0 || o.y > size.height) return null
+                        if (o.x < 0 || o.x > size.width || o.y < 0 || o.y > size.height) null
+                        else {
                             val wi = floor(o.x / ww).toInt().coerceIn(0, visible - 1)
-                            if (o.y < bh) {
-                                // a black key sits on the line between two whites
-                                val edge = (o.x / ww) - wi
-                                val left = shown[wi] - 1
-                                val right = shown[wi] + 1
-                                if (edge < .3f && wi > 0 && isBlack(left)) return left
-                                if (edge > .7f && wi < visible - 1 && isBlack(right)) return right
+                            val edge = (o.x / ww) - wi
+                            val left = shown[wi] - 1
+                            val right = shown[wi] + 1
+                            when {
+                                o.y < bh && edge < .3f && wi > 0 && isBlack(left) -> left
+                                o.y < bh && edge > .7f && wi < visible - 1 && isBlack(right) -> right
+                                else -> shown[wi]
                             }
-                            return shown[wi]
                         }
-                        awaitEachGesture {
-                            val active = HashMap<PointerId, Int>()
-                            do {
-                                val ev = awaitPointerEvent()
-                                for (c in ev.changes) {
-                                    val cur = active[c.id]
-                                    if (c.pressed) {
-                                        val p = hit(c.position)
-                                        if (p != cur) {
-                                            if (cur != null) state.pianoUp(pad, cur)
-                                            if (p != null) { state.pianoDown(pad, p); active[c.id] = p } else active.remove(c.id)
-                                        }
-                                        c.consume()
-                                    } else if (cur != null) {
-                                        state.pianoUp(pad, cur)
-                                        active.remove(c.id)
-                                    }
-                                }
-                                held = active.values.toSet()
-                            } while (ev.changes.any { it.pressed })
-                            for (p in active.values) state.pianoUp(pad, p)
-                            held = emptySet()
-                        }
-                    },
+                    }) { fingers = it },
             ) {
+                val L = NoteLook(state, pad, fingers)
                 val ww = size.width / visible
                 val bh = size.height * .6f
                 val bw = ww * .6f
-                val chromatic = P.scale == "Chromatic"
-                val holding = state.heldPitches(pad)
-                val down = held + holding
-                val chord = HashSet<Int>()
-                for (h in down) for (c in state.chordFor(h)) if (c !in down) chord.add(c)
-                val playsChord = state.chordPlay
                 shown.forEachIndexed { i, p ->
                     val x = i * ww
-                    val inS = chromatic || Theory.inScale(p, P.scale, P.root)
-                    val root = Theory.pcOf(p - P.root) == 0
+                    val inS = L.inScale(p)
+                    val root = L.isRoot(p)
                     val fill = when {
-                        p in down -> col
-                        p in chord && playsChord -> lerp(col, C.Cream, .25f)
+                        p in L.down -> col
+                        p in L.chord && L.playsChord -> lerp(col, C.Cream, .25f)
                         root -> lerp(C.Cream, col, .5f)
-                        chromatic -> C.Cream
+                        L.chromatic -> C.Cream
                         inS -> lerp(C.Cream, col, .14f)
                         else -> lerp(C.Cream, C.Ink, .5f)
                     }
                     drawRect(fill, topLeft = Offset(x, 0f), size = Size(ww, size.height))
-                    // in the scale: a soft glow along the bottom of the key
-                    if (!chromatic && inS && p !in down) drawRect(Brush.verticalGradient(listOf(Color.Transparent, col.copy(alpha = .55f)), startY = size.height * .55f, endY = size.height), topLeft = Offset(x, size.height * .55f), size = Size(ww, size.height * .45f))
-                    // the root: a dot
+                    if (!L.chromatic && inS && p !in L.down) drawRect(Brush.verticalGradient(listOf(Color.Transparent, col.copy(alpha = .55f)), startY = size.height * .55f, endY = size.height), topLeft = Offset(x, size.height * .55f), size = Size(ww, size.height * .45f))
                     if (root) drawCircle(C.Pink, radius = ww * .13f, center = Offset(x + ww / 2, size.height - ww * .55f))
-                    // a chord tone you can play yourself: a glowing ring
-                    if (p in chord && !playsChord) {
+                    if (p in L.chord && !L.playsChord) {
                         drawRect(C.Pink.copy(alpha = .28f), topLeft = Offset(x, 0f), size = Size(ww, size.height))
                         drawRect(C.Pink, topLeft = Offset(x + 3f, 3f), size = Size(ww - 6f, size.height - 6f), style = Stroke(width = 5f))
                     }
-                    // holding: a yellow bar across the top of the key
-                    if (p in holding) drawRect(C.Yellow, topLeft = Offset(x + 3f, 3f), size = Size(ww - 6f, 10f))
+                    if (p in L.holding) drawRect(C.Yellow, topLeft = Offset(x + 3f, 3f), size = Size(ww - 6f, 10f))
                     drawRect(C.Black, topLeft = Offset(x, 0f), size = Size(ww, size.height), style = Stroke(width = 3f))
                     if (Theory.pcOf(p) == 0 || root) {
                         drawText(tm, Theory.noteName(p), topLeft = Offset(x + 4f, size.height - 34f),
@@ -262,30 +384,29 @@ fun PianoKeyboard(state: AppState, pad: Int, keysHeight: androidx.compose.ui.uni
                     val b = shown[i] + 1
                     if (!isBlack(b)) continue
                     val x = (i + 1) * ww - bw / 2
-                    val inS = chromatic || Theory.inScale(b, P.scale, P.root)
+                    val inS = L.inScale(b)
                     val fill = when {
-                        b in down -> col
-                        b in chord && playsChord -> lerp(col, C.Ink, .2f)
-                        Theory.pcOf(b - P.root) == 0 -> lerp(C.Ink, col, .65f)
-                        chromatic -> C.Ink
+                        b in L.down -> col
+                        b in L.chord && L.playsChord -> lerp(col, C.Ink, .2f)
+                        L.isRoot(b) -> lerp(C.Ink, col, .65f)
+                        L.chromatic -> C.Ink
                         inS -> lerp(C.Ink, col, .3f)
                         else -> lerp(C.Ink, C.Paper, .6f)
                     }
                     drawRect(C.Black, topLeft = Offset(x + 3f, 3f), size = Size(bw, bh))
                     drawRect(fill, topLeft = Offset(x, 0f), size = Size(bw, bh))
-                    if (b in holding) drawRect(C.Yellow, topLeft = Offset(x + 3f, 3f), size = Size(bw - 6f, 10f))
-                    if (!chromatic && inS && b !in down) drawRect(col, topLeft = Offset(x + 3f, bh - 8f), size = Size(bw - 6f, 5f))
-                    if (Theory.pcOf(b - P.root) == 0) drawCircle(C.Pink, radius = bw * .16f, center = Offset(x + bw / 2, bh - bw * .45f))
-                    if (b in chord && !playsChord) drawRect(C.Pink, topLeft = Offset(x + 2f, 2f), size = Size(bw - 4f, bh - 4f), style = Stroke(width = 5f))
-                    drawRect(if (!chromatic && !inS) C.Empty else C.Black, topLeft = Offset(x, 0f), size = Size(bw, bh), style = Stroke(width = 3f))
+                    if (b in L.holding) drawRect(C.Yellow, topLeft = Offset(x + 3f, 3f), size = Size(bw - 6f, 10f))
+                    if (!L.chromatic && inS && b !in L.down) drawRect(col, topLeft = Offset(x + 3f, bh - 8f), size = Size(bw - 6f, 5f))
+                    if (L.isRoot(b)) drawCircle(C.Pink, radius = bw * .16f, center = Offset(x + bw / 2, bh - bw * .45f))
+                    if (b in L.chord && !L.playsChord) drawRect(C.Pink, topLeft = Offset(x + 2f, 2f), size = Size(bw - 4f, bh - 4f), style = Stroke(width = 5f))
+                    drawRect(if (!L.chromatic && !inS) C.Empty else C.Black, topLeft = Offset(x, 0f), size = Size(bw, bh), style = Stroke(width = 3f))
                 }
             }
             Note(
                 "${Theory.NN[P.root]} ${P.scale.lowercase()} · " + (if (state.chordMode == "off") "single notes" else chordName(state.chordMode).lowercase() + if (state.chordPlay) ", playing" else ", showing") +
-                    " · ${Theory.noteName(shown.first())} to ${Theory.noteName(shown.last())} · ◀ ▶ to shift",
+                    " · ${Theory.noteName(shown.first())} to ${Theory.noteName(shown.last())}",
                 modifier = Modifier.padding(top = 4.dp),
             )
-            if (filter) PadFilterStrip(state, pad, Modifier.padding(top = 8.dp))
         }
     }
 }

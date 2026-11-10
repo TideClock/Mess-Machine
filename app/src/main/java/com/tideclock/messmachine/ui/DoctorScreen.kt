@@ -166,6 +166,10 @@ fun DoctorScreen(state: AppState, key: String) {
         Wrap(Modifier) {
             for (g in 0..6) Btn(if (g == 0) "Off" else "$g", { upd(true) { choke = g } }, on = e.choke == g, small = true)
         }
+        Note("When Hold keeps this sound: loop its trim, freeze its tail, or let it play once.", modifier = Modifier.padding(top = 10.dp, bottom = 6.dp))
+        Wrap(Modifier) {
+            for ((v, n) in listOf("loop" to "Loop it", "tail" to "Hold the tail", "once" to "Play once")) Btn(n, { upd(true) { held = v } }, on = e.held == v, small = true, tag = "held-$v")
+        }
 
         Section("Re-pitch to fit")
         Wrap(Modifier) {

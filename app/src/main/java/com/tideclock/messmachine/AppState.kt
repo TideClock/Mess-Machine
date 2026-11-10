@@ -44,7 +44,7 @@ data class Module(val type: String, val pad: Int = -1, val size: Int = 1, val ha
 
 /** Every module you can add, with its name. */
 val CONSOLE_TYPES = listOf(
-    "transport" to "Transport", "pads" to "Pads (4 x 4)", "row" to "One row of pads", "piano" to "Piano for a pad",
+    "transport" to "Transport", "pads" to "Pads (4 x 4)", "row" to "One row of pads", "piano" to "Padiano for a pad",
     "pfilt" to "Filter for a pad", "hold" to "Hold", "fx" to "Effects (all nine)", "fx1" to "One effect", "xy" to "Filter pad (everything)",
     "repeat" to "Repeat + arp", "loops" to "Loops A to H", "scale" to "Scale + chords", "beat" to "Beat light",
 )
@@ -385,13 +385,22 @@ class AppState(private val app: Context) {
         }
         val i = bank * Project.BANK + d
         if (project.sel != i) { project.sel = i; selV++; scheduleSave() }
-        if (project.kit[i].isEmpty()) { overlay = Overlay.Picker(i); return }
+        if (project.kit[i].isEmpty()) {
+            if (emptyRecord) {
+                // an empty pad is a record button: tap to start, tap to stop (or hold to record)
+                if (!micOn || micPad == i) { askRecord(i); holdRecPad = if (recordHold && micOn) i else -1 }
+                return
+            }
+            overlay = Overlay.Picker(i); return
+        }
         downIds[d] = d
         notes.trail("pad ${i + 1}")
         engine.down(d, i, intArrayOf(0), false)
     }
 
     fun padUp(d: Int) {
+        val i = bank * Project.BANK + d
+        if (recordHold && holdRecPad == i && micOn && micPad == i) { holdRecPad = -1; bench.stopMic() }
         val id = downIds[d]
         if (id >= 2000) melodicUp(id) else if (id >= 0) engine.up(id)
         downIds[d] = -1
@@ -800,7 +809,27 @@ class AppState(private val app: Context) {
         prefs.edit().putFloat("uiScale", uiScale).apply()
     }
 
-    private fun pianoId(pad: Int, p: Int) = 1000 + pad * 32 + (p + 12)
+    /** Padiano note ids: 10000 + pad * 100 + (pitch + 48), so pitch -48..51 never collide. */
+    private fun pianoId(pad: Int, p: Int) = 10000 + pad * 100 + (p + 48)
+
+    /* ---------------- Padiano settings ---------------- */
+
+    /** Squares (one row of small squares, the default) or the Keys piano. */
+    var padianoKeys by mutableStateOf(prefs.getBoolean("padKeys", false))
+        private set
+    /** How many semitones the Squares show, 7 to 36. */
+    var padianoN by mutableIntStateOf(prefs.getInt("padN", 13).coerceIn(7, 36))
+        private set
+    /** Height: 0 small, 1 medium, 2 large. */
+    var padianoSize by mutableIntStateOf(prefs.getInt("padSize", 1).coerceIn(0, 2))
+        private set
+    /** Lowest note shown on each pad's Padiano (moved an octave at a time with ◀ ▶). */
+    val padianoBase = mutableStateMapOf<Int, Int>()
+
+    fun switchPadianoKeys(v: Boolean) { padianoKeys = v; prefs.edit().putBoolean("padKeys", v).apply() }
+    fun changePadianoN(n: Int) { padianoN = n.coerceIn(7, 36); prefs.edit().putInt("padN", padianoN).apply() }
+    fun changePadianoSize(n: Int) { padianoSize = n.coerceIn(0, 2); prefs.edit().putInt("padSize", padianoSize).apply() }
+    fun shiftPadiano(pad: Int, by: Int) { padianoBase[pad] = ((padianoBase[pad] ?: 0) + by).coerceIn(-36, 24) }
 
     /** Chords can play, or just show their notes on the piano so you can play them yourself. */
     var chordPlay by mutableStateOf(prefs.getBoolean("chordPlay", true))
@@ -810,6 +839,9 @@ class AppState(private val app: Context) {
 
     /** The notes the chord mode builds on a key, folded into the piano's two octaves. */
     fun chordFor(p: Int): IntArray {
+        // notes past the roll's two octaves take the chord of the same note folded in, moved by octaves
+        val f = Theory.foldP(p)
+        if (f != p) return chordFor(f).map { it + (p - f) }.toIntArray()
         val strip = Theory.stripNotes(project.scale, project.root)
         val idx = strip.indexOf(p)
         return if (chordMode.startsWith("set:") && idx < 0) intArrayOf(p) else Theory.chordOf(p, idx.coerceAtLeast(0), chordMode, project.scale, project.root)
@@ -820,17 +852,18 @@ class AppState(private val app: Context) {
     /** Hold on or off: one tap, from the hold bar or any piano. */
     var holdOn by mutableStateOf(prefs.getBoolean("holdOn", false))
         private set
-    /** How many notes hold after you lift your finger, 1 to 8 (kept while Hold is off). */
-    var holdCount by mutableIntStateOf(prefs.getInt("holdN", 3).coerceIn(1, 8))
+    /** How many notes hold after you lift your finger, 1 to 8, or 0 = Last: only the newest note holds. */
+    var holdCount by mutableIntStateOf(prefs.getInt("holdN", 3).coerceIn(0, 8))
         private set
-    /** Notes that hold right now: 0 when Hold is off. */
-    val holdSlots: Int get() = if (holdOn) holdCount else 0
+    /** Notes that can hold right now: 0 when Hold is off, 1 in Last mode. */
+    val holdSlots: Int get() = if (!holdOn) 0 else if (holdCount == 0) 1 else holdCount
+    val holdLast: Boolean get() = holdOn && holdCount == 0
     /** Notes holding right now, as engine ids (piano ids carry their pad and pitch). */
     val latched = mutableStateListOf<Int>()
     private val swallowUp = HashSet<Int>()
 
     fun changeHoldCount(n: Int) {
-        holdCount = n.coerceIn(1, 8)
+        holdCount = n.coerceIn(0, 8)
         prefs.edit().putInt("holdN", holdCount).apply()
         while (latched.size > holdSlots) { engine.unlatch(latched.removeAt(0)) }
     }
@@ -848,7 +881,7 @@ class AppState(private val app: Context) {
     }
 
     /** Pitches holding on one pad's piano, for drawing. */
-    fun heldPitches(pad: Int): Set<Int> = latched.filter { it >= 1000 && (it - 1000) / 32 == pad }.map { (it - 1000) % 32 - 12 }.toSet()
+    fun heldPitches(pad: Int): Set<Int> = latched.filter { it >= 10000 && (it - 10000) / 100 == pad }.map { (it - 10000) % 100 - 48 }.toSet()
 
     /** A melodic press with hold rules: a held note pressed again lets go; a free slot holds; otherwise it plays normally. */
     private fun melodicDown(id: Int, pad: Int, ps: IntArray) {
@@ -856,6 +889,14 @@ class AppState(private val app: Context) {
             latched.remove(id)
             engine.unlatch(id)
             swallowUp.add(id)
+            return
+        }
+        if (holdLast) {
+            // Last: the newest note takes over the hold
+            for (o in latched) engine.unlatch(o)
+            latched.clear()
+            latched.add(id)
+            engine.down(id, pad, ps, true, true)
             return
         }
         val latch = latched.size < holdSlots
@@ -871,7 +912,7 @@ class AppState(private val app: Context) {
     fun pianoDown(pad: Int, p: Int) {
         if (project.kit[pad].isEmpty()) return
         val ps = chordFor(p)
-        val idx = Theory.stripNotes(project.scale, project.root).indexOf(p).coerceAtLeast(0)
+        val idx = Theory.stripNotes(project.scale, project.root).indexOf(Theory.foldP(p)).coerceAtLeast(0)
         lastChord = if (ps.size > 1) Theory.chordLabel(p, idx, chordMode, project.scale, project.root) + " · " + Theory.chordNotes(ps) +
             (if (!chordPlay) " (showing)" else "") else Theory.noteName(p)
         notes.trail("piano ${pad + 1} ${Theory.noteName(p)}")
@@ -1016,6 +1057,27 @@ class AppState(private val app: Context) {
     private fun queryName(u: Uri): String = try {
         app.contentResolver.query(u, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c -> if (c.moveToFirst()) c.getString(0) else "" } ?: ""
     } catch (_: Exception) { "" }
+
+    /** Lock: the page stays put (no scrolling, tabs, menus, sheets); playing still works. */
+    var locked by mutableStateOf(false)
+
+    /** Settings for playing: empty pads record, hold-to-record, the beat glow, in key only. */
+    var emptyRecord by mutableStateOf(prefs.getBoolean("emptyRec", false))
+        private set
+    var recordHold by mutableStateOf(prefs.getBoolean("recHold", false))
+        private set
+    private var holdRecPad = -1
+    /** The beat glow behind the whole screen: 0 off, 1 soft, 2 full. */
+    var pulseLevel by mutableIntStateOf(prefs.getInt("pulse", 1))
+        private set
+    /** Pianos show only the scale's notes. */
+    var inKeyOnly by mutableStateOf(prefs.getBoolean("inKey", false))
+        private set
+
+    fun switchEmptyRecord(v: Boolean) { emptyRecord = v; prefs.edit().putBoolean("emptyRec", v).apply(); notes.trail("empty pads record ${if (v) "on" else "off"}") }
+    fun switchRecordHold(v: Boolean) { recordHold = v; prefs.edit().putBoolean("recHold", v).apply() }
+    fun setPulse(v: Int) { pulseLevel = v.coerceIn(0, 2); prefs.edit().putInt("pulse", pulseLevel).apply() }
+    fun switchInKey(v: Boolean) { inKeyOnly = v; prefs.edit().putBoolean("inKey", v).apply(); notes.trail("in key only ${if (v) "on" else "off"}") }
 
     /** The pad a mic take lands on, or -1 for the first empty pad. */
     var micPad by mutableIntStateOf(-1)

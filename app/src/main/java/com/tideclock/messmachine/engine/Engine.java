@@ -130,7 +130,7 @@ public final class Engine {
         boolean active, preview, hold, releasing, choked, dry;
         float[] d;
         int a, zEnd, choke, pad;
-        double pos, len, inc;
+        double pos, len, inc, loopFrom;
         boolean loop;
         long delay, t, playLen, attF, fadeF, startAbs, chokeAt;
         float lvl, gl, gr, relFrom, chokeG;
@@ -448,7 +448,16 @@ public final class Engine {
         boolean arpLive = L.nr && !"rep".equals(L.arp);
         if (!(L.nr && playing) && !arpLive) {
             float g = mel ? Theory.chordGain(pitches.length) : .85f;
-            for (int p : pitches) { Voice v = trigger(ps, oct() * Math.pow(2, p / 12.0), 0, false, g, 0, h.holdV); if (v != null) h.voices.add(v); }
+            for (int p : pitches) {
+                Voice v = trigger(ps, oct() * Math.pow(2, p / 12.0), 0, false, g, 0, h.holdV);
+                if (v == null) continue;
+                // Hold keeps a one-shot going: loop its trim, or freeze its tail
+                if (latch && !v.loop && !"once".equals(ps.edit.held)) {
+                    v.loop = true;
+                    if ("tail".equals(ps.edit.held)) v.loopFrom = Math.max(v.len * .7, v.len - .12 * ps.sample.rate);
+                }
+                h.voices.add(v);
+            }
         }
         if (L.nr && !playing && !freeOn) {
             freeOn = true;
@@ -611,7 +620,7 @@ public final class Engine {
         Voice v = freeVoice();
         v.active = true; v.preview = false; v.dry = false; v.hold = hold; v.releasing = false; v.choked = false;
         v.d = d; v.a = (int) Math.max(0, Math.floor(a)); v.len = len; v.zEnd = (int) Math.min(N, Math.ceil(a + len));
-        v.pos = 0; v.inc = r * s.rate / rate; v.loop = e.loop;
+        v.pos = 0; v.inc = r * s.rate / rate; v.loop = e.loop; v.loopFrom = 0;
         v.delay = delay; v.t = 0;
         v.playLen = Math.max(1, Math.round(play * rate)); v.attF = Math.round(att * rate); v.fadeF = Math.max(1, Math.round(fade * rate));
         v.lvl = (float) lvl;
@@ -700,7 +709,7 @@ public final class Engine {
                 }
                 // read the sound
                 double pos = v.pos;
-                if (v.loop) { while (pos >= v.len) pos -= v.len; v.pos = pos; }
+                if (v.loop) { double span = Math.max(1, v.len - v.loopFrom); while (pos >= v.len) pos -= span; v.pos = pos; }
                 int i = v.a + (int) pos;
                 if (i >= v.zEnd - 1 || i >= d.length - 1) {
                     if (!v.loop) { v.active = false; break; }
