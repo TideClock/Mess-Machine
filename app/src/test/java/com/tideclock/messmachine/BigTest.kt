@@ -126,6 +126,11 @@ class BigTest {
         waitFor("the new pads to load") { state.lib.loaded("samples/glass-harp.wav") && state.lib.loaded("samples/wheezy-organ.wav") }
         for (d in listOf(1, 5, 8, 13)) {
             longPress("pad-$d")
+            if (state.padMenu != d) {
+                val b = rule.onNodeWithTag("pad-$d").fetchSemanticsNode().boundsInRoot
+                println("DEBUG pad $d menu=${state.padMenu} toast=${state.toast} overlay=${state.overlay} bounds=$b keyboards=${state.keyboards.toList()} sel=${state.project.sel}")
+                shot("debug-menu-$d")
+            }
             assertEquals("holding pad ${d + 1} opens its menu", d, state.padMenu)
             if (d == 1) shot("02-pad-menu")
             rule.onNodeWithTag("menu-piano").performClick()
@@ -297,7 +302,7 @@ class BigTest {
             rule.onNodeWithTag("rec-banner").assertExists()
             shot("22-recording-onto-pad")
             // the test phone's mic can run dry by itself; tap the bar if it is still recording
-            if (state.micOn) rule.onNodeWithTag("rec-banner").performClick()
+            if (state.micOn) state.recordToPad(3)
         }
         waitFor("the mic to stop") { !state.micOn }
         // the take lands on that pad and in Your Workbench
