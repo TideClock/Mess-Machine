@@ -65,6 +65,8 @@ android {
                 it.forkEvery = 1
                 // DESIGN_CHECK=report makes the design check (BT-5) report without failing
                 it.environment("DESIGN_CHECK", System.getenv("DESIGN_CHECK") ?: "")
+                // DEMO_SHOT=<name> runs one demo render (DemoRender.kt); empty in normal builds, where it is skipped
+                it.environment("DEMO_SHOT", System.getenv("DEMO_SHOT") ?: "")
                 it.systemProperty("robolectric.graphicsMode", "NATIVE")
                 it.testLogging { events("passed", "failed", "skipped"); showStandardStreams = true; exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL }
             }

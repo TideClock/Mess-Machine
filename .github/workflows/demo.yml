@@ -1,0 +1,59 @@
+name: Demo render
+
+# Draws demo video frames from the real screens (DemoRender.kt). Runs only on the demo-render
+# branch or by hand. It never builds or publishes the app.
+on:
+  push:
+    branches: [demo-render]
+  workflow_dispatch:
+    inputs:
+      shots:
+        description: "Shots to render, space separated"
+        default: "c2"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: demo-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Render the shots
+        run: |
+          SHOTS="${{ github.event.inputs.shots }}"
+          [ -z "$SHOTS" ] && SHOTS="$(cat tools/demo-shots.txt)"
+          for s in $SHOTS; do
+            echo "::group::shot $s"
+            DEMO_SHOT=$s ./gradlew testDebugUnitTest --tests "*DemoRender*" --stacktrace || echo "shot $s failed" >> demo-failures.txt
+            echo "::endgroup::"
+          done
+          ls app/build/demo || true
+          cat demo-failures.txt 2>/dev/null || true
+      - name: Pack frames into silent videos (keeps the download small)
+        run: |
+          sudo apt-get install -y ffmpeg >/dev/null 2>&1 || true
+          cd app/build/demo
+          for d in */; do
+            d=${d%/}
+            ffmpeg -loglevel error -y -framerate 30 -i "$d/f_%05d.jpg" -c:v libx264 -crf 12 -preset medium -pix_fmt yuv420p "$d/frames.mp4" && rm "$d"/f_*.jpg
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: demo-render
+          path: |
+            app/build/demo
+            app/build/test-results/testDebugUnitTest/*DemoRender*.xml
+            demo-failures.txt
+          retention-days: 14
