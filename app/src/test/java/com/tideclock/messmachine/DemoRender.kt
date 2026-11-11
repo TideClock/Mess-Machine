@@ -54,10 +54,14 @@ class DemoRender {
     private val pcm = ByteArrayOutputStream()
     private val log = StringBuilder("frame,type,x,y,note\n")
     private lateinit var dir: File
-    private val shot: String = System.getenv("DEMO_SHOT") ?: ""
+    /** DEMO_SHOT lists the shots to film (the test method names, space separated); every other one is skipped. */
+    private val want = (System.getenv("DEMO_SHOT") ?: "").split(" ", ",").filter { it.isNotEmpty() }
+    @get:Rule val testName = org.junit.rules.TestName()
+    private lateinit var shot: String
 
     @Before fun setUp() {
-        Assume.assumeTrue("DEMO_SHOT not set: demo renders are skipped in normal builds", shot.isNotEmpty())
+        shot = testName.methodName
+        Assume.assumeTrue("not in DEMO_SHOT: demo renders are skipped in normal builds", shot in want)
         UiFlags.testing = true
         val ctx = ApplicationProvider.getApplicationContext<Context>()
         ctx.getSharedPreferences("mess", 0).edit()
@@ -190,7 +194,6 @@ class DemoRender {
 
     /** Run a shot; if it breaks, keep what was filmed plus a picture and the tag list of where it broke. */
     private fun shoot(name: String, body: () -> Unit) {
-        Assume.assumeTrue(shot == name)
         try { body() } catch (e: Throwable) {
             println("DEMO FAILED $name at frame $frameNo: $e")
             File(dir, "fail.txt").writeText("frame $frameNo\n" + e.stackTraceToString())

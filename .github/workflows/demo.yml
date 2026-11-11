@@ -34,11 +34,7 @@ jobs:
         run: |
           SHOTS="${{ github.event.inputs.shots }}"
           [ -z "$SHOTS" ] && SHOTS="$(cat tools/demo-shots.txt)"
-          for s in $SHOTS; do
-            echo "::group::shot $s"
-            DEMO_SHOT=$s ./gradlew testDebugUnitTest --tests "*DemoRender*" --stacktrace || echo "shot $s failed" >> demo-failures.txt
-            echo "::endgroup::"
-          done
+          DEMO_SHOT="$SHOTS" ./gradlew testDebugUnitTest --tests "*DemoRender*" --stacktrace || echo "render run failed" >> demo-failures.txt
           ls app/build/demo || true
           cat demo-failures.txt 2>/dev/null || true
       - name: Pack frames into silent videos (keeps the download small)
