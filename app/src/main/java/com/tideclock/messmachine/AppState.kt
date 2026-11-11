@@ -278,7 +278,8 @@ class AppState(private val app: Context) {
 
     /** Decode any pad sounds that are not ready yet, then let the engine hear them. */
     private fun loadKit() {
-        val need = project.kit.filter { it.isNotEmpty() && !lib.loaded(it) && lib.has(it) }
+        // SE-15: granular synths' sources load like pad sounds
+        val need = (project.kit.toList() + project.synths.values.map { it.src }).filter { it.isNotEmpty() && !lib.loaded(it) && lib.has(it) }.distinct()
         if (need.isEmpty()) return
         worker.execute {
             for (k in need) try { lib.load(k) } catch (_: Exception) {}
@@ -305,13 +306,30 @@ class AppState(private val app: Context) {
     /** The synth on a pad, or null. */
     fun synthOn(pad: Int): Synth.Patch? = project.synth(project.kit.getOrNull(pad))
 
+    /** A granular synth's first source: the sound on this pad, else the first sound in the mess, else a long one we ship. */
+    private fun defaultGrainSource(pad: Int): String {
+        val here = project.kit.getOrNull(pad).orEmpty()
+        if (here.isNotEmpty() && !Project.isSynth(here)) return here
+        return project.kit.firstOrNull { it.isNotEmpty() && !Project.isSynth(it) } ?: listOf("samples/glass-harp.wav", "samples/tape-wobble-chord.wav").firstOrNull { lib.has(it) }.orEmpty()
+    }
+
+    /** The sounds a granular synth can read: every sound on a pad in this mess. */
+    fun grainSources(): List<String> = project.kit.filter { it.isNotEmpty() && !Project.isSynth(it) }.distinct()
+
+    /** Point a granular synth at another sound. */
+    fun setGrainSource(pad: Int, key: String) {
+        val sp = synthOn(pad) ?: return
+        edit { sp.src = key }
+    }
+
     /** Put a new synth on a pad (replacing what was there) from a preset, and select it. */
     fun newSynth(pad: Int, preset: Synth.Patch) {
         if (pad !in 0 until Project.NPADS) return
         val key = project.newSynthKey()
         val old = project.kit[pad]
+        val made = preset.copy().also { if (it.kind == Synth.GRAIN && it.src.isEmpty()) it.src = defaultGrainSource(pad) }
         edit {
-            synths[key] = preset.copy()
+            synths[key] = made
             kit[pad] = key
             if (old.isNotEmpty() && Project.isSynth(old) && kit.none { it == old }) synths.remove(old)
             sel = pad
@@ -331,7 +349,9 @@ class AppState(private val app: Context) {
     fun loadSynthPreset(pad: Int, preset: Synth.Patch) {
         val k = project.kit.getOrNull(pad) ?: return
         if (!Project.isSynth(k)) return
-        edit { synths[k] = preset.copy() }
+        val keep = project.synths[k]?.src.orEmpty()
+        val made = preset.copy().also { if (it.kind == Synth.GRAIN && it.src.isEmpty()) it.src = keep.ifEmpty { defaultGrainSource(pad) } }
+        edit { synths[k] = made }
         notes.trail("synth preset ${preset.name}")
     }
 

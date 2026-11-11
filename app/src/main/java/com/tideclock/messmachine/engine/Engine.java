@@ -40,10 +40,12 @@ public final class Engine {
         public final PadOpts opts;
         /** SE-11: the synth this pad plays, or null for a sound. */
         public final Synth.Patch synth;
+        /** SE-15: the sound a granular synth reads, decoded; null when not loaded yet or not granular. */
+        public final Sample grainSrc;
         public PadSlot(int index, String key, Sample sample, SoundEdit edit, boolean audible) { this(index, key, sample, edit, audible, PadOpts.DEFAULT); }
-        public PadSlot(int index, String key, Sample sample, SoundEdit edit, boolean audible, PadOpts opts) { this(index, key, sample, edit, audible, opts, null); }
-        public PadSlot(int index, String key, Sample sample, SoundEdit edit, boolean audible, PadOpts opts, Synth.Patch synth) {
-            this.index = index; this.key = key; this.sample = sample; this.edit = edit; this.audible = audible; this.opts = opts; this.synth = synth;
+        public PadSlot(int index, String key, Sample sample, SoundEdit edit, boolean audible, PadOpts opts) { this(index, key, sample, edit, audible, opts, null, null); }
+        public PadSlot(int index, String key, Sample sample, SoundEdit edit, boolean audible, PadOpts opts, Synth.Patch synth, Sample grainSrc) {
+            this.index = index; this.key = key; this.sample = sample; this.edit = edit; this.audible = audible; this.opts = opts; this.synth = synth; this.grainSrc = grainSrc;
         }
     }
 
@@ -84,7 +86,8 @@ public final class Engine {
                 Sample s = src.get(k);
                 if (s == null) continue;
                 Synth.Patch sp = p.synth(k);
-                pads[i] = new PadSlot(i, k, s, p.edit(k).copy(), p.audible(k), p.opt(i).copy(), sp == null ? null : sp.copy());
+                Sample gs = sp != null && !sp.src.isEmpty() ? src.get(sp.src) : null;
+                pads[i] = new PadSlot(i, k, s, p.edit(k).copy(), p.audible(k), p.opt(i).copy(), sp == null ? null : sp.copy(), gs);
             }
             Pat[] pats = new Pat[Project.NSLOTS];
             for (int pi = 0; pi < Project.NSLOTS; pi++) {
@@ -896,6 +899,7 @@ public final class Engine {
         }
         if (v != null) {
             // the same voice slides to the new note; its gate now ends with this one
+            v.sv.source(ps.grainSrc);
             v.sv.noteOn(sp, hz, gain, rate, true);
             v.hold = hold;
             v.synOff = gateSec < 0 ? -1 : v.t + Math.round(gateSec * rate);
@@ -909,6 +913,7 @@ public final class Engine {
         v.syn = true; v.grain = false; v.frozen = false; v.flow = false; v.pulseAt = -1; v.loop = false;
         v.d = ps.sample.data; v.a = 0; v.len = 1; v.zEnd = v.d.length; v.pos = 0; v.loopFrom = 0;
         v.inc = 1; v.glideLeft = 0; v.glideMul = 1; v.srate = rate;
+        v.sv.source(ps.grainSrc);
         v.sv.noteOn(sp, hz, gain, rate, false);
         v.synOff = gateSec < 0 ? -1 : Math.round(gateSec * rate);
         v.playLen = gateSec < 0 ? 600L * rate : v.synOff + Math.round(v.sv.releaseSec() * rate);

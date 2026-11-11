@@ -248,8 +248,105 @@ public final class Synth {
         k.preset("Vowel talk", "mode", 1, "table", 3, "pos", 0, "plfo", 1, "lrate", 2.5, "lshape", 1, "oct", -1, "cut", 4000);
     }
 
-    /** Every kind, in the order the Synth tab shows them. More arrive in later pieces. */
-    public static final Kind[] KINDS = {ANALOG, FM, WAVE};
+    /* ---------- Granular (SE-15) ---------- */
+
+    public static final Kind GRAIN = new Kind("grain", "Granular", "Plays a sound from your mess as a cloud of tiny grains, at any pitch, frozen or crawling through it. Position picks where; Spray scatters it.",
+        p("mode", "Mode", "Voice", CHOICE, 0, 1, 0, "", true, "Poly", "Mono"),
+        p("pos", "Position", "Grains", LIN, 0, 1, .3, "%", true),
+        p("spray", "Spray", "Grains", LIN, 0, 1, .1, "%", true),
+        p("size", "Size", "Grains", LOG, .01, .5, .08, "s", true),
+        p("dens", "Density", "Grains", LOG, 2, 120, 30, "Hz", true),
+        p("scan", "Scan", "Grains", LIN, -1, 1, 0, "", false),
+        p("pspray", "Pitch spray", "Grains", LIN, 0, 12, 0, "", false),
+        p("rev", "Reverse", "Grains", LIN, 0, 1, 0, "%", false),
+        p("gshape", "Shape", "Grains", CHOICE, 0, 1, 0, "", false, "Smooth", "Sharp"),
+        p("ftype", "Filter", "Filter", CHOICE, 0, 3, 1, "", false, "Low 24", "Low 12", "Band", "High"),
+        p("cut", "Cutoff", "Filter", LOG, 30, 18000, 12000, "Hz", false),
+        p("res", "Resonance", "Filter", LIN, 0, 1, 0, "%", false),
+        p("aa", "Attack", "Amp envelope", LOG, .001, 5, .05, "s", true),
+        p("ad", "Decay", "Amp envelope", LOG, .005, 5, .5, "s", false),
+        p("as", "Sustain", "Amp envelope", LIN, 0, 1, 1, "%", false),
+        p("ar", "Release", "Amp envelope", LOG, .005, 8, .8, "s", true),
+        p("lrate", "Rate", "LFO", LOG, .05, 20, .3, "Hz", false),
+        p("lpos", "To position", "LFO", LIN, 0, 1, 0, "%", false),
+        p("lpitch", "To pitch", "LFO", LIN, 0, 1, 0, "%", false),
+        p("glide", "Glide", "Voice", LOG, .001, 1.5, .001, "s", false),
+        p("oct", "Octave", "Voice", INT, -3, 2, 0, "", false),
+        p("level", "Level", "Voice", LIN, 0, 1, .8, "%", false)
+    );
+
+    static {
+        Kind k = GRAIN;
+        k.preset("Cloud", "pos", .3, "spray", .15, "size", .12, "dens", 40, "aa", .4, "ar", 1.5);
+        k.preset("Freeze", "pos", .5, "spray", .02, "size", .2, "dens", 25, "aa", .2, "ar", 1.2);
+        k.preset("Crawl", "pos", 0, "scan", .25, "spray", .05, "size", .1, "dens", 30, "aa", .1, "ar", 1);
+        k.preset("Shimmer", "pos", .4, "spray", .2, "size", .06, "dens", 70, "pspray", 12, "aa", .5, "ar", 2, "cut", 9000);
+        k.preset("Stutter", "pos", .2, "spray", 0, "size", .03, "dens", 12, "gshape", 1, "aa", .002, "ar", .2);
+        k.preset("Backwards wash", "pos", .6, "spray", .3, "size", .25, "dens", 20, "rev", 1, "aa", .8, "ar", 2.5);
+        k.preset("Glitch", "mode", 1, "pos", .5, "spray", .6, "size", .02, "dens", 90, "pspray", 7, "rev", .5, "gshape", 1, "aa", .002, "ar", .1);
+    }
+
+    /* ---------- Drums (SE-16) ---------- */
+
+    public static final Kind DRUM = new Kind("drum", "Drums", "Drum sounds made from scratch: pick a model, then Tune, Decay, Tone and Snap. Played as keys they go up and down in pitch.",
+        p("model", "Model", "Drum", CHOICE, 0, 7, 0, "", true, "Kick", "Snare", "Hat", "Open hat", "Clap", "Tom", "Cowbell", "Zap"),
+        p("tune", "Tune", "Drum", INT, -24, 24, 0, "", true),
+        p("decay", "Decay", "Drum", LOG, .02, 3, .5, "s", true),
+        p("tone", "Tone", "Drum", LIN, 0, 1, .5, "%", true),
+        p("snap", "Snap", "Drum", LIN, 0, 1, .4, "%", true),
+        p("sweep", "Sweep", "Drum", LIN, 0, 1, .5, "%", false),
+        p("stime", "Sweep time", "Drum", LOG, .005, .5, .04, "s", false),
+        p("noise", "Noise", "Drum", LIN, 0, 1, .5, "%", false),
+        p("drive", "Drive", "Drum", LIN, 0, 1, .2, "%", false),
+        p("level", "Level", "Drum", LIN, 0, 1, .8, "%", false)
+    );
+
+    static {
+        Kind k = DRUM;
+        k.preset("Deep kick", "model", 0, "decay", .6, "sweep", .55, "stime", .045, "snap", .35, "drive", .25);
+        k.preset("Punch kick", "model", 0, "tune", 3, "decay", .3, "sweep", .7, "stime", .025, "snap", .7, "drive", .5);
+        k.preset("Boom 808", "model", 0, "tune", -3, "decay", 1.8, "sweep", .35, "stime", .06, "snap", .15, "drive", .35);
+        k.preset("Snare", "model", 1, "decay", .25, "tone", .55, "snap", .6, "noise", .6);
+        k.preset("Rim snare", "model", 1, "tune", 7, "decay", .12, "tone", .8, "snap", .9, "noise", .3);
+        k.preset("Closed hat", "model", 2, "decay", .06, "tone", .7);
+        k.preset("Open hat", "model", 3, "decay", .5, "tone", .65);
+        k.preset("Clap", "model", 4, "decay", .3, "tone", .5);
+        k.preset("Tom", "model", 5, "decay", .45, "sweep", .3, "stime", .08, "noise", .2);
+        k.preset("Cowbell", "model", 6, "decay", .3, "tone", .6);
+        k.preset("Zap", "model", 7, "decay", .25, "sweep", .9, "stime", .03);
+    }
+
+    /* ---------- Plucks (SE-16) ---------- */
+
+    public static final Kind PLUCK = new Kind("pluck", "Pluck", "A plucked string: a burst of noise ringing through a tuned delay. Bright is the pick, Damp the string, Body the wood around it.",
+        p("mode", "Mode", "Voice", CHOICE, 0, 1, 0, "", true, "Poly", "Mono"),
+        p("decay", "Decay", "String", LOG, .1, 12, 2.5, "s", true),
+        p("bright", "Bright", "String", LIN, 0, 1, .7, "%", true),
+        p("damp", "Damp", "String", LIN, 0, 1, .3, "%", true),
+        p("pick", "Pick position", "String", LIN, 0, 1, .2, "%", false),
+        p("body", "Body", "String", LIN, 0, 1, .3, "%", true),
+        p("mute", "Let go", "String", LOG, .01, 3, .6, "s", false),
+        p("drive", "Drive", "String", LIN, 0, 1, 0, "%", false),
+        p("lrate", "Rate", "LFO", LOG, .05, 20, 5, "Hz", false),
+        p("lpitch", "Vibrato", "LFO", LIN, 0, 1, 0, "%", false),
+        p("glide", "Glide", "Voice", LOG, .001, 1.5, .001, "s", false),
+        p("oct", "Octave", "Voice", INT, -3, 2, 0, "", false),
+        p("level", "Level", "Voice", LIN, 0, 1, .8, "%", false)
+    );
+
+    static {
+        Kind k = PLUCK;
+        k.preset("Nylon", "decay", 2.5, "bright", .55, "damp", .45, "pick", .25, "body", .45);
+        k.preset("Steel", "decay", 4, "bright", .85, "damp", .15, "pick", .12, "body", .3);
+        k.preset("Harp", "decay", 5, "bright", .5, "damp", .35, "pick", .5, "body", .2, "mute", 2);
+        k.preset("Koto", "decay", 2, "bright", .9, "damp", .2, "pick", .08, "body", .1, "lpitch", .02);
+        k.preset("Pluck bass", "mode", 1, "decay", 1.2, "bright", .45, "damp", .6, "body", .5, "oct", -2, "mute", .15);
+        k.preset("Muted", "decay", .35, "bright", .6, "damp", .7, "pick", .3, "body", .3, "mute", .05);
+        k.preset("Bell string", "decay", 8, "bright", 1, "damp", 0, "pick", .4, "body", 0);
+    }
+
+    /** Every kind, in the order the Synth tab shows them. */
+    public static final Kind[] KINDS = {ANALOG, FM, WAVE, GRAIN, DRUM, PLUCK};
 
     /** How long a note with no length rings: its attack and decay (FM: the slowest carrier's). */
     public static double ringSec(Patch p) {
@@ -258,6 +355,8 @@ public final class Synth {
             for (int i = 0; i < 4; i++) if ((cm >> i & 1) != 0) m = Math.max(m, p.v[p.kind.at(FM_A[i])] + p.v[p.kind.at(FM_D[i])]);
             return Math.min(4, m);
         }
+        if (p.kind == DRUM) return Math.min(6, p.get("decay") * ((int) p.get("model") == 3 ? 2 : 1.2));
+        if (p.kind == PLUCK) return Math.min(12, p.get("decay"));
         return Math.min(2, p.get("aa") + p.get("ad"));
     }
 
@@ -343,6 +442,8 @@ public final class Synth {
         public final Kind kind;
         public String name;
         public final double[] v;
+        /** Granular (SE-15): the sound its grains come from, a library key; empty for other kinds. */
+        public String src = "";
         public Patch(Kind kind, String name) {
             this.kind = kind; this.name = name;
             v = new double[kind.params.length];
@@ -350,7 +451,7 @@ public final class Synth {
         }
         public double get(String id) { int i = kind.at(id); return i < 0 ? 0 : v[i]; }
         public void set(String id, double x) { int i = kind.at(id); if (i >= 0) v[i] = kind.params[i].clamp(x); }
-        public Patch copy() { Patch q = new Patch(kind, name); System.arraycopy(v, 0, q.v, 0, v.length); return q; }
+        public Patch copy() { Patch q = new Patch(kind, name); System.arraycopy(v, 0, q.v, 0, v.length); q.src = src; return q; }
 
         public Map<String, Object> toMap() {
             Map<String, Object> m = new LinkedHashMap<>();
@@ -359,6 +460,7 @@ public final class Synth {
             Map<String, Object> vals = new LinkedHashMap<>();
             for (int i = 0; i < v.length; i++) vals.put(kind.params[i].id, v[i]);
             m.put("v", vals);
+            if (!src.isEmpty()) m.put("src", src);
             return m;
         }
 
@@ -367,6 +469,7 @@ public final class Synth {
             Patch q = new Patch(k, Json.str(m.get("name"), k.name));
             Map<String, Object> vals = Json.map(m.get("v"));
             for (Map.Entry<String, Object> e : vals.entrySet()) if (e.getValue() instanceof Number) q.set(e.getKey(), ((Number) e.getValue()).doubleValue());
+            q.src = Json.str(m.get("src"), "");
             return q;
         }
     }
@@ -492,6 +595,31 @@ public final class Synth {
         // wavetable
         int table;
         double pos, penv, plfo, warp, wposNow;
+        // granular: up to 24 grains at once, each a read head with its own speed, age and length
+        static final int NG = 24;
+        float[] src;
+        int srcRate = 44100;
+        final double[] gPos = new double[NG], gInc = new double[NG];
+        final int[] gAge = new int[NG], gLen = new int[NG];
+        final boolean[] gOn = new boolean[NG];
+        double spray, gsize, dens, scan, pspray, grev, lpos, head;
+        int gshape;
+        long nextGrain;
+
+        // drums
+        int model;
+        double dtune, ddecay, dtone, dsnap, dsweep, dstime, dnoise, dt0;
+        long dT;
+        double dph1, dph2;
+        final double[] mph = new double[6];
+        // plucks: the string is a delay line
+        final float[] ks = new float[4096];
+        int ksW;
+        double ksLp, kdecay, kbright, kdamp, kpick, kbody, kmute, relEnv = 1, ksAvg;
+        long ksT;
+
+        /** The sound a granular voice reads (null for silence). Set before noteOn. */
+        public void source(Sample s) { src = s == null ? null : s.data; srcRate = s == null ? 44100 : s.rate; }
 
         /** Start a note (or slide an already sounding mono note there when slide is true). */
         public void noteOn(Patch p, double hz, float vel, int rate, boolean slide) {
@@ -503,6 +631,10 @@ public final class Synth {
                 this.hz = hz;
                 for (int i = 0; i < 4; i++) { fph[i] = 0; fe4[i].on(true); }
                 fb1 = fb2 = 0;
+                for (int i = 0; i < NG; i++) gOn[i] = false;
+                head = 0; nextGrain = 0;
+                dT = 0; dph1 = dph2 = 0; for (int i = 0; i < 6; i++) mph[i] = i * .17;
+                if (kindNo == 5) pluckOn(hz * oct);
                 for (int i = 0; i < 5; i++) { ph1[i] = (i * .2137) % 1; ph2[i] = (i * .3971 + .5) % 1; }
                 phSub = 0; s1 = s2 = s3 = s4 = ic1 = ic2 = 0;
                 lph = 0;
@@ -522,7 +654,10 @@ public final class Synth {
         public void noteOff() { gate = false; amp.off(); fe.off(); for (Env e : fe4) e.off(); }
 
         public boolean done() {
+            if (on && kindNo == 4) return dT > ringSec(patch) * rate + rate / 20;
+            if (on && kindNo == 5 && ksT > rate / 10 && ksAvg < 2e-5) return true;
             if (!on || gate) return false;
+            if (kindNo == 5) return relEnv < 1e-4;
             if (kindNo == 1) {
                 int cm = CARRIERS[algo];
                 for (int i = 0; i < 4; i++) if ((cm >> i & 1) != 0 && fe4[i].stage != 0) return false;
@@ -541,6 +676,8 @@ public final class Synth {
                 for (int i = 0; i < 4; i++) if ((cm >> i & 1) != 0) m = Math.max(m, patch.v[patch.kind.at(FM_RL[i])]);
                 return Math.min(8, m) * 1.3 + .02;
             }
+            if (patch.kind == DRUM) return ringSec(patch) + .05;
+            if (patch.kind == PLUCK) return Math.min(3, patch.get("mute")) * 1.5 + .02;
             return Math.min(8, patch.get("ar")) * 1.3 + .02;
         }
 
@@ -551,7 +688,7 @@ public final class Synth {
             patch = p;
             double[] v = p.v;
             Kind K = p.kind;
-            kindNo = K == FM ? 1 : K == WAVE ? 2 : 0;
+            kindNo = K == FM ? 1 : K == WAVE ? 2 : K == GRAIN ? 3 : K == DRUM ? 4 : K == PLUCK ? 5 : 0;
             mode = (int) g(v, K, "mode", 0);
             w1 = g(v, K, "w1", 2); pw1 = g(v, K, "pw1", .5); w2 = g(v, K, "w2", 2);
             semi2r = Math.pow(2, (g(v, K, "semi2", 0) + g(v, K, "fine2", 0) / 100) / 12);
@@ -574,11 +711,192 @@ public final class Synth {
                 }
             } else if (kindNo == 2) {
                 table = (int) g(v, K, "table", 0); pos = g(v, K, "pos", 0); penv = g(v, K, "penv", 0); plfo = g(v, K, "plfo", 0); warp = g(v, K, "warp", 0);
+            } else if (kindNo == 4) {
+                model = (int) g(v, K, "model", 0); dtune = Math.pow(2, g(v, K, "tune", 0) / 12); ddecay = g(v, K, "decay", .5); dtone = g(v, K, "tone", .5);
+                dsnap = g(v, K, "snap", .4); dsweep = g(v, K, "sweep", .5); dstime = g(v, K, "stime", .04); dnoise = g(v, K, "noise", .5);
+            } else if (kindNo == 5) {
+                kdecay = g(v, K, "decay", 2.5); kbright = g(v, K, "bright", .7); kdamp = g(v, K, "damp", .3); kpick = g(v, K, "pick", .2);
+                kbody = g(v, K, "body", .3); kmute = g(v, K, "mute", .6);
+            } else if (kindNo == 3) {
+                pos = g(v, K, "pos", 0); spray = g(v, K, "spray", 0); gsize = g(v, K, "size", .08); dens = g(v, K, "dens", 30);
+                scan = g(v, K, "scan", 0); pspray = g(v, K, "pspray", 0); grev = g(v, K, "rev", 0); gshape = (int) g(v, K, "gshape", 0); lpos = g(v, K, "lpos", 0);
             }
             if (rate > 0) {
                 fe.set(g(v, K, "fa", .005), g(v, K, "fd", .4), g(v, K, "fs", .2), g(v, K, "fr", .3), rate);
                 amp.set(g(v, K, "aa", .004), g(v, K, "ad", .5), g(v, K, "as", .8), g(v, K, "ar", .25), rate);
             }
+        }
+
+        /** The six square oscillators of a hat, at the classic metallic ratios. */
+        private static final double[] HAT = {1, 1.4471, 1.617, 1.9265, 2.5028, 2.6637};
+
+        private double nz() { rng ^= rng << 13; rng ^= rng >>> 17; rng ^= rng << 5; return (rng & 0xFFFF) / 32767.5 - 1; }
+
+        /** A one-shot state-variable filter step on the shared states: 0 low, 1 band, 2 high. */
+        private double svf(double x, double fc, double q, int out) {
+            double gg = Math.tan(Math.PI * Math.min(fc, rate * .45) / rate), kk = 1 / q;
+            double a1 = 1 / (1 + gg * (gg + kk)), a2 = gg * a1, a3 = gg * a2;
+            double v3 = x - ic2, v1 = a1 * ic1 + a2 * v3, v2 = ic2 + a2 * ic1 + a3 * v3;
+            ic1 = 2 * v1 - ic1; ic2 = 2 * v2 - ic2;
+            return out == 0 ? v2 : out == 1 ? v1 : x - kk * v1 - v2;
+        }
+
+        /** Drums: each model built from sines, squares and noise, with its own fall. */
+        private float drumNext(double f) {
+            double t = dT++ / (double) rate;
+            double r = f / 261.6256 * dtune;  // the note moves the drum's pitch; pitch 0 is the drum's own
+            double tau = Math.max(.005, ddecay) / 4.6;
+            double env = Math.exp(-t / tau);
+            double click = dsnap * Math.exp(-t / .0015) * nz();
+            double o;
+            switch (model) {
+                case 0: case 5: case 7: { // kick, tom, zap: a sine swept down from above
+                    double base = (model == 0 ? 50 : model == 5 ? 110 : 180) * r;
+                    double depth = model == 7 ? dsweep * 48 : model == 5 ? dsweep * 18 : dsweep * 30;
+                    double fNow = base * Math.pow(2, depth / 12 * Math.exp(-t / Math.max(.002, dstime)));
+                    dph1 += fNow / rate; if (dph1 >= 1) dph1 -= 1;
+                    o = sin1(dph1) * env + click * .6;
+                    if (model == 5) o += dnoise * .25 * nz() * Math.exp(-t / (tau * .4));
+                    break;
+                }
+                case 1: { // snare: two tones and filtered noise
+                    double base = 180 * r;
+                    dph1 += base / rate; if (dph1 >= 1) dph1 -= 1;
+                    dph2 += base * 1.83 / rate; if (dph2 >= 1) dph2 -= 1;
+                    double body = (sin1(dph1) + .5 * sin1(dph2)) * Math.exp(-t / (tau * .45));
+                    double nzv = svf(nz(), 1500 + dtone * 6000, .7, 2) * env;
+                    o = body * (1 - dnoise * .5) + nzv * (.4 + dnoise * .9) + click * .5;
+                    break;
+                }
+                case 2: case 3: { // hats: six metallic squares through a high filter
+                    double s = 0;
+                    for (int i = 0; i < 6; i++) { mph[i] += 400 * r * HAT[i] / rate; if (mph[i] >= 1) mph[i] -= 1; s += mph[i] < .5 ? 1 : -1; }
+                    s = s / 6 + nz() * .3;
+                    o = svf(s, 5000 + dtone * 6000, .8, 2) * env * 1.6 + click * .2;
+                    break;
+                }
+                case 4: { // clap: three quick bursts of band noise, then the tail
+                    double burst = 0;
+                    for (int i = 0; i < 3; i++) { double tt = t - i * .011; if (tt >= 0) burst = Math.max(burst, Math.exp(-tt / .006)); }
+                    double tail = t > .022 ? Math.exp(-(t - .022) / tau) : 0;
+                    o = svf(nz(), (900 + dtone * 1800) * r, 1.6, 1) * Math.max(burst, tail * .8) * 2.2;
+                    break;
+                }
+                default: { // cowbell: two squares through a band filter
+                    dph1 += 540 * r / rate; if (dph1 >= 1) dph1 -= 1;
+                    dph2 += 800 * r / rate; if (dph2 >= 1) dph2 -= 1;
+                    double s = ((dph1 < .5 ? 1 : -1) + (dph2 < .5 ? 1 : -1)) * .5;
+                    double fall = Math.exp(-t / .01) * .5 + .5;
+                    o = svf(s, 2000 + dtone * 2000, 2, 1) * env * fall * 1.5;
+                }
+            }
+            if (drive > 0) o = sat(o * (1 + drive * 4)) / (1 + drive);
+            return (float) (o * level * vel * .9);
+        }
+
+        /** Plucks: fill the string (a delay one period long) with a shaped burst. */
+        private void pluckOn(double f0) {
+            int L = (int) Math.max(2, Math.min(ks.length - 2, rate / Math.max(12, f0)));
+            java.util.Arrays.fill(ks, 0f);
+            double lp = 0, a = .05 + kbright * .95;
+            int pk = (int) Math.round(kpick * .5 * L);
+            for (int i = 0; i < L; i++) { lp += (nz() - lp) * a; ks[i] = (float) lp; }
+            if (pk > 0) for (int i = L - 1; i >= pk; i--) ks[i] -= ks[i - pk];   // a pick away from the end loses the notes that have a node there
+            // take out the burst's average and bring it to a steady level, so every pluck starts as loud
+            double mean = 0, peak = 1e-9;
+            for (int i = 0; i < L; i++) mean += ks[i];
+            mean /= L;
+            for (int i = 0; i < L; i++) { ks[i] -= (float) mean; peak = Math.max(peak, Math.abs(ks[i])); }
+            for (int i = 0; i < L; i++) ks[i] = (float) (ks[i] * .6 / peak);
+            ksW = L; ksLp = 0; ksT = 0; ksAvg = .1; relEnv = 1; ic1 = ic2 = 0;
+        }
+
+        private float pluckNext(double f) {
+            // the damping filter in the loop delays the string a little; take that off so high notes stay in tune
+            double d0 = .02 + kdamp * .9, c0 = 1 - d0 * .5;
+            double L = Math.max(2, Math.min(ks.length - 4, rate / Math.max(12, f) - (1 - c0) / c0 * c0));
+            int M = ks.length;
+            double rp = ksW - L;
+            if (rp < 0) rp += M;
+            int i = (int) rp; double fr = rp - i;
+            float a = ks[i % M], b = ks[(i + 1) % M];
+            double y = a + (b - a) * fr;
+            // loss per trip round the string, so the whole string dies away in Decay seconds
+            double gfb = Math.exp(-4.6 * L / (Math.max(.05, kdecay) * rate));
+            double d = .02 + kdamp * .9;
+            ksLp += (y - ksLp) * (1 - d * .5);
+            double w = (ksLp * (1 - d * .5) + y * d * .5) * gfb;
+            ks[ksW] = (float) w;
+            if (++ksW >= M) ksW = 0;
+            ksT++;
+            ksAvg += (Math.abs(y) - ksAvg) * .001;
+            if (!gate) relEnv *= Math.exp(-4.6 / Math.max(1, kmute * rate));
+            double o = y;
+            if (kbody > 0) o += svf(y, 220, 1.5, 1) * kbody * 1.5;
+            if (drive > 0) o = sat(o * (1 + drive * 4)) / (1 + drive);
+            return (float) (o * relEnv * level * vel);
+        }
+
+        private double rnd01() { rng ^= rng << 13; rng ^= rng >>> 17; rng ^= rng << 5; return (rng & 0xFFFFFF) / (double) 0x1000000; }
+
+        /**
+         * Granular: a new grain every 1/density seconds (a little early or late, so it never buzzes), each reading the
+         * sound around the position at the note's pitch (the sound counts as middle C), faded in and out.
+         */
+        private float grainNext(double f) {
+            float[] d = src;
+            if (d == null || d.length < 64) { amp.next(); return 0; }
+            int N = d.length;
+            if (--nextGrain <= 0) {
+                nextGrain = Math.max(1, Math.round(rate / dens * (.7 + .6 * rnd01())));
+                for (int i = 0; i < NG; i++) if (!gOn[i]) {
+                    double at = pos + head / N + (rnd01() - .5) * spray * .5 + (lpos > 0 ? lpos * lfoV * .25 : 0);
+                    at -= Math.floor(at);
+                    double ratio = f / 261.6256 * srcRate / rate;
+                    if (pspray > 0) ratio *= Math.pow(2, Math.round((rnd01() * 2 - 1) * pspray) / 12.0);
+                    boolean back = grev > 0 && rnd01() < grev;
+                    gPos[i] = at * N; gInc[i] = back ? -ratio : ratio;
+                    gLen[i] = (int) Math.max(32, gsize * rate); gAge[i] = 0; gOn[i] = true;
+                    break;
+                }
+            }
+            head += scan * srcRate / rate;
+            if (head > N || head < -N) head -= Math.floor(head / N) * N;
+            double o = 0; int live = 0;
+            for (int i = 0; i < NG; i++) {
+                if (!gOn[i]) continue;
+                double x = gAge[i] / (double) gLen[i];
+                double w;
+                if (gshape == 1) w = x < .1 ? x * 10 : x > .9 ? (1 - x) * 10 : 1;
+                else { double s = sin1(x * .5); w = s * s; }
+                double p = gPos[i];
+                p -= Math.floor(p / N) * N;
+                int j = (int) p; double fr2 = p - j; int j1 = j + 1 >= N ? 0 : j + 1;
+                o += (d[j] + (d[j1] - d[j]) * fr2) * w;
+                gPos[i] += gInc[i];
+                if (++gAge[i] >= gLen[i]) gOn[i] = false;
+                live++;
+            }
+            // overlapping grains add up; keep the cloud near one sound's level
+            o /= Math.sqrt(Math.max(1, dens * gsize * .5));
+            // the shared filter (no envelope on it here)
+            double y;
+            if (ftype == 0) {
+                double gg = G, S = (gg * gg * gg * s1 + gg * gg * s2 + gg * s3 + s4) * (1 - gg);
+                double u = (o - k * S) / (1 + k * gg * gg * gg * gg);
+                double v1 = (u - s1) * gg; double y1 = v1 + s1; s1 = y1 + v1;
+                double v2 = (y1 - s2) * gg; double y2 = v2 + s2; s2 = y2 + v2;
+                double v3 = (y2 - s3) * gg; double y3 = v3 + s3; s3 = y3 + v3;
+                double v4 = (y3 - s4) * gg; double y4 = v4 + s4; s4 = y4 + v4;
+                y = y4;
+            } else {
+                double a1 = 1 / (1 + g * (g + k)), a2 = g * a1, a3 = g * a2;
+                double v3 = o - ic2, v1 = a1 * ic1 + a2 * v3, v2 = ic2 + a2 * ic1 + a3 * v3;
+                ic1 = 2 * v1 - ic1; ic2 = 2 * v2 - ic2;
+                y = ftype == 1 ? v2 : ftype == 2 ? v1 * k : o - k * v1 - v2;
+            }
+            double e = amp.next();
+            return (float) (y * e * level * vel * .9);
         }
 
         /** FM: operators 4 down to 1, each bent by the ones the algorithm feeds into it; carriers are what you hear. */
@@ -641,6 +959,9 @@ public final class Synth {
             hz = glideK > 0 ? hzTarget + (hz - hzTarget) * glideK : hzTarget;
             double f = hz * oct * pitchMul * lfoPitchMul;
             if (kindNo == 1) return fmNext(f);
+            if (kindNo == 3) return grainNext(f);
+            if (kindNo == 4) return drumNext(f);
+            if (kindNo == 5) return pluckNext(f);
             double dt1 = f / rate, dt2 = dt1 * semi2r;
             double pw = Math.max(.05, Math.min(.95, pw1 + lpw * lfoV * .4));
             // oscillators, with unison spread around the note
