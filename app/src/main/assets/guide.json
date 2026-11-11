@@ -1,18 +1,23 @@
 {
-  "title": "Hold works on pads, and 29 lessons",
+  "title": "Loops show their key, and four fixes",
   "thisBuild": [
-    "Hold now latches pads on the grid, not just keys. Turn on H, tap a pad: it keeps playing, with an H in its corner. Tap it again to let it go. It keeps as many as the number under H, like keys do.",
-    "Learn (in the ☰ menu) now has 29 lessons. New: Dock filter, Lock, Chords and key, XY setup, My Desk, Record live, Song, Bottle it, Record onto a pad, The Sample sheet, Granular from your sounds, Acid slides, Favorites.",
-    "The Hold and On the beat lessons are back on the pad grid."
+    "Loops show their tempo and key. In Sounds and on the Sample sheet a loop reads like \"4 beats at 120 bpm · C# major / A# minor\". The two names mean the same notes. 38 of the 90 Qbldy loops have a key; the others were not clear enough to name.",
+    "Search finds loops by key: type \"d minor\" in Sounds.",
+    "Sounds you make keep their tempo and key too. A resampled loop remembers its tempo and length, and now follows the mess's tempo like a Qbldy loop. A mic take remembers the tempo it was made at. Sounds already in Your Workbench get their key measured once, in the background.",
+    "Holding a pad no longer opens its menu by accident. Lift between about half a second and a bit over a second for the menu; hold longer and you are just playing. Pads that sound while held (synths, Sustain, gate) never open it from a hold: tap the pad, then Menu by the bank numbers.",
+    "The Tempo slider changes the tempo as it moves.",
+    "The Repeat menu in the dock is one small panel: Every, Plays, Each repeat.",
+    "The Sample button by the bank numbers now always opens the pad you tapped last. It could open the one before."
   ],
   "watch": [
-    "Hold on, tap two pads, switch to bank 2 and back: both should still be playing, and tapping each lets it go.",
-    "Run a few of the new lessons. Send a note wherever a step doesn't move on or the yellow box points at the wrong thing.",
-    "The Favorites lesson stars a real sound (stars aren't part of the practice mess): unstar it from the pad menu if you don't want it."
+    "Check a few loop keys by ear: set the mess to the key a loop shows and play keys over it. Send a note for any that sound wrong.",
+    "Resample a loop, change the tempo, play the resample: it should stay in time with the beat.",
+    "Hold a Sustain pad or a synth pad for a second or two and lift: no menu. Hold a drum pad for under a second and lift: menu.",
+    "Drag the Tempo slider while a loop plays: the beat should follow your finger."
   ],
   "limits": [
-    "The Sample sheet lesson can't see which tab is open, so its Tools step waits for you to tap Skip step.",
-    "Steps in menus (pad menu, ☰) ring the pad or button that opens the menu, not the item inside it.",
-    "Lessons know you did a step, not how it sounded."
+    "Keys are measured, not heard. A loop with no clear key shows none.",
+    "A resample made before this build has no tempo stored, so it does not follow the tempo.",
+    "An old Workbench sound shows its new key the next time the list is drawn."
   ]
 }
