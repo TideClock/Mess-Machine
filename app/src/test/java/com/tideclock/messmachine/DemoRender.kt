@@ -4,7 +4,13 @@ import android.content.Context
 import android.graphics.Bitmap
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
 import androidx.core.view.drawToBitmap
@@ -53,7 +59,9 @@ class DemoRender {
         val ctx = ApplicationProvider.getApplicationContext<Context>()
         ctx.getSharedPreferences("mess", 0).edit()
             .putInt("guideSeen", BuildConfig.VERSION_CODE)
-            .putString("helpSeen", (Tab.entries.map { it.label } + listOf("Desk", "Keys")).joinToString(","))
+            .putString("helpSeen", (Tab.entries.map { it.label } + listOf("Desk", "Keys") +
+                listOf("Sample", "Tempo + feel", "Settings", "Messes", "Latency", "Packs", "Notes for Claude").map { "sheet:$it" } +
+                (1..64).flatMap { listOf("sheet:XY for pad $it", "sheet:Pick a sound for pad $it") }).joinToString(","))
             .commit()
         state = AppState(ctx)
         rule.setContent { MessMachineApp(state, ticker = false) }
@@ -93,17 +101,103 @@ class DemoRender {
         val ms = (frameNo + 1) * 1000L / fps - frameNo * 1000L / fps
         rule.mainClock.advanceTimeBy(ms, ignoreFrameDuration = true)
         settle()
-        val bmp = rule.activity.window.decorView.rootView.drawToBitmap(Bitmap.Config.ARGB_8888)
+        val bmp = grab()
         File(dir, "f_%05d.jpg".format(frameNo)).outputStream().use { bmp.compress(Bitmap.CompressFormat.JPEG, 93, it) }
         bmp.recycle()
         frameNo++
+    }
+
+    /** The screen, with any open menus drawn on top (menus are separate windows, so the page alone misses them). */
+    private fun grab(): Bitmap {
+        val main = rule.activity.window.decorView.rootView
+        val bmp = main.drawToBitmap(Bitmap.Config.ARGB_8888)
+        try {
+            val g = Class.forName("android.view.WindowManagerGlobal")
+            val inst = g.getMethod("getInstance").invoke(null)
+            val fv = g.getDeclaredField("mViews").also { it.isAccessible = true }
+            val fp = g.getDeclaredField("mParams").also { it.isAccessible = true }
+            @Suppress("UNCHECKED_CAST") val views = fv.get(inst) as java.util.ArrayList<android.view.View>
+            @Suppress("UNCHECKED_CAST") val params = fp.get(inst) as java.util.ArrayList<android.view.WindowManager.LayoutParams>
+            val c = android.graphics.Canvas(bmp)
+            for ((i, v) in views.withIndex()) {
+                if (v === main || v.width <= 0 || v.height <= 0) continue
+                val loc = IntArray(2); v.getLocationOnScreen(loc)
+                val lp = params.getOrNull(i)
+                val x = if (loc[0] != 0 || loc[1] != 0) loc[0] else lp?.x ?: 0
+                val y = if (loc[0] != 0 || loc[1] != 0) loc[1] else lp?.y ?: 0
+                if (popupNote != views.size * 10000 + x + y) { popupNote = views.size * 10000 + x + y; println("DEMO popup frame=$frameNo n=${views.size} size=${v.width}x${v.height} loc=${loc[0]},${loc[1]} lp=${lp?.x},${lp?.y} grav=${lp?.gravity}") }
+                c.save(); c.translate(x.toFloat(), y.toFloat()); v.draw(c); c.restore()
+            }
+        } catch (e: Throwable) { if (popupNote != -1) { popupNote = -1; println("DEMO popup grab failed: $e") } }
+        return bmp
+    }
+    private var popupNote = 0
+
+    /** Every tagged thing on screen with where it is: how a new shot finds its controls. */
+    private fun dumpTags(name: String) {
+        val sb = StringBuilder()
+        for (n in rule.onAllNodes(SemanticsMatcher("any") { true }, useUnmergedTree = true).fetchSemanticsNodes()) {
+            val tag = n.config.getOrNull(SemanticsProperties.TestTag)
+            val txt = n.config.getOrNull(SemanticsProperties.Text)?.joinToString("|") { it.text }
+            if (tag == null && txt == null) continue
+            val b = n.boundsInWindow
+            sb.append("${tag ?: "-"}\t${txt ?: ""}\t${b.left.toInt()},${b.top.toInt()},${b.right.toInt()},${b.bottom.toInt()}\n")
+        }
+        File(dir, "tags-$name.txt").writeText(sb.toString())
+    }
+
+    private fun show(tag: String) { rule.onNodeWithTag(tag).performScrollTo(); frames(2) }
+
+    /** Finger number id goes down on a tagged thing and stays down (several fingers can be down at once). */
+    private fun fingerDown(id: Int, tag: String, fx: Float, fy: Float, note: String = "$tag#$id") {
+        val p = rootPoint(tag, fx, fy)
+        log.append("$frameNo,down,${p.x.toInt()},${p.y.toInt()},$note\n")
+        rule.onNodeWithTag(tag).performTouchInput { down(id, Offset(width * fx, height * fy)) }
+    }
+    private fun fingerMove(id: Int, tag: String, fx: Float, fy: Float, note: String = "$tag#$id") {
+        val p = rootPoint(tag, fx, fy)
+        log.append("$frameNo,move,${p.x.toInt()},${p.y.toInt()},$note\n")
+        rule.onNodeWithTag(tag).performTouchInput { moveTo(id, Offset(width * fx, height * fy)) }
+    }
+    private fun fingerUp(id: Int, tag: String, note: String = "$tag#$id") {
+        log.append("$frameNo,up,0,0,$note\n")
+        rule.onNodeWithTag(tag).performTouchInput { up(id) }
+    }
+    /** One finger slides across a tagged thing over some frames, from one spot to another. */
+    private fun drag(tag: String, x0: Float, y0: Float, x1: Float, y1: Float, n: Int, id: Int = 0, lift: Boolean = true, note: String = "$tag#$id", down: Boolean = true) {
+        if (down) { fingerDown(id, tag, x0, y0, note); frame() }
+        for (i in 1..n) { val t = i / n.toFloat(); fingerMove(id, tag, x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, note); frame() }
+        if (lift) { fingerUp(id, tag, note); frame() }
+    }
+    /** Tap something found by the words on it (menu rows have no tags). */
+    private fun tapText(text: String, hold: Int = 3) {
+        val node = rule.onNodeWithText(text, substring = true, ignoreCase = true, useUnmergedTree = true)
+        val b = node.fetchSemanticsNode().boundsInWindow
+        log.append("$frameNo,down,${b.center.x.toInt()},${b.center.y.toInt()},$text\n")
+        node.performTouchInput { down(center) }
+        frames(hold)
+        node.performTouchInput { up() }
+        log.append("$frameNo,up,${b.center.x.toInt()},${b.center.y.toInt()},$text\n")
+        frame()
+    }
+    private fun has(tag: String) = rule.onAllNodesWithTag(tag, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+
+    /** Run a shot; if it breaks, keep what was filmed plus a picture and the tag list of where it broke. */
+    private fun shoot(name: String, body: () -> Unit) {
+        Assume.assumeTrue(shot == name)
+        try { body() } catch (e: Throwable) {
+            println("DEMO FAILED $name at frame $frameNo: $e")
+            File(dir, "fail.txt").writeText("frame $frameNo\n" + e.stackTraceToString())
+            try { dumpTags("fail"); grab().let { b -> File(dir, "fail.png").outputStream().use { b.compress(Bitmap.CompressFormat.PNG, 100, it) } } } catch (_: Throwable) {}
+        }
+        finish()
     }
 
     private fun frames(n: Int) { repeat(n) { frame() } }
     private fun secs(s: Double) = frames((s * fps).toInt())
 
     private fun rootPoint(tag: String, fx: Float, fy: Float): Offset {
-        val b = rule.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
+        val b = rule.onNodeWithTag(tag).fetchSemanticsNode().boundsInWindow
         return Offset(b.left + b.width * fx, b.top + b.height * fy)
     }
 
@@ -111,7 +205,7 @@ class DemoRender {
     private fun tap(tag: String, fx: Float = .5f, fy: Float = .5f, hold: Int = 3, note: String = tag) {
         val p = rootPoint(tag, fx, fy)
         log.append("$frameNo,down,${p.x.toInt()},${p.y.toInt()},$note\n")
-        rule.onNodeWithTag(tag).performTouchInput { down(Offset(width * fx, height * fy)) }
+        rule.onNodeWithTag(tag, useUnmergedTree = false).performTouchInput { down(Offset(width * fx, height * fy)) }
         frames(hold)
         rule.onNodeWithTag(tag).performTouchInput { up() }
         log.append("$frameNo,up,${p.x.toInt()},${p.y.toInt()},$note\n")
@@ -136,11 +230,35 @@ class DemoRender {
         println("DEMO done $shot frames=$frameNo audio=${data.size / 4} samples")
     }
 
+    /** Not a demo: checks that menus get filmed and lists the controls on the screens the shots use. */
+    @Test fun t1() = shoot("t1") {
+        state.newMess()
+        state.putOnPad(8, "samples/glass-harp.wav")
+        settle(); Thread.sleep(600); settle()
+        action()
+        frames(3); dumpTags("pads")
+        tap("pad-4", hold = 20); frames(4); dumpTags("padmenu")
+        if (has("menu-piano")) tap("menu-piano") else println("DEMO no menu-piano")
+        frames(6); dumpTags("padiano")
+        if (has("dock-open")) { tap("dock-open"); frames(6); dumpTags("dock") }
+        if (has("dock-rate")) { tap("dock-rate"); frames(6); dumpTags("dockrate"); if (has("rate-sring")) tap("rate-sring"); frames(4) }
+        if (has("pick-chord")) { tap("pick-chord"); frames(6); dumpTags("chordmenu"); tapText("Triads from"); frames(4) }
+        if (has("open-sample")) { tap("open-sample"); frames(6); dumpTags("sample"); tap("held-sustain"); frames(3); tap("held-beat"); frames(4); dumpTags("sample-beat"); tap("done"); frames(4) }
+        tap("bpm"); frames(6); dumpTags("tempo"); tap("done"); frames(3)
+        tap("tab-Roll"); frames(6); dumpTags("roll")
+        tap("tab-Synth"); frames(6); dumpTags("synth-none")
+        state.newSynth(9, Synth.ANALOG.presets.first { it.name == "Acid line" }); frames(4); dumpTags("synth-simple")
+        tap("synthview-full"); frames(4); dumpTags("synth-full")
+        tap("synthview-pad"); frames(4); dumpTags("synthipad")
+        tap("synth-preset"); frames(6); dumpTags("presetmenu")
+        tap("tab-Sounds"); frames(6); dumpTags("sounds")
+        tap("tab-Song"); frames(6); dumpTags("song")
+    }
+
     private fun drum(name: String) = Synth.DRUM.presets.first { it.name == name }
 
     /** C2: drum synths on four pads, programmed on Steps while the loop plays, sample pads on top. */
-    @Test fun c2() {
-        Assume.assumeTrue(shot == "c2")
+    @Test fun c2() = shoot("c2") {
         state.newMess()
         state.setBpm(120)
         state.newSynth(3, drum("Clap"))
@@ -177,6 +295,5 @@ class DemoRender {
         }
         untilStep(0)
         tap("play"); secs(1.0)
-        finish()
     }
 }
