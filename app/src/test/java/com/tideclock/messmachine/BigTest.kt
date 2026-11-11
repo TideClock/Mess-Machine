@@ -116,6 +116,19 @@ class BigTest {
         settle()
     }
 
+    /**
+     * Open a pad's menu the way a player would: hold and lift. A pad that sounds for as long as it is held (a synth,
+     * Sustain, gate) never offers its menu from a hold, so there: tap the pad, then Menu by the bank numbers.
+     */
+    private fun padMenuOf(d: Int) {
+        if (state.soundsWhileHeld(state.bank * 16 + d)) {
+            tapPad(d)
+            rule.mainClock.advanceTimeBy(300); settle()
+            at("open-sample").performClick()
+            settle()
+        } else longPress("pad-$d")
+    }
+
     /** Scroll a node into view and let the page stop moving, so the next touch lands on it. */
     private fun at(tag: String) = rule.onNodeWithTag(tag).also { it.performScrollTo(); rule.mainClock.advanceTimeBy(600); settle() }
 
@@ -914,12 +927,12 @@ class BigTest {
     }
 
     @Test fun routingAndPadXy() {
-        longPress("pad-7")
+        padMenuOf(7)
         rule.onNodeWithTag("menu-route").performClick()
         settle()
         assertEquals(1, state.routeOf(7))
         rule.mainClock.advanceTimeBy(1000); settle()
-        longPress("pad-7")
+        padMenuOf(7)
         rule.onNodeWithTag("menu-xy").performClick()
         settle()
         assertEquals(Overlay.Xy(7), state.overlay)
@@ -1485,7 +1498,7 @@ class BigTest {
     @Test fun doctorChopsAndSaves() {
         state.selectPad(7, false)
         // the pad card is gone: the doctor opens from the pad's menu (hold, then lift)
-        longPress("pad-7")
+        padMenuOf(7)
         rule.onNodeWithTag("menu-doctor").performClick()
         settle()
         waitFor("the waveform") { state.lib.loaded(state.project.kit[7]) }
