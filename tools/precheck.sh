@@ -54,6 +54,13 @@ for f in glob.glob('app/src/main/**/*.kt', recursive=True):
         if 'format-ok' in line: continue
         if re.search(r'"[^"\n]*\$\{[^"\n]*"\s*\)?\s*\.format\(', line):
             print(f"PRECHECK format over inserted text (a % in it would crash): {f}:{n}"); bad = 1
+# 6. "/*" inside a Kotlin comment opens a NESTED comment, so the comment never closes and the file stops parsing
+#    (build 67: "clips/*.flac" in a doc comment broke Packs.kt and everything that used it)
+for f in glob.glob('app/src/**/*.kt', recursive=True):
+    for n, line in enumerate(open(f, encoding='utf-8'), 1):
+        t = line.strip()
+        if (t.startswith('*') or t.startswith('//')) and '/*' in t.lstrip('/*'):
+            print(f"PRECHECK /* inside a comment opens a nested comment in Kotlin: {f}:{n}"); bad = 1
 sys.exit(bad)
 EOF
 

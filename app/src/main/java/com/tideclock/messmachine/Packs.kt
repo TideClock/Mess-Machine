@@ -9,7 +9,7 @@ import java.util.zip.ZipInputStream
 
 /**
  * Sound packs (SE-17): clips Tyler keeps in the Vault, sent to the app. A pack is a zip on the `packs` release
- * (pack.json plus clips/*.flac), listed in that release's packs.json. Installed packs live in the app's own
+ * (pack.json plus a clips folder of FLAC files), listed in that release's packs.json. Installed packs live in the app's own
  * storage and show up as a jar in Sounds; their keys ("pack:<id>:<clip>") save in messes like any sound.
  */
 class Packs(private val root: File, private val lib: Library) {
