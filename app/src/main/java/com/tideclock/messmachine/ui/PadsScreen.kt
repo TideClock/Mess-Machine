@@ -77,6 +77,7 @@ fun PadsScreen(state: AppState) {
                 else if (k.isNotEmpty()) state.overlay = Overlay.Doctor(k)
             }, small = true, enabled = selKey.isNotEmpty(), tag = "open-sample")
         }
+        JamKeyBar(state)
         if (state.keysMode || state.keyboards.isNotEmpty()) KeysBar(state)
         // zoomed out, the pad grid shrinks with everything else so more of the machine fits
         Box(Modifier.fillMaxWidth(minOf(1f, state.uiScale)).widthIn(max = 560.dp).align(Alignment.CenterHorizontally)) {
@@ -123,6 +124,31 @@ fun KeysBar(state: AppState) {
                 if (state.keysMode) " · the grid plays ${state.lib.titleOf(state.selKey()).ifEmpty { "the pad you picked" }}" else "",
             color = C.Yellow, size = 13.sp, modifier = Modifier.padding(top = 6.dp),
         )
+    }
+}
+
+/**
+ * Jam key (JK-1): switch it on and it names the key of whatever is sounding, pads, keys and loops alike,
+ * before anything is recorded. Use sets the mess to that key so Keys, the Padiano and the Roll line up.
+ */
+@Composable
+fun JamKeyBar(state: AppState) {
+    @Suppress("UNUSED_VARIABLE") val vv = state.version
+    Row(Modifier.fillMaxWidth().padding(bottom = 12.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Btn(if (state.jamKeyOn) "● Jam key" else "○ Jam key", { state.switchJamKey() }, on = state.jamKeyOn, onColor = C.Teal, small = true, tag = "jam-key")
+        val k = state.jamKey
+        when {
+            !state.jamKeyOn -> Note("names the key you are playing in", Modifier.weight(1f))
+            k.isEmpty() -> Note(
+                if (state.jamSecs < state.jamMin) "listening: play a few notes" else "listening: no clear key yet",
+                Modifier.weight(1f).testTag("jam-key-name"), color = C.Cream,
+            )
+            else -> {
+                T(com.tideclock.messmachine.engine.KeyFinder.both(k), Modifier.weight(1f).testTag("jam-key-name"), color = C.Yellow, size = 14.sp, lines = 1)
+                if (state.jamFitsMess()) Note("the mess fits", color = C.Teal, modifier = Modifier.testTag("jam-key-fits"))
+                else Btn("Use", { state.useJamKey() }, small = true, tag = "jam-key-use")
+            }
+        }
     }
 }
 

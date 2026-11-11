@@ -196,6 +196,47 @@ public class EngineTest {
         he.unlatch(1000); for (int i = 0; i < rate / 256; i++) he.render(hb, 256);
         check(he.activeVoices() == 0, "Hold: letting it go stops it");
       }
+      // ---- JK-1: the jam key hears what is played, before anything is recorded
+      {
+        Engine.SampleSource jss = k -> new Sample(k, new float[64], 44100);
+        Synth.Patch jp = new Synth.Patch(Synth.ANALOG, "j"); jp.set("mix2", 0); jp.set("fenv", 0); jp.set("cut", 6000);
+        Project jq = new Project(); jq.kit[0] = "synth:1"; jq.synths.put("synth:1", jp);
+        Engine je = new Engine(rate); je.setSnapshot(Engine.Snapshot.build(jq, jss, new Engine.Live()));
+        float[] jb = new float[512];
+        java.util.function.BiConsumer<Engine, Double> jrun = (x, sec) -> { for (int i = 0; i < (int) (sec * rate) / 256; i++) x.render(jb, 256); };
+        // a tune played by hand: each note held a quarter second, then let go
+        java.util.function.BiConsumer<Engine, int[]> play = (x, notes) -> { int id = 500; for (int n : notes) { x.down(++id, 0, new int[]{n}, true); jrun.accept(x, .25); x.up(id); jrun.accept(x, .05); } };
+        int[] cTune = {0, 4, 7, 12, 2, 4, 5, 7, 9, 11, 12, 7, 4, 0, 7, 0, 5, 9, 12, 11, 7, 4, 2, 0};
+        play.accept(je, cTune);
+        check(je.jamHeard() == 0 && je.jamTake().length == 0, "Jam key: switched off, the engine keeps nothing");
+        je.jamListen(true);
+        jrun.accept(je, 3.0);
+        long quiet = je.jamHeard();
+        check(quiet < je.jamRate() / 2, "Jam key: three seconds of silence add nothing to the window (" + quiet + " samples)");
+        play.accept(je, cTune);
+        long heard = je.jamHeard();
+        float[] jx = je.jamTake();
+        String jk = KeyFinder.find(jx, je.jamRate());
+        check(heard > je.jamRate() * 5 && jx.length == heard, String.format("Jam key: a tune played by hand is kept (%.1f s)", heard / (double) je.jamRate()));
+        check(jk.equals("C major") || jk.equals("A minor"), "Jam key: a C major tune on a synth pad reads as " + jk + " with nothing recorded");
+        // play on in F# major: once the window has turned over, the old key is gone
+        int[] fsTune = cTune.clone(); for (int i = 0; i < fsTune.length; i++) fsTune[i] += 6;
+        play.accept(je, fsTune); play.accept(je, fsTune);
+        float[] jy = je.jamTake();
+        String jk2 = KeyFinder.find(jy, je.jamRate());
+        check(jy.length == (int) (je.jamRate() * Engine.JAM_SECONDS), "Jam key: the window stops at " + Engine.JAM_SECONDS + " seconds (" + jy.length + " samples)");
+        check(jk2.equals("F# major") || jk2.equals("D# minor"), "Jam key: move to F# major and the newest sound wins: " + jk2);
+        je.jamForget(); jrun.accept(je, .1);
+        check(je.jamHeard() < je.jamRate() / 2, "Jam key: forget starts the listen over");
+        // the tap takes nothing out of the sound: on or off, the same samples leave the engine
+        Engine ja = new Engine(rate), jz = new Engine(rate);
+        ja.setSnapshot(Engine.Snapshot.build(jq, jss, new Engine.Live())); jz.setSnapshot(Engine.Snapshot.build(jq, jss, new Engine.Live()));
+        jz.jamListen(true);
+        ja.down(1, 0, new int[]{0, 4, 7}, true); jz.down(1, 0, new int[]{0, 4, 7}, true);
+        float[] oa = new float[512], oz = new float[512]; boolean sameOut = true;
+        for (int i = 0; i < 100; i++) { ja.render(oa, 256); jz.render(oz, 256); if (!java.util.Arrays.equals(oa, oz)) sameOut = false; }
+        check(sameOut, "Jam key: listening changes nothing in what you hear");
+      }
       // ---- SE-11, SE-12: synths on pads
       {
         Engine.SampleSource ss = k -> new Sample(k, new float[64], 44100);

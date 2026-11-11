@@ -1108,4 +1108,26 @@ class DemoRender {
         rule.onAllNodes(hasSetTextAction()).onFirst().performTextClearance(); rule.onAllNodes(hasSetTextAction()).onFirst().performTextInput(words)
         secs(2.0); dumpTags("notes-written")
     }
+
+    /** E7: Jam key. A tune on the Padiano with nothing recording; the row names its key; Use puts the mess in it. */
+    @Test fun e7() = shoot("e7") {
+        state.newMess()
+        state.newSynth(0, analog("Soft keys"))
+        state.selectPad(0, false); state.toggleKeyboard(0)
+        settle(); action(); secs(.5)
+        mark("on")
+        tap("jam-key"); secs(.8)
+        mark("play")
+        val tune = listOf(4, 7, 11, 9, 7, 6, 4, 2, 4, 7, 9, 11, 12, 11, 7, 4, 6, 9, 11, 7, 4, 2, 6, 4, 7, 11, 12, 11, 9, 7, 6, 4)
+        var named = false
+        for (n in tune) {
+            key(0, n, hold = 7); frames(3)
+            if (!named && state.jamKey.isNotEmpty()) { named = true; mark("named") }
+        }
+        secs(1.2); dumpTags("jam")
+        mark("use")
+        if (state.jamKey.isNotEmpty() && !state.jamFitsMess()) tap("jam-key-use")
+        secs(1.6)
+        File(dir, "jam.txt").writeText("key=${state.jamKey} root=${state.project.root} scale=${state.project.scale} secs=${state.jamSecs}\n")
+    }
 }

@@ -15,6 +15,7 @@ import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -603,6 +604,62 @@ class BigTest {
         state.switchEmptyRecord(false)
         tapPad(12)
         assertEquals("switched off, empty pads open the jars again", Overlay.Picker(12), state.overlay)
+    }
+
+    /* ---------- jam key (JK-1) ---------- */
+
+    @Test fun jamKeyNamesWhatYouPlay() {
+        // a synth on the selected pad, so notes have a known pitch
+        tab("Synth")
+        at("synth-new-empty").performClick(); settle()
+        tab("Pads")
+        assertFalse("the jam key starts switched off", state.jamKeyOn)
+        shot("95-jam-key-off")
+        at("jam-key").performClick(); settle()
+        assertTrue(state.jamKeyOn)
+        rule.onNodeWithTag("jam-key-name").assertTextContains("listening", substring = true)
+        // silence is not a jam: waiting adds nothing
+        loudest(48000); state.tick(System.nanoTime()); settle()
+        assertEquals("nothing played, nothing named", "", state.jamKey)
+        // a D major tune by hand, nothing recording, the machine stopped
+        val tune = intArrayOf(2, 6, 9, 14, 4, 6, 7, 9, 11, 13, 14, 9, 6, 2, 9, 2, 7, 11, 14, 13, 9, 6, 4, 2)
+        fun playTune(up: Int = 0) {
+            for (n in tune) { state.midiDown(60 + n + up); loudest(14336); state.midiUp(60 + n + up); loudest(2048) }
+        }
+        assertFalse(state.playing)
+        playTune()
+        state.tick(System.nanoTime())
+        waitFor("the jam key to name the tune") { state.jamKey.isNotEmpty() }
+        assertTrue("a D major tune reads as D major or B minor: ${state.jamKey}", state.jamKey == "D major" || state.jamKey == "B minor")
+        rule.onNodeWithTag("jam-key-name").assertTextContains("D major", substring = true)
+        rule.onNodeWithTag("jam-key-name").assertTextContains("B minor", substring = true)
+        assertTrue("nothing was written into the loop", state.project.pats.all { p -> state.project.kit.filter { it.isNotEmpty() }.all { p.notes(it).isEmpty() } })
+        at("jam-key")
+        shot("96-jam-key-named")
+        // Use puts the mess in that key; then there is nothing left to change
+        assertFalse("the starter mess is in another key", state.jamFitsMess())
+        rule.onNodeWithTag("jam-key-use").performClick(); settle()
+        assertEquals(state.jamKey, "${com.tideclock.messmachine.engine.Theory.NN[state.project.root]} ${state.project.scale.lowercase()}")
+        rule.onNodeWithTag("jam-key-fits").assertExists()
+        rule.onNodeWithTag("jam-key-use").assertDoesNotExist()
+        state.undo(); settle()
+        assertFalse("undo takes the key change back", state.jamFitsMess())
+        // one odd listen does not flip the name; staying in the new key does
+        val before = state.jamKey
+        playTune(up = 6)
+        state.jamCheckNow(); settle()
+        assertEquals("the first listen in a new key keeps the old name", before, state.jamKey)
+        playTune(up = 6)
+        state.jamCheckNow(); settle()
+        assertTrue("stay in G# major and it takes over: ${state.jamKey}", state.jamKey == "G# major" || state.jamKey == "F minor")
+        // a new mess starts the listen over; off keeps nothing
+        state.newMess(); settle()
+        assertEquals("", state.jamKey)
+        at("jam-key").performClick(); settle()
+        assertFalse(state.jamKeyOn)
+        playTune()
+        state.tick(System.nanoTime()); settle()
+        assertEquals("switched off it does not listen", 0L, state.engine.jamHeard())
     }
 
     /* ---------- build B: glide, the dock, Lock ---------- */

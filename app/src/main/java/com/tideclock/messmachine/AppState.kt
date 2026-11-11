@@ -17,6 +17,7 @@ import androidx.core.content.FileProvider
 import com.tideclock.messmachine.engine.Bake
 import com.tideclock.messmachine.engine.Engine
 import com.tideclock.messmachine.engine.Json
+import com.tideclock.messmachine.engine.KeyFinder
 import com.tideclock.messmachine.engine.Library
 import com.tideclock.messmachine.engine.Project
 import com.tideclock.messmachine.engine.Sample
@@ -628,6 +629,7 @@ class AppState(private val app: Context) {
         rebuild()
         scheduleSave()
         loadKit()
+        if (jamKeyOn) jamForget()
     }
 
     /* ---------------- the playhead, recorded hits ---------------- */
@@ -686,6 +688,107 @@ class AppState(private val app: Context) {
             any = true
         }
         if (any) changed(true)
+        if (jamKeyOn) jamTick()
+    }
+
+    /* ---------------- jam key (JK-1) ---------------- */
+
+    /** Jam key: names the key of what is sounding right now (pads, keys, loops), before anything is recorded. */
+    var jamKeyOn by mutableStateOf(prefs.getBoolean("jamKey", false).also { if (it) engine.jamListen(true) })
+        private set
+    /** "A minor" once it is sure, "" while it is still listening. */
+    var jamKey by mutableStateOf("")
+        private set
+    /** Seconds of sound it has to go on so far, in half steps up to the window's length. */
+    var jamSecs by mutableFloatStateOf(0f)
+        private set
+    private var jamSeen = 0L
+    private var jamBusy = false
+    private var jamLast = ""
+    private var jamMisses = 0
+    /** Seconds of sound before the first guess: less than this is a note or two, not a key. */
+    val jamMin = 3.0
+
+    fun switchJamKey(v: Boolean = !jamKeyOn) {
+        jamKeyOn = v
+        prefs.edit().putBoolean("jamKey", v).apply()
+        notes.trail(if (v) "jam key on" else "jam key off")
+        engine.jamListen(v)
+        jamForget()
+    }
+
+    /** Start the listen over: a new mess, or the switch was flipped. */
+    private fun jamForget() {
+        engine.jamForget()
+        jamKey = ""; jamSecs = 0f; jamSeen = 0; jamLast = ""; jamMisses = 0
+    }
+
+    /** Once a second of new sound has come in, judge the window again (off the screen's thread). */
+    private fun jamTick() {
+        val heard = engine.jamHeard()
+        if (heard < jamSeen) jamSeen = 0
+        val secs = (Math.floor(heard * 2.0 / engine.jamRate()) / 2).coerceAtMost(Engine.JAM_SECONDS).toFloat()
+        if (secs != jamSecs) jamSecs = secs
+        if (jamBusy || heard - jamSeen < engine.jamRate()) return
+        jamSeen = heard
+        if (heard < engine.jamRate() * jamMin) return
+        jamBusy = true
+        worker.execute {
+            val r = try { jamMeasure() } catch (_: Throwable) { null }
+            main.post { jamBusy = false; if (jamKeyOn) jamApply(r) }
+        }
+    }
+
+    /** The window's best key and whether it clears the key finder's bars. Null when there is too little to judge. */
+    private fun jamMeasure(): Pair<KeyFinder.Key, Boolean>? {
+        val x = engine.jamTake()
+        if (x.size < engine.jamRate() * jamMin) return null
+        val t = KeyFinder.measure(x, engine.jamRate())
+        if (t.frames == 0) return null
+        val k = KeyFinder.ranked(t.chroma)[0]
+        return k to KeyFinder.sure(k, t.tonal)
+    }
+
+    /**
+     * The first sure key shows at once. A different one has to be heard twice running before it takes over, so
+     * one odd bar does not flip the name. An unsure listen keeps the name while its best guess has the same notes;
+     * four listens running without that and the name goes.
+     */
+    private fun jamApply(r: Pair<KeyFinder.Key, Boolean>?) {
+        if (r == null) return
+        val (k, sure) = r
+        val name = k.name()
+        if (!sure) {
+            val same = jamKey.isNotEmpty() && (name == jamKey || name == KeyFinder.relative(jamKey))
+            if (same) jamMisses = 0 else if (++jamMisses >= 4) { jamKey = ""; jamLast = "" }
+            return
+        }
+        jamMisses = 0
+        if (jamKey.isEmpty() || name == jamLast) { if (jamKey != name) { jamKey = name; notes.trail("jam key $name") } }
+        jamLast = name
+    }
+
+    /** Judge right now, on this thread (the tests use it; the app goes through tick). */
+    fun jamCheckNow() { jamSeen = engine.jamHeard(); jamApply(jamMeasure()) }
+
+    /** True when every note of the mess's scale is in the jam key: nothing to change. */
+    fun jamFitsMess(): Boolean {
+        val k = jamKey
+        if (k.isEmpty()) return false
+        val root = KeyFinder.NAMES.indexOf(k.substringBefore(' '))
+        val notes = Theory.scale(if (k.endsWith("minor")) "Minor" else "Major").map { (it + root) % 12 }
+        return Theory.scale(project.scale).all { (it + project.root) % 12 in notes }
+    }
+
+    /** Set the mess's root and scale to the jam key, so Keys, the Padiano and the Roll all line up with it. */
+    fun useJamKey() {
+        val k = jamKey
+        val r = KeyFinder.NAMES.indexOf(k.substringBefore(' '))
+        if (r < 0) return
+        val sc = if (k.endsWith("minor")) "Minor" else "Major"
+        notes.trail("use jam key $k")
+        edit { root = r; scale = sc }
+        say("The mess is in $k now.")
     }
 
     /* ---------------- transport ---------------- */

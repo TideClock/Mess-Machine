@@ -396,9 +396,62 @@ public final class Engine {
         effects(S, out, frames);
         for (int k = 0; k < frames * 2; k++) out[k] += dryBuf[k];
         if (!bypassMaster) master(out, frames);
+        if (jamOn) jamTap(out, frames);
         uiFrame = frame - frames;
         uiNanos = nanos;
         uiPlaying = playing;
+    }
+
+    /* ---- the jam key tap (JK-1): the last seconds of sound that left the machine, for KeyFinder ---- */
+
+    /** How much sound the jam key judges: the newest part of what was heard, quiet gaps left out. */
+    public static final double JAM_SECONDS = 8;
+    private volatile boolean jamOn, jamWipe;
+    private float[] jam;
+    private volatile long jamCount;
+    private float jamHalf;
+    private boolean jamOdd;
+
+    /** Start or stop keeping the newest sound. Costs one add per frame on the audio thread while on. */
+    public void jamListen(boolean on) {
+        if (on && jam == null) jam = new float[(int) (rate / 2 * JAM_SECONDS)];
+        if (on && !jamOn) jamWipe = true;
+        jamOn = on;
+    }
+    /** Forget what was heard (a new mess, or the player asks for a fresh listen). */
+    public void jamForget() { jamWipe = true; }
+    /** The rate of what jamTake hands back: half the engine's, mono. KeyFinder reads it as it is. */
+    public int jamRate() { return rate / 2; }
+    /** Samples of sound kept so far, counting on past the window: grows only while something sounds. */
+    public long jamHeard() { return jamWipe ? 0 : jamCount; }
+    /** The kept sound, oldest first. Read from another thread; a few samples at the seam may be mid-write, which a key does not notice. */
+    public float[] jamTake() {
+        float[] ring = jam;
+        long n = jamHeard();
+        if (ring == null || n <= 0) return new float[0];
+        int len = (int) Math.min(n, ring.length), at = (int) (n % ring.length);
+        float[] out = new float[len];
+        if (n <= ring.length) System.arraycopy(ring, 0, out, 0, len);
+        else { System.arraycopy(ring, at, out, 0, ring.length - at); System.arraycopy(ring, 0, out, ring.length - at, at); }
+        return out;
+    }
+
+    private void jamTap(float[] out, int frames) {
+        if (jamWipe) { jamCount = 0; jamOdd = false; jamWipe = false; }
+        // quiet blocks are left out, so the window holds the last seconds of playing, not of waiting
+        float peak = 0;
+        for (int k = 0; k < frames * 2; k++) { float a = Math.abs(out[k]); if (a > peak) peak = a; }
+        if (peak < .004f) return;
+        float[] ring = jam;
+        long n = jamCount;
+        int at = (int) (n % ring.length);
+        for (int k = 0; k < frames; k++) {
+            float m = (out[k * 2] + out[k * 2 + 1]) * .5f;
+            if (jamOdd) { ring[at] = (jamHalf + m) * .5f; if (++at == ring.length) at = 0; n++; }
+            else jamHalf = m;
+            jamOdd = !jamOdd;
+        }
+        jamCount = n;
     }
 
     private void padFilters(int frames) {
