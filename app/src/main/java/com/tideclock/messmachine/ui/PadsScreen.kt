@@ -62,12 +62,19 @@ fun PadsScreen(state: AppState) {
                 val n = (0 until Project.BANK).count { P.kit[b * Project.BANK + it].isNotEmpty() }
                 Btn("${b + 1}", modifier = Modifier.weight(1f), onClick = { state.bank = b }, on = state.bank == b && !state.keysMode, small = true, enabled = !state.keysMode, tag = "bank-$b")
             }
-            // the Sample sheet for the pad under your hands, one tap away (holding a pad opens it too, for any pad)
+            // the Sample sheet for the pad under your hands, one tap away (holding a pad opens it too, for any pad).
+            // Reading selV and version keeps the label on the pad picked last: a tap on a pad only bumps selV,
+            // and this row used to keep the pad from before (the button then opened the wrong pad's sheet)
+            @Suppress("UNUSED_VARIABLE") val sv = state.selV
+            @Suppress("UNUSED_VARIABLE") val vv = state.version
             val selKey = P.kit.getOrNull(P.sel).orEmpty()
             // a pad that sounds while it is held gets no menu from a long press, so this button is its menu
             val selHeld = selKey.isNotEmpty() && state.soundsWhileHeld(P.sel)
             Btn(if (selHeld) "Menu" else "Sample", {
-                if (selHeld) { state.bank = P.sel / Project.BANK; state.padMenu = P.sel } else state.overlay = Overlay.Doctor(selKey)
+                val pad = state.project.sel
+                val k = state.project.kit.getOrNull(pad).orEmpty()
+                if (k.isNotEmpty() && state.soundsWhileHeld(pad)) { state.bank = pad / Project.BANK; state.padMenu = pad }
+                else if (k.isNotEmpty()) state.overlay = Overlay.Doctor(k)
             }, small = true, enabled = selKey.isNotEmpty(), tag = "open-sample")
         }
         if (state.keysMode || state.keyboards.isNotEmpty()) KeysBar(state)

@@ -209,11 +209,11 @@ class DemoRender {
         fingerUp(0, tag, note); frame()
     }
     /** Tap something by its exact words. When several things carry them, the lowest on screen (or the nth from the top). */
-    private fun tapExact(text: String, hold: Int = 3, pick: Int = -1) {
+    private fun tapExact(text: String, hold: Int = 3, pick: Int = -1, above: Float = Float.MAX_VALUE) {
         val col = rule.onAllNodes(hasText(text), useUnmergedTree = true)
         val nodes = col.fetchSemanticsNodes()
-        if (nodes.isEmpty()) throw AssertionError("nothing on screen says \"$text\"")
-        val order = nodes.indices.sortedBy { nodes[it].boundsInWindow.top }
+        val order = nodes.indices.filter { nodes[it].boundsInWindow.top < above }.sortedBy { nodes[it].boundsInWindow.top }
+        if (order.isEmpty()) throw AssertionError("nothing on screen says \"$text\"")
         val i = if (pick < 0) order.last() else order[pick]
         val n = nodes[i]
         val off = if (n.root !== rule.onNodeWithTag("topbar").fetchSemanticsNode().root) popupAt else Offset.Zero
@@ -225,6 +225,14 @@ class DemoRender {
         log.append("$frameNo,up,${c.x.toInt()},${c.y.toInt()},$text\n")
         frame()
     }
+    /** Is this tagged thing really on screen (not scrolled off the side or the bottom)? */
+    private fun onScreen(tag: String): Boolean {
+        val n = rule.onAllNodesWithTag(tag, useUnmergedTree = true).fetchSemanticsNodes().firstOrNull() ?: return false
+        val b = n.boundsInWindow
+        return b.width > 40f && b.height > 20f && b.left >= 0f && b.right <= 822f && b.bottom <= 1690f
+    }
+    /** Pick a loop letter on the Song tab's Paint with row (painted bars carry the same letters lower down). */
+    private fun brush(letter: String) { tapExact(letter, above = rule.onNodeWithTag("bar-0").fetchSemanticsNode().boundsInWindow.top); frames(5) }
     private fun waitWhile(limit: Int = 900, cond: () -> Boolean) { var n = 0; while (cond() && n++ < limit) frame() }
     /** Where a note sits on the Padiano once In key only has hidden the out-of-key squares. */
     private fun inKeyPk(pad: Int, semis: Int): Float {
@@ -818,12 +826,14 @@ class DemoRender {
         tap("fx-toggle"); frames(8)
         show("fx-tape"); bars(1)
         untilStep(8); mark("stutter")
-        fingerDown(0, "fx-stutter", .55f, .5f, "fx"); untilStep(15); untilStep(0); fingerUp(0, "fx-stutter", "fx"); frame()
-        untilStep(12); mark("echo")
-        fingerDown(0, "fx-echo", .55f, .5f, "fx"); untilStep(15); untilStep(0); fingerUp(0, "fx-echo", "fx"); frame()
-        bars(1); untilStep(8); mark("tape")
+        fingerDown(0, "fx-stutter", .55f, .5f, "fx"); frames(30); fingerUp(0, "fx-stutter", "fx"); frame()
+        println("DEMO b13 step after stutter ${state.heardStep}")
+        frames(60); untilStep(12); mark("echo")
+        fingerDown(0, "fx-echo", .55f, .5f, "fx"); frames(15); fingerUp(0, "fx-echo", "fx"); frame()
+        frames(75); untilStep(8); mark("tape")
         fingerDown(0, "fx-tape", .55f, .5f, "fx"); frames(36); fingerUp(0, "fx-tape", "fx"); frame()
-        mark("back"); frames(75)
+        println("DEMO b13 step after tape ${state.heardStep}")
+        mark("back"); frames(80)
         tap("play"); secs(.8)
     }
 
@@ -845,10 +855,10 @@ class DemoRender {
         state.tab = Tab.Song
         settle(); action(); secs(.5)
         mark("paint")
-        tapExact("A"); frames(5); tap("bar-0"); frames(3); tap("bar-1"); frames(4)
-        tapExact("B"); frames(5); tap("bar-2"); frames(3); tap("bar-3"); frames(4)
-        tapExact("C"); frames(5); tap("bar-4"); frames(4)
-        tapExact("B"); frames(5); tap("bar-5"); frames(8)
+        brush("A"); tap("bar-0"); frames(3); tap("bar-1"); frames(4)
+        brush("B"); tap("bar-2"); frames(3); tap("bar-3"); frames(4)
+        brush("C"); tap("bar-4"); frames(4)
+        brush("B"); tap("bar-5"); frames(8)
         mark("play")
         tapExact("PLAY THE SONG"); frames(8)
         tap("play"); frames(332)
@@ -930,7 +940,7 @@ class DemoRender {
         mark("playback"); bars(1)
         mark("roll"); tap("tab-Roll"); bars(1)
         mark("song"); tap("tab-Song"); secs(.5)
-        tapExact("A"); frames(5)
+        brush("A")
         for (b in 0..3) { tap("bar-$b"); frames(3) }
         tapExact("PLAY THE SONG"); frames(6)
         bars(2)
@@ -953,9 +963,8 @@ class DemoRender {
         tap("pad-8", hold = 4); secs(2.2)
         mark("synth")
         tap("tab-Synth"); secs(.6)
-        tap("nosynth-preset"); secs(.5)
-        tapExact("Granular: Cloud"); secs(.5)
         tap("synth-new-empty"); secs(.7)
+        tap("synthkind-grain"); secs(.7)
         mark("source")
         tap("grain-src"); secs(.5)
         tapText("Resample A"); secs(.6)
@@ -997,7 +1006,9 @@ class DemoRender {
         settle(); action(); secs(.6)
         mark("jars")
         tap("mode-jar"); secs(.8)
-        rule.onNodeWithTag("jar-loops").performScrollTo(); frames(10)
+        val jb = rule.onNodeWithTag("jar-chips").fetchSemanticsNode().boundsInWindow
+        var sw = 0
+        while (!onScreen("jar-loops") && sw++ < 5) { slideAt(700f, jb.center.y, 250f, jb.center.y, 10, "swipe"); frames(8) }
         mark("loops")
         tap("jar-loops"); secs(.8); dumpTags("loops")
         tap("row-loop:ametrine-1", .3f, .5f, hold = 3); secs(2.1)
@@ -1005,7 +1016,8 @@ class DemoRender {
         mark("star")
         tap("row-loop:ametrine-1", .73f, .5f, hold = 3); secs(.6)
         mark("hits")
-        rule.onNodeWithTag("jar-hits").performScrollTo(); frames(6)
+        sw = 0
+        while (!onScreen("jar-hits") && sw++ < 5) { slideAt(700f, jb.center.y, 450f, jb.center.y, 8, "swipe"); frames(8) }
         tap("jar-hits"); secs(.6)
         for (k in listOf("hit:ametrine-1", "hit:ametrine-2", "hit:ametrine-3", "hit:old-wheezy-1")) { tap("row-$k", .3f, .5f, hold = 3); secs(.5) }
         mark("search")
@@ -1071,11 +1083,12 @@ class DemoRender {
         tap("menu"); secs(.6)
         tap("notes"); secs(.9)
         mark("latency")
-        rule.onNodeWithTag("audio-check").performScrollTo(); frames(6)
+        var sw = 0
+        while (!onScreen("audio-check") && sw++ < 8) { slideAt(400f, 1300f, 400f, 700f, 10, "swipe"); frames(8) }
         tap("audio-check"); secs(1.2); dumpTags("latency")
         if (has("check-pad")) { for (i in 0 until 5) { tap("check-pad", hold = 3); frames(12) } }
         secs(1.2); dumpTags("latency2")
-        if (has("check-bake")) { rule.onNodeWithTag("check-bake").performScrollTo(); frames(20) }
+        slideAt(400f, 1400f, 400f, 600f, 16, "swipe"); frames(10)
         secs(1.0)
     }
 
@@ -1087,8 +1100,9 @@ class DemoRender {
         tap("menu"); secs(.6)
         tap("notes"); secs(1.0); dumpTags("notes")
         mark("write")
-        rule.onNodeWithTag("category-chips").performScrollTo(); frames(10); dumpTags("notes-chips")
-        rule.onAllNodes(hasSetTextAction()).onFirst().performScrollTo(); frames(6)
+        var sw = 0
+        while (!onScreen("category-chips") && sw++ < 8) { slideAt(400f, 1300f, 400f, 700f, 10, "swipe"); frames(8) }
+        dumpTags("notes-chips")
         val words = "The hat on pad 3 is louder than the kick."
         for (i in 4..words.length step 4) { rule.onAllNodes(hasSetTextAction()).onFirst().performTextClearance(); rule.onAllNodes(hasSetTextAction()).onFirst().performTextInput(words.take(i)); frames(2) }
         rule.onAllNodes(hasSetTextAction()).onFirst().performTextClearance(); rule.onAllNodes(hasSetTextAction()).onFirst().performTextInput(words)
