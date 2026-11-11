@@ -1440,6 +1440,17 @@ class BigTest {
         rule.onNodeWithTag("put-samples/goblin-burp.wav").performClick()
         settle()
         assertEquals("samples/goblin-burp.wav", state.project.kit[state.project.sel])
+        // a loop carries its key, and the key can be searched for under either of its names
+        rule.onNodeWithTag("search").performTextClearance()
+        rule.onNodeWithTag("search").performTextInput("d minor")
+        settle()
+        rule.onNodeWithTag("row-loop:give-me-throne-1").assertExists()
+        assertEquals("D minor", state.lib.sound("loop:give-me-throne-1").mkey)
+        rule.onNodeWithTag("search").performTextClearance()
+        rule.onNodeWithTag("search").performTextInput("f major")
+        settle()
+        rule.onNodeWithTag("row-loop:give-me-throne-1").assertExists()
+        assertTrue("hits and one-shots carry no key", state.lib.sounds.none { it.cab != "loops" && it.cab != "mine" && it.mkey.isNotEmpty() })
         // by instrument type and feel
         rule.onNodeWithTag("search").performTextClearance()
         rule.onNodeWithTag("mode-type").performClick()
@@ -1468,6 +1479,15 @@ class BigTest {
         state.resampleLoop()
         waitFor("the resample") { state.bench.items.isNotEmpty() && state.busy == null }
         assertTrue(state.project.kit.any { it.startsWith("bn:") })
+        // the resample remembers the tempo it was made at and its length in beats, so it follows the mess's tempo
+        // like a built-in loop; its key was measured once (named only when sure)
+        val rs = state.bench.items.first { it.kind == "rs" }
+        assertEquals(state.project.bpm.toDouble(), rs.bpm, 0.0)
+        assertEquals(state.project.pat().len / 4, rs.beats)
+        assertTrue("its key was measured", rs.mkey != null)
+        val rsKey = state.bench.keyOf(rs)
+        assertEquals(rs.bpm, state.lib.sound(rsKey).bpm, 0.0)
+        assertEquals("the sample itself carries the tempo", rs.bpm, state.lib.load(rsKey).bpm, 0.0)
         shot("12-workbench-with-resample")
     }
 

@@ -42,6 +42,8 @@ public final class Library implements Engine.SampleSource {
         /** SE-4: a loop's tempo and length in beats (0 for one-shots). */
         public double bpm;
         public int beats;
+        /** The sound's musical key when it could be measured for sure, like "A# minor" (KeyFinder); else empty. */
+        public String mkey = "";
         public java.util.List<String> tags = new ArrayList<>();
         public Sound(String key, String title, String cab, String file, double a, double d, String group, String album) {
             this.key = key; this.title = title; this.cab = cab; this.file = file; this.a = a; this.d = d; this.group = group; this.album = album;
@@ -83,6 +85,7 @@ public final class Library implements Engine.SampleSource {
             for (Object q : Json.list(s.get("q"))) if (q instanceof String) snd.tags.add((String) q);
             snd.bpm = Json.num(s.get("bpm"), 0);
             snd.beats = (int) Json.num(s.get("beats"), 0);
+            snd.mkey = Json.str(s.get("mkey"), "");
             sounds.add(snd);
             byKey.put(snd.key, snd);
         }

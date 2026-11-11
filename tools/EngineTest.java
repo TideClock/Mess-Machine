@@ -124,9 +124,52 @@ public class EngineTest {
         return new double[]{last / (double) rate, zc / ((a1 - a0) / (double) rate)};
       };
       double[] st = octaveUp.apply("stretch", "loop"), gr = octaveUp.apply("grain", "loop"), au = octaveUp.apply("auto", "loop");
+      // ---- MM-K: the key finder names a key only when it is sure
+      {
+        final int ksr = 44100;
+        java.util.function.BiFunction<int[], Double, float[]> tune = (notes, cents) -> {
+          float[] x = new float[ksr * 4];
+          int each = x.length / notes.length;
+          for (int n = 0; n < notes.length; n++) {
+            double f = 261.6256 * Math.pow(2, (notes[n] + cents / 100.0) / 12.0);
+            for (int i = 0; i < each; i++) {
+              double t = i / (double) ksr, env = Math.min(1, i / 400.0) * Math.exp(-t * 2);
+              x[n * each + i] += (float) (env * (.5 * Math.sin(2 * Math.PI * f * t) + .25 * Math.sin(4 * Math.PI * f * t) + .12 * Math.sin(6 * Math.PI * f * t)));
+            }
+          }
+          return x;
+        };
+        int[] major = {0, 4, 7, 12, 2, 4, 5, 7, 9, 11, 12, 7, 4, 0, 7, 0}, minor = {-3, 0, 4, 9, -3, -1, 0, 2, 4, 5, 7, 9, 4, 0, -3, -3};
+        String cMaj = KeyFinder.find(tune.apply(major, 0.0), ksr);
+        String aMin = KeyFinder.find(tune.apply(minor, 0.0), ksr);
+        int[] up6 = major.clone();
+        for (int i = 0; i < up6.length; i++) up6[i] += 6;
+        String fsMaj = KeyFinder.find(tune.apply(up6, 35.0), ksr);
+        check(cMaj.equals("C major") || cMaj.equals("A minor"), "Key: a C major tune reads as " + cMaj);
+        check(aMin.equals("A minor") || aMin.equals("C major"), "Key: an A minor tune reads as " + aMin + " (the same notes as C major)");
+        check(fsMaj.equals("F# major") || fsMaj.equals("D# minor"), "Key: an F# major tune a third of a semitone sharp still reads as " + fsMaj);
+        java.util.Random kr = new java.util.Random(7);
+        float[] hiss = new float[ksr * 2];
+        for (int i = 0; i < hiss.length; i++) hiss[i] = (float) (kr.nextGaussian() * .2);
+        check(KeyFinder.find(hiss, ksr).isEmpty(), "Key: noise gets no key");
+        check(KeyFinder.find(java.util.Arrays.copyOf(tune.apply(major, 0.0), ksr / 5), ksr).isEmpty(), "Key: a sound shorter than 0.4 s gets no key");
+        check(KeyFinder.find(new float[ksr * 2], ksr).isEmpty(), "Key: silence gets no key");
+      }
       // ---- SE-4, SE-9, SE-10: loops at the mess's tempo, hits, and old chop keys still playing
       {
         Library ll = new Library(pth -> new FileInputStream(pth), a[0]);
+        // loop keys (tools/LoopKeys.java): only the sure ones are written, each a note name plus major or minor, never on a hit
+        java.util.List<String> noteNames = java.util.Arrays.asList(KeyFinder.NAMES);
+        long keyed = ll.sounds.stream().filter(x -> x.cab.equals("loops") && !x.mkey.isEmpty()).count();
+        boolean keysOk = ll.sounds.stream().filter(x -> !x.mkey.isEmpty()).allMatch(x -> {
+          String[] kw = x.mkey.split(" ");
+          return x.cab.equals("loops") && kw.length == 2 && noteNames.contains(kw[0]) && (kw[1].equals("major") || kw[1].equals("minor"));
+        });
+        check(keyed >= 20 && keysOk, "Loops: " + keyed + " loops carry a measured key, each a note name plus major or minor");
+        Library.Sound keyedLoop = ll.sounds.stream().filter(x -> !x.mkey.isEmpty()).findFirst().get();
+        Sample keyedSmp = ll.load(keyedLoop.key);
+        KeyFinder.Key again = KeyFinder.ranked(KeyFinder.measure(keyedSmp.data, keyedSmp.rate).chroma).get(0);
+        check(again.match > .5, String.format("Loops: %s says %s, and measured alone it reads %s (match %.2f)", keyedLoop.title, keyedLoop.mkey, again.name(), again.match));
         long nLoops = ll.sounds.stream().filter(x -> x.cab.equals("loops")).count(), nHits = ll.sounds.stream().filter(x -> x.cab.equals("hits")).count();
         long nOld = ll.sounds.stream().filter(x -> x.cab.equals("heap") || x.cab.equals("qbldy")).count();
         check(nLoops >= 80 && nHits >= 150 && nOld == 0, "Loops: " + nLoops + " loops and " + nHits + " hits on the shelves, no 0.35 s chops left");

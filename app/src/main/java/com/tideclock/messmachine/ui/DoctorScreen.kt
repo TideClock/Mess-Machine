@@ -82,8 +82,15 @@ fun DoctorScreen(state: AppState, key: String) {
     val inBench = state.bench.item(key) != null
     ScrollPane(hPad = 14.dp, vPad = 0.dp) {
         T(state.lib.titleOf(key), size = 18.sp)
+        // a loop also says its tempo, and any sound its key when that could be measured for sure
+        val info = state.lib.sound(key)
+        val madeAt = state.bench.item(key)?.bpm ?: 0.0
+        val facts = listOfNotNull(
+            if (info != null && info.bpm > 0) "${info.beats} beats at ${Math.round(info.bpm)} bpm" else if (madeAt > 0) "made at ${Math.round(madeAt)} bpm" else null,
+            com.tideclock.messmachine.engine.KeyFinder.both(info?.mkey).takeIf { it.isNotEmpty() },
+        ).joinToString("") { " · $it" }
         T(
-            "%.2f s · plays %.2f s".format(seconds, seconds * (e.en - e.st) / (if (e.pitch == "grain") 1.0 else Math.pow(2.0, (e.tune + e.fine / 100) / 12))),
+            "%.2f s · plays %.2f s".format(seconds, seconds * (e.en - e.st) / (if (e.pitch == "grain") 1.0 else Math.pow(2.0, (e.tune + e.fine / 100) / 12))) + facts,
             size = 12.sp, color = C.Dim, weight = FontWeight.Medium, modifier = Modifier.padding(bottom = 8.dp),
         )
         var dragging by remember { mutableStateOf(0) }
