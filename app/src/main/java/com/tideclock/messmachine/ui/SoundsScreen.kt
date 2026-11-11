@@ -190,7 +190,7 @@ fun SoundRow(state: AppState, s: Library.Sound, target: Int, picking: Boolean) {
             Triple("Hear it", "rowmenu-hear") { state.preview(s.key) },
             Triple(if (s.key in state.favs) "Unstar" else "Star", "rowmenu-star") { state.toggleFav(s.key) },
             Triple("Put it on pad ${target + 1}", "rowmenu-put") { state.putOnPad(target, s.key); if (picking) state.overlay = null },
-            if (onPad >= 0) Triple("Doctor it", "rowmenu-doctor") { state.overlay = com.tideclock.messmachine.Overlay.Doctor(s.key) } else null,
+            if (onPad >= 0) Triple("Sample", "rowmenu-doctor") { state.overlay = com.tideclock.messmachine.Overlay.Doctor(s.key) } else null,
             if (s.cab == "mine") Triple("Share it", "rowmenu-share") { state.shareSoundWav(s.key) } else null,
         ))
         Row(

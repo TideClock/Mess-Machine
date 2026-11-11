@@ -133,7 +133,7 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
             ) { o ->
                 when (o) {
                     is Overlay.Picker -> Sheet(state, "Pick a sound for pad ${o.pad + 1}") { SoundsScreen(state, o.pad) }
-                    is Overlay.Doctor -> Sheet(state, "Doctor's table") { DoctorScreen(state, o.key) }
+                    is Overlay.Doctor -> Sheet(state, "Sample") { DoctorScreen(state, o.key) }
                     is Overlay.Xy -> Sheet(state, "XY for pad ${o.pad + 1}") { XyEditor(state, o.pad) }
                     Overlay.Files -> Sheet(state, "Messes") { FilesScreen(state) }
                     Overlay.Settings -> Sheet(state, "Settings") { SettingsScreen(state) }
@@ -253,15 +253,22 @@ fun TopMenu(state: AppState, modifier: Modifier = Modifier) {
     }
 }
 
+/** SE-6: how each repeat treats a held note. Cut stops it at the next repeat, Ring lets it play out, Flow holds it and pulses its volume. */
+val REPEAT_STYLES = listOf("cut" to "Cut each repeat", "ring" to "Let repeats ring", "flow" to "Flow (hold and pulse)")
+
+fun styleShort(s: String): String = when (s) { "ring" -> " RNG"; "flow" -> " FLO"; else -> "" }
+
 /** Note repeat on or off, and its rate or arp. */
 @Composable
 fun RepeatControls(state: AppState, tag: String = "repeat") {
     Btn("Repeat", { state.setLive { nr = !nr } }, on = state.live.nr, onColor = C.Pink, small = true, tag = tag)
     Select(
-        (when (state.live.nrRate) { 2.0 -> "1/8"; 0.5 -> "1/32"; else -> "1/16" }) + if (state.live.arp != "rep") " " + arpShort(state.live.arp) else "",
-        listOf("r2" to "Every 1/8", "r1" to "Every 1/16", "r.5" to "Every 1/32") + listOf("rep", "up", "down", "updown", "rand").map { "a$it" to arpName(it) },
+        (when (state.live.nrRate) { 2.0 -> "1/8"; 0.5 -> "1/32"; else -> "1/16" }) + (if (state.live.arp != "rep") " " + arpShort(state.live.arp) else "") + styleShort(state.live.nrStyle),
+        listOf("r2" to "Every 1/8", "r1" to "Every 1/16", "r.5" to "Every 1/32") + listOf("rep", "up", "down", "updown", "rand").map { "a$it" to arpName(it) } +
+            REPEAT_STYLES.map { (s, n) -> "s$s" to (if (state.live.nrStyle == s) "✓ " else "") + n },
         { v ->
-            if (v.startsWith("r")) state.setLive { nrRate = v.substring(1).toDouble() }
+            if (v.startsWith("s")) state.setLive { nrStyle = v.substring(1) }
+            else if (v.startsWith("r")) state.setLive { nrRate = v.substring(1).toDouble() }
             else { val a = v.substring(1); state.setLive { arp = a; if (a != "rep") nr = true } }
         },
     )

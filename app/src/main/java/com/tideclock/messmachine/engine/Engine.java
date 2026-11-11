@@ -26,7 +26,9 @@ public final class Engine {
         public boolean click, rec, nr;
         public double nrRate = 1;      // steps between repeats: 2 = 1/8, 1 = 1/16, 0.5 = 1/32
         public String arp = "rep";     // rep, up, down, updown, rand
-        public Live copy() { Live l = new Live(); l.click = click; l.rec = rec; l.nr = nr; l.nrRate = nrRate; l.arp = arp; return l; }
+        /** SE-6: how repeat plays each hit. "cut" stops it before the next, "ring" lets it play out, "flow" plays it once and pulses its volume. */
+        public String nrStyle = "cut";
+        public Live copy() { Live l = new Live(); l.click = click; l.rec = rec; l.nr = nr; l.nrRate = nrRate; l.arp = arp; l.nrStyle = nrStyle; return l; }
     }
 
     public static final class PadSlot {
@@ -156,6 +158,11 @@ public final class Engine {
         float[] chBuf;
         int chW, crushCnt;
         float lastEnv;
+        // grains (SE-1, SE-2, SE-5): two read heads, each fading in and out over one grain, half a grain apart.
+        // inc moves the heads (the pitch), tInc moves time through the sound (the length).
+        boolean grain, frozen, flow;
+        double tPos, tInc, g0, g1, gp0, gp1, gStep, sus, srate;
+        long pulseAt, pulseLen;
     }
 
     private final int rate;
@@ -178,6 +185,13 @@ public final class Engine {
     private final java.util.Random rnd = new java.util.Random();
 
     // perform FX state (audio thread)
+    /** True while the step clock fires under tape stop, so every hit slows like tape, whatever its pitch setting. */
+    private boolean tapeNow;
+    /** True while padDown starts flow notes: they freeze and hold like Sustain, whatever the sound's own Hold choice. */
+    private boolean sustainNow;
+    /** SE-7: the beat clock for latched beat pads while the transport is stopped. */
+    private boolean beatOn;
+    private double beatNextAt;
     private boolean fxStut, fxTape, fxOct, fxRev, fxCrush, fxDirt, fxRing, fxGate, fxEcho, xyOn, xyHP, filtSlow;
     private int stutA, stutB, lastStep;
     private double tapeAt;
@@ -237,7 +251,8 @@ public final class Engine {
         int id;
         PadSlot pad;
         int[] pitches;
-        boolean mel, holdV, latched;
+        boolean mel, holdV, latched, beat, flow;
+        int beats;
         double at;
         List<Voice> voices = new ArrayList<>();
     }
@@ -353,10 +368,12 @@ public final class Engine {
                 long until = (long) Math.ceil(nextStepAt) - frame;
                 if (until <= 0) { fireStep(S); continue; }
                 chunk = (int) Math.min(chunk, until);
-            } else if (freeOn) {
-                long until = (long) Math.ceil(freeNextAt) - frame;
-                if (until <= 0) { fireFree(S); continue; }
-                chunk = (int) Math.min(chunk, until);
+            } else if (freeOn || beatOn) {
+                long uf = freeOn ? (long) Math.ceil(freeNextAt) - frame : Long.MAX_VALUE;
+                long ub = beatOn ? (long) Math.ceil(beatNextAt) - frame : Long.MAX_VALUE;
+                if (uf <= 0) { fireFree(S); continue; }
+                if (ub <= 0) { fireBeat(S); continue; }
+                chunk = (int) Math.min(chunk, Math.min(uf, ub));
             }
             mix(out, done, chunk);
             done += chunk;
@@ -427,7 +444,7 @@ public final class Engine {
                 for (Voice v : pool) v.active = false;
                 for (float[] m : pMod) java.util.Arrays.fill(m, 0f);
                 for (float[] m : tFx) java.util.Arrays.fill(m, 0f);
-                held.clear(); freeOn = false;
+                held.clear(); freeOn = false; beatOn = false;
                 break;
             case "down": lastHitWaitNanos = renderNanos - (Long) c[5]; hits++; padDown(S, (Integer) c[1], (Integer) c[2], (int[]) c[3], (Boolean) c[4], (Long) c[5], renderNanos, c.length > 6 && (Boolean) c[6]); break;
             case "unlatch": {
@@ -515,7 +532,15 @@ public final class Engine {
         Held h = new Held();
         h.id = id; h.pad = ps; h.pitches = pitches; h.mel = mel;
         h.latched = latch;
-        h.holdV = (mel && ps.edit.holds()) || latch;
+        // SE-5: Sustain holds under a finger too, not only under Hold
+        h.holdV = (mel && ps.edit.holds()) || "sustain".equals(ps.edit.held) || latch;
+        // SE-7: a latched beat pad plays each copy whole and starts it again on the beat; nothing to hold
+        h.beat = latch && "beat".equals(ps.edit.held);
+        if (h.beat) h.holdV = false;
+        // SE-6: flow plays each note once, held, and repeat pulses its volume (arpeggios keep cut or ring)
+        Live L0 = S.live;
+        h.flow = L0.nr && "flow".equals(L0.nrStyle) && "rep".equals(L0.arp);
+        if (h.flow) h.holdV = true;
         h.at = playing ? nowStep(S, nanos, renderNanos) : 0;
         Held old = held.remove(id);
         if (old != null) for (Voice v : old.voices) startRelease(v, .02f);
@@ -531,20 +556,25 @@ public final class Engine {
         held.put(id, h);
         Live L = S.live;
         boolean arpLive = L.nr && !"rep".equals(L.arp);
-        if (!(L.nr && playing) && !arpLive) {
+        if ((!(L.nr && playing) && !arpLive) || h.flow) {
             float g = mel ? Theory.chordGain(pitches.length) : .85f;
+            sustainNow = h.flow;
             for (int p : pitches) {
                 Voice v = trigger(ps, oct() * Math.pow(2, p / 12.0), 0, false, g, 0, h.holdV);
                 if (v == null) continue;
+                if (h.flow) { v.flow = true; v.pulseAt = frame; v.pulseLen = Math.round(Math.max(.5, L.nrRate) * spb(S)); }
                 // Hold keeps a one-shot going: loop its trim, or freeze its tail
                 if (!Double.isNaN(from)) glide(v, from + (p - pitches[0]) - p, gT);
-                if (latch && !v.loop && !"once".equals(ps.edit.held)) {
+                String hm = ps.edit.held;
+                if (latch && !v.loop && !h.flow && !"once".equals(hm) && !"sustain".equals(hm) && !"beat".equals(hm)) {
                     v.loop = true;
                     if ("tail".equals(ps.edit.held)) v.loopFrom = Math.max(v.len * .7, v.len - .12 * ps.sample.rate);
                 }
                 h.voices.add(v);
             }
+            sustainNow = false;
         }
+        if (h.beat && !playing && !beatOn) { beatOn = true; beatNextAt = frame + 4 * spb(S); }
         if (L.nr && !playing && !freeOn) {
             freeOn = true;
             freeNextAt = frame + Math.max(.5, L.nrRate) * spb(S);
@@ -588,10 +618,17 @@ public final class Engine {
             if (arpNext(S)) trigger(arpHeld.pad, oct() * Math.pow(2, arpPitch / 12.0), dur, true, .85f, 0, false);
             return;
         }
+        boolean ring = "ring".equals(S.live.nrStyle);
         for (Held h : held.values()) {
+            if (h.flow) { pulse(h, 0, Math.round(Math.max(.5, S.live.nrRate) * spb(S))); continue; }
             float g = Theory.chordGain(h.pitches.length);
-            for (int p : h.pitches) trigger(h.pad, oct() * Math.pow(2, p / 12.0), dur, h.mel || p != 0, g, 0, false);
+            for (int p : h.pitches) trigger(h.pad, oct() * Math.pow(2, p / 12.0), ring ? 0 : dur, !ring && (h.mel || p != 0), g, 0, false);
         }
+    }
+
+    /** SE-6 flow: one repeat hit is a fresh pulse of volume on the notes already playing. */
+    private void pulse(Held h, long delay, long len) {
+        for (Voice v : h.voices) if (v.active && v.flow) { v.pulseAt = frame + delay; v.pulseLen = Math.max(1, len); }
     }
 
     // the arpeggio's notes, sorted low to high in place (no memory made on the audio thread)
@@ -643,6 +680,7 @@ public final class Engine {
         final int s0 = s;
         double at = nextStepAt - frame + (s % 2 == 1 ? S.swing / 100.0 * spb * .5 : 0);
         long delay = Math.max(0, Math.round(at));
+        tapeNow = fxTape;
         if (P != null && !mute) {
             for (Track t : P.tracks) {
                 if (!t.pad.audible) continue;
@@ -653,6 +691,7 @@ public final class Engine {
                 for (int k = 0; k < nt.length; k += 2) trigger(t.pad, rateMul * Math.pow(2, nt[k] / 12.0), (fxStut ? Math.min(nt[k + 1], 2) : nt[k + 1]) * spb / rate, true, .78f, delay, false);
             }
         }
+        tapeNow = false;
         // recorded XY moves play back, unless a finger is moving that control right now
         if (P != null) for (int q = 0; q < P.lanePad.length; q++) {
             int lp = P.lanePad[q], lt = P.laneT[q];
@@ -662,6 +701,7 @@ public final class Engine {
             pMod[lp][lt] = v;
             if (lt == T_FILTER || lt == T_RES) filterFromMod(lp);
         }
+        if (s % 4 == 0) beatTick(delay);
         Live L = S.live;
         if (L.click && s % 4 == 0) { Voice cv = trigger(s == 0 ? clickHiSlot : clickLoSlot, 1, 0, false, 1f, delay, false, false); if (cv != null) cv.dry = true; }
         if (L.nr && !held.isEmpty()) {
@@ -684,9 +724,30 @@ public final class Engine {
         }
     }
 
+    /** SE-7: on each beat, latched beat pads start their sound again every beatN beats; the last copy rings on. */
+    private boolean beatTick(long delay) {
+        boolean any = false;
+        for (Held h : held.values()) {
+            if (!h.beat) continue;
+            any = true;
+            h.beats++;
+            int n = Math.max(1, h.pad.edit.beatN);
+            if (h.beats % n != 0) continue;
+            float g = h.mel ? Theory.chordGain(h.pitches.length) : .85f;
+            for (int p : h.pitches) trigger(h.pad, oct() * Math.pow(2, p / 12.0), 0, false, g, delay, false);
+        }
+        return any;
+    }
+
+    private void fireBeat(Snapshot S) {
+        if (!beatTick(0)) { beatOn = false; return; }
+        beatNextAt += 4 * spb(S);
+    }
+
     private void nrTick(Snapshot S, long delay, int s, int pi, boolean half, double every, double spb) {
         if ("rep".equals(S.live.arp)) {
             for (Held h : held.values()) {
+                if (h.flow) { pulse(h, delay, Math.round(spb * (every < 1 ? .5 : every))); continue; }
                 float g = Theory.chordGain(h.pitches.length);
                 for (int p : h.pitches) nrOne(S, h, p, delay, s, pi, half, g, every, spb);
             }
@@ -696,7 +757,8 @@ public final class Engine {
     }
 
     private void nrOne(Snapshot S, Held h, int p, long delay, int s, int pi, boolean half, float g, double every, double spb) {
-        trigger(h.pad, oct() * Math.pow(2, p / 12.0), spb * .9 * Math.max(1, every >= 1 ? every : 1) / rate, h.mel || p != 0, g, delay, false);
+        boolean ring = "ring".equals(S.live.nrStyle);
+        trigger(h.pad, oct() * Math.pow(2, p / 12.0), ring ? 0 : spb * .9 * Math.max(1, every >= 1 ? every : 1) / rate, !ring && (h.mel || p != 0), g, delay, false);
         if (S.live.rec && pi >= 0 && !half) {
             if (h.mel) recs.add(new RecEvent(RecEvent.NOTES, pi, h.pad.key, s, new int[]{p}, every >= 2 ? 2 : 1));
             else recs.add(new RecEvent(RecEvent.STEP, pi, h.pad.key, s, null, 1));
@@ -722,9 +784,18 @@ public final class Engine {
         if (pm != null && pm[T_START] > 0) a = Math.min(z - .005 * s.rate, a + (z - a) * Math.min(.95, pm[T_START]));
         if (rev) { double a2 = N - z; z = N - a; a = a2; }
         double len = Math.max(.005 * s.rate, z - a);
-        double r = Math.max(.05, rateMul * Math.pow(2, (e.tune + e.fine / 100.0) / 12.0));
+        double tuneR = Math.pow(2, (e.tune + e.fine / 100.0) / 12.0);
+        double r = Math.max(.05, rateMul * tuneR);
         double lvl = gain * e.vol * (e.norm ? Math.min(10, .95 / s.regionPeak(e.st, e.en)) : 1);
-        double natural = len / s.rate / r;
+        // SE-1: Stretch (tape) moves time at the pitch's speed; Grain keeps time at 1; auto keeps the length of notes
+        // played as keys, chords and roll notes, and lets the Doctor's own Tune stay tape. Tape stop is always tape.
+        boolean sustain = hold && ("sustain".equals(e.held) || sustainNow);
+        double timeR;
+        if (tapeNow || "stretch".equals(e.pitch)) timeR = r;
+        else if ("grain".equals(e.pitch)) timeR = 1;
+        else timeR = Math.abs(rateMul - 1) > .0006 ? Math.max(.05, tuneR) : r;
+        boolean grain = sustain || Math.abs(timeR - r) > 1e-9;
+        double natural = len / s.rate / timeR;
         boolean g = "gate".equals(e.mode) || gate;
         double play = hold ? 600 : e.loop ? (durSec > 0 ? durSec : natural) : (g && durSec > 0 ? Math.min(durSec, natural) : natural);
         double att = Math.min(e.att + (pm != null ? Math.max(0, pm[T_ATT]) : 0), play * .9);
@@ -734,6 +805,15 @@ public final class Engine {
         v.active = true; v.preview = false; v.dry = false; v.hold = hold; v.releasing = false; v.choked = false;
         v.d = d; v.a = (int) Math.max(0, Math.floor(a)); v.len = len; v.zEnd = (int) Math.min(N, Math.ceil(a + len));
         v.pos = 0; v.inc = r * s.rate / rate; v.loop = e.loop; v.loopFrom = 0; v.glideLeft = 0; v.glideMul = 1;
+        v.grain = grain; v.frozen = false; v.flow = false; v.pulseAt = -1; v.srate = s.rate;
+        if (grain) {
+            v.tPos = 0; v.tInc = timeR * s.rate / rate;
+            v.gStep = 1.0 / Math.max(64, GRAIN_SEC * rate);
+            // the first head starts at its loudest so the attack is not faded in; the second waits half a grain
+            v.g0 = 0; v.gp0 = .5; v.g1 = 0; v.gp1 = 0;
+            // SE-5: where a held sustain freezes, partway in, after the attack
+            v.sus = sustain ? Math.min(Math.max(Math.min(.06 * s.rate, len * .45), len * .45), 1.5 * s.rate) : -1;
+        }
         lastVoice = v;
         v.delay = delay; v.t = 0;
         v.playLen = Math.max(1, Math.round(play * rate)); v.attF = Math.round(att * rate); v.fadeF = Math.max(1, Math.round(fade * rate));
@@ -850,15 +930,34 @@ public final class Engine {
                     env *= v.chokeG;
                 }
                 // read the sound
-                double pos = v.pos;
-                if (v.loop) { double span = Math.max(1, v.len - v.loopFrom); while (pos >= v.len) pos -= span; v.pos = pos; }
-                int i = v.a + (int) pos;
-                if (i >= v.zEnd - 1 || i >= d.length - 1) {
-                    if (!v.loop) { v.active = false; break; }
-                    i = Math.min(v.zEnd, d.length) - 2;
+                float smp;
+                if (v.grain) {
+                    if (!v.loop && !v.frozen && v.tPos >= v.len) { v.active = false; break; }
+                    smp = HANN[(int) (v.gp0 * 1024)] * gRead(v, d, v.g0) + HANN[(int) (v.gp1 * 1024)] * gRead(v, d, v.g1);
+                } else {
+                    double pos = v.pos;
+                    if (v.loop) { double span = Math.max(1, v.len - v.loopFrom); while (pos >= v.len) pos -= span; v.pos = pos; }
+                    int i = v.a + (int) pos;
+                    if (i >= v.zEnd - 1 || i >= d.length - 1) {
+                        if (!v.loop) { v.active = false; break; }
+                        i = Math.min(v.zEnd, d.length) - 2;
+                    }
+                    double fr = pos - Math.floor(pos);
+                    smp = (float) (d[i] + (d[i + 1] - d[i]) * fr);
                 }
-                double fr = pos - Math.floor(pos);
-                float smp = (float) (d[i] + (d[i + 1] - d[i]) * fr);
+                // SE-6 flow: repeat pulses the volume of one long note instead of restarting it
+                if (v.flow) {
+                    float pf;
+                    if (v.pulseAt < 0) pf = .12f;
+                    else {
+                        // a 2 ms rise from the floor to full, then a fall back to the floor over the pulse
+                        long dt = frame + k - v.pulseAt;
+                        if (dt < 0) pf = .12f;
+                        else if (dt < 96) pf = .12f + .88f * (dt / 96f);
+                        else pf = .12f + .88f * (float) Math.max(0, 1 - (dt - 96) / (double) Math.max(1, v.pulseLen));
+                    }
+                    env *= pf;
+                }
                 if (v.filt) {
                     float y = v.b0 * smp + v.b1 * v.x1 + v.b2 * v.x2 - v.a1 * v.y1 - v.a2 * v.y2;
                     v.x2 = v.x1; v.x1 = smp; v.y2 = v.y1; v.y1 = y; smp = y;
@@ -900,11 +999,74 @@ public final class Engine {
                 double rm = v.bendMul;
                 if (p >= 0) rm *= padRateFrom[p] + (padRateTo[p] - padRateFrom[p]) * ((frame + k - blockStart) / (double) Math.max(1, blockLen));
                 if (wob > 0) { rm *= 1 + wob * .025 * Math.sin(v.wobPh); v.wobPh += wobInc; }
-                v.pos += v.inc * rm;
+                if (v.grain) {
+                    double pi = v.inc * rm;
+                    v.g0 += pi; v.g1 += pi;
+                    v.gp0 += v.gStep; v.gp1 += v.gStep;
+                    if (!v.frozen) {
+                        v.tPos += v.tInc;
+                        if (v.loop && v.tPos >= v.len) v.tPos -= Math.max(1, v.len - v.loopFrom);
+                        if (v.sus >= 0 && !v.releasing && v.tPos >= v.sus) { v.frozen = true; v.tPos = v.sus; }
+                    }
+                    if (v.gp0 >= 1) { v.gp0 -= 1; v.g0 = grainStart(v, d, v.g1); }
+                    if (v.gp1 >= 1) { v.gp1 -= 1; v.g1 = grainStart(v, d, v.g0); }
+                } else v.pos += v.inc * rm;
                 if (v.glideLeft > 0) { v.inc *= v.glideMul; v.glideLeft--; }
                 v.t++;
             }
         }
+    }
+
+    /** Grain length for Grain pitch and Sustain: long enough for low notes, short enough to keep attacks. */
+    static final double GRAIN_SEC = .05;
+    /** One grain's fade in and out: sin squared, so two heads half a grain apart always add up to 1. */
+    private static final float[] HANN = new float[1025];
+    /** Scratch for grainStart, audio thread only. */
+    private final float[] gRef = new float[32];
+    static { for (int i = 0; i <= 1024; i++) { double s = Math.sin(Math.PI * i / 1024.0); HANN[i] = (float) (s * s); } }
+
+    /** A grain head's sample at position h (source samples from the trim start); silent outside the sound unless it loops. */
+    private static float gRead(Voice v, float[] d, double h) {
+        if (v.loop || v.frozen) { double span = Math.max(1, v.len - v.loopFrom); while (h >= v.len) h -= span; }
+        if (h < 0 || h >= v.len - 1) return 0f;
+        int i = v.a + (int) h;
+        if (i < 0 || i >= d.length - 1 || i >= v.zEnd - 1) return 0f;
+        double fr = h - Math.floor(h);
+        return (float) (d[i] + (d[i + 1] - d[i]) * fr);
+    }
+
+    /**
+     * Where a head starts its next grain: where time is now (or around the frozen point, with a little drift so a
+     * sustain never buzzes), nudged by up to 8 ms to where it best lines up with the grain fading out, so the two
+     * don't cancel each other where they overlap (the warble of a plain grain shifter on tones).
+     */
+    private double grainStart(Voice v, float[] d, double other) {
+        double x = v.frozen ? v.sus + (rnd.nextDouble() - .5) * .024 * v.srate : v.tPos;
+        // heads that read at time's own speed are already in line: nothing to search
+        if (!v.frozen && Math.abs(v.inc - v.tInc) < 1e-9) return x;
+        int r = (int) Math.min(.008 * v.srate, 400);
+        double inc = Math.max(.25, v.inc) * 8;
+        // what the fading grain is about to play, read once
+        for (int n = 0; n < 32; n++) gRef[n] = gRead(v, d, other + n * inc);
+        double best = x, bestC = -1e30;
+        double span = 31 * inc;
+        // coarse pass every 4 samples, then the 3 either side of the winner
+        for (int pass = 0; pass < 2; pass++) {
+            double c0 = best;
+            int lo = pass == 0 ? -r : -3, hi = pass == 0 ? r : 3, stp = pass == 0 ? 4 : 1;
+            for (int dl = lo; dl <= hi; dl += stp) {
+                double cand = (pass == 0 ? x : c0) + dl;
+                if (cand < 0) continue;
+                double c = 0;
+                if (cand + span < v.len - 2 && v.a + cand + span < Math.min(v.zEnd, d.length) - 2) {
+                    // all inside the sound: plain reads, no wrapping or bounds to check
+                    double at = v.a + cand;
+                    for (int n = 0; n < 32; n++) c += gRef[n] * d[(int) (at + n * inc)];
+                } else for (int n = 0; n < 32; n++) c += gRef[n] * gRead(v, d, cand + n * inc);
+                if (c > bestC) { bestC = c; best = cand; }
+            }
+        }
+        return Math.max(0, best);
     }
 
     private static float chRead(float[] b, double at) {

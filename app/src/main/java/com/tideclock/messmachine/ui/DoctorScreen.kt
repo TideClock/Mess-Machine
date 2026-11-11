@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.tideclock.messmachine.AppState
 import com.tideclock.messmachine.engine.Sample
@@ -53,8 +54,8 @@ fun DoctorScreen(state: AppState, key: String) {
     var sens by remember { mutableStateOf(.5f) }
     var lazyT0 by remember { mutableStateOf(0L) }
     var fitBars by remember { mutableStateOf(1.0) }
-    // the table in four tabs under a waveform that always stays on screen
-    var dtab by remember { mutableStateOf("trim") }
+    // the sample's settings in five tabs under a waveform that always stays on screen; Play first (how it plays when held and pitched)
+    var dtab by remember { mutableStateOf("play") }
     LaunchedEffect(key) {
         if (smp == null) smp = withContext(Dispatchers.IO) { try { state.lib.load(key) } catch (_: Exception) { null } }
     }
@@ -82,7 +83,7 @@ fun DoctorScreen(state: AppState, key: String) {
     ScrollPane(hPad = 14.dp, vPad = 0.dp) {
         T(state.lib.titleOf(key), size = 18.sp)
         T(
-            "%.2f s · plays %.2f s".format(seconds, seconds * (e.en - e.st) / Math.pow(2.0, (e.tune + e.fine / 100) / 12)),
+            "%.2f s · plays %.2f s".format(seconds, seconds * (e.en - e.st) / (if (e.pitch == "grain") 1.0 else Math.pow(2.0, (e.tune + e.fine / 100) / 12))),
             size = 12.sp, color = C.Dim, weight = FontWeight.Medium, modifier = Modifier.padding(bottom = 8.dp),
         )
         var dragging by remember { mutableStateOf(0) }
@@ -146,9 +147,26 @@ fun DoctorScreen(state: AppState, key: String) {
             }, on = looping, onColor = C.Pink, small = true)
         }
         Row(Modifier.fillMaxWidth().padding(bottom = 10.dp, end = 4.dp).testTag("dtab-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            for ((t, n) in listOf("trim" to "Trim", "shape" to "Shape", "fx" to "Effects", "tools" to "Tools")) {
+            for ((t, n) in listOf("play" to "Play", "trim" to "Trim", "shape" to "Shape", "fx" to "Effects", "tools" to "Tools")) {
                 Btn(n, { dtab = t }, on = dtab == t, onColor = C.Yellow, small = true, tag = "dtab-$t", modifier = Modifier.weight(1f))
             }
+        }
+        if (dtab == "play") {
+        // SE-1: Stretch or Grain
+        T("PITCH", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(bottom = 4.dp))
+        Help("Stretch plays a pitch change like tape: higher is faster and shorter. Grain keeps the length. Auto keeps the length for keys, chords and Roll notes, and lets Tune stay tape.", modifier = Modifier.padding(bottom = 6.dp))
+        Row(Modifier.fillMaxWidth().padding(bottom = 14.dp, end = 4.dp).testTag("pitch-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            for ((v, n) in listOf("auto" to "Auto", "stretch" to "Stretch", "grain" to "Grain")) Btn(n, { upd(true) { pitch = v } }, on = e.pitch == v, onColor = C.Teal, small = true, tag = "pitch-$v", modifier = Modifier.weight(1f))
+        }
+        // SE-5, SE-7: what Hold (and a finger, for Sustain) does with it
+        T("WHEN IT IS HELD", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(bottom = 4.dp))
+        Help("Loop its trim, freeze its tail, play it once, sustain it like a pad for as long as it is held, or play it whole and start it again on the beat while Hold keeps it.", modifier = Modifier.padding(bottom = 6.dp))
+        Wrap(Modifier.testTag("held-chips")) {
+            for ((v, n) in listOf("loop" to "Loop it", "tail" to "Hold the tail", "once" to "Play once", "sustain" to "Sustain", "beat" to "On the beat")) Btn(n, { upd(true) { held = v } }, on = e.held == v, small = true, tag = "held-$v")
+        }
+        if (e.held == "beat") Row(Modifier.fillMaxWidth().padding(top = 8.dp, end = 4.dp).testTag("beat-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            for ((v, n) in listOf(1 to "Every beat", 2 to "2 beats", 4 to "1 bar")) Btn(n, { upd(true) { beatN = v } }, on = e.beatN == v, onColor = C.Yellow, small = true, tag = "beat-$v", modifier = Modifier.weight(1f))
+        }
         }
         if (dtab == "trim") {
         Help("Drag the yellow line to trim the front, the pink one to trim the back.", modifier = Modifier.padding(bottom = 8.dp))
@@ -178,10 +196,6 @@ fun DoctorScreen(state: AppState, key: String) {
         Help("Choke group: sounds in the same group cut each other off, like an open and closed hat.", modifier = Modifier.padding(top = 4.dp, bottom = 6.dp))
         Wrap(Modifier.testTag("choke-chips")) {
             for (g in 0..6) Btn(if (g == 0) "Off" else "$g", { upd(true) { choke = g } }, on = e.choke == g, small = true)
-        }
-        Help("When Hold keeps this sound: loop its trim, freeze its tail, or let it play once.", modifier = Modifier.padding(top = 10.dp, bottom = 6.dp))
-        Wrap(Modifier) {
-            for ((v, n) in listOf("loop" to "Loop it", "tail" to "Hold the tail", "once" to "Play once")) Btn(n, { upd(true) { held = v } }, on = e.held == v, small = true, tag = "held-$v")
         }
         }
         if (dtab == "fx") {

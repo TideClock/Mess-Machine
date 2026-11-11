@@ -11,7 +11,10 @@ Rewritten at the end of every session and at each step of a long job (BT-2). Rea
 - **Plan:** the review doc https://claude.ai/artifact/QoAq7LzDGYD8XNyDDjPRHS, items MM-1 to MM-24, with an Outcome
   section at the top. MM-11 (Play Store) is last and notes only. MM-5 (Oboe) waits for real numbers from the Audio
   check. MM-15 (Fold layouts) skipped with a big note. MM-22 (creature cards) is an outline in the doc.
-- **Next:** read Tyler's first Audio check note (it carries the Lag line and slow blocks), then decide MM-5.
+- **Next:** sound engine plan v2, piece by piece (see Decisions). Pieces 1 to 3 (grain, sustain, repeat styles,
+  hold on the beat, the Sample sheet) are in build 61. Then 4 (bake and latency), 5 (the Synth tab: poly analog,
+  mono, acid), 6 to 9 (FM, wavetable, granular, drums and plucks), 10 (loops, re-cut chops), 11 (the Vault and
+  packs). Tyler's Audio check note still decides MM-5.
 - **Not done, and why:** MM-14 strong skipping stays off: composable lambdas that read the mess without snapshot
   state would stop redrawing (note #6 again), and nothing measured says the UI costs audio time yet; the Audio
   check's "screen busy" flag will say. MM-21 (Heap sorting) needs ears: 0.35 s slices of full songs have no right
@@ -48,6 +51,32 @@ One line each, dated, with the reason and who decided (BT-2). Older decisions li
   screen readers and from the design check.
 - 2026-11-10 Second design check (build 55): rows of choices count once (`-chips` tags); Doctor tools tab
   allowed 13 controls with a reason; the design check is strict from now on (Claude, BT-5).
+
+Sound engine plan v2 (doc https://claude.ai/artifact/Vsr6HBLcVa8wehHaNbqSD9), built as separate tested pieces:
+
+- 2026-11-10 Pitch modes are "Stretch" (tape, as before) and "Grain" (keeps the length) (Tyler, SE-1). Default
+  Auto keeps the length for keys, chords and Roll notes (rateMul not 1), and keeps the Doctor's Tune as tape
+  (Tyler: decision 1, yes). Tape stop always stays tape.
+- 2026-11-10 Grain engine (Claude, SE-1): two Hann-windowed read heads 50 ms apart, each new grain aligned to the
+  fading one by a 32-point correlation search over +/-8 ms. Ripple on a sine at +12 fell from 44% to 2%. Cost
+  about 3x Stretch per voice (33 ms vs 12 ms of CPU per second of audio for 8 voices on the workspace); the bake
+  (piece 4) is the answer when a phone runs hot.
+- 2026-11-10 Sustain (Tyler, "perfect", SE-5): plays the attack, then freezes grains around 45% of the length
+  (0.06 to 1.5 s in) with +/-12 ms jitter while held; fades on release.
+- 2026-11-10 Repeat styles Cut (default), Ring, Flow (Tyler, SE-6). Home: the repeat rate menu, not the Sample
+  sheet as the plan doc said (Claude): the style is a Live setting for every pad, like the rate, so it lives
+  beside the rate. Session only, like the rate.
+- 2026-11-10 Hold "On the beat" (Tyler, SE-7): a latched pad plays whole and restarts every 1, 2 or 4 beats,
+  on the step clock while playing and on its own beat clock while stopped.
+- 2026-11-10 The Doctor becomes the Sample sheet with Play as its first page (Tyler asked for a "very
+  accessible" samples menu): pitch, when it is held, beat rate. The held chips moved there from Shape (one home).
+  A one-tap Sample button on the Pads bank row is a second door to the same sheet, not a second home for any
+  setting (Claude): the pad menu is two touches and a hold away while playing.
+- 2026-11-10 Synths get their own sixth tab (Tyler, overrides the 5-tab target): different enough from samples
+  to need a big screen. Bake (phase vocoder render) lives in three places on purpose (Tyler): the Sample sheet,
+  the latency screen, and a pop-up when the CPU stays high.
+- 2026-11-10 The 0.35 s Heap and Qbldy chops go once loops and re-cut chops replace them; the song chop switch
+  (SE-8) is dropped (Tyler).
 
 ## Control map
 

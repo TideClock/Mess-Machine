@@ -130,7 +130,7 @@ private fun DockItem(state: AppState, t: String) {
             DockBtn("RPT", { state.setLive { nr = !nr } }, tag = "dock-repeat", on = state.live.nr, onColor = C.Pink)
             Box {
                 T(
-                    (when (state.live.nrRate) { 2.0 -> "1/8"; 0.5 -> "1/32"; else -> "1/16" }) + if (state.live.arp != "rep") " " + arpShort(state.live.arp) else "",
+                    (when (state.live.nrRate) { 2.0 -> "1/8"; 0.5 -> "1/32"; else -> "1/16" }) + (if (state.live.arp != "rep") " " + arpShort(state.live.arp) else "") + styleShort(state.live.nrStyle),
                     size = 10.sp, color = if (state.live.nr) C.Pink else C.Dim, family = Mono, lines = 1,
                     modifier = Modifier.padding(top = 3.dp).clickable { rates = true }.testTag("dock-rate"),
                 )
@@ -140,7 +140,7 @@ private fun DockItem(state: AppState, t: String) {
                     Triple("Every 1/32", "rate-r.5") { state.setLive { nrRate = .5 } },
                 ) + listOf("rep", "up", "down", "updown", "rand").map { a ->
                     Triple(arpName(a), "rate-a$a") { state.setLive { arp = a; if (a != "rep") nr = true } }
-                })
+                } + REPEAT_STYLES.map { (s, n) -> Triple((if (state.live.nrStyle == s) "✓ " else "") + n, "rate-s$s") { state.setLive { nrStyle = s } } })
             }
         }
         "rec" -> { val pulse = beatPulse(state); DockBtn("●", { state.setLive { rec = !rec } }, tag = "dock-rec", on = state.live.rec, onColor = C.Riot, modifier = Modifier.recGlow(state, pulse)) }

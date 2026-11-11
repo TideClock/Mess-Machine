@@ -62,6 +62,9 @@ fun PadsScreen(state: AppState) {
                 val n = (0 until Project.BANK).count { P.kit[b * Project.BANK + it].isNotEmpty() }
                 Btn("${b + 1}", modifier = Modifier.weight(1f), onClick = { state.bank = b }, on = state.bank == b && !state.keysMode, small = true, enabled = !state.keysMode, tag = "bank-$b")
             }
+            // the Sample sheet for the pad under your hands, one tap away (holding a pad opens it too, for any pad)
+            val selKey = P.kit.getOrNull(P.sel).orEmpty()
+            Btn("Sample", { state.overlay = Overlay.Doctor(selKey) }, small = true, enabled = selKey.isNotEmpty(), tag = "open-sample")
         }
         if (state.keysMode || state.keyboards.isNotEmpty()) KeysBar(state)
         // zoomed out, the pad grid shrinks with everything else so more of the machine fits
@@ -328,7 +331,7 @@ fun PadMenu(state: AppState, i: Int) {
             item("Route: " + (if (P.opt(i).route == 0) "mix" else "bus ${P.opt(i).route}") + " (tap for next)", "menu-route") { state.cycleRoute(i) }
             group("SOUND")
             item(if (recHere) "■ Stop recording" else "● Record onto this pad", "menu-record", enabled = !state.micOn || recHere) { state.askRecord(i) }
-            item("✂ Doctor it", "menu-doctor") { state.selectPad(i, false); state.overlay = Overlay.Doctor(k) }
+            item("✂ Sample", "menu-doctor") { state.selectPad(i, false); state.overlay = Overlay.Doctor(k) }
             item("Swap sound", "menu-swap") { state.selectPad(i, false); state.overlay = Overlay.Picker(i) }
             item(if (k in state.favs) "★ Unstar" else "☆ Star", "menu-star") { state.toggleFav(k) }
             item("Keep in Your Workbench", "menu-keep") { state.keepInBench(i) }

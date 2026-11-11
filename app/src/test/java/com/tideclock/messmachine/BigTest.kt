@@ -673,6 +673,39 @@ class BigTest {
         settle()
     }
 
+    /** SE-1, SE-5, SE-6, SE-7: the Sample sheet's Play page, the one-tap Sample button and the repeat styles. */
+    @Test fun samplePlayPage() {
+        val k = state.project.kit[state.project.sel]
+        assertTrue(k.isNotEmpty())
+        rule.onNodeWithTag("open-sample").performClick()
+        settle()
+        assertTrue("the Sample button opens the Sample sheet", state.overlay is Overlay.Doctor)
+        rule.onNodeWithTag("pitch-grain").performClick(); settle()
+        assertEquals("grain", state.project.edit(k).pitch)
+        rule.onNodeWithTag("held-sustain").performScrollTo().performClick(); settle()
+        assertEquals("sustain", state.project.edit(k).held)
+        assertTrue("a sustained sound holds", state.project.edit(k).holds())
+        rule.onNodeWithTag("held-beat").performScrollTo().performClick(); settle()
+        rule.onNodeWithTag("beat-4").performScrollTo().performClick(); settle()
+        assertEquals("beat", state.project.edit(k).held)
+        assertEquals(4, state.project.edit(k).beatN)
+        shot("37-sample-play")
+        rule.onNodeWithTag("pitch-stretch").performClick(); settle()
+        assertEquals("stretch", state.project.edit(k).pitch)
+        state.overlay = null
+        settle()
+        // repeat styles live in the repeat rate menu
+        if (rule.onAllNodes(androidx.compose.ui.test.hasTestTag("dock-rate")).fetchSemanticsNodes().isNotEmpty()) {
+            rule.onNodeWithTag("dock-rate").performClick(); settle()
+            rule.onNodeWithTag("rate-sflow").performClick(); settle()
+            assertEquals("flow", state.live.nrStyle)
+        } else {
+            state.setLive { nrStyle = "flow" }
+            assertEquals("flow", state.live.nrStyle)
+        }
+        state.setLive { nrStyle = "cut" }
+    }
+
     @Test fun doctorEffects() {
         val k = state.project.kit[0]
         state.overlay = Overlay.Doctor(k)
@@ -886,7 +919,7 @@ class BigTest {
             state.overlay = o; sheet(n); state.overlay = null; settle()
         }
         state.overlay = Overlay.Doctor(state.project.kit[0])
-        for (d in listOf("trim", "shape", "fx", "tools")) { at("dtab-$d").performClick(); sheet("Doctor: $d") }
+        for (d in listOf("play", "trim", "shape", "fx", "tools")) { at("dtab-$d").performClick(); sheet("Sample: $d") }
         state.overlay = null; settle()
         // the pad menu
         longPress("pad-1")

@@ -1,32 +1,25 @@
 {
-  "title": "Audio check, background play, MIDI and a smaller install",
+  "title": "Stretch or Grain, Sustain, and the Sample sheet",
   "thisBuild": [
-    "Audio check: open Notes for Claude, then Audio check under How it is running. It shows the buffer, the output delay from Android's own clock, dropouts and any slow audio blocks.",
-    "Tap the square there ten times: each tap plays a click and times your touch reaching the app.",
-    "Speaker test: five clicks timed with the mic, for the real time from the app to the speaker on your phone. It asks for the mic once.",
-    "Save as a note puts all of it in a note, ready to send.",
-    "After a click (a dropout), the audio buffer grows as before, but now gives the extra back after a quiet minute instead of keeping the lag all session.",
-    "On Android 12 and up the app asks the phone to keep the audio thread's CPU fast enough for each block, which should mean fewer clicks.",
-    "When an audio block runs slow, the app now notes what else was happening (loading a sound, the screen busy, the first minute). Every note carries the last few.",
-    "Faster start and smoother first minutes: the app now ships a Baseline Profile, so Android compiles the sound engine and the screens ahead instead of while you play. It takes full effect after the phone's next idle tidy-up (overnight on the charger).",
-    "Resample is now only on Steps (Resample to a pad). The copy in Your Workbench is gone.",
-    "Notes are public on GitHub, so they no longer carry your mess's name, and the mess summary goes only with bug notes and crashes. The phone model and audio numbers stay: the lag depends on them.",
-    "Keep playing when you leave the app: press Play, go to another app, and the music keeps going with a Mess Machine notification that has Stop. Settings has Keep playing when I leave (on to start). Android may ask once to show notifications.",
-    "MIDI over USB: plug in a pad controller or a keyboard. Notes 36 to 51 (most pad controllers' default) hit pads 1 to 16 of the bank on screen; any other note plays the selected pad as a key, middle C at the sound's own pitch.",
-    "The install is about half the size: the 433 sounds are packed as FLAC now, sample for sample the same as before.",
-    "Up to date with Android 16 (API 36), which the Play Store has required since August: the screen now runs edge to edge, clear of the camera hole and the bars, and the back swipe shows a preview of where it goes."
+    "The Doctor is now the Sample sheet, with a new first page, Play. Open it with the Sample button beside the bank numbers on Pads (for the pad you last played), or hold a pad and pick Sample.",
+    "Pitch on the Play page: Stretch plays a pitch change like tape (higher is faster and shorter). Grain keeps the length. Auto, the default, keeps the length for keys, chords and Roll notes and lets the sound's own Tune stay tape.",
+    "So a long sound played up the keyboard now lasts as long at every key instead of shrinking at the top.",
+    "When it is held (moved here from Shape): Loop it, Hold the tail, Play once, plus two new ones.",
+    "Sustain: the sound plays its attack, then holds like a pad for as long as your finger (or Hold) keeps it, and fades when you let go.",
+    "On the beat: with Hold on, the sound plays whole and starts again every beat, every 2 beats or every bar, in time with the music.",
+    "Repeat styles, in the repeat rate menu under RPT: Cut each repeat (as before), Let repeats ring (each repeat plays out over the last), and Flow (hold the note and pulse its volume, good for pads and chords). The dock shows RNG or FLO when one is on."
   ],
   "watch": [
-    "Run the Audio check: tap the square ten times, run the speaker test, then Save as a note and send it. That one note tells Claude what to fix next.",
-    "Play a busy mess for two minutes and listen for clicks, then send any note: it carries the slow blocks.",
-    "Press Play, then switch to another app for a minute: the music should keep going, and Stop in the notification should stop it.",
-    "If you have a USB MIDI controller and an adapter, plug it in and play pads and keys.",
-    "Look at the top and bottom edges on both screens of the Fold: nothing should sit under the camera hole, the clock or the gesture bar."
+    "Play a long sound on Keys from low to high. In Auto it should keep its length; switch the pad to Stretch on the Play page and hear the old tape way.",
+    "Listen for a flutter or a soft chorus on Grain, mostly on very clean tones far from the root. Send a note naming the sound if it bothers you.",
+    "Set a pad to Sustain and hold it for a few seconds: it should keep going smoothly, then fade on release.",
+    "Turn Hold on with a pad set to On the beat: it should restart on each beat, and stop when you unlatch it.",
+    "Try Flow on a chord with Repeat on: the chord should hold and breathe with the repeat rate."
   ],
   "limits": [
-    "The speaker test needs the volume up and headphones out. It cannot see the touch screen's own scan time, so the real tap to sound is a little longer than it shows.",
-    "Touching a pad still plays it as it opens its menu; playing on touch is what keeps pads quick.",
-    "MIDI ignores how hard you hit for now: every hit plays at full volume.",
-    "Lock-screen and Bluetooth headphone buttons do not control playback yet."
+    "Grain costs about three times the CPU of Stretch per voice. If you hear clicks with many held notes, switch those pads to Stretch and send a note. A bake option that does the work ahead of time is next.",
+    "Grain blurs very sharp hits a little (a drum played up the keys). Drums on pads are not affected: pads play at their own pitch.",
+    "The repeat style is for this session only, like the repeat rate. It is not saved in the mess yet.",
+    "Synths, loops and the RC-505 library are coming in later builds."
   ]
 }

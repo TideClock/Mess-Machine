@@ -15,8 +15,19 @@ public final class SoundEdit {
     public double tune = 0, fine = 0;    // semitones, cents
     public double vol = 1, pan = 0, tone = 0; // tone < 0 darker (low pass), > 0 thinner (high pass)
     public int choke = 0;                // 0 = none, 1..4 groups
-    /** App only: what a one-shot does while Hold keeps it: "loop" its trim, hold the "tail", or play "once". */
+    /**
+     * App only: what a one-shot does while Hold keeps it: "loop" its trim, hold the "tail", play "once",
+     * "sustain" (freeze it partway and hold that moment as long as it is held, SE-5) or "beat" (play it
+     * whole and start it again every beatN beats in time with the loop, each ringing into the next, SE-7).
+     */
     public String held = "loop";
+    public int beatN = 1;
+    /**
+     * App only (SE-1): how a pitch change plays. "stretch" is tape: higher is faster and shorter. "grain" keeps
+     * the length. "auto": notes played as keys, chords and in the Roll keep their length; the Doctor's own Tune
+     * stays tape, so a tuned-down kick still slows down.
+     */
+    public String pitch = "auto";
     /** App only: the doctor's effects, 0 = off. rvbSize 0..1, echoT picks 1/16, 1/8, 3/16, 1/4; wobRate 0..1. */
     public double rvb = 0, rvbSize = .5, echo = 0, dirt = 0, crush = 0, chorus = 0, wob = 0, wobRate = .3;
     public int echoT = 1;
@@ -27,19 +38,19 @@ public final class SoundEdit {
         SoundEdit e = new SoundEdit();
         e.st = st; e.en = en; e.att = att; e.rel = rel; e.rev = rev; e.loop = loop; e.norm = norm;
         e.mode = mode; e.tune = tune; e.fine = fine; e.vol = vol; e.pan = pan; e.tone = tone; e.choke = choke;
-        e.held = held;
+        e.held = held; e.beatN = beatN; e.pitch = pitch;
         e.rvb = rvb; e.rvbSize = rvbSize; e.echo = echo; e.echoT = echoT; e.dirt = dirt; e.crush = crush; e.chorus = chorus; e.wob = wob; e.wobRate = wobRate;
         return e;
     }
 
     public boolean isDefault() {
         return st == 0 && en == 1 && att == 0 && rel == 0 && !rev && !loop && !norm && "one".equals(mode)
-                && tune == 0 && fine == 0 && vol == 1 && pan == 0 && tone == 0 && choke == 0 && "loop".equals(held) && !hasFx() && rvbSize == .5 && echoT == 1 && wobRate == .3;
+                && tune == 0 && fine == 0 && vol == 1 && pan == 0 && tone == 0 && choke == 0 && "loop".equals(held) && beatN == 1 && "auto".equals(pitch) && !hasFx() && rvbSize == .5 && echoT == 1 && wobRate == .3;
     }
 
     public boolean hasFx() { return rvb > 0 || echo > 0 || dirt > 0 || crush > 0 || chorus > 0 || wob > 0; }
 
-    public boolean holds() { return !"one".equals(mode) || loop; }
+    public boolean holds() { return !"one".equals(mode) || loop || "sustain".equals(held); }
 
     public Map<String, Object> toMap() {
         Map<String, Object> m = new LinkedHashMap<>();
@@ -47,6 +58,8 @@ public final class SoundEdit {
         m.put("mode", mode); m.put("tune", tune); m.put("fine", fine); m.put("vol", vol); m.put("pan", pan);
         m.put("tone", tone); m.put("norm", norm); m.put("choke", (double) choke);
         if (!"loop".equals(held)) m.put("held", held);
+        if (beatN != 1) m.put("beatN", (double) beatN);
+        if (!"auto".equals(pitch)) m.put("pitch", pitch);
         if (hasFx() || rvbSize != .5 || echoT != 1 || wobRate != .3) {
             Map<String, Object> f = new LinkedHashMap<>();
             f.put("rvb", rvb); f.put("rvbSize", rvbSize); f.put("echo", echo); f.put("echoT", (double) echoT); f.put("dirt", dirt);
@@ -74,7 +87,11 @@ public final class SoundEdit {
         e.tone = clamp(Json.num(m.get("tone"), 0), -1, 1);
         e.choke = (int) clamp(Json.num(m.get("choke"), 0), 0, 8);
         Object h = m.get("held");
-        e.held = "tail".equals(h) || "once".equals(h) ? (String) h : "loop";
+        e.held = "tail".equals(h) || "once".equals(h) || "sustain".equals(h) || "beat".equals(h) ? (String) h : "loop";
+        int bn = (int) Math.round(Json.num(m.get("beatN"), 1));
+        e.beatN = bn == 2 || bn == 4 ? bn : 1;
+        Object pm = m.get("pitch");
+        e.pitch = "stretch".equals(pm) || "grain".equals(pm) ? (String) pm : "auto";
         Map<String, Object> f = Json.map(m.get("fx"));
         e.rvb = clamp(Json.num(f.get("rvb"), 0), 0, 1); e.rvbSize = clamp(Json.num(f.get("rvbSize"), .5), 0, 1);
         e.echo = clamp(Json.num(f.get("echo"), 0), 0, 1); e.echoT = (int) clamp(Json.num(f.get("echoT"), 1), 0, 3);

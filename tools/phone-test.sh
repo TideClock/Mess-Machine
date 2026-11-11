@@ -110,7 +110,7 @@ if [ -z "$xy" ]; then note "pad 6: NOT FOUND"; fail=1; else
   adb shell input swipe $1 $2 $1 $2 900; sleep 1; shot 05-long-press
   # menus open in their own popup window, which carries no test names: look for the menu's words
   centre padmenu >/dev/null
-  grep -q "DOCTOR IT" $OUT/ui-now.xml && note "pad menu: opened" || { note "pad menu: DID NOT OPEN"; fail=1; }
+  grep -q -e "✂ SAMPLE" -e "&#9986; SAMPLE" $OUT/ui-now.xml && note "pad menu: opened" || { note "pad menu: DID NOT OPEN"; fail=1; }
   adb shell input keyevent KEYCODE_BACK; sleep 1
   infront "after pad menu"
   cx=$1; cy=$2; r=$(( W / 30 ))

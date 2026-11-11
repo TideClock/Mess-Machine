@@ -6,6 +6,7 @@ import java.util.*;
 public class EngineTest {
   static void check(boolean ok, String what){ System.out.println((ok ? "PASS " : "FAIL ") + what); if (!ok) failures++; }
   static int failures = 0;
+  static String fmt(double[] x) { return String.format("%.2f s at %.0f Hz", x[0], x[1]); }
   public static void main(String[] a) throws Exception {
     String base = a[0];
     Library lib = new Library(p -> new FileInputStream(p), base);
@@ -101,6 +102,103 @@ public class EngineTest {
     System.out.println("impulse onsets in steps: " + got);
     double sw = .18 * .5;
     check(got.size() == 4 && Math.abs(got.get(0)) < .01 && Math.abs(got.get(1) - 6) < .01 && Math.abs(got.get(2) - 8) < .01 && Math.abs(got.get(3) - (11 + sw)) < .01, "steps and swing land on the exact frame");
+    // ---- SE-1, SE-2, SE-5, SE-6, SE-7: Stretch or Grain, Sustain, repeat styles, the beat retrigger
+    {
+      int sr = 44100;
+      float[] sine = new float[sr];
+      for (int i = 0; i < sr; i++) sine[i] = (float) (0.5 * Math.sin(2 * Math.PI * 220 * i / sr) * Math.min(1, Math.min(i, sr - i) / 220.0));
+      Sample sn = new Sample("sine", sine, sr);
+      Engine.SampleSource src = k -> k.equals("sine") ? sn : null;
+      // plays pad 0 as a key at +12 (one octave up), holds 2 s worth of blocks, returns [sounding seconds, Hz]
+      java.util.function.BiFunction<String, String, double[]> octaveUp = (pitchMode, heldMode) -> {
+        Project gp = new Project(); gp.kit[0] = "sine";
+        SoundEdit se = new SoundEdit(); se.pitch = pitchMode; se.held = heldMode; gp.setEdit("sine", se);
+        Engine ge = new Engine(rate); ge.setSnapshot(Engine.Snapshot.build(gp, src, new Engine.Live()));
+        ge.down(1, 0, new int[]{12}, true);
+        float[] b = new float[256 * 2]; float[] all = new float[rate * 3];
+        for (int i = 0; i < rate * 3 / 256; i++) { ge.render(b, 256); for (int jj = 0; jj < 256; jj++) all[i * 256 + jj] = b[jj * 2]; }
+        int last = 0; for (int i = 0; i < all.length; i++) if (Math.abs(all[i]) > .02) last = i;
+        int zc = 0; int a0 = rate / 10, a1 = Math.min(last, rate * 4 / 10);
+        for (int i = a0 + 1; i < a1; i++) if (all[i - 1] < 0 && all[i] >= 0) zc++;
+        return new double[]{last / (double) rate, zc / ((a1 - a0) / (double) rate)};
+      };
+      double[] st = octaveUp.apply("stretch", "loop"), gr = octaveUp.apply("grain", "loop"), au = octaveUp.apply("auto", "loop");
+      check(Math.abs(st[0] - .5) < .06 && Math.abs(st[1] - 440) < 6, "Stretch: an octave up plays twice as fast, half as long: " + fmt(st));
+      check(Math.abs(gr[0] - 1.0) < .08 && Math.abs(gr[1] - 440) < 6, "Grain: an octave up keeps its length: " + fmt(gr));
+      check(Math.abs(au[0] - 1.0) < .08 && Math.abs(au[1] - 440) < 6, "auto: a key played an octave up keeps its length: " + fmt(au));
+      // the Doctor's own tune stays tape in auto: tune +12 at the key's own pitch halves the length
+      {
+        Project gp = new Project(); gp.kit[0] = "sine"; SoundEdit se = new SoundEdit(); se.tune = 12; gp.setEdit("sine", se);
+        gp.pats[0].setStep("sine", 0, true); float[] gw = Engine.bounce(gp, src, rate, false, 1);
+        int last = 0; for (int i = 0; i < gw.length / 2; i++) if (Math.abs(gw[i * 2]) > .02) last = i;
+        check(Math.abs((last - .004 * rate) / rate - .5) < .06, "auto: the Doctor's Tune +12 still plays as tape: " + String.format("%.2f s", last / (double) rate));
+      }
+      // grain at pitch 1 is the sound itself (two heads reading the same moment add up to it)
+      {
+        Project gp = new Project(); gp.kit[0] = "sine"; SoundEdit se = new SoundEdit(); se.pitch = "grain"; gp.setEdit("sine", se);
+        Engine ge = new Engine(rate); ge.setSnapshot(Engine.Snapshot.build(gp, src, new Engine.Live()));
+        ge.down(1, 0, new int[]{0}, false);
+        float[] b = new float[4800 * 2]; ge.render(b, 4800);
+        Engine pe = new Engine(rate); SoundEdit pl = new SoundEdit(); pl.pitch = "stretch"; gp.setEdit("sine", pl); pe.setSnapshot(Engine.Snapshot.build(gp, src, new Engine.Live()));
+        pe.down(1, 0, new int[]{0}, false); float[] c = new float[4800 * 2]; pe.render(c, 4800);
+        double diff = 0; for (int i = 0; i < 9600; i++) diff = Math.max(diff, Math.abs(b[i] - c[i]));
+        check(diff < 1e-3, "Grain at the sound's own pitch matches the sound: max difference " + diff);
+      }
+      // SE-5 sustain: held past its natural end it keeps sounding; let go and it fades
+      double[] sus = octaveUp.apply("grain", "sustain");
+      check(sus[0] > 2.8, "Sustain keeps a held note sounding past its end: still sounding at " + String.format("%.2f s", sus[0]));
+      {
+        Project gp = new Project(); gp.kit[0] = "sine"; SoundEdit se = new SoundEdit(); se.held = "sustain"; gp.setEdit("sine", se);
+        Engine ge = new Engine(rate); ge.setSnapshot(Engine.Snapshot.build(gp, src, new Engine.Live()));
+        ge.down(1, 0, new int[]{0}, false);
+        float[] b = new float[256 * 2];
+        for (int i = 0; i < rate * 2 / 256; i++) ge.render(b, 256);
+        double during = 0; for (float v : b) during = Math.max(during, Math.abs(v));
+        ge.up(1);
+        for (int i = 0; i < rate / 256; i++) ge.render(b, 256);
+        double after = 0; for (float v : b) after = Math.max(after, Math.abs(v));
+        check(during > .2 && after < .01, "Sustain under a finger holds a drum-pad press, and stops when let go: " + String.format("%.2f then %.3f", during, after));
+      }
+      // SE-6: repeat styles on a held chord while playing. cut restarts every hit, flow starts once and pulses
+      for (String style : new String[]{"cut", "ring", "flow"}) {
+        Project gp = new Project(); gp.kit[0] = "sine"; gp.bpm = 120;
+        Engine.Live lv = new Engine.Live(); lv.nr = true; lv.nrRate = 2; lv.nrStyle = style;
+        Engine ge = new Engine(rate); ge.setSnapshot(Engine.Snapshot.build(gp, src, lv)); ge.play();
+        float[] b = new float[256 * 2];
+        for (int i = 0; i < 10; i++) ge.render(b, 256);
+        int tr0 = ge.triggers;
+        ge.down(1, 0, new int[]{0, 4, 7}, true);
+        int maxV = 0;
+        float[] env = new float[rate];
+        for (int i = 0; i < rate / 256; i++) { ge.render(b, 256); maxV = Math.max(maxV, ge.activeVoices()); for (int jj = 0; jj < 256; jj++) env[i * 256 + jj] = Math.abs(b[jj * 2]); }
+        int starts = ge.triggers - tr0;
+        if ("flow".equals(style)) {
+          // the volume rises and falls with each 1/8 (0.25 s at 120 BPM) while only three notes ever start
+          double hi = 0, lo = 9; for (int w0 = rate / 2; w0 < rate - 2400; w0 += 2400) { double m = 0; for (int jj = w0; jj < w0 + 2400; jj++) m = Math.max(m, env[jj]); hi = Math.max(hi, m); lo = Math.min(lo, m); }
+          check(starts == 3 && hi > 2.5 * lo, "flow: a held chord starts once (" + starts + " starts) and repeat pulses it (loud " + String.format("%.2f, quiet %.2f", hi, lo) + ")");
+        } else check(starts >= 9, style + ": repeat starts the chord again on every 1/8: " + starts + " starts, up to " + maxV + " voices");
+        if ("ring".equals(style)) check(maxV > 3, "ring: hits overlap instead of cutting each other: up to " + maxV + " voices");
+        if ("cut".equals(style)) check(maxV <= 6, "cut: each hit stops before the next: up to " + maxV + " voices");
+      }
+      // SE-7: Hold's beat retrigger, transport stopped: a latched pad starts again every beat (0.5 s at 120 BPM)
+      {
+        Project gp = new Project(); gp.kit[0] = "sine"; gp.bpm = 120; SoundEdit se = new SoundEdit(); se.held = "beat"; gp.setEdit("sine", se);
+        Engine ge = new Engine(rate); ge.setSnapshot(Engine.Snapshot.build(gp, src, new Engine.Live()));
+        int tr0 = ge.triggers;
+        ge.down(1, 0, new int[]{0}, false, true);
+        float[] b = new float[256 * 2];
+        for (int i = 0; i < (int) (rate * 2.1 / 256); i++) ge.render(b, 256);
+        int starts = ge.triggers - tr0;
+        check(starts == 5, "beat retrigger: latched for 2 s at 120 BPM starts 5 times (now and on 4 beats): " + starts);
+        ge.unlatch(1);
+        int tr1 = ge.triggers; for (int i = 0; i < rate / 256; i++) ge.render(b, 256);
+        check(ge.triggers == tr1, "beat retrigger stops when unlatched");
+      }
+      // sound edits keep the new settings through a save
+      SoundEdit se = new SoundEdit(); se.pitch = "grain"; se.held = "beat"; se.beatN = 4;
+      SoundEdit back = SoundEdit.fromMap(Json.map(Json.parse(Json.write(se.toMap()))));
+      check("grain".equals(back.pitch) && "beat".equals(back.held) && back.beatN == 4 && !back.isDefault(), "pitch, held and beatN survive a save");
+    }
     // ---- perform FX
     {
       // stutter: hold it while playing; steps loop on a pair instead of moving on
