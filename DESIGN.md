@@ -4,8 +4,10 @@
 
 Rewritten at the end of every session and at each step of a long job (BT-2). Read this first.
 
-- **Next build (69):** interactive lessons for every feature.
-- **Live:** build 68 (2026-11-11): the whole sound engine plan v2. Grain and Stretch, Sustain, repeat styles,
+- **Live:** build 72: interactive lessons (Learn, 16 lessons). Builds 69 to 71 failed their tests on the way: the
+  mess comparison tripped on the save time, the dock started folded so H wasn't on screen (lessons now open it),
+  and Hold latches notes played as keys, not grid pads (the Hold and On the beat lessons go through Keys).
+- **Before that:** build 68 (2026-11-11): the whole sound engine plan v2. Grain and Stretch, Sustain, repeat styles,
   Hold on the beat, the Sample sheet (61); bake and Latency (62); the Synth tab with Analog, FM, Wavetable,
   Granular, Drums and Pluck (63 to 65); Qbldy Loops and Hits replacing the 0.35 s chops (66); packs (68).
 - **Plan:** the review doc https://claude.ai/artifact/QoAq7LzDGYD8XNyDDjPRHS, items MM-1 to MM-24, with an Outcome
