@@ -70,17 +70,26 @@ fun SynthScreen(state: AppState) {
             )
         }
         // what kind of synth (switching starts from that kind's first preset; Undo brings the old one back)
-        Row(Modifier.fillMaxWidth().padding(bottom = 8.dp, end = 4.dp).testTag("synthkind-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            for (k in Synth.KINDS) Btn(k.name, { if (sp.kind != k) state.loadSynthPreset(pad, k.presets.first()) }, on = sp.kind == k, onColor = C.Yellow, small = true, tag = "synthkind-${k.id}", modifier = Modifier.weight(1f))
+        Wrap(Modifier.padding(bottom = 8.dp).testTag("synthkind-chips"), gap = 6.dp) {
+            for (k in Synth.KINDS) Btn(k.name, { if (sp.kind != k) state.loadSynthPreset(pad, k.presets.first()) }, on = sp.kind == k, onColor = C.Yellow, small = true, tag = "synthkind-${k.id}")
         }
         Row(Modifier.fillMaxWidth().padding(bottom = 12.dp, end = 4.dp).testTag("synthview-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for ((id, n) in listOf("simple" to "Simple", "full" to "Full", "pad" to "Synthipad")) Btn(n, { state.synthView = id }, on = state.synthView == id, onColor = C.Teal, small = true, tag = "synthview-$id", modifier = Modifier.weight(1f))
+        }
+        // SE-15: a granular synth reads one of the mess's sounds
+        if (sp.kind == Synth.GRAIN) {
+            val srcs = state.grainSources()
+            Row(Modifier.fillMaxWidth().padding(bottom = 10.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                T("GRAINS OF", size = 11.sp, color = C.Dim, spacing = .1.em)
+                if (srcs.isEmpty()) Note("Put a sound on a pad first: the grains come from it.", modifier = Modifier.weight(1f))
+                else Select(state.lib.titleOf(sp.src).ifEmpty { "Pick a sound" }, srcs.map { it to state.lib.titleOf(it) }, { k -> state.setGrainSource(pad, k) }, modifier = Modifier.weight(1f), tag = "grain-src")
+            }
         }
         when (state.synthView) {
             "full" -> {
                 ModeChips(state, pad, sp)
                 for (g in sp.kind.params.map { it.group }.distinct()) {
-                    val ps = sp.kind.params.filter { it.group == g && it.id != "mode" }
+                    val ps = sp.kind.params.filter { it.group == g && it.id != "mode" && it.id != "model" }
                     if (ps.isEmpty()) continue
                     T(g.uppercase(), size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 6.dp, bottom = 4.dp))
                     KnobRows(state, pad, sp, ps, "knobs-${g.lowercase().replace(' ', '-')}-chips")
@@ -91,7 +100,7 @@ fun SynthScreen(state: AppState) {
             "pad" -> Synthipad(state, pad, sp)
             else -> {
                 ModeChips(state, pad, sp)
-                KnobRows(state, pad, sp, sp.kind.params.filter { it.simple && it.id != "mode" }, "knobs-simple-chips")
+                KnobRows(state, pad, sp, sp.kind.params.filter { it.simple && it.id != "mode" && it.id != "model" }, "knobs-simple-chips")
                 Help(sp.kind.blurb + " Full has every knob.", modifier = Modifier.padding(top = 4.dp, bottom = 10.dp))
                 PianoKeyboard(state, pad, close = false)
             }
@@ -117,11 +126,18 @@ private fun NoSynth(state: AppState, pad: Int) {
     Btn(if (k.isEmpty()) "On pad ${pad + 1}" else "On pad ${pad + 1}, instead of ${state.lib.titleOf(k)}", { state.newSynth(pad, preset) }, tag = "synth-new-here")
 }
 
+/** Mode (Poly, Mono, Acid) and, for drums, the model: choices you pick, not knobs you turn. */
 @Composable
 private fun ModeChips(state: AppState, pad: Int, sp: Synth.Patch) {
-    val mp = sp.kind.params.firstOrNull { it.id == "mode" } ?: return
-    Row(Modifier.fillMaxWidth().padding(bottom = 10.dp, end = 4.dp).testTag("synthmode-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        for ((i, n) in mp.choices.withIndex()) Btn(n, { state.setSynth(pad, "mode", i.toDouble(), true) }, on = sp.get("mode").toInt() == i, onColor = C.Pink, small = true, tag = "synthmode-$i", modifier = Modifier.weight(1f))
+    sp.kind.params.firstOrNull { it.id == "mode" }?.let { mp ->
+        Row(Modifier.fillMaxWidth().padding(bottom = 10.dp, end = 4.dp).testTag("synthmode-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            for ((i, n) in mp.choices.withIndex()) Btn(n, { state.setSynth(pad, "mode", i.toDouble(), true) }, on = sp.get("mode").toInt() == i, onColor = C.Pink, small = true, tag = "synthmode-$i", modifier = Modifier.weight(1f))
+        }
+    }
+    sp.kind.params.firstOrNull { it.id == "model" }?.let { mp ->
+        Wrap(Modifier.padding(bottom = 10.dp).testTag("synthmodel-chips")) {
+            for ((i, n) in mp.choices.withIndex()) Btn(n, { state.setSynth(pad, "model", i.toDouble(), true) }, on = sp.get("model").toInt() == i, onColor = C.Pink, small = true, tag = "synthmodel-$i")
+        }
     }
 }
 

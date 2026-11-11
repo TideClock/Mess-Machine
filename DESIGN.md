@@ -12,7 +12,7 @@ Rewritten at the end of every session and at each step of a long job (BT-2). Rea
   section at the top. MM-11 (Play Store) is last and notes only. MM-5 (Oboe) waits for real numbers from the Audio
   check. MM-15 (Fold layouts) skipped with a big note. MM-22 (creature cards) is an outline in the doc.
 - **Next:** sound engine plan v2, piece by piece (see Decisions). Built: 1 to 3 (build 61), 4 bake and Latency
-  (62), 5 the Synth tab with Analog (63), 6 and 7 FM and wavetable (64). Then 8 and 9 (FM, wavetable, granular, drums and plucks), 10 (loops,
+  (62), 5 the Synth tab with Analog (63), 6 and 7 FM and wavetable (64), 8 and 9 granular, drums and plucks (65). Then 10 (loops,
   re-cut chops), 11 (the Vault and packs). Tyler's Latency note still decides MM-5.
 - **Not done, and why:** MM-14 strong skipping stays off: composable lambdas that read the mess without snapshot
   state would stop redrawing (note #6 again), and nothing measured says the UI costs audio time yet; the Audio
@@ -101,6 +101,14 @@ Sound engine plan v2 (doc https://claude.ai/artifact/Vsr6HBLcVa8wehHaNbqSD9), bu
 - 2026-11-10 Wavetable (Claude, SE-14): six tables made in code on first use (92 ms, about 2 MB): 16 shapes each,
   6 levels of detail picked by pitch so high notes do not alias. Shares Analog's filter, envelopes and LFO
   (one voice class, a different oscillator per kind). Switching kind loads that kind's first preset.
+- 2026-11-10 Granular (Claude, SE-15): up to 24 grains per voice from a sound on one of the mess's pads (the
+  patch keeps its key in "src"; the source loads like a pad sound). The source counts as middle C. A pad with
+  no source is silent. 2 to 11 ms of CPU per voice-second.
+- 2026-11-10 Drums and Pluck (Claude, SE-16): 8 drum models from sines, squares, noise and state-variable
+  filters, always one-shots; a Karplus-Strong string with a pick-position comb, loop damping (its delay taken
+  off the string length, so it stays within 1 cent up to G6) and a body resonance. The pluck burst is
+  normalized (it clipped before the fix).
+- 2026-11-10 Six kind chips wrap rather than squeeze into one row (Claude).
 
 ## Control map
 

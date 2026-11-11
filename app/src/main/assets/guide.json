@@ -1,20 +1,22 @@
 {
-  "title": "FM and Wavetable synths",
+  "title": "Granular, Drums and Pluck synths",
   "thisBuild": [
-    "The Synth tab has two new kinds beside Analog. Tap the kind at the top to switch (it starts from that kind's first preset; Undo brings back what you had).",
-    "FM: four sine operators that bend each other. Pick an Algorithm (who bends whom), then Brightness for how hard, Feedback for grit, a Ratio per operator, and each operator's own envelope. Presets: E piano, Bell, FM bass, Brass, Marimba, Organ, Metal, Growl, Glass pad.",
-    "Wavetable: one oscillator that moves through a table of shapes. Six tables (Basic, Pulse, Sweep, Vowels, Hollow, Grit). Position picks the shape; Env to position and LFO to position move it while the note plays; Warp folds it. It has Analog's filter and envelopes. Presets: Vowel pad, Sweep lead, PWM strings, Hollow keys, Grit bass, Morph pluck, Vowel talk.",
-    "Making a synth now offers every preset of every kind.",
-    "From build 63: the Synth tab with Analog (Poly, Mono, Acid), Simple, Full and Synthipad."
+    "Three more kinds on the Synth tab, so there are six: Analog, FM, Wavetable, Granular, Drums and Pluck.",
+    "Granular plays a sound from your mess as a cloud of tiny grains, at any pitch. Grains of picks the sound (any sound on a pad). Position is where in it, Spray scatters them, Size and Density shape the cloud, Scan crawls through the sound while you hold, Pitch spray and Reverse add sparkle. Presets: Cloud, Freeze, Crawl, Shimmer, Stutter, Backwards wash, Glitch.",
+    "Drums are made from scratch: pick a model (Kick, Snare, Hat, Open hat, Clap, Tom, Cowbell, Zap), then Tune, Decay, Tone and Snap; Sweep and Sweep time bend kicks, toms and zaps. They are one-shots, and on keys they go up and down in pitch. Presets include Deep kick, Punch kick, Boom 808, Rim snare and Cowbell.",
+    "Pluck is a plucked string: Bright is the pick, Damp the string, Body the wood, Let go how fast it stops when you lift. Presets: Nylon, Steel, Harp, Koto, Pluck bass, Muted, Bell string.",
+    "The kind buttons now wrap onto two lines on narrow screens.",
+    "From build 64: FM and Wavetable."
   ],
   "watch": [
-    "Play the E piano and Bell presets on keys with a few fingers.",
-    "Try Vowel talk in Mono on steps, and turn Position on Vowel pad while a chord holds.",
-    "Switch a synth pad between kinds and use Undo: steps and Roll notes on the pad should stay."
+    "Make a Granular synth from a long sound (a chord or a vocal) and hold a note while you move Position.",
+    "Put Drums on four pads (kick, snare, hat, clap) and program a beat: compare them with the sample drums.",
+    "Play Nylon and Harp on keys: high notes should stay in tune.",
+    "Check the Latency screen's load with a busy Granular Shimmer chord."
   ],
   "limits": [
-    "Granular, drum and pluck synths come next.",
-    "FM has no filter of its own (the pad's Tone and effects still work on it).",
-    "A synth is mono out of its voice; no stereo spread yet."
+    "Granular reads sounds that are on a pad in this mess; picking from the whole library comes later.",
+    "Drums ignore Hold and Sustain: they always play once.",
+    "Next in the plan: the Loops shelf, re-cut chops, and the RC-505 library."
   ]
 }

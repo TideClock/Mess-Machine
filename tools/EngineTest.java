@@ -170,6 +170,33 @@ public class EngineTest {
           ke.up(1); run.apply(ke, 2.5);
           check(Math.abs(kh - 261.6) < 3 && ke.activeVoices() == 0, String.format("Synth %s: middle C at %.1f Hz, and the note ends after its release", kp.kind.name, kh));
         }
+        // SE-15 granular: grains of a 440 Hz tone played at pitch 0 (the source counts as middle C) come out at 440,
+        // an octave up at 880; with no source it is silent and nothing breaks
+        {
+          float[] tone = new float[44100]; for (int i = 0; i < tone.length; i++) tone[i] = (float) (.5 * Math.sin(2 * Math.PI * 440 * i / 44100.0));
+          Sample ts = new Sample("tone", tone, 44100);
+          Synth.Patch gp = new Synth.Patch(Synth.GRAIN, "g"); gp.src = "tone"; gp.set("spray", 0); gp.set("size", .1); gp.set("dens", 40); gp.set("aa", .002);
+          Project gq = new Project(); gq.kit[0] = "synth:1"; gq.synths.put("synth:1", gp);
+          Engine ge = new Engine(rate); ge.setSnapshot(Engine.Snapshot.build(gq, k -> k.equals("tone") ? ts : new Sample(k, new float[64], 44100), new Engine.Live()));
+          ge.down(1, 0, new int[]{0}, true); run.apply(ge, .2); double g0 = hz.apply(run.apply(ge, .5));
+          ge.down(2, 0, new int[]{12}, true); ge.up(1); run.apply(ge, 1.0); double g12 = hz.apply(run.apply(ge, .5));
+          check(Math.abs(g0 - 440) < 12 && Math.abs(g12 - 880) < 20, String.format("Synth Granular: grains of a 440 Hz tone play at %.0f Hz, an octave up at %.0f Hz", g0, g12));
+          Synth.Patch none = gp.copy(); none.src = ""; Engine ne = eng.apply(none); ne.down(1, 0, new int[]{0}, true);
+          double nl = 0; for (float f : run.apply(ne, .3)) nl = Math.max(nl, Math.abs(f));
+          check(nl == 0, "Synth Granular: no source, no sound, no crash");
+        }
+        // SE-16 drums are one-shots even under a held finger; plucks are in tune and die away on their own
+        {
+          Engine de = eng.apply(Synth.DRUM.presets.get(0).copy()); de.down(1, 0, new int[]{0}, true); run.apply(de, 1.5);
+          check(de.activeVoices() == 0, "Synth Drums: a kick ends by itself while the pad is still held");
+          Synth.Patch pl = new Synth.Patch(Synth.PLUCK, "p"); pl.set("decay", 6);
+          Engine pe2 = eng.apply(pl); pe2.down(1, 0, new int[]{12}, true); run.apply(pe2, .1); float[] py = run.apply(pe2, .3);
+          int best = 0; double bc = -1; for (int lag = 40; lag < 200; lag++) { double c = 0; for (int i = 0; i < 8000; i++) c += py[i] * py[i + lag]; if (c > bc) { bc = c; best = lag; } }
+          double ph = rate / (double) best;
+          check(Math.abs(1200 * Math.log(ph / 523.25) / Math.log(2)) < 40, String.format("Synth Pluck: an octave up rings at %.0f Hz (523 wanted, whole-sample lag)", ph));
+          Synth.Patch pm = new Synth.Patch(Synth.PLUCK, "p"); pm.set("decay", .3); Engine pe3 = eng.apply(pm); pe3.down(1, 0, new int[]{0}, true); run.apply(pe3, 2.0);
+          check(pe3.activeVoices() == 0, "Synth Pluck: a short string dies away while still held");
+        }
         boolean kBad = false; double kPeak = 0;
         for (Synth.Kind kk : Synth.KINDS) for (Synth.Patch pr : kk.presets) { Engine ke = eng.apply(pr.copy()); ke.down(1, 0, new int[]{0, 4, 7}, true); for (float f : run.apply(ke, .6)) { if (Float.isNaN(f) || Float.isInfinite(f)) kBad = true; kPeak = Math.max(kPeak, Math.abs(f)); } }
         check(!kBad && kPeak < 1.5, String.format("Synth: all %d presets play a chord cleanly (peak %.2f)", java.util.Arrays.stream(Synth.KINDS).mapToInt(kk -> kk.presets.size()).sum(), kPeak));
