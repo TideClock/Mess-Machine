@@ -85,6 +85,11 @@ class DemoRender {
 
     /** Filming starts here: from now on the screen's clock only moves one video frame at a time. */
     private fun action() {
+        // setting up plays previews (a new sound, a new synth): let them ring out unheard before filming
+        val junk = FloatArray(1024)
+        repeat(10) { state.engine.render(junk, 512) }
+        state.engine.panic()
+        repeat(320) { state.engine.render(junk, 512) }
         state.toast = null
         settle()
         rule.mainClock.autoAdvance = false
@@ -189,6 +194,13 @@ class DemoRender {
         node.performTouchInput { up() }
         log.append("$frameNo,up,${b.center.x.toInt()},${b.center.y.toInt()},$text\n")
         frame()
+    }
+    /** Hold a pad down. The finger shifts a little first, the way a player's does, so lifting does not open the pad's menu. */
+    private fun holdPad(tag: String, n: Int, note: String = tag) {
+        fingerDown(0, tag, .45f, .5f, note); frames(2)
+        fingerMove(0, tag, .63f, .58f, note); frame()
+        frames(n)
+        fingerUp(0, tag, note); frame()
     }
     private fun has(tag: String) = rule.onAllNodesWithTag(tag, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
 
@@ -396,16 +408,16 @@ class DemoRender {
         state.selectPad(4, false)
         settle(); action(); secs(.3)
         mark("short")
-        tap("pad-4", hold = 20); secs(1.2)
+        tap("pad-4", hold = 4); secs(1.5)
         mark("sheet")
         tap("open-sample"); secs(.5)
         tap("held-sustain"); secs(1.3)
         tap("done"); secs(.4)
         mark("held")
-        tap("pad-4", hold = 105)
+        holdPad("pad-4", 105)
         mark("released"); secs(1.2)
         mark("held2")
-        tap("pad-4", hold = 50); secs(1.0)
+        holdPad("pad-4", 50); secs(1.0)
     }
 
     /** B3: Hold, On the beat. A latched loop starts again every beat, then every bar, in time with the drums. */
@@ -566,13 +578,17 @@ class DemoRender {
         val left = a.left + 20f; val w = (rule.onNodeWithTag("sheet").fetchSemanticsNode().boundsInWindow.right - 28f - 28f) - a.left - 40f
         fun x(bpm: Int) = left + w * (bpm - 60) / 120f
         mark("faster")
-        slideAt(x(120), y, x(150), y, 24, "tempo")
+        slideAt(x(120), y, x(152), y, 24, "tempo"); frames(10)
+        tap("done"); frames(4)
+        mark("fast-steps")
         untilStep(15); untilStep(0); untilStep(15); untilStep(0); untilStep(15); untilStep(0)
+        mark("tempo-sheet2")
+        tap("bpm"); secs(.5)
         mark("slower")
-        slideAt(x(state.project.bpm), y, x(86), y, 30, "tempo")
+        slideAt(x(state.project.bpm), y, x(88), y, 30, "tempo"); frames(10)
+        tap("done"); frames(4)
+        mark("slow-steps")
         untilStep(15); untilStep(0); untilStep(15); untilStep(0)
-        mark("done")
-        tap("done"); untilStep(15); untilStep(0)
         tap("play"); secs(.6)
     }
 
@@ -597,7 +613,8 @@ class DemoRender {
         mark("cloud")
         tap("tab-Pads"); secs(.4)
         untilStep(0)
-        fingerDown(0, "pad-2", .5f, .5f, "cloud"); 
+        fingerDown(0, "pad-2", .45f, .5f, "cloud"); frames(2)
+        fingerMove(0, "pad-2", .63f, .58f, "cloud"); frame()
         untilStep(15); untilStep(0); untilStep(15); untilStep(0); untilStep(15); untilStep(0)
         fingerUp(0, "pad-2", "cloud"); frame()
         mark("out")
