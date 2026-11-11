@@ -200,7 +200,10 @@ fun TempoScreen(state: AppState) {
             Btn("+", { state.setBpm(P.bpm + 1); bpm = state.project.bpm.toFloat() })
             Btn("Tap", { state.tapTempo(); bpm = state.project.bpm.toFloat() }, color = C.Teal)
         }
-        SliderRow("Tempo", bpm, 60f..180f, { "${it.roundToInt()} BPM" }, { bpm = it }, { state.setBpm(bpm.roundToInt()) })
+        // the tempo follows the slider as it moves; letting go makes it one undo step
+        SliderRow("Tempo", bpm, 60f..180f, { "${it.roundToInt()} BPM" },
+            { bpm = it; val v = it.roundToInt().coerceIn(60, 180); if (v != state.project.bpm) state.edit(commit = false) { this.bpm = v } },
+            { state.setBpm(bpm.roundToInt()) })
         SliderRow("Swing", swing, 0f..100f, { "${it.roundToInt()}%" }, { swing = it }, { state.edit { this.swing = swing.roundToInt() } }, accent = C.Teal)
         Help("Swing pushes every other 16th late, like the site.", modifier = Modifier.padding(bottom = 12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

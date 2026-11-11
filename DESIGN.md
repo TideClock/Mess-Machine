@@ -4,6 +4,9 @@
 
 Rewritten at the end of every session and at each step of a long job (BT-2). Read this first.
 
+- **Next build:** loop keys and tempo (KeyFinder, 38 of 90 loops keyed, Workbench sounds keep tempo and key), the
+  pad menu window, tempo that follows the slider, the Repeat panel, the Sample button fix. From the demo
+  conversation (see the 2026-11-11 decisions).
 - **Live:** build 74: Hold latches grid pads; 29 lessons. (73 failed one test: the test had to render audio for "played" to count.)
 - **Before that:** build 72: interactive lessons (Learn, 16 lessons). Builds 69 to 71 failed their tests on the way: the
   mess comparison tripped on the save time, the dock started folded so H wasn't on screen (lessons now open it),
@@ -141,6 +144,21 @@ Sound engine plan v2 (doc https://claude.ai/artifact/Vsr6HBLcVa8wehHaNbqSD9), bu
   rules as keys (slots, Last), under ids 1000 + pad so a latch survives bank switches; latched pads show an H.
 - 2026-11-11 Lessons finished (Tyler): 29 in all. The Tools step of the Sample sheet lesson waits for Skip step
   (the open tab isn't app state). Favorites stars a real sound: stars live outside the practice mess.
+- 2026-11-11 The pad menu offer has a window (Tyler: "make a solution up for the pad holding sustain issue"): a lift
+  opens the menu only between 0.45 s and about 1.3 s after the touch; later the yellow outline goes and nothing
+  opens or carries. A pad that sounds while held (a synth, Sustain, gate) never offers it: the bank row button
+  reads Menu for it. That button also reads selV now; it used to keep the pad from before.
+- 2026-11-11 The Tempo slider sets the tempo as it moves, one undo step on release (Tyler).
+- 2026-11-11 Repeat's menu is one panel of three chip rows, Every, Plays, Each repeat, not 11 list rows (Tyler).
+- 2026-11-11 Loops carry key and tempo (Tyler): `engine/KeyFinder` names a key only when sure (match 0.72, 0.08
+  ahead of any other note set, tonal). `tools/LoopKeys.java` writes `mkey` into library.json (38 of 90; a song's
+  loops share one name); run it after make_loops.py. Workbench sounds are measured when made (older ones once, in
+  the background). A resample stores bpm and beats and so follows the mess's tempo (Claude's call: it is what
+  "loops fit the tempo" promises); a mic take only remembers its bpm. Rows and the Sample sheet show both names
+  for the notes ("C major / A minor"), and search matches either.
+- 2026-11-11 Demo videos are rendered, not filmed (Tyler): branch `demo-render` holds DemoRender.kt (frame by frame
+  video of the real screens with engine audio), its own workflow and tools/demo. None of it is on main; output
+  goes to branch `demo-out`.
 
 ## Control map
 

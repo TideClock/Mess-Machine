@@ -11,6 +11,7 @@ import android.media.MediaRecorder
 import android.net.Uri
 import androidx.compose.runtime.mutableStateListOf
 import com.tideclock.messmachine.engine.Json
+import com.tideclock.messmachine.engine.KeyFinder
 import com.tideclock.messmachine.engine.Library
 import com.tideclock.messmachine.engine.Sample
 import com.tideclock.messmachine.engine.Wav
@@ -21,7 +22,13 @@ import java.nio.ByteOrder
  * Your Workbench, like the site's: imports, mic takes, resampled loops, saved edits and chops.
  * Sound files live in the app's own storage; chops are a region of another sound, no new file.
  */
-data class BenchItem(val id: String, val kind: String, val title: String, val at: Long, val base: String = "", val st: Double = 0.0, val en: Double = 1.0)
+data class BenchItem(
+    val id: String, val kind: String, val title: String, val at: Long, val base: String = "", val st: Double = 0.0, val en: Double = 1.0,
+    /** The mess's tempo when this was made (0 when unknown), and for a resampled loop its length in beats. */
+    val bpm: Double = 0.0, val beats: Int = 0,
+    /** The measured key, like "A# minor"; empty when it could not be told for sure; null when never measured. */
+    val mkey: String? = null,
+)
 
 class Workbench(app: Context, private val lib: Library) {
     private val dir = File(app.filesDir, "bench").also { it.mkdirs() }
@@ -35,10 +42,32 @@ class Workbench(app: Context, private val lib: Library) {
                 val b = BenchItem(
                     Json.str(m["id"], ""), Json.str(m["kind"], "imp"), Json.str(m["title"], "Sound"), Json.num(m["at"], 0.0).toLong(),
                     Json.str(m["base"], ""), Json.num(m["st"], 0.0), Json.num(m["en"], 1.0),
+                    Json.num(m["bpm"], 0.0), Json.num(m["beats"], 0.0).toInt(), if (m.containsKey("mkey")) Json.str(m["mkey"], "") else null,
                 )
                 if (b.kind == "chop" || File(dir, b.id + ".wav").exists()) { items.add(b); register(b) }
             }
         } catch (_: Exception) {}
+        measureOld()
+    }
+
+    /**
+     * Sounds kept before keys were measured get theirs now, once, in the background (their tempo was never
+     * written down, so that stays unknown).
+     */
+    private fun measureOld() {
+        val todo = items.filter { it.kind != "chop" && it.mkey == null }
+        if (todo.isEmpty()) return
+        Thread {
+            for (b in todo) {
+                val mk = try {
+                    File(dir, b.id + ".wav").inputStream().use { Wav.read(keyOf(b), it) }.let { KeyFinder.find(it.data, it.rate) }
+                } catch (_: Throwable) { "" }
+                synchronized(items) {
+                    val i = items.indexOfFirst { it.id == b.id }
+                    if (i >= 0) { items[i] = items[i].copy(mkey = mk); lib.sound(keyOf(b))?.mkey = mk; save() }
+                }
+            }
+        }.also { it.isDaemon = true; it.priority = Thread.MIN_PRIORITY }.start()
     }
 
     fun keyOf(b: BenchItem) = if (b.kind == "chop") "chop:" + b.id else "bn:" + b.id
@@ -50,24 +79,37 @@ class Workbench(app: Context, private val lib: Library) {
 
     private fun register(b: BenchItem) {
         val file = if (b.kind == "chop") "" else File(dir, b.id + ".wav").absolutePath
-        lib.addUser(Library.Sound(keyOf(b), b.title, "mine", file, 0.0, 0.0, group(b.kind), ""), if (b.kind == "chop") b.base else null)
+        val snd = Library.Sound(keyOf(b), b.title, "mine", file, 0.0, 0.0, group(b.kind), "")
+        // only a sound that knows its length in beats (a resampled loop) follows the mess's tempo, like the built-in
+        // loops; a mic take just remembers the tempo it was recorded at
+        if (b.bpm > 0 && b.beats > 0) { snd.bpm = b.bpm; snd.beats = b.beats }
+        snd.mkey = b.mkey ?: ""
+        lib.addUser(snd, if (b.kind == "chop") b.base else null)
     }
 
     private fun save() {
         val list = items.map { b ->
-            linkedMapOf<String, Any?>("id" to b.id, "kind" to b.kind, "title" to b.title, "at" to b.at.toDouble(), "base" to b.base, "st" to b.st, "en" to b.en)
+            linkedMapOf<String, Any?>("id" to b.id, "kind" to b.kind, "title" to b.title, "at" to b.at.toDouble(), "base" to b.base, "st" to b.st, "en" to b.en).also {
+                if (b.bpm > 0) { it["bpm"] = b.bpm; it["beats"] = b.beats.toDouble() }
+                if (b.mkey != null) it["mkey"] = b.mkey
+            }
         }
         try { index.writeText(Json.write(list)) } catch (_: Exception) {}
     }
 
     private fun newId() = java.lang.Long.toString(System.currentTimeMillis(), 36) + (100..999).random()
 
-    /** Keep a sound: write it as a WAV and add it to the Workbench jar. Returns its key. Call off the main thread. */
-    fun addSample(kind: String, title: String, s: Sample): String {
-        val b = BenchItem(newId(), kind, title.take(40), System.currentTimeMillis())
+    /**
+     * Keep a sound: write it as a WAV and add it to the Workbench jar. Returns its key. Call off the main thread.
+     * Its key is measured here (KeyFinder), and it remembers the tempo it was made at: bpm, plus beats for a
+     * resampled loop, which then follows the mess's tempo the way the built-in loops do.
+     */
+    fun addSample(kind: String, title: String, s: Sample, bpm: Double = 0.0, beats: Int = 0): String {
+        val mk = try { KeyFinder.find(s.data, s.rate) } catch (_: Throwable) { "" }
+        val b = BenchItem(newId(), kind, title.take(40), System.currentTimeMillis(), bpm = bpm, beats = beats, mkey = mk)
         File(dir, b.id + ".wav").outputStream().buffered().use { Wav.writeMono16(it, s.data, s.rate) }
         synchronized(items) { items.add(b); register(b); save() }
-        lib.putSample(keyOf(b), Sample(keyOf(b), s.data, s.rate))
+        lib.putSample(keyOf(b), Sample(keyOf(b), s.data, s.rate).also { if (bpm > 0 && beats > 0) { it.bpm = bpm; it.beats = beats } })
         return keyOf(b)
     }
 

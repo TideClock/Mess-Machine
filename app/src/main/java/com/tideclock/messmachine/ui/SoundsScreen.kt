@@ -74,7 +74,8 @@ fun SoundsScreen(state: AppState, pickFor: Int?) {
     }
     val mode = state.soundsMode
     val list: List<Library.Sound> = when {
-        q.isNotBlank() -> state.lib.sounds.filter { it.title.contains(q.trim(), ignoreCase = true) || it.group.contains(q.trim(), ignoreCase = true) }
+        // a key counts too, so "d minor" finds every loop that fits a mess in D minor
+        q.isNotBlank() -> state.lib.sounds.filter { it.title.contains(q.trim(), ignoreCase = true) || it.group.contains(q.trim(), ignoreCase = true) || com.tideclock.messmachine.engine.KeyFinder.both(it.mkey).contains(q.trim(), ignoreCase = true) }
         mode == "fav" -> state.lib.sounds.filter { it.key in state.favs }
         mode == "type" -> state.lib.sounds.filter { s ->
             (state.soundsType.isEmpty() || s.type == state.soundsType) && state.soundsTags.all { it in s.tags }
@@ -207,7 +208,10 @@ fun SoundRow(state: AppState, s: Library.Sound, target: Int, picking: Boolean) {
                 T(s.title, size = 15.sp, lines = 1)
                 val info = listOfNotNull(
                     if (onPad >= 0) "on pad ${onPad + 1}" else null,
-                    if (s.bpm > 0) "${s.beats} beats at ${Math.round(s.bpm)} bpm" else null,
+                    // a loop says its tempo and length; a mic take the tempo it was recorded at; and the key when it is sure
+                    if (s.bpm > 0) "${s.beats} beats at ${Math.round(s.bpm)} bpm"
+                    else (if (s.cab == "mine") state.bench.item(s.key)?.bpm ?: 0.0 else 0.0).takeIf { it > 0 }?.let { "made at ${Math.round(it)} bpm" },
+                    com.tideclock.messmachine.engine.KeyFinder.both(s.mkey).takeIf { it.isNotEmpty() },
                     state.lib.cab(s.cab).name.takeIf { it.isNotEmpty() },
                     s.tags.joinToString(" ").takeIf { it.isNotEmpty() },
                 ).joinToString(" · ")

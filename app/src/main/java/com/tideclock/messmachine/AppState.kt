@@ -724,6 +724,17 @@ class AppState(private val app: Context) {
 
     fun selKey(): String = project.kit[project.sel]
 
+    /**
+     * Does this pad's sound last as long as the finger stays down (a synth, Sustain, gate, a looped sound)?
+     * On such a pad a long press is playing, not asking for the menu, so holding it never opens the menu:
+     * the bank row's button reads Menu for it instead.
+     */
+    fun soundsWhileHeld(pad: Int): Boolean {
+        val k = project.kit.getOrNull(pad).orEmpty()
+        if (k.isEmpty()) return false
+        return Project.isSynth(k) || project.edit(k).holds()
+    }
+
     fun padDown(d: Int) {
         if (keysMode) {
             val pad = project.sel
@@ -2004,7 +2015,8 @@ class AppState(private val app: Context) {
         if (take == null) { say("Nothing came through the mic."); return }
         busy = "Saving the take…"
         worker.execute {
-            val key = bench.addSample("mic", "Mic take ${bench.count("mic") + 1}", take)
+            // a take remembers the tempo the mess was at (shown with the sound; it does not make the take follow tempo)
+            val key = bench.addSample("mic", "Mic take ${bench.count("mic") + 1}", take, project.bpm.toDouble(), 0)
             main.post {
                 busy = null
                 if (pad >= 0) {
@@ -2026,7 +2038,9 @@ class AppState(private val app: Context) {
             try {
                 for (k in p.kit) if (k.isNotEmpty()) try { lib.load(k) } catch (_: Exception) {}
                 val lr = Engine.bounce(p, lib, 44100, false, 1, true)
-                val key = bench.addSample("rs", "Resample $letter ${bench.count("rs") + 1}", Sample.fromStereo("rs", lr, 44100))
+                // the resample knows its tempo and its length in beats, so it follows the mess's tempo like a built-in loop
+                val steps = p.pat().len
+                val key = bench.addSample("rs", "Resample $letter ${bench.count("rs") + 1}", Sample.fromStereo("rs", lr, 44100), p.bpm.toDouble(), if (steps % 4 == 0) steps / 4 else 0)
                 main.post { busy = null; placeNew(key, "Loop $letter is now one sound.") }
             } catch (e: Exception) { main.post { busy = null; say("The resample broke: ${e.message}") } }
         }

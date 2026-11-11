@@ -107,12 +107,26 @@ class BigTest {
         rule.mainClock.advanceTimeBy(600)
         settle()
         rule.onNodeWithTag(tag).performTouchInput { down(center) }
-        rule.mainClock.advanceTimeBy(800)
+        // past the 0.45 s the menu needs, and well inside the 1.3 s after which a hold counts as playing
+        rule.mainClock.advanceTimeBy(600)
         settle()
         println("LONGPRESS $tag menu while held=${state.padMenu}")
-        rule.onNodeWithTag(tag).performTouchInput { advanceEventTime(800); up() }
+        rule.onNodeWithTag(tag).performTouchInput { advanceEventTime(100); up() }
         println("LONGPRESS $tag menu after lift=${state.padMenu}")
         settle()
+    }
+
+    /**
+     * Open a pad's menu the way a player would: hold and lift. A pad that sounds for as long as it is held (a synth,
+     * Sustain, gate) never offers its menu from a hold, so there: tap the pad, then Menu by the bank numbers.
+     */
+    private fun padMenuOf(d: Int) {
+        if (state.soundsWhileHeld(state.bank * 16 + d)) {
+            tapPad(d)
+            rule.mainClock.advanceTimeBy(300); settle()
+            at("open-sample").performClick()
+            settle()
+        } else longPress("pad-$d")
     }
 
     /** Scroll a node into view and let the page stop moving, so the next touch lands on it. */
@@ -477,6 +491,33 @@ class BigTest {
         state.putOnPad(5, key)
         waitFor("the burp to load") { state.lib.loaded(key) }
         rule.onNodeWithText(state.lib.titleOf(key).uppercase(), useUnmergedTree = true).assertExists()
+    }
+
+    /** A long hold is playing, not asking: the menu offer ends about 1.3 s after the touch, and a pad that sounds while held never makes it. */
+    @Test fun longHoldsDoNotOpenThePadMenu() {
+        rule.onNodeWithTag("pad-2").performScrollTo()
+        rule.mainClock.advanceTimeBy(600); settle()
+        rule.onNodeWithTag("pad-2").performTouchInput { down(center) }
+        rule.mainClock.advanceTimeBy(1600); settle()
+        rule.onNodeWithTag("pad-2").performTouchInput { up() }
+        settle()
+        assertEquals("held past the offer: no menu", -1, state.padMenu)
+        // Sustain: the pad sounds for as long as it is held, so holding it never opens the menu; the bank row button does
+        val k = state.project.kit[2]
+        state.setEdit(k, state.project.edit(k).copy().also { it.held = "sustain" }, true)
+        settle()
+        assertTrue(state.soundsWhileHeld(2))
+        rule.mainClock.advanceTimeBy(600); settle()
+        rule.onNodeWithTag("pad-2").performTouchInput { down(center) }
+        rule.mainClock.advanceTimeBy(800); settle()
+        rule.onNodeWithTag("pad-2").performTouchInput { up() }
+        settle()
+        assertEquals("a sustaining pad's hold is playing: no menu", -1, state.padMenu)
+        rule.onNodeWithTag("open-sample").performClick()
+        settle()
+        assertEquals("its menu opens from the bank row button", 2, state.padMenu)
+        state.padMenu = -1
+        settle()
     }
 
     @Test fun menusOpenOnLiftNotOnDrag() {
@@ -887,12 +928,12 @@ class BigTest {
     }
 
     @Test fun routingAndPadXy() {
-        longPress("pad-7")
+        padMenuOf(7)
         rule.onNodeWithTag("menu-route").performClick()
         settle()
         assertEquals(1, state.routeOf(7))
         rule.mainClock.advanceTimeBy(1000); settle()
-        longPress("pad-7")
+        padMenuOf(7)
         rule.onNodeWithTag("menu-xy").performClick()
         settle()
         assertEquals(Overlay.Xy(7), state.overlay)
@@ -1399,6 +1440,17 @@ class BigTest {
         rule.onNodeWithTag("put-samples/goblin-burp.wav").performClick()
         settle()
         assertEquals("samples/goblin-burp.wav", state.project.kit[state.project.sel])
+        // a loop carries its key, and the key can be searched for under either of its names
+        rule.onNodeWithTag("search").performTextClearance()
+        rule.onNodeWithTag("search").performTextInput("d minor")
+        settle()
+        rule.onNodeWithTag("row-loop:give-me-throne-1").assertExists()
+        assertEquals("D minor", state.lib.sound("loop:give-me-throne-1").mkey)
+        rule.onNodeWithTag("search").performTextClearance()
+        rule.onNodeWithTag("search").performTextInput("f major")
+        settle()
+        rule.onNodeWithTag("row-loop:give-me-throne-1").assertExists()
+        assertTrue("hits and one-shots carry no key", state.lib.sounds.none { it.cab != "loops" && it.cab != "mine" && it.mkey.isNotEmpty() })
         // by instrument type and feel
         rule.onNodeWithTag("search").performTextClearance()
         rule.onNodeWithTag("mode-type").performClick()
@@ -1427,6 +1479,15 @@ class BigTest {
         state.resampleLoop()
         waitFor("the resample") { state.bench.items.isNotEmpty() && state.busy == null }
         assertTrue(state.project.kit.any { it.startsWith("bn:") })
+        // the resample remembers the tempo it was made at and its length in beats, so it follows the mess's tempo
+        // like a built-in loop; its key was measured once (named only when sure)
+        val rs = state.bench.items.first { it.kind == "rs" }
+        assertEquals(state.project.bpm.toDouble(), rs.bpm, 0.0)
+        assertEquals(state.project.pat().len / 4, rs.beats)
+        assertTrue("its key was measured", rs.mkey != null)
+        val rsKey = state.bench.keyOf(rs)
+        assertEquals(rs.bpm, state.lib.sound(rsKey).bpm, 0.0)
+        assertEquals("the sample itself carries the tempo", rs.bpm, state.lib.load(rsKey).bpm, 0.0)
         shot("12-workbench-with-resample")
     }
 
@@ -1458,7 +1519,7 @@ class BigTest {
     @Test fun doctorChopsAndSaves() {
         state.selectPad(7, false)
         // the pad card is gone: the doctor opens from the pad's menu (hold, then lift)
-        longPress("pad-7")
+        padMenuOf(7)
         rule.onNodeWithTag("menu-doctor").performClick()
         settle()
         waitFor("the waveform") { state.lib.loaded(state.project.kit[7]) }
