@@ -3,6 +3,7 @@
 #   label: <button label> | <reason it is on more than one screen>
 #   screen: <screen name as in design-check.md> | <most controls allowed> | <reason>
 #   menu: <menu name> | <most items allowed> | <reason>
+tabs: 6 | Synths get their own tab (Tyler, 2026-11-10): a synth is different enough from a sample to need a big screen
 menu: Pad menu | 14 | The pad's one home for everything a pad does, now that the pad card is gone; split into Play, Sound and Clear groups
 label: Done | Closes the sheet it sits on; every sheet needs one
 label: Hear it | Each one plays the sound on its own screen (the pad, the library row, the Sample sheet)

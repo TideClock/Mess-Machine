@@ -11,10 +11,9 @@ Rewritten at the end of every session and at each step of a long job (BT-2). Rea
 - **Plan:** the review doc https://claude.ai/artifact/QoAq7LzDGYD8XNyDDjPRHS, items MM-1 to MM-24, with an Outcome
   section at the top. MM-11 (Play Store) is last and notes only. MM-5 (Oboe) waits for real numbers from the Audio
   check. MM-15 (Fold layouts) skipped with a big note. MM-22 (creature cards) is an outline in the doc.
-- **Next:** sound engine plan v2, piece by piece (see Decisions). Pieces 1 to 3 (grain, sustain, repeat styles,
-  hold on the beat, the Sample sheet) are in build 61. Then 4 (bake and latency), 5 (the Synth tab: poly analog,
-  mono, acid), 6 to 9 (FM, wavetable, granular, drums and plucks), 10 (loops, re-cut chops), 11 (the Vault and
-  packs). Tyler's Audio check note still decides MM-5.
+- **Next:** sound engine plan v2, piece by piece (see Decisions). Built: 1 to 3 (build 61), 4 bake and Latency
+  (62), 5 the Synth tab with Analog (63). Then 6 to 9 (FM, wavetable, granular, drums and plucks), 10 (loops,
+  re-cut chops), 11 (the Vault and packs). Tyler's Latency note still decides MM-5.
 - **Not done, and why:** MM-14 strong skipping stays off: composable lambdas that read the mess without snapshot
   state would stop redrawing (note #6 again), and nothing measured says the UI costs audio time yet; the Audio
   check's "screen busy" flag will say. MM-21 (Heap sorting) needs ears: 0.35 s slices of full songs have no right
@@ -85,6 +84,17 @@ Sound engine plan v2 (doc https://claude.ai/artifact/Vsr6HBLcVa8wehHaNbqSD9), bu
 - 2026-11-10 The Audio check is renamed Latency and is the "latency screen" of the bake plan (Claude): same home,
   in Notes for Claude, plus Keep it light. The CPU pop-up asks once a session, after 20 s over 70% load with live
   grain playing.
+- 2026-11-10 Synth tab (Claude, SE-11): the tab is labeled SYNTH and sits right after PLAY (it is an instrument);
+  the pad view is called Synthipad (Tyler's suggestion). A synth sits on a pad (key "synth:<n>", saved in the
+  mess under "synths"), so every pad path plays it; the Synth tab edits the synth on the selected pad.
+- 2026-11-10 Synth voices reuse the sample voice (Claude): the engine's choke, tone, effects, pan, bend, wobble
+  and hold all apply on top. Knob turns reach held notes (the voice rereads its patch every block).
+- 2026-11-10 Analog first (Tyler: poly with mono and acid): PolyBLEP oscillators, a zero-delay ladder (24 dB;
+  acid takes the 18 dB tap) or state-variable filter, control rate every 16 samples. Costs on the workspace:
+  acid about 0.5% of a core per voice, a 3-voice unison pad about 2%. Steps play a synth for one step (acid
+  half a step); Roll notes for their length; acid notes that touch slide.
+- 2026-11-10 Knobs are not counted by the design check (they are a playing surface, like keys); each knob group
+  is one row of controls. The design check now allows 6 tabs from design/exceptions.txt.
 
 ## Control map
 

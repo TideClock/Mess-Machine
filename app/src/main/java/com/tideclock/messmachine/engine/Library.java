@@ -128,10 +128,26 @@ public final class Library implements Engine.SampleSource {
 
     public String chopOf(String key) { return chopBase.get(key); }
 
+    /** SE-11: a synth in the Synths jar. It "loads" as a short silence: the engine plays the patch, not the sample. */
+    public void addSynth(String key, String title) {
+        Sound old = byKey.get(key);
+        if (old != null && old.title.equals(title)) return;
+        if (old != null) sounds.remove(old);
+        if (!cabById.containsKey("synths")) { Cab c = new Cab("synths", "Your Synths", 0xFF46D3C0); cabs.add(c); cabById.put(c.id, c); }
+        Sound s = new Sound(key, title, "synths", "synth:", 0, 0, "", "");
+        s.type = "keys";
+        sounds.add(s);
+        byKey.put(key, s);
+        cache.put(key, SILENCE(key));
+    }
+
+    private static Sample SILENCE(String key) { return new Sample(key, new float[64], 44100); }
+
     /** Decode a sound (blocking, call off the main thread). */
     public Sample load(String key) throws IOException {
         Sample s = cache.get(key);
         if (s != null) return s;
+        if (key.startsWith("synth:")) { s = SILENCE(key); cache.put(key, s); return s; }
         String parent = chopBase.get(key);
         if (parent != null) {
             Sample b = load(parent);
@@ -174,6 +190,6 @@ public final class Library implements Engine.SampleSource {
 
     /** Drop decoded sounds that are not in use, to keep memory down. */
     public void trim(java.util.Set<String> keep) {
-        for (String k : new ArrayList<>(cache.keySet())) if (!keep.contains(k)) cache.remove(k);
+        for (String k : new ArrayList<>(cache.keySet())) if (!keep.contains(k) && !k.startsWith("synth:")) cache.remove(k);
     }
 }

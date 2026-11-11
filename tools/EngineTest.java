@@ -123,6 +123,49 @@ public class EngineTest {
         return new double[]{last / (double) rate, zc / ((a1 - a0) / (double) rate)};
       };
       double[] st = octaveUp.apply("stretch", "loop"), gr = octaveUp.apply("grain", "loop"), au = octaveUp.apply("auto", "loop");
+      // ---- SE-11, SE-12: synths on pads
+      {
+        Engine.SampleSource ss = k -> new Sample(k, new float[64], 44100);
+        java.util.function.Function<Synth.Patch, Engine> eng = sp -> { Project qz = new Project(); qz.kit[0] = "synth:1"; qz.synths.put("synth:1", sp); Engine x = new Engine(rate); x.setSnapshot(Engine.Snapshot.build(qz, ss, new Engine.Live())); return x; };
+        java.util.function.BiFunction<Engine, Double, float[]> run = (x, sec) -> { int nn = (int) (sec * rate) / 256 * 256; float[] bb = new float[512], o = new float[nn]; for (int i = 0; i < nn / 256; i++) { x.render(bb, 256); for (int qz = 0; qz < 256; qz++) o[i * 256 + qz] = bb[qz * 2]; } return o; };
+        java.util.function.Function<float[], Double> hz = o -> { int z = 0; for (int i = 1; i < o.length; i++) if (o[i - 1] < 0 && o[i] >= 0) z++; return z / (o.length / (double) rate); };
+        Synth.Patch sinP = new Synth.Patch(Synth.ANALOG, "t"); sinP.set("w1", 0); sinP.set("mix2", 0); sinP.set("cut", 18000); sinP.set("fenv", 0); sinP.set("res", 0); sinP.set("drive", 0);
+        Engine se1 = eng.apply(sinP); se1.down(1, 0, new int[]{0}, true); run.apply(se1, .1); double h0 = hz.apply(run.apply(se1, .5));
+        se1.down(2, 0, new int[]{12}, true); run.apply(se1, .1); double h12 = hz.apply(run.apply(se1, .5));
+        check(Math.abs(h0 - 261.6) < 3 && Math.abs(h12 - 523.3) < 5 && se1.activeVoices() == 2, String.format("Synth: pitch 0 is middle C (%.1f Hz), +12 an octave up (%.1f Hz), poly plays both", h0, h12));
+        se1.up(1); se1.up(2); run.apply(se1, 1.5);
+        check(se1.activeVoices() == 0, "Synth: let go, the release rings out and the voices end");
+        Synth.Patch mono = sinP.copy(); mono.set("mode", 1); mono.set("glide", .05);
+        Engine se2 = eng.apply(mono); se2.down(1, 0, new int[]{0}, true); run.apply(se2, .3); se2.down(2, 0, new int[]{7}, true); run.apply(se2, .2);
+        double hg = hz.apply(run.apply(se2, .3)); int mv = se2.activeVoices();
+        se2.up(2); run.apply(se2, .2); double hb = hz.apply(run.apply(se2, .3));
+        check(mv == 1 && Math.abs(hg - 392) < 5 && Math.abs(hb - 261.6) < 5, String.format("Synth: Mono glides to a second key on one voice (%.0f Hz, %d voice) and back when it lifts (%.0f Hz)", hg, mv, hb));
+        // knob turns reach a held note: close the filter on a saw and the top end falls
+        Synth.Patch saw = new Synth.Patch(Synth.ANALOG, "s"); saw.set("mix2", 0); saw.set("fenv", 0); saw.set("cut", 18000);
+        Project qz = new Project(); qz.kit[0] = "synth:1"; qz.synths.put("synth:1", saw);
+        Engine se3 = new Engine(rate); se3.setSnapshot(Engine.Snapshot.build(qz, ss, new Engine.Live())); se3.down(1, 0, new int[]{12}, true);
+        java.util.function.Function<float[], Double> bright = o -> { double ee = 0; for (float f : o) ee += f * f; return Math.sqrt(ee / o.length); };
+        double b0 = bright.apply(run.apply(se3, .3));
+        qz.synths.get("synth:1").set("cut", 200); se3.setSnapshot(Engine.Snapshot.build(qz, ss, new Engine.Live()));
+        run.apply(se3, .05); double b1 = bright.apply(run.apply(se3, .3));
+        check(b1 < b0 * .3, String.format("Synth: turning Cutoff to 200 Hz under a held 523 Hz saw takes it down (level %.3f to %.3f)", b0, b1));
+        // steps play a synth for one step, then it rings out
+        Project stp = new Project(); stp.kit[0] = "synth:1"; stp.synths.put("synth:1", sinP.copy()); stp.pats[0].setStep("synth:1", 0, true);
+        float[] bw = Engine.bounce(stp, ss, rate, false, 1);
+        int lastS = 0; for (int i = 0; i < bw.length / 2; i++) if (Math.abs(bw[i * 2]) > .01) lastS = i;
+        double stepSec = 60.0 / stp.bpm / 4;
+        check(lastS > 0 && lastS / (double) rate < stepSec + .6, String.format("Synth: a step plays one step and its release (%.2f s, a step is %.2f s)", lastS / (double) rate, stepSec));
+        // every mode, every filter, resonance and drive full, low to high: no blowups
+        boolean bad = false; double peak = 0;
+        for (int ft = 0; ft < 4; ft++) for (int md = 0; md < 3; md++) for (int nt : new int[]{-36, 0, 36}) {
+          Synth.Patch x = new Synth.Patch(Synth.ANALOG, "x"); x.set("ftype", ft); x.set("mode", md); x.set("res", 1); x.set("drive", 1); x.set("uni", 5); x.set("fenv", 1); x.set("noise", 1); x.set("sub", 1);
+          Engine xe = eng.apply(x); xe.down(1, 0, new int[]{nt}, true); for (float f : run.apply(xe, .3)) { if (Float.isNaN(f) || Float.isInfinite(f)) bad = true; peak = Math.max(peak, Math.abs(f)); }
+        }
+        check(!bad && peak < 1.5, String.format("Synth: full resonance and drive in every mode and filter stay finite (peak %.2f)", peak));
+        Project sv = new Project(); sv.kit[3] = "synth:2"; sv.synths.put("synth:2", Synth.ANALOG.presets.get(4).copy());
+        Project back = Project.fromJson(sv.toJson(), k -> false).project;
+        check("synth:2".equals(back.kit[3]) && back.synth("synth:2") != null && back.synth("synth:2").get("mode") == 1 && "Mono bass".equals(back.synth("synth:2").name), "Synth: saved and loaded with the mess, even where the library does not know the key");
+      }
       // ---- SE-3: bake. The same octave up played from the baked version: same length and pitch, no live grain
       {
         float[] up = Bake.shift(sine, 2);

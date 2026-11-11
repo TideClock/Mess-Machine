@@ -89,7 +89,7 @@ close_sheets() {
   done
 }
 # the Play tab holds the pads and My Desk (view-desk); the rest are tabs
-for t in tab-Pads view-desk tab-Steps tab-Roll tab-Song tab-Sounds; do
+for t in tab-Pads view-desk tab-Synth tab-Steps tab-Roll tab-Song tab-Sounds; do
   close_sheets
   xy=$(centre "$t")
   [ -z "$xy" ] && { note "$t: NOT FOUND"; fail=1; shot "04-$t"; continue; }
@@ -146,7 +146,7 @@ else note "play button: NOT FOUND"; fail=1; fi
 close_sheets
 adb shell wm size 1856x2160; sleep 4
 size=$(adb shell wm size | grep -o '[0-9]*x[0-9]*' | tail -1); note "unfolded shape: $size"
-for t in tab-Pads tab-Steps tab-Roll tab-Song tab-Sounds; do
+for t in tab-Pads tab-Synth tab-Steps tab-Roll tab-Song tab-Sounds; do
   close_sheets
   xy=$(centre "$t")
   [ -z "$xy" ] && { note "unfolded $t: NOT FOUND"; shot "09-unfolded-$t"; continue; }

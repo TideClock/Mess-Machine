@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.semantics.getOrNull
@@ -20,6 +21,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.doubleClick
 import androidx.core.view.drawToBitmap
 import androidx.test.core.app.ApplicationProvider
 import com.tideclock.messmachine.engine.Engine
@@ -731,6 +733,44 @@ class BigTest {
         assertTrue("and bakes the pad", state.project.edit(k).bake)
     }
 
+    /** SE-11, SE-12: a synth on a pad, its knobs, its modes, the Synthipad, and saving it with the mess. */
+    @Test fun synthTab() {
+        tab("Synth")
+        shot("40-synth-none")
+        at("synth-new-empty").performClick(); settle()
+        val pad = state.project.sel
+        val key = state.project.kit[pad]
+        assertTrue("a synth sits on a pad", com.tideclock.messmachine.engine.Project.isSynth(key) && state.synthOn(pad) != null)
+        assertEquals("the Synths jar names it", "Warm pad", state.lib.titleOf(key))
+        // turn the cutoff up with a drag
+        val cut0 = state.synthOn(pad)!!.get("cut")
+        rule.onNodeWithTag("knob-cut").performTouchInput {
+            down(Offset(centerX, 20.dp.toPx())); for (i in 0 until 10) moveBy(Offset(0f, -12f)); up()
+        }
+        settle()
+        assertTrue("dragging up turns the knob up (${state.synthOn(pad)!!.get("cut")} from $cut0)", state.synthOn(pad)!!.get("cut") > cut0 * 1.05)
+        rule.onNodeWithTag("knob-cut").performTouchInput { doubleClick(Offset(centerX, 20.dp.toPx())) }
+        settle()
+        assertEquals("double tap puts it back to its default", com.tideclock.messmachine.engine.Synth.ANALOG.params.first { it.id == "cut" }.def, state.synthOn(pad)!!.get("cut"), 1.0)
+        at("synthmode-2").performClick(); settle()
+        assertEquals("Acid", 2.0, state.synthOn(pad)!!.get("mode"), 0.0)
+        shot("41-synth-simple")
+        at("synthview-full").performClick(); settle()
+        shot("42-synth-full")
+        at("synthview-pad").performClick(); settle()
+        val t0 = state.engine.triggers
+        rule.onNodeWithTag("synthipad-notes").performTouchInput { down(Offset(width * .1f, height * .9f)); up() }
+        settle()
+        state.engine.render(FloatArray(512), 256)
+        assertTrue("a Synthipad note plays the synth", state.engine.triggers > t0)
+        shot("43-synthipad")
+        state.synthView = "simple"
+        // it saves and loads with the mess
+        val back = com.tideclock.messmachine.engine.Project.fromJson(state.project.toJson(), state.lib::has).project
+        assertEquals("the synth comes back with its knobs", 2.0, back.synth(key)?.get("mode") ?: -1.0, 0.0)
+        assertEquals("on the same pad", key, back.kit[pad])
+    }
+
     @Test fun doctorEffects() {
         val k = state.project.kit[0]
         state.overlay = Overlay.Doctor(k)
@@ -939,6 +979,11 @@ class BigTest {
         at("mode-keys").performClick(); page("Play: Keys")
         at("mode-pads").performClick(); settle()
         for (t in listOf("Steps", "Roll", "Song", "Sounds")) { tab(t); page(t) }
+        // the Synth tab: with no synth on the pad, then each view of one
+        tab("Synth"); page("Synth: none")
+        at("synth-new-empty").performClick(); settle()
+        for (v in listOf("simple", "full", "pad")) { at("synthview-$v").performClick(); page("Synth: $v") }
+        state.synthView = "simple"
         tab("Pads")
         for ((n, o) in listOf("Messes" to Overlay.Files, "Settings" to Overlay.Settings, "Tempo" to Overlay.Tempo, "Notes for Claude" to Overlay.Notes, "Latency" to Overlay.AudioCheck)) {
             state.overlay = o; sheet(n); state.overlay = null; settle()
@@ -972,7 +1017,9 @@ class BigTest {
             out.append("| $n | ${l.size} | ${if (!over) "ok" else if (allowed) "over, with a reason" else "OVER"} |\n")
         }
         out.append("\nTabs: $tabs. Pad menu: $menuItems items.\n")
-        if (tabs > 5) problems.add("$tabs tabs (target 5)")
+        // Tyler's exception: synths get a sixth tab (design/exceptions.txt "tabs:")
+        val okTabs = parts("tabs:").filter { it.size >= 2 && it[1].isNotEmpty() }.mapNotNull { it[0].toIntOrNull() }.maxOrNull() ?: 5
+        if (tabs > okTabs) problems.add("$tabs tabs (target 5)")
         if (menuItems > 8 && (okMenus["Pad menu"] ?: 0) < menuItems) problems.add("Pad menu has $menuItems items (target 8)")
         val where = HashMap<String, MutableSet<String>>()
         for ((n, l) in pages) for (x in l) if (!x.startsWith("[") || x.startsWith("[picker:")) where.getOrPut(x) { LinkedHashSet() }.add(n.substringBefore(":"))

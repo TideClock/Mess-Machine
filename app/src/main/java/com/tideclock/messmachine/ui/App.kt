@@ -116,6 +116,7 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
                         when (t) {
                             Tab.Pads -> PadsScreen(state)
                             Tab.Console -> ConsoleScreen(state)
+                            Tab.Synth -> SynthScreen(state)
                             Tab.Steps -> StepsScreen(state)
                             Tab.Roll -> RollScreen(state)
                             Tab.Song -> SongScreen(state)

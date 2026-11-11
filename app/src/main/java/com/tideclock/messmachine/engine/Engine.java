@@ -38,9 +38,12 @@ public final class Engine {
         public final SoundEdit edit;
         public final boolean audible;
         public final PadOpts opts;
+        /** SE-11: the synth this pad plays, or null for a sound. */
+        public final Synth.Patch synth;
         public PadSlot(int index, String key, Sample sample, SoundEdit edit, boolean audible) { this(index, key, sample, edit, audible, PadOpts.DEFAULT); }
-        public PadSlot(int index, String key, Sample sample, SoundEdit edit, boolean audible, PadOpts opts) {
-            this.index = index; this.key = key; this.sample = sample; this.edit = edit; this.audible = audible; this.opts = opts;
+        public PadSlot(int index, String key, Sample sample, SoundEdit edit, boolean audible, PadOpts opts) { this(index, key, sample, edit, audible, opts, null); }
+        public PadSlot(int index, String key, Sample sample, SoundEdit edit, boolean audible, PadOpts opts, Synth.Patch synth) {
+            this.index = index; this.key = key; this.sample = sample; this.edit = edit; this.audible = audible; this.opts = opts; this.synth = synth;
         }
     }
 
@@ -80,7 +83,8 @@ public final class Engine {
                 if (k.isEmpty()) continue;
                 Sample s = src.get(k);
                 if (s == null) continue;
-                pads[i] = new PadSlot(i, k, s, p.edit(k).copy(), p.audible(k), p.opt(i).copy());
+                Synth.Patch sp = p.synth(k);
+                pads[i] = new PadSlot(i, k, s, p.edit(k).copy(), p.audible(k), p.opt(i).copy(), sp == null ? null : sp.copy());
             }
             Pat[] pats = new Pat[Project.NSLOTS];
             for (int pi = 0; pi < Project.NSLOTS; pi++) {
@@ -163,6 +167,10 @@ public final class Engine {
         boolean grain, frozen, flow;
         double tPos, tInc, g0, g1, gp0, gp1, gStep, sus, srate;
         long pulseAt, pulseLen;
+        // SE-11 synths: the synth voice, and when its gate closes (frames into the note, -1 while held)
+        boolean syn;
+        final Synth.Voice sv = new Synth.Voice();
+        long synOff;
     }
 
     private final int rate;
@@ -536,6 +544,8 @@ public final class Engine {
         h.holdV = (mel && ps.edit.holds()) || "sustain".equals(ps.edit.held) || latch;
         // SE-7: a latched beat pad plays each copy whole and starts it again on the beat; nothing to hold
         h.beat = latch && "beat".equals(ps.edit.held);
+        // SE-11: a synth pad sounds while it is held, like a key
+        if (ps.synth != null && !h.beat) h.holdV = true;
         if (h.beat) h.holdV = false;
         // SE-6: flow plays each note once, held, and repeat pulses its volume (arpeggios keep cut or ring)
         Live L0 = S.live;
@@ -593,7 +603,18 @@ public final class Engine {
         Held h0 = held.get(id);
         if (h0 == null || h0.latched) return;
         Held h = held.remove(id);
-        if (h.holdV) for (Voice v : h.voices) release(v);
+        if (h.holdV) for (Voice v : h.voices) {
+            if (v.syn && h.pad.synth != null && (int) h.pad.synth.get("mode") != 0) {
+                // mono: if another key of this pad is still down, slide back to it instead of stopping
+                Held back = null;
+                for (Held o : held.values()) if (o.pad.index == h.pad.index && o.voices.contains(v)) back = o;
+                if (back != null && back.pitches.length > 0) {
+                    v.sv.noteOn(h.pad.synth, 261.6256 * oct() * Math.pow(2, back.pitches[0] / 12.0) * Math.pow(2, (h.pad.edit.tune + h.pad.edit.fine / 100.0) / 12.0), v.sv.velocity(), rate, true);
+                    continue;
+                }
+            }
+            release(v);
+        }
         Live L = S.live;
         if (L.rec && playing && h.mel && !L.nr) {
             int pi = playingPat(S);
@@ -777,6 +798,7 @@ public final class Engine {
         Sample s = ps.sample;
         int N = s.data.length;
         if (N < 2) return null;
+        if (ps.synth != null) return synthTrigger(ps, rateMul, durSec, gate, gain, delay, hold);
         boolean rev = e.rev != flip;
         float[] d = rev ? s.reversedData() : s.data;
         double a = e.st * N, z = e.en * N;
@@ -812,7 +834,7 @@ public final class Engine {
         v.active = true; v.preview = false; v.dry = false; v.hold = hold; v.releasing = false; v.choked = false;
         v.d = d; v.a = (int) Math.max(0, Math.floor(a)); v.len = len; v.zEnd = (int) Math.min(N, Math.ceil(a + len));
         v.pos = 0; v.inc = incR * s.rate / rate; v.loop = e.loop; v.loopFrom = 0; v.glideLeft = 0; v.glideMul = 1;
-        v.grain = grain; v.frozen = false; v.flow = false; v.pulseAt = -1; v.srate = s.rate;
+        v.grain = grain; v.frozen = false; v.flow = false; v.pulseAt = -1; v.srate = s.rate; v.syn = false;
         if (grain) {
             v.tPos = 0; v.tInc = timeR * s.rate / rate;
             v.gStep = 1.0 / Math.max(64, GRAIN_SEC * rate);
@@ -825,6 +847,75 @@ public final class Engine {
         v.delay = delay; v.t = 0;
         v.playLen = Math.max(1, Math.round(play * rate)); v.attF = Math.round(att * rate); v.fadeF = Math.max(1, Math.round(fade * rate));
         v.lvl = (float) lvl;
+        double x = (e.pan + 1) / 2;
+        v.gl = (float) Math.min(1, Math.sqrt(2) * Math.cos(x * Math.PI / 2));
+        v.gr = (float) Math.min(1, Math.sqrt(2) * Math.sin(x * Math.PI / 2));
+        v.pad = ps.index; v.choke = e.choke; v.startAbs = frame + delay; v.chokeAt = Long.MAX_VALUE; v.chokeG = 1; v.lastEnv = 0;
+        v.relLeft = 0; v.relLen = 1; v.relFrom = 0;
+        v.px1 = v.px2 = v.py1 = v.py2 = 0;
+        v.fxRvb = (float) e.rvb; v.fxEcho = (float) e.echo; v.fxDirt = (float) e.dirt; v.fxCrush = (float) e.crush;
+        v.fxChorus = (float) e.chorus; v.fxWob = (float) e.wob; v.fxWobRate = (float) e.wobRate;
+        v.wobPh = 0; v.chPh = 0; v.chW = 0; v.crushCnt = 0; v.crushVal = 0; v.bendMul = 1; v.volMul = 1; v.panX = e.pan;
+        if (v.chBuf != null) java.util.Arrays.fill(v.chBuf, 0f);
+        if (e.rvb > 0) rvbSizeT = (float) e.rvbSize;
+        if (e.echo > 0) sEchoDiv = e.echoT;
+        triggers++;
+        setFilter(v, e.tone);
+        if (e.choke > 0) {
+            for (Voice o : pool) if (o != v && o.active && !o.preview && o.choke == e.choke && o.startAbs < v.startAbs) o.chokeAt = Math.min(o.chokeAt, v.startAbs);
+        }
+        return v;
+    }
+
+    /**
+     * SE-11: start a synth note. Pitch 0 is middle C. Mono and Acid keep one voice per pad: a note that arrives
+     * while the last one's gate is open slides there instead of starting over.
+     */
+    private Voice synthTrigger(PadSlot ps, double rateMul, double durSec, boolean gate, float gain, long delay, boolean hold) {
+        SoundEdit e = ps.edit;
+        Synth.Patch sp = ps.synth;
+        double hz = 261.6256 * rateMul * Math.pow(2, (e.tune + e.fine / 100.0) / 12.0);
+        int mode = (int) sp.get("mode");
+        double spbSec = spbNow / rate;
+        // how long the gate stays open: held notes until let go; Roll notes their length (acid a hair longer, so
+        // touching notes slide); steps one step (acid half, for the bounce); a ring with no length, its own decay
+        double gateSec;
+        if (hold) gateSec = -1;
+        else if (durSec > 0 && gate) gateSec = mode == 2 ? durSec + .004 : durSec * .97;
+        else if (durSec > 0) gateSec = Math.min(durSec, spbSec) * (mode == 2 ? .5 : .9);
+        else gateSec = Math.min(2, sp.get("aa") + sp.get("ad"));
+        Voice v = null;
+        boolean slide = false;
+        if (mode != 0) {
+            for (Voice o : pool) {
+                if (o.active && o.syn && !o.preview && o.pad == ps.index && o.chokeAt == Long.MAX_VALUE) {
+                    if (o.sv.gate && (o.synOff < 0 || o.t < o.synOff) && delay <= 0) { v = o; slide = true; }
+                    else if (v == null) { startRelease(o, .004f); }
+                }
+            }
+        }
+        if (v != null) {
+            // the same voice slides to the new note; its gate now ends with this one
+            v.sv.noteOn(sp, hz, gain, rate, true);
+            v.hold = hold;
+            v.synOff = gateSec < 0 ? -1 : v.t + Math.round(gateSec * rate);
+            v.playLen = gateSec < 0 ? v.t + 600L * rate : v.synOff + Math.round(v.sv.releaseSec() * rate);
+            lastVoice = v;
+            triggers++;
+            return v;
+        }
+        v = freeVoice();
+        v.active = true; v.preview = false; v.dry = false; v.hold = hold; v.releasing = false; v.choked = false;
+        v.syn = true; v.grain = false; v.frozen = false; v.flow = false; v.pulseAt = -1; v.loop = false;
+        v.d = ps.sample.data; v.a = 0; v.len = 1; v.zEnd = v.d.length; v.pos = 0; v.loopFrom = 0;
+        v.inc = 1; v.glideLeft = 0; v.glideMul = 1; v.srate = rate;
+        v.sv.noteOn(sp, hz, gain, rate, false);
+        v.synOff = gateSec < 0 ? -1 : Math.round(gateSec * rate);
+        v.playLen = gateSec < 0 ? 600L * rate : v.synOff + Math.round(v.sv.releaseSec() * rate);
+        v.attF = 0; v.fadeF = Math.max(1, Math.round(.003 * rate));
+        v.lvl = (float) e.vol;
+        lastVoice = v;
+        v.delay = delay; v.t = 0;
         double x = (e.pan + 1) / 2;
         v.gl = (float) Math.min(1, Math.sqrt(2) * Math.cos(x * Math.PI / 2));
         v.gr = (float) Math.min(1, Math.sqrt(2) * Math.sin(x * Math.PI / 2));
@@ -874,6 +965,13 @@ public final class Engine {
     private void startRelease(Voice v, float minSec) {
         if (!v.active || v.releasing) return;
         if (v.delay > 0) { v.active = false; return; }
+        if (v.syn && minSec <= 0) {
+            // a synth lets go through its own release; the engine's fade only tidies the very end
+            v.sv.noteOff();
+            v.synOff = -1;
+            v.playLen = Math.min(v.playLen, v.t + Math.round(v.sv.releaseSec() * rate));
+            return;
+        }
         v.releasing = true;
         v.relLen = Math.max(1, Math.round(Math.max(minSec > 0 ? minSec : .015, v.hold ? relOf(v) : minSec) * rate));
         v.relLeft = v.relLen;
@@ -887,8 +985,14 @@ public final class Engine {
     private void mix(float[] out, int off, int n) {
         float chokeK = (float) Math.exp(-1.0 / (.006 * rate));
         double gateDiv = Math.max(1, spbNow * gateSteps);
+        Snapshot SN = snap;
         for (Voice v : pool) {
             if (!v.active) continue;
+            if (v.syn && SN != null && v.pad >= 0 && v.pad < SN.pads.length) {
+                // knob turns reach notes already sounding
+                PadSlot cp = SN.pads[v.pad];
+                if (cp != null && cp.synth != null && cp.synth.kind == v.sv.patch.kind) v.sv.read(cp.synth);
+            }
             int k = 0;
             if (v.delay > 0) {
                 long skip = Math.min(v.delay, n);
@@ -938,7 +1042,14 @@ public final class Engine {
                 }
                 // read the sound
                 float smp;
-                if (v.grain) {
+                if (v.syn) {
+                    if (v.t == v.synOff) v.sv.noteOff();
+                    double sm = v.inc * v.bendMul;
+                    if (p >= 0) sm *= padRateFrom[p] + (padRateTo[p] - padRateFrom[p]) * ((frame + k - blockStart) / (double) Math.max(1, blockLen));
+                    if (wob > 0) sm *= 1 + wob * .025 * Math.sin(v.wobPh);
+                    smp = v.sv.next(sm);
+                    if (v.sv.done()) { v.active = false; break; }
+                } else if (v.grain) {
                     if (!v.loop && !v.frozen && v.tPos >= v.len) { v.active = false; break; }
                     smp = HANN[(int) (v.gp0 * 1024)] * gRead(v, d, v.g0) + HANN[(int) (v.gp1 * 1024)] * gRead(v, d, v.g1);
                 } else {
@@ -1017,7 +1128,7 @@ public final class Engine {
                     }
                     if (v.gp0 >= 1) { v.gp0 -= 1; v.g0 = grainStart(v, d, v.g1); }
                     if (v.gp1 >= 1) { v.gp1 -= 1; v.g1 = grainStart(v, d, v.g0); }
-                } else v.pos += v.inc * rm;
+                } else if (!v.syn) v.pos += v.inc * rm;
                 if (v.glideLeft > 0) { v.inc *= v.glideMul; v.glideLeft--; }
                 v.t++;
             }

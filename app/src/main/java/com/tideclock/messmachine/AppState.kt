@@ -21,13 +21,14 @@ import com.tideclock.messmachine.engine.Library
 import com.tideclock.messmachine.engine.Project
 import com.tideclock.messmachine.engine.Sample
 import com.tideclock.messmachine.engine.SoundEdit
+import com.tideclock.messmachine.engine.Synth
 import com.tideclock.messmachine.engine.Theory
 import com.tideclock.messmachine.engine.Wav
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.Executors
 
-enum class Tab(val label: String) { Pads("Pads"), Console("Console"), Steps("Steps"), Roll("Roll"), Song("Song"), Sounds("Sounds") }
+enum class Tab(val label: String) { Pads("Pads"), Console("Console"), Synth("Synth"), Steps("Steps"), Roll("Roll"), Song("Song"), Sounds("Sounds") }
 
 /**
  * One piece of Your Console. type picks what it is, pad which pad it plays (pianos, filters, a pad
@@ -285,7 +286,53 @@ class AppState(private val app: Context) {
         }
     }
 
-    private fun rebuild() { engine.setSnapshot(Engine.Snapshot.build(project, lib, live)); syncBakes() }
+    private fun rebuild() {
+        // SE-11: the mess's synths show in the Synths jar under their names, so every screen can name them
+        for ((k, sp) in project.synths) lib.addSynth(k, sp.name)
+        engine.setSnapshot(Engine.Snapshot.build(project, lib, live))
+        syncBakes()
+    }
+
+    /* ---------------- synths (SE-11) ---------------- */
+
+    /** Simple, Full or Synthipad, for this session. */
+    var synthView by mutableStateOf("simple")
+
+    /** The synth on a pad, or null. */
+    fun synthOn(pad: Int): Synth.Patch? = project.synth(project.kit.getOrNull(pad))
+
+    /** Put a new synth on a pad (replacing what was there) from a preset, and select it. */
+    fun newSynth(pad: Int, preset: Synth.Patch) {
+        if (pad !in 0 until Project.NPADS) return
+        val key = project.newSynthKey()
+        val old = project.kit[pad]
+        edit {
+            synths[key] = preset.copy()
+            kit[pad] = key
+            if (old.isNotEmpty() && Project.isSynth(old) && kit.none { it == old }) synths.remove(old)
+            sel = pad
+        }
+        notes.trail("synth on pad ${pad + 1}: ${preset.name}")
+    }
+
+    /** Turn a knob. Drags pass commit = false until the finger lifts, so one drag is one undo. */
+    fun setSynth(pad: Int, id: String, value: Double, commit: Boolean) {
+        val sp = synthOn(pad) ?: return
+        val old = sp.get(id)
+        sp.set(id, value)
+        if (old != sp.get(id) || commit) changed(commit)
+    }
+
+    /** Load a preset's knobs into a pad's synth (the synth keeps its key, so steps and notes stay). */
+    fun loadSynthPreset(pad: Int, preset: Synth.Patch) {
+        val k = project.kit.getOrNull(pad) ?: return
+        if (!Project.isSynth(k)) return
+        edit { synths[k] = preset.copy() }
+        notes.trail("synth preset ${preset.name}")
+    }
+
+    /** The first empty pad in the bank on screen, or -1. */
+    fun emptyPadInBank(): Int = (bank * Project.BANK until (bank + 1) * Project.BANK).firstOrNull { project.kit[it].isEmpty() } ?: -1
 
     /* ---------------- bake (SE-3) ---------------- */
 

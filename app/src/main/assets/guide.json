@@ -1,22 +1,24 @@
 {
-  "title": "Bake, and the Latency screen",
+  "title": "The Synth tab: Poly, Mono and Acid",
   "thisBuild": [
-    "Bake: on a sound's Sample sheet, Play page, tap Bake it. In a few seconds it renders the sound at every semitone an octave up and down, length kept. Played from the bake, Grain sounds cleaner (much less flutter on chords, bass and glassy tones) and costs no more than Stretch.",
-    "Within an octave of the sound's own pitch it plays from the bake. Further away, Sustain, and reversed plays stay live grain.",
-    "Sounds up to 6 seconds bake. The bakes in one mess share about 96 MB of memory; the Play page says when that is full.",
-    "The Audio check is now Latency (Notes for Claude, then Latency). New section, Keep it light: how many live grain voices are playing, which pads needed live grain this session, and Bake them for all of them in one tap.",
-    "If the phone stays over 70% busy for 20 seconds with live grain playing, a bar at the top offers to bake those pads, once a session. Bake them, Latency, or Not now.",
-    "From build 61: the Sample sheet (the Doctor's new name) with the Play page, Stretch or Grain, Sustain, On the beat, and Cut, Ring or Flow in the repeat rate menu."
+    "A new tab, SYNTH, right after PLAY. A synth sits on a pad like a sound, so steps, Roll, keys, Hold and Repeat all play it.",
+    "Open SYNTH with an empty pad free and tap On empty pad, or put one on the selected pad instead of its sound. Start from 11 presets: Warm pad, Soft keys, Brass, Chord stab, Mono bass, Acid line, Square acid, Sync lead, Wobble, Glass bell, Noise sweep.",
+    "Three views. Simple: the knobs that matter most and a keyboard. Full: every knob, grouped (two oscillators, mixer, filter, two envelopes, LFO, voice). Synthipad: the page becomes a playing surface, four rows of in-key notes with an XY square for the filter (across is cutoff, up is resonance).",
+    "Knobs: drag up or right to turn up, double tap for the default, hold to type a value. Turning a knob changes notes already playing.",
+    "Poly plays chords. Mono plays one note and glides between held keys (let go of the top key and it slides back). Acid is mono with a squelchy filter: in Roll, notes that touch slide into each other, and fresh notes get an accent.",
+    "On a synth pad, the pad menu and the button by the bank numbers say Synth and open this tab.",
+    "From build 62: Bake, and the Latency screen in Notes for Claude."
   ],
   "watch": [
-    "Bake a long tonal sound (a chord or a bass note), play it up and down Keys, and compare with Bake off. Baked should sound steadier.",
-    "Bake a sound while the music plays: listen for clicks during the few seconds it bakes.",
-    "Open Latency after playing keys for a while: the pads you played should be listed under Keep it light.",
-    "Run the speaker test and Save as a note, if you have not yet: that number still decides the next audio work."
+    "Make a Warm pad and hold a chord on the keyboard, then turn Cutoff while it sounds.",
+    "Make an Acid line, draw a few notes in Roll with some touching, and play the loop: touching notes should slide.",
+    "Try Mono bass on steps, and Synthipad with two or three fingers.",
+    "Watch the Latency screen's load with a big Warm pad chord: unison pads cost the most."
   ],
   "limits": [
-    "A bake lasts while the app is open and is redone (a few seconds) when you open the mess again. Bake on stays saved with the sound.",
-    "The bake does not follow Bend or Glide exactly: those move the baked pitch like tape, a little shorter or longer, as before.",
-    "Synths, loops and the RC-505 library are coming in later builds."
+    "Only the Analog synth so far. FM, wavetable, granular, drums and plucks come next, each as its own build.",
+    "A synth is mono out of its voice (pan and the effects still apply); no stereo unison spread yet.",
+    "Notes in Roll have no per-note accent or velocity yet; Acid's accent goes on every fresh note.",
+    "Synths are saved in the mess file. The website's Mess Machine does not know them yet, so a mess with a synth opens there without it."
   ]
 }

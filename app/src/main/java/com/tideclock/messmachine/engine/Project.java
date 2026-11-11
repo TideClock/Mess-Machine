@@ -106,6 +106,8 @@ public final class Project {
     public String scale = "Minor"; // new messes start in C minor (Tyler, 2026-11-10); files without a scale still load as Chromatic
     public final Set<String> mutes = new LinkedHashSet<>(), solos = new LinkedHashSet<>();
     public final Map<String, SoundEdit> edits = new LinkedHashMap<>();
+    /** SE-11: the mess's synths, by key ("synth:<id>"); a synth sits on a pad like a sound. */
+    public final Map<String, Synth.Patch> synths = new LinkedHashMap<>();
 
     public Project() {
         Arrays.fill(kit, "");
@@ -146,6 +148,13 @@ public final class Project {
     public SoundEdit edit(String k) { SoundEdit e = edits.get(k); return e != null ? e : SoundEdit.DEFAULT; }
 
     public void setEdit(String k, SoundEdit e) { if (e == null || e.isDefault()) edits.remove(k); else edits.put(k, e.copy()); }
+
+    public Synth.Patch synth(String k) { return k != null && k.startsWith("synth:") ? synths.get(k) : null; }
+
+    public static boolean isSynth(String k) { return k != null && k.startsWith("synth:"); }
+
+    /** A new synth key no other synth in this mess uses. */
+    public String newSynthKey() { int n = 1; while (synths.containsKey("synth:" + n)) n++; return "synth:" + n; }
 
     public boolean audible(String k) { return solos.isEmpty() ? !mutes.contains(k) : solos.contains(k); }
 
@@ -228,6 +237,9 @@ public final class Project {
         Map<String, Object> em = new LinkedHashMap<>();
         for (String k : kit) if (!k.isEmpty() && edits.containsKey(k)) em.put(k, edits.get(k).toMap());
         o.put("edits", em);
+        Map<String, Object> sy = new LinkedHashMap<>();
+        for (String k : kit) if (synths.containsKey(k)) sy.put(k, synths.get(k).toMap());
+        if (!sy.isEmpty()) o.put("synths", sy);
         Map<String, Object> po = new LinkedHashMap<>();
         for (int k = 0; k < NPADS; k++) if (opts[k] != null && !opts[k].isDefault()) po.put(String.valueOf(k), opts[k].toMap());
         if (!po.isEmpty()) o.put("padOpts", po);
@@ -269,12 +281,14 @@ public final class Project {
         for (Map.Entry<String, Object> e : Json.map(q.get("padOpts")).entrySet()) {
             try { int k = Integer.parseInt(e.getKey()); if (k >= 0 && k < NPADS) p.opts[k] = PadOpts.fromMap(Json.map(e.getValue())); } catch (NumberFormatException ignored) {}
         }
+        for (Map.Entry<String, Object> e : Json.map(q.get("synths")).entrySet())
+            if (isSynth(e.getKey())) p.synths.put(e.getKey(), Synth.Patch.fromMap(Json.map(e.getValue())));
         List<Object> kl = Json.list(q.get("kit"));
         int missing = 0;
         for (int k = 0; k < kl.size() && k < NPADS; k++) {
             String key = Json.str(kl.get(k), "");
             if (key.isEmpty()) continue;
-            if (known == null || known.has(key)) {
+            if (known == null || known.has(key) || p.synths.containsKey(key)) {
                 if (p.padOf(key) < 0) p.kit[k] = key;
             } else missing++;
         }
