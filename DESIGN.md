@@ -252,6 +252,18 @@ The site's source is kept in `site/` (build with `python3 build.py` next to the 
 Ideas Tyler tags "wishlist" go here, not into the build.
 
 - 2026-11-03 (site) Mess Machine as a standalone Android app: done, this repo (builds 1 to 56).
+- 2026-11-10 (build 68) Jam station brain: Mess Machine as the hub of a jam setup (Tyler's jam idea). Many MIDI
+  devices at once (a USB hub, or daisy-chained over MIDI thru), each new device expanding the setup instead of
+  replacing it. A built-in mapping tool that pre-maps intelligently, not only custom maps: across devices and
+  inside one (say two keyboard zones and two pad zones on one controller, each its own instrument). Key and
+  tempo shared by everything plugged in.
+- 2026-11-10 (build 68) Cheap hardware that mirrors the app, ideally mass produced: (1) keys with mod wheel,
+  pitch bend, a filter control and four buttons for instrument select and octave; (2) a 9-pad drum pad with even
+  fewer buttons; (3) an XY control surface. The aim is that the app's moves (pads, Padiano, XY sphere) feel real
+  outside the screen.
+- 2026-11-10 (build 68) Several Padianos (piano rolls) open and playable at once, each with its own effects,
+  while drums still play; plus the keystroke and touch handling work that multi-layer live play needs. Tyler sees
+  the circle-to-XY sphere and layered Padianos with drums as the most unusual part of the app.
 
 ## Plan agreed 2026-11-09 (builds after 30)
 
