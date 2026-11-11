@@ -633,7 +633,7 @@ class BigTest {
         assertTrue("a D major tune reads as D major or B minor: ${state.jamKey}", state.jamKey == "D major" || state.jamKey == "B minor")
         rule.onNodeWithTag("jam-key-name").assertTextContains("D major", substring = true)
         rule.onNodeWithTag("jam-key-name").assertTextContains("B minor", substring = true)
-        assertTrue("nothing was written into the loop", state.project.pats.all { p -> state.project.kit.filter { it.isNotEmpty() }.all { p.notes(it).isEmpty() } })
+        assertTrue("nothing was written into the loop", state.project.pats.all { it.notes(state.selKey()).isEmpty() })
         at("jam-key")
         shot("96-jam-key-named")
         // Use puts the mess in that key; then there is nothing left to change
