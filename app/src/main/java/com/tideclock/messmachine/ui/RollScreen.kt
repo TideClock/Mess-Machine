@@ -42,7 +42,7 @@ fun RollScreen(state: AppState) {
     val loaded = (0 until Project.NPADS).filter { P.kit[it].isNotEmpty() }
     ScrollPane {
         SlotBar(state)
-        if (k.isNotEmpty()) Row(Modifier.padding(bottom = 8.dp).tapOrHold(P.sel, { state.preview(k) }, { if (!state.locked) state.padMenu = P.sel }).testTag("roll-name"), verticalAlignment = Alignment.CenterVertically) {
+        if (k.isNotEmpty()) Row(Modifier.padding(bottom = 8.dp).tapOrHold(P.sel, { state.preview(k) }, { if (!state.locked) state.padMenu = P.sel }).tagged("roll-name"), verticalAlignment = Alignment.CenterVertically) {
             Swatch(padColor(Color(state.lib.colorOf(k))))
             T("  PAD ${P.sel + 1} · ${state.lib.titleOf(k).uppercase()}", size = 13.sp, color = C.Yellow, lines = 1, spacing = .04.em)
             Box { PadMenu(state, P.sel) }
@@ -63,7 +63,7 @@ fun RollScreen(state: AppState) {
             Btn(if (P.fold) "Unfold" else "Fold to scale", { state.edit { fold = !fold } }, on = P.fold, small = true)
             Btn("Clear this sound's notes", { state.clearNotes() }, small = true, tier = Tier.Danger, enabled = k.isNotEmpty() && pat.notes(k).isNotEmpty(), tag = "roll-clear")
         }
-        Wrap(Modifier.padding(bottom = 12.dp).testTag("notelen-chips")) {
+        Wrap(Modifier.padding(bottom = 12.dp).tagged("notelen-chips")) {
             T("NOTE", size = 12.sp, color = C.Dim, spacing = .1.em)
             for ((l, name) in listOf(1 to "1 step", 2 to "2 steps", 4 to "1 beat", 8 to "Half a bar", 16 to "Whole bar")) {
                 Btn(name, { state.noteLen = l }, on = state.noteLen == l, onColor = C.Teal, small = true)
@@ -96,7 +96,7 @@ fun Roll(state: AppState) {
         Modifier
             .fillMaxWidth()
             .height(rowH * rows.size)
-            .testTag("roll")
+            .tagged("roll")
             .pointerInput(rows, off, k, P.cur) {
                 detectTapGestures { o ->
                     val kw = keyW.toPx()

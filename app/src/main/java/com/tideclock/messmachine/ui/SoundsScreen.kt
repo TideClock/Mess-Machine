@@ -90,14 +90,14 @@ fun SoundsScreen(state: AppState, pickFor: Int?) {
         }
         when (mode) {
             "type" -> {
-                Row(Modifier.fadeScroll(rememberScrollState()).padding(start = 12.dp, end = 12.dp, bottom = 8.dp).testTag("type-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(Modifier.fadeScroll(rememberScrollState()).padding(start = 12.dp, end = 12.dp, bottom = 8.dp).tagged("type-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Btn("All", { state.soundsType = "" }, on = state.soundsType.isEmpty(), small = true, tag = "type-all")
                     for (t in Library.TYPES) {
                         val n = state.lib.sounds.count { it.type == t[0] }
                         Btn("${t[1]} $n", { state.soundsType = t[0] }, on = state.soundsType == t[0], small = true, onColor = C.Teal, tag = "type-${t[0]}")
                     }
                 }
-                Row(Modifier.fadeScroll(rememberScrollState()).padding(start = 12.dp, end = 12.dp, bottom = 10.dp).testTag("mood-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fadeScroll(rememberScrollState()).padding(start = 12.dp, end = 12.dp, bottom = 10.dp).tagged("mood-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                     T("FEEL", size = 11.sp, color = C.Dim, spacing = .1.em)
                     for (qq in Library.QUALITIES) {
                         val on = qq[0] in state.soundsTags
@@ -105,7 +105,7 @@ fun SoundsScreen(state: AppState, pickFor: Int?) {
                     }
                 }
             }
-            "jar" -> Row(Modifier.fadeScroll(rememberScrollState()).padding(start = 12.dp, end = 12.dp, bottom = 12.dp).testTag("jar-chips"), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            "jar" -> Row(Modifier.fadeScroll(rememberScrollState()).padding(start = 12.dp, end = 12.dp, bottom = 12.dp).tagged("jar-chips"), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 for (c in state.lib.cabs) {
                     JarTab(c.id, c.name, Color(c.color), c.id == cab && q.isBlank(), jarArt(c.id)) { state.soundsCab = c.id; q = "" }
                 }
@@ -118,7 +118,7 @@ fun SoundsScreen(state: AppState, pickFor: Int?) {
             textStyle = TextStyle(color = C.Cream, fontFamily = Archivo, fontSize = 15.sp),
             shape = RectangleShape,
             colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = C.Pink, unfocusedBorderColor = C.Cream, cursorColor = C.Pink),
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).testTag("search"),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).tagged("search"),
         )
         if (mode == "jar" && cab == "mine" && q.isBlank()) {
             Wrap(Modifier.padding(start = 12.dp, end = 12.dp, top = 12.dp)) {
@@ -138,7 +138,7 @@ fun SoundsScreen(state: AppState, pickFor: Int?) {
         )
         val ls = rememberLazyListState()
         Box(Modifier.weight(1f).fillMaxWidth()) {
-        LazyColumn(Modifier.fillMaxSize().padding(end = 14.dp).testTag("sound-list"), state = ls) {
+        LazyColumn(Modifier.fillMaxSize().padding(end = 14.dp).tagged("sound-list"), state = ls) {
             var lastGroup = ""
             val rows = ArrayList<Pair<String?, Library.Sound>>()
             for (s in list) {
@@ -170,7 +170,7 @@ private fun JarTab(id: String, name: String, col: Color, on: Boolean, art: Int?,
             .padding(end = 4.dp, bottom = 4.dp)
             .sticker(if (on) col else C.Ink, shadow = if (on) 2.dp else 4.dp)
             .clickable { onClick() }
-            .testTag("jar-$id")
+            .tagged("jar-$id")
             .padding(6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -198,7 +198,7 @@ fun SoundRow(state: AppState, s: Library.Sound, target: Int, picking: Boolean) {
             Modifier
                 .fillMaxWidth()
                 .tapOrHold(s.key, { state.preview(s.key) }, { if (!state.locked) menu = true })
-                .testTag("row-${s.key}")
+                .tagged("row-${s.key}")
                 .padding(vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

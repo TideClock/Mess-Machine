@@ -146,7 +146,7 @@ fun DoctorScreen(state: AppState, key: String) {
                 if (looping) smp?.let { state.engine.preview(it, e, 0, true) } else state.engine.stopPreviews()
             }, on = looping, onColor = C.Pink, small = true)
         }
-        Row(Modifier.fillMaxWidth().padding(bottom = 10.dp, end = 4.dp).testTag("dtab-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.fillMaxWidth().padding(bottom = 10.dp, end = 4.dp).tagged("dtab-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for ((t, n) in listOf("play" to "Play", "trim" to "Trim", "shape" to "Shape", "fx" to "Effects", "tools" to "Tools")) {
                 Btn(n, { dtab = t }, on = dtab == t, onColor = C.Yellow, small = true, tag = "dtab-$t", modifier = Modifier.weight(1f))
             }
@@ -155,7 +155,7 @@ fun DoctorScreen(state: AppState, key: String) {
         // SE-1: Stretch or Grain
         T("PITCH", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(bottom = 4.dp))
         Help("Stretch plays a pitch change like tape: higher is faster and shorter. Grain keeps the length. Auto keeps the length for keys, chords and Roll notes, and lets Tune stay tape.", modifier = Modifier.padding(bottom = 6.dp))
-        Row(Modifier.fillMaxWidth().padding(bottom = 14.dp, end = 4.dp).testTag("pitch-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.fillMaxWidth().padding(bottom = 14.dp, end = 4.dp).tagged("pitch-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for ((v, n) in listOf("auto" to "Auto", "stretch" to "Stretch", "grain" to "Grain")) Btn(n, { upd(true) { pitch = v } }, on = e.pitch == v, onColor = C.Teal, small = true, tag = "pitch-$v", modifier = Modifier.weight(1f))
         }
         // SE-3: bake, for anything that is not plain Stretch
@@ -176,10 +176,10 @@ fun DoctorScreen(state: AppState, key: String) {
         // SE-5, SE-7: what Hold (and a finger, for Sustain) does with it
         T("WHEN IT IS HELD", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(bottom = 4.dp))
         Help("Loop its trim, freeze its tail, play it once, sustain it like a pad for as long as it is held, or play it whole and start it again on the beat while Hold keeps it.", modifier = Modifier.padding(bottom = 6.dp))
-        Wrap(Modifier.testTag("held-chips")) {
+        Wrap(Modifier.tagged("held-chips")) {
             for ((v, n) in listOf("loop" to "Loop it", "tail" to "Hold the tail", "once" to "Play once", "sustain" to "Sustain", "beat" to "On the beat")) Btn(n, { upd(true) { held = v } }, on = e.held == v, small = true, tag = "held-$v")
         }
-        if (e.held == "beat") Row(Modifier.fillMaxWidth().padding(top = 8.dp, end = 4.dp).testTag("beat-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (e.held == "beat") Row(Modifier.fillMaxWidth().padding(top = 8.dp, end = 4.dp).tagged("beat-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for ((v, n) in listOf(1 to "Every beat", 2 to "2 beats", 4 to "1 bar")) Btn(n, { upd(true) { beatN = v } }, on = e.beatN == v, onColor = C.Yellow, small = true, tag = "beat-$v", modifier = Modifier.weight(1f))
         }
         }
@@ -209,7 +209,7 @@ fun DoctorScreen(state: AppState, key: String) {
         SliderRow("Attack", e.att.toFloat(), 0f..1f, { "${(it * 1000).roundToInt()} ms" }, { v -> upd(false) { att = v.toDouble() } }, { upd(true) {} }, accent = C.Yellow)
         SliderRow("Release", e.rel.toFloat(), 0f..1.5f, { "${(it * 1000).roundToInt()} ms" }, { v -> upd(false) { rel = v.toDouble() } }, { upd(true) {} }, accent = C.Yellow)
         Help("Choke group: sounds in the same group cut each other off, like an open and closed hat.", modifier = Modifier.padding(top = 4.dp, bottom = 6.dp))
-        Wrap(Modifier.testTag("choke-chips")) {
+        Wrap(Modifier.tagged("choke-chips")) {
             for (g in 0..6) Btn(if (g == 0) "Off" else "$g", { upd(true) { choke = g } }, on = e.choke == g, small = true)
         }
         }
@@ -250,7 +250,7 @@ fun DoctorScreen(state: AppState, key: String) {
         }
         if (dtab == "tools") {
         Section("Re-pitch to fit")
-        Wrap(Modifier.testTag("fit-chips")) {
+        Wrap(Modifier.tagged("fit-chips")) {
             for ((b, label) in listOf(.25 to "1 beat", .5 to "2 beats", 1.0 to "1 bar", 2.0 to "2 bars", 4.0 to "4 bars")) {
                 Btn(label, { fitBars = b }, on = fitBars == b, onColor = C.Teal, small = true)
             }
@@ -258,13 +258,13 @@ fun DoctorScreen(state: AppState, key: String) {
         Btn("Fit", { state.fitToTempo(key, fitBars); e = state.project.edit(key).copy() }, small = true, color = C.Pink, modifier = Modifier.padding(top = 6.dp))
 
         Section("Chop to pads")
-        Wrap(Modifier.testTag("chop-chips")) {
+        Wrap(Modifier.tagged("chop-chips")) {
             for ((m, label) in listOf("equal" to "Equal", "auto" to "Auto (by hits)", "tap" to "Tap the wave", "lazy" to "Lazy (while it plays)")) {
                 Btn(label, { chopMode = m; cuts = emptyList(); refreshCuts() }, on = chopMode == m, onColor = C.Teal, small = true)
             }
         }
         when (chopMode) {
-            "equal" -> Row(Modifier.padding(top = 8.dp).testTag("slice-chips"), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            "equal" -> Row(Modifier.padding(top = 8.dp).tagged("slice-chips"), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 for (n in listOf(2, 4, 8, 16)) Btn("$n slices", { chopN = n; cuts = equalCuts(n) }, on = chopN == n, small = true)
             }
             "auto" -> SliderRow("Sensitivity", sens, 0f..1f, { "${(it * 100).roundToInt()}" }, { sens = it }, { refreshCuts() }, accent = C.Teal)

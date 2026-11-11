@@ -72,7 +72,7 @@ fun Dock(state: AppState) {
                         state.switchDockOpen(true)
                     }
                 }
-                .testTag("dock-open"),
+                .tagged("dock-open"),
             contentAlignment = Alignment.Center,
         ) { T("›", size = 14.sp, color = C.Pink, weight = FontWeight.Bold) }
         return
@@ -80,7 +80,7 @@ fun Dock(state: AppState) {
     Column(
         Modifier.width(62.dp).fillMaxHeight().background(C.Ink).drawBehind {
             drawLine(C.Pink, Offset(size.width, 0f), Offset(size.width, size.height), strokeWidth = 3.dp.toPx())
-        }.verticalScroll(rememberScrollState()).padding(start = 5.dp, end = 8.dp, top = 8.dp, bottom = 8.dp).testTag("dock"),
+        }.verticalScroll(rememberScrollState()).padding(start = 5.dp, end = 8.dp, top = 8.dp, bottom = 8.dp).tagged("dock"),
         verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -94,7 +94,7 @@ fun Dock(state: AppState) {
                     DropdownMenuItem(
                         text = { T((if (id in state.dockItems) "✓ " else "    ") + name, size = 14.sp, weight = FontWeight.Medium) },
                         onClick = { state.toggleDockItem(id) },
-                        modifier = Modifier.testTag("dock-pick-$id"),
+                        modifier = Modifier.tagged("dock-pick-$id"),
                     )
                 }
                 DropdownMenuItem(
@@ -121,7 +121,7 @@ private fun DockItem(state: AppState, t: String) {
         "hold" -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
             DockBtn("H", { state.switchHold() }, tag = "dock-hold", on = state.holdOn)
             T(if (state.holdCount == 0) "LAST" else if (state.holdOn) "${state.latched.size}/${state.holdCount}" else "${state.holdCount}", size = 10.sp, color = if (state.holdOn) C.Yellow else C.Dim, family = Mono,
-                modifier = Modifier.padding(top = 3.dp).clickable { state.changeHoldCount(if (state.holdCount >= 8) 0 else state.holdCount + 1) }.testTag("dock-hold-n"))
+                modifier = Modifier.padding(top = 3.dp).clickable { state.changeHoldCount(if (state.holdCount >= 8) 0 else state.holdCount + 1) }.tagged("dock-hold-n"))
         }
         "filter" -> DockFilter(state)
         "repeat" -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -132,7 +132,7 @@ private fun DockItem(state: AppState, t: String) {
                 T(
                     (when (state.live.nrRate) { 2.0 -> "1/8"; 0.5 -> "1/32"; else -> "1/16" }) + (if (state.live.arp != "rep") " " + arpShort(state.live.arp) else "") + styleShort(state.live.nrStyle),
                     size = 10.sp, color = if (state.live.nr) C.Pink else C.Dim, family = Mono, lines = 1,
-                    modifier = Modifier.padding(top = 3.dp).clickable { rates = true }.testTag("dock-rate"),
+                    modifier = Modifier.padding(top = 3.dp).clickable { rates = true }.tagged("dock-rate"),
                 )
                 HoldMenu(rates, "Repeat", { rates = false }, listOf(
                     Triple("Every 1/8", "rate-r2") { state.setLive { nrRate = 2.0 } },
@@ -145,7 +145,7 @@ private fun DockItem(state: AppState, t: String) {
         }
         "rec" -> { val pulse = beatPulse(state); DockBtn("●", { state.setLive { rec = !rec } }, tag = "dock-rec", on = state.live.rec, onColor = C.Riot, modifier = Modifier.recGlow(state, pulse)) }
         "beat" -> BeatLight(state, beatPulse(state))
-        "stutter", "echo" -> FxButton(state, t, if (t == "echo") "ECHO" else "STUT", Modifier.fillMaxWidth().testTag("dock-$t"), if (t == "echo") C.Teal else C.Pink, height = 46.dp)
+        "stutter", "echo" -> FxButton(state, t, if (t == "echo") "ECHO" else "STUT", Modifier.fillMaxWidth().tagged("dock-$t"), if (t == "echo") C.Teal else C.Pink, height = 46.dp)
         "desk" -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
             DockBtn("DSK", { state.nextDesk() }, tag = "dock-desk", onColor = C.Teal)
             T(state.desks.getOrNull(state.deskIdx)?.name?.uppercase()?.take(6) ?: "", size = 9.sp, color = C.Teal, family = Mono, modifier = Modifier.padding(top = 3.dp))
@@ -169,7 +169,7 @@ private fun LockButton(state: AppState) {
             .fillMaxWidth()
             .height(46.dp)
             .sticker(if (locked) C.Pink else C.Ink, shadow = if (locked) 0.dp else 3.dp, border = 2.5.dp, shadowColor = C.Yellow)
-            .testTag("dock-lock")
+            .tagged("dock-lock")
             .pointerInput(locked) {
                 awaitEachGesture {
                     awaitFirstDown(requireUnconsumed = false).consume()
@@ -207,9 +207,9 @@ private fun DockFilter(state: AppState) {
             T("R", size = 9.sp, color = C.Pink, family = Mono)
         }
         T(if (state.dockTarget < 0) "MIX" else "P${state.dockTarget + 1}", size = 10.sp, color = C.Yellow, family = Mono, weight = FontWeight.Bold,
-            modifier = Modifier.padding(top = 4.dp).clickable { state.cycleDockTarget() }.testTag("dock-target"))
+            modifier = Modifier.padding(top = 4.dp).clickable { state.cycleDockTarget() }.tagged("dock-target"))
         T(if (state.dockStay) "STAY" else "SPRING", size = 9.sp, color = if (state.dockStay) C.Teal else C.Dim, family = Mono,
-            modifier = Modifier.padding(top = 3.dp).clickable { state.dockStay = !state.dockStay; if (!state.dockStay) state.dockFilter(false) }.testTag("dock-stay"))
+            modifier = Modifier.padding(top = 3.dp).clickable { state.dockStay = !state.dockStay; if (!state.dockStay) state.dockFilter(false) }.tagged("dock-stay"))
     }
 }
 
@@ -219,7 +219,7 @@ private fun UpSlider(value: Float, color: androidx.compose.ui.graphics.Color, ta
         Modifier
             .size(width = 20.dp, height = 150.dp)
             .background(C.Black)
-            .testTag(tag)
+            .tagged(tag)
             .pointerInput(tag) {
                 awaitEachGesture {
                     val d = awaitFirstDown(requireUnconsumed = false)

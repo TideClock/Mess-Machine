@@ -66,7 +66,7 @@ fun SlotBar(state: AppState, tools: Boolean = false) {
                         .height(36.dp)
                         .sticker(if (on) C.Yellow else C.Ink, shadow = if (on) 1.dp else 3.dp, border = if (playingHere) 4.dp else 2.5.dp, borderColor = if (playingHere) C.Pink else C.Cream)
                         .tapOrHold(i, { state.selectSlot(i) }, { if (!state.locked) state.slotMenu = i })
-                        .testTag("slot-$i"),
+                        .tagged("slot-$i"),
                     contentAlignment = Alignment.Center,
                 ) {
                     T(Project.LETTERS[i].toString(), size = 15.sp, weight = FontWeight.Black, color = if (on) C.Ink else if (used) C.Cream else C.Empty)
@@ -132,7 +132,7 @@ fun StepsScreen(state: AppState) {
                     // tap the name for its pitch strip; hold still and lift for the pad's menu
                     Row(
                         Modifier.width(76.dp).height(30.dp).alpha(if (audible) 1f else .45f)
-                            .tapOrHold(i, { state.openStepStrip(i) }, { if (!state.locked) state.padMenu = i }).testTag("steps-name-$i"),
+                            .tapOrHold(i, { state.openStepStrip(i) }, { if (!state.locked) state.padMenu = i }).tagged("steps-name-$i"),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Box(Modifier.width(4.dp).fillMaxHeight().background(col))
@@ -145,7 +145,7 @@ fun StepsScreen(state: AppState) {
                         }
                         Box { PadMenu(state, i) }
                     }
-                    Box(Modifier.weight(1f).alpha(if (audible) 1f else .45f).testTag("steps-$i")) { StepRow(state, k, col, off, state.version) }
+                    Box(Modifier.weight(1f).alpha(if (audible) 1f else .45f).tagged("steps-$i")) { StepRow(state, k, col, off, state.version) }
                 }
                 if (state.stepStrip == i) StepPitchStrip(state, i, k, col)
             }
@@ -202,7 +202,7 @@ fun StepPitchStrip(state: AppState, pad: Int, k: String, col: Color) {
     val notes = (base..base + 12).filter { !state.inKeyOnly || P.scale == "Chromatic" || Theory.inScale(it, P.scale, P.root) }
     val pick = state.stepPick
     val now = if (pick >= 0) P.pat().notes(k).firstOrNull { it.s == pick }?.p else null
-    Column(Modifier.fillMaxWidth().padding(top = 8.dp).testTag("pitch-strip-$pad")) {
+    Column(Modifier.fillMaxWidth().padding(top = 8.dp).tagged("pitch-strip-$pad")) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 6.dp)) {
             Note(if (pick < 0) "Pick a step above, then a note." else "Step ${pick + 1}: " + (now?.let { Theory.noteName(it) } ?: if (P.pat().step(k, pick)) "plain hit" else "empty"),
                 color = C.Yellow, modifier = Modifier.weight(1f))
@@ -218,7 +218,7 @@ fun StepPitchStrip(state: AppState, pad: Int, k: String, col: Color) {
                 .height(40.dp)
                 .padding(end = 4.dp)
                 .sticker(C.Ink, shadow = 4.dp, shadowColor = col)
-                .testTag("pitch-keys-$pad")
+                .tagged("pitch-keys-$pad")
                 .pointerInput(pad, notes, pick) {
                     detectTapGestures { o ->
                         val i = (o.x / (size.width / notes.size.toFloat())).toInt().coerceIn(0, notes.size - 1)

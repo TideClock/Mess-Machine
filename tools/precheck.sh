@@ -26,7 +26,7 @@ for f in src:
 # 2. tags the tests ask for by name
 # only strings on lines that set a tag count (tag =, testTag(, menu items), so a word used elsewhere can't hide a stale tag
 taglines = [l for f in glob.glob('app/src/main/**/*.kt', recursive=True) for l in open(f, encoding='utf-8')
-            if re.search(r'\btag\s*=|testTag\(|Triple\(|\bitem\(', l)]
+            if re.search(r'\btag\s*=|testTag\(|tagged\(|Triple\(|\bitem\(', l)]
 lits = set(x for l in taglines for x in re.findall(r'"([^"\\\n]*)"', l))
 # plus tag-shaped strings handed to helpers, like fxRow("Reverb", "dfx-rvb")
 lits |= set(x for f in glob.glob('app/src/main/**/*.kt', recursive=True)
@@ -54,6 +54,13 @@ for f in glob.glob('app/src/main/**/*.kt', recursive=True):
         if 'format-ok' in line: continue
         if re.search(r'"[^"\n]*\$\{[^"\n]*"\s*\)?\s*\.format\(', line):
             print(f"PRECHECK format over inserted text (a % in it would crash): {f}:{n}"); bad = 1
+# 7. every control a lesson points at must exist in the app (MM-T)
+alltext = ''.join(open(f, encoding='utf-8').read() for f in glob.glob('app/src/main/java/**/ui/*.kt', recursive=True))
+for n, line in enumerate(open('app/src/main/java/com/tideclock/messmachine/Tutorials.kt', encoding='utf-8'), 1):
+    for tag in re.findall(r'\bt\("([a-z0-9-]+)"\)', line):
+        base = re.sub(r'-[a-z0-9]+$', '-', tag)
+        if ('"' + tag + '"') not in alltext and ('"' + base) not in alltext and ('"' + tag.rsplit('-', 1)[0] + '-$') not in alltext:
+            print(f"PRECHECK lesson points at a control that does not exist: {tag} (Tutorials.kt:{n})"); bad = 1
 # 6. "/*" inside a Kotlin comment opens a NESTED comment, so the comment never closes and the file stops parsing
 #    (build 67: "clips/*.flac" in a doc comment broke Packs.kt and everything that used it)
 for f in glob.glob('app/src/**/*.kt', recursive=True):

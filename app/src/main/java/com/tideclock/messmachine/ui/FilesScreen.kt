@@ -113,7 +113,7 @@ fun FilesScreen(state: AppState) {
 /** A saved mess's little picture: its pads (left) and its first loop's steps (right). */
 @Composable
 fun MessPicture(f: com.tideclock.messmachine.MessFile, modifier: Modifier = Modifier) {
-    androidx.compose.foundation.Canvas(modifier.size(width = 92.dp, height = 40.dp).testTag("mess-pic-${f.id}")) {
+    androidx.compose.foundation.Canvas(modifier.size(width = 92.dp, height = 40.dp).tagged("mess-pic-${f.id}")) {
         val cell = size.height / 4
         for (k in 0 until 16) {
             val c = f.colors.getOrNull(k) ?: 0
@@ -144,7 +144,7 @@ fun SettingsScreen(state: AppState) {
             Column {
                 T("VIEW SIZE", size = 12.sp, color = C.Yellow, spacing = .1.em)
                 Help("Zoom out to fit more of the machine on the screen.", modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
-                Wrap(Modifier.testTag("zoom-chips")) {
+                Wrap(Modifier.tagged("zoom-chips")) {
                     for (z in listOf(.7f, .8f, .9f, 1f, 1.1f, 1.2f)) {
                         Btn("${(z * 100).toInt()}%", { state.setViewSize(z) }, on = kotlin.math.abs(state.uiScale - z) < .01f, small = true, tag = "zoom-${(z * 100).toInt()}")
                     }
@@ -156,7 +156,7 @@ fun SettingsScreen(state: AppState) {
                 T("PLAYING", size = 12.sp, color = C.Yellow, spacing = .1.em)
                 Note("Empty pads record: an empty pad becomes a record button for the mic.", modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
                 Btn(if (state.emptyRecord) "Empty pads record: on" else "Empty pads record: off", { state.switchEmptyRecord(!state.emptyRecord) }, on = state.emptyRecord, onColor = C.Riot, small = true, tag = "set-emptyrec")
-                Wrap(Modifier.padding(top = 6.dp).testTag("recmode-chips")) {
+                Wrap(Modifier.padding(top = 6.dp).tagged("recmode-chips")) {
                     Btn("Tap start, tap stop", { state.switchRecordHold(false) }, on = !state.recordHold, onColor = C.Teal, small = true, tag = "set-rectap")
                     Btn("Hold to record", { state.switchRecordHold(true) }, on = state.recordHold, onColor = C.Teal, small = true, tag = "set-rechold")
                 }
@@ -170,7 +170,7 @@ fun SettingsScreen(state: AppState) {
                 Note("A short buzz when you hit a pad.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
                 Btn(if (state.buzz) "Pad buzz: on" else "Pad buzz: off", { state.switchBuzz(!state.buzz) }, on = state.buzz, onColor = C.Teal, small = true, tag = "set-buzz")
                 Note("Beat glow behind everything.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
-                Wrap(Modifier.testTag("glow-chips")) {
+                Wrap(Modifier.tagged("glow-chips")) {
                     for ((v, n) in listOf(0 to "Off", 1 to "Soft", 2 to "Full")) Btn(n, { state.setPulse(v) }, on = state.pulseLevel == v, small = true, tag = "set-pulse-$v")
                 }
             }

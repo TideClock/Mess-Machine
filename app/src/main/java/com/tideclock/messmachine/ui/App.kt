@@ -110,7 +110,7 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
                 if (state.cpuAsk) CpuBanner(state)
                 Row(Modifier.weight(1f).fillMaxWidth()) {
                 Dock(state)
-                Box(Modifier.weight(1f).fillMaxHeight().testTag("screen-${state.tab.label}")) {
+                Box(Modifier.weight(1f).fillMaxHeight().tagged("screen-${state.tab.label}")) {
                     // pages change with a short fade instead of a hard cut (note #5)
                     Crossfade(targetState = state.tab, animationSpec = tween(150), label = "tab") { t ->
                         when (t) {
@@ -143,13 +143,16 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
                     Overlay.Notes -> Sheet(state, "Notes for Claude") { NotesScreen(state) }
                     Overlay.AudioCheck -> Sheet(state, "Latency") { AudioCheckScreen(state) }
                     Overlay.Packs -> Sheet(state, "Packs") { PacksScreen(state) }
+                    Overlay.Learn -> Sheet(state, "Learn") { LearnScreen(state) }
                     null -> Box(Modifier) {}
                 }
             }
             SphereOverlay(state)
+            // a lesson sits over everything, sheets included; its ring lets taps through
+            TutorOverlay(state)
             state.toast?.let { msg ->
                 Box(Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = 84.dp)) {
-                    Row(Modifier.sticker(C.Yellow, shadow = 5.dp).clickable { state.toast = null }.testTag("toast").padding(start = 14.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                    Row(Modifier.sticker(C.Yellow, shadow = 5.dp).clickable { state.toast = null }.tagged("toast").padding(start = 14.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         T(msg, color = C.Ink, size = 14.sp, modifier = Modifier.weight(1f, fill = false).padding(vertical = 3.dp))
                         // after a clear: Undo right here, so the clear buttons don't need to ask first
@@ -158,7 +161,7 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
                 }
             }
             // locked: a yellow edge round the whole screen, so it's clear why tabs and menus don't open
-            if (state.locked) Box(Modifier.fillMaxSize().border(6.dp, C.Yellow).testTag("lock-edge"))
+            if (state.locked) Box(Modifier.fillMaxSize().border(6.dp, C.Yellow).tagged("lock-edge"))
             state.busy?.let { msg ->
                 Box(Modifier.fillMaxSize().background(C.Black.copy(alpha = .65f)).clickable(enabled = true) { }, contentAlignment = Alignment.Center) {
                     Box(Modifier.sticker(C.Teal, shadow = 6.dp).padding(22.dp)) { T(msg.uppercase(), color = C.Ink, size = 18.sp, spacing = .08.em) }
@@ -184,7 +187,7 @@ private fun SheetBody(state: AppState, title: String, content: @Composable () ->
     Box(Modifier.fillMaxSize().background(C.Black.copy(alpha = .6f)).pointerInput(Unit) { detectTapGestures { } }) {
         Column(Modifier.fillMaxSize().padding(top = 18.dp).background(C.Paper).grit().drawBehind {
             drawLine(C.Pink, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 4.dp.toPx())
-        }.testTag("sheet")) {
+        }.tagged("sheet")) {
             Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 14.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Heading(title, size = 20.sp, modifier = Modifier.weight(1f))
                 Btn("Done", { state.overlay = null }, color = C.Pink, small = true, tag = "done")
@@ -207,7 +210,7 @@ fun Transport(state: AppState) {
             val down = state.heardStep >= 0 && state.heardStep % 16 < 4
             if (v > .01f) drawRect(Brush.verticalGradient(listOf(Color.Transparent, (if (down) C.Pink else C.Yellow).copy(alpha = .35f * v)), startY = size.height * .5f, endY = size.height), topLeft = Offset(0f, size.height * .5f))
             drawLine(lerp(C.Pink, if (down) C.Cream else C.Yellow, v), Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = (3 + 4 * v).dp.toPx())
-        }.padding(start = 8.dp, end = 8.dp, top = 6.dp, bottom = 9.dp).testTag("topbar"),
+        }.padding(start = 8.dp, end = 8.dp, top = 6.dp, bottom = 9.dp).tagged("topbar"),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
@@ -218,12 +221,12 @@ fun Transport(state: AppState) {
         // tempo and where the music is, in one button: tap for tempo, swing and click
         Box(
             Modifier.weight(1.25f).height(36.dp).sticker(C.Black, shadow = 2.dp, border = 2.dp)
-                .clickable(enabled = free) { state.overlay = Overlay.Tempo }.testTag("bpm"),
+                .clickable(enabled = free) { state.overlay = Overlay.Tempo }.tagged("bpm"),
             contentAlignment = Alignment.Center,
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 T("${P.bpm} BPM", size = 11.sp, color = C.Cream, lines = 1, family = Mono, weight = FontWeight.Bold)
-                T(position(state), size = 10.sp, color = C.Yellow, lines = 1, family = Mono, weight = FontWeight.Bold, modifier = Modifier.testTag("position"))
+                T(position(state), size = 10.sp, color = C.Yellow, lines = 1, family = Mono, weight = FontWeight.Bold, modifier = Modifier.tagged("position"))
             }
         }
         Btn("?", { state.switchHelp() }, small = true, on = state.helpOn, onColor = C.Teal, tag = "help-toggle", tier = Tier.Quiet, modifier = Modifier.weight(.45f))
@@ -238,10 +241,11 @@ fun TopMenu(state: AppState, modifier: Modifier = Modifier) {
     val free = !state.locked
     Box(modifier) {
         Btn("☰", { open = true }, small = true, enabled = free, color = if (state.crash != null) C.Riot else C.Ink, tag = "menu", tier = if (state.crash != null) Tier.Normal else Tier.Quiet, modifier = Modifier.fillMaxWidth())
-        androidx.compose.material3.DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.background(C.Ink).border(3.dp, C.Cream).testTag("topmenu")) {
+        androidx.compose.material3.DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.background(C.Ink).border(3.dp, C.Cream).tagged("topmenu")) {
             for ((label, tag, act) in listOf(
                 Triple("☰  Messes", "messes") { state.refreshFiles(); state.overlay = Overlay.Files },
                 Triple("⚙  Settings", "settings") { state.overlay = Overlay.Settings },
+                Triple("🎓  Learn: lessons for every feature", "learn") { state.overlay = Overlay.Learn },
                 Triple("↷  Redo", "redo") { state.redo() },
                 Triple("🐞  Notes for Claude" + if (state.crash != null) " (a crash to send)" else "", "notes") { state.overlay = Overlay.Notes },
             )) {
@@ -249,7 +253,7 @@ fun TopMenu(state: AppState, modifier: Modifier = Modifier) {
                     text = { T(label, size = 15.sp, weight = FontWeight.Medium) },
                     onClick = { open = false; act() },
                     enabled = tag != "redo" || state.canRedo,
-                    modifier = Modifier.testTag(tag),
+                    modifier = Modifier.tagged(tag),
                 )
             }
         }
@@ -281,7 +285,7 @@ fun RepeatControls(state: AppState, tag: String = "repeat") {
 @Composable
 fun CpuBanner(state: AppState) {
     val pads = state.grainPadsToBake()
-    Column(Modifier.fillMaxWidth().background(C.Card2).testTag("cpu-banner").padding(horizontal = 14.dp, vertical = 10.dp)) {
+    Column(Modifier.fillMaxWidth().background(C.Card2).tagged("cpu-banner").padding(horizontal = 14.dp, vertical = 10.dp)) {
         T("THE PHONE IS WORKING HARD (${(state.audio.load() * 100).toInt()}%)", size = 13.sp, color = C.Yellow, spacing = .06.em, lines = 1)
         T("Live grain on " + (if (pads.size == 1) "pad ${pads[0] + 1}" else "${pads.size} pads") + " costs three times a plain sound. Baking keeps the lag low and sounds cleaner.",
             size = 13.sp, weight = androidx.compose.ui.text.font.FontWeight.Medium, modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
@@ -299,7 +303,7 @@ fun RecordingBanner(state: AppState) {
     val pulse = beatPulse(state)
     Box(
         Modifier.fillMaxWidth().background(lerp(C.Riot, C.Pink, pulse.value * .5f)).clickable { if (state.micPad >= 0) state.recordToPad(state.micPad) else state.toggleMic() }
-            .testTag("rec-banner").padding(horizontal = 14.dp, vertical = 10.dp),
+            .tagged("rec-banner").padding(horizontal = 14.dp, vertical = 10.dp),
     ) {
         T("● RECORDING" + (if (state.micPad >= 0) " ONTO PAD ${state.micPad + 1}" else "") + " · TAP TO STOP", size = 14.sp, color = C.Cream, spacing = .06.em, lines = 1)
     }
@@ -311,7 +315,7 @@ fun PulseBackdrop(state: AppState) {
     if (state.pulseLevel == 0) return
     val pulse = beatPulse(state)
     val strength = if (state.pulseLevel == 2) .30f else .14f
-    Box(Modifier.fillMaxSize().testTag("pulse").drawBehind {
+    Box(Modifier.fillMaxSize().tagged("pulse").drawBehind {
         val v = pulse.value
         if (v < .01f) return@drawBehind
         val down = state.heardStep >= 0 && state.heardStep % 16 < 4
@@ -340,7 +344,7 @@ fun beatPulse(state: AppState): Animatable<Float, AnimationVector1D> {
 /** A round light that thumps with the beat: pink on the one, yellow on the others. */
 @Composable
 fun BeatLight(state: AppState, pulse: Animatable<Float, AnimationVector1D>) {
-    Canvas(Modifier.size(26.dp).testTag("beatlight")) {
+    Canvas(Modifier.size(26.dp).tagged("beatlight")) {
         val v = pulse.value
         val down = state.heardStep >= 0 && state.heardStep % 16 < 4
         val c = if (down) C.Pink else C.Yellow
@@ -415,7 +419,7 @@ fun Tabs(state: AppState) {
                     .background(if (on) C.Yellow else C.Ink)
                     .border(if (on) 3.dp else 0.dp, C.Cream)
                     .clickable(enabled = !state.locked) { if (play) state.openPlay() else state.tab = t }
-                    .testTag("tab-${t.label}"),
+                    .tagged("tab-${t.label}"),
                 contentAlignment = Alignment.Center,
             ) {
                 T(if (play) "PLAY" else t.label.uppercase(), size = 11.sp, color = if (on) C.Ink else if (state.locked) C.Empty else C.Dim, spacing = .02.em, lines = 1)

@@ -70,10 +70,10 @@ fun SynthScreen(state: AppState) {
             )
         }
         // what kind of synth (switching starts from that kind's first preset; Undo brings the old one back)
-        Wrap(Modifier.padding(bottom = 8.dp).testTag("synthkind-chips"), gap = 6.dp) {
+        Wrap(Modifier.padding(bottom = 8.dp).tagged("synthkind-chips"), gap = 6.dp) {
             for (k in Synth.KINDS) Btn(k.name, { if (sp.kind != k) state.loadSynthPreset(pad, k.presets.first()) }, on = sp.kind == k, onColor = C.Yellow, small = true, tag = "synthkind-${k.id}")
         }
-        Row(Modifier.fillMaxWidth().padding(bottom = 12.dp, end = 4.dp).testTag("synthview-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.fillMaxWidth().padding(bottom = 12.dp, end = 4.dp).tagged("synthview-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for ((id, n) in listOf("simple" to "Simple", "full" to "Full", "pad" to "Synthipad")) Btn(n, { state.synthView = id }, on = state.synthView == id, onColor = C.Teal, small = true, tag = "synthview-$id", modifier = Modifier.weight(1f))
         }
         // SE-15: a granular synth reads one of the mess's sounds
@@ -130,12 +130,12 @@ private fun NoSynth(state: AppState, pad: Int) {
 @Composable
 private fun ModeChips(state: AppState, pad: Int, sp: Synth.Patch) {
     sp.kind.params.firstOrNull { it.id == "mode" }?.let { mp ->
-        Row(Modifier.fillMaxWidth().padding(bottom = 10.dp, end = 4.dp).testTag("synthmode-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.fillMaxWidth().padding(bottom = 10.dp, end = 4.dp).tagged("synthmode-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for ((i, n) in mp.choices.withIndex()) Btn(n, { state.setSynth(pad, "mode", i.toDouble(), true) }, on = sp.get("mode").toInt() == i, onColor = C.Pink, small = true, tag = "synthmode-$i", modifier = Modifier.weight(1f))
         }
     }
     sp.kind.params.firstOrNull { it.id == "model" }?.let { mp ->
-        Wrap(Modifier.padding(bottom = 10.dp).testTag("synthmodel-chips")) {
+        Wrap(Modifier.padding(bottom = 10.dp).tagged("synthmodel-chips")) {
             for ((i, n) in mp.choices.withIndex()) Btn(n, { state.setSynth(pad, "model", i.toDouble(), true) }, on = sp.get("model").toInt() == i, onColor = C.Pink, small = true, tag = "synthmodel-$i")
         }
     }
@@ -144,7 +144,7 @@ private fun ModeChips(state: AppState, pad: Int, sp: Synth.Patch) {
 /** Knobs four to a row; choice knobs show as a knob too, stepping through their choices. */
 @Composable
 private fun KnobRows(state: AppState, pad: Int, sp: Synth.Patch, ps: List<Synth.Param>, tag: String) {
-    Column(Modifier.fillMaxWidth().testTag(tag)) {
+    Column(Modifier.fillMaxWidth().tagged(tag)) {
         for (row in ps.chunked(4)) {
             Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
                 for (pm in row) Knob(pm, sp.get(pm.id), { x, c -> state.setSynth(pad, pm.id, x, c) }, Modifier.weight(1f), "knob-${pm.id}")
@@ -165,7 +165,7 @@ fun Knob(pm: Synth.Param, value: Double, set: (Double, Boolean) -> Unit, modifie
     // the gestures are set up once per knob; these keep them reading today's value and pad
     val cur by rememberUpdatedState(value)
     val setNow by rememberUpdatedState(set)
-    Column(modifier.testTag(tag), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(modifier.tagged(tag), horizontalAlignment = Alignment.CenterHorizontally) {
         Canvas(
             Modifier.size(54.dp)
                 .pointerInput(pm.id) {
@@ -242,7 +242,7 @@ private fun Synthipad(state: AppState, pad: Int, sp: Synth.Patch) {
         Box(Modifier.fillMaxWidth().padding(end = 4.dp, bottom = 10.dp)) {
             val h = 150.dp
             Canvas(
-                Modifier.fillMaxWidth().height(h).sticker(C.Card2).testTag("synthipad-xy")
+                Modifier.fillMaxWidth().height(h).sticker(C.Card2).tagged("synthipad-xy")
                     .pointerInput(pad) {
                         awaitEachGesture {
                             val d = awaitFirstDown()
@@ -279,7 +279,7 @@ private fun Synthipad(state: AppState, pad: Int, sp: Synth.Patch) {
     val rows = notes.chunked(4).reversed()
     var down by remember(pad) { mutableStateOf(setOf<Int>()) }
     Column(
-        Modifier.fillMaxWidth().padding(end = 4.dp).testTag("synthipad-notes")
+        Modifier.fillMaxWidth().padding(end = 4.dp).tagged("synthipad-notes")
             .pointerInput(pad, notes) {
                 awaitEachGesture {
                     val active = HashMap<PointerId, Int>()
