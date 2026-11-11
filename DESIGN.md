@@ -4,15 +4,14 @@
 
 Rewritten at the end of every session and at each step of a long job (BT-2). Read this first.
 
-- **Live:** build 60 (2026-11-10): the review's builds. 59 brought the Audio check, buffer give-back, slow-block
-  log, CPU hint, Baseline Profile, Resample cut, notes privacy, FLAC sounds (APK 17.0 MB), background play and MIDI;
-  60 targets API 36 (edge to edge, predictive back). 57 failed a test and 58's phone test caught an audio-thread
-  crash; neither was published.
+- **Live:** build 68 (2026-11-11): the whole sound engine plan v2. Grain and Stretch, Sustain, repeat styles,
+  Hold on the beat, the Sample sheet (61); bake and Latency (62); the Synth tab with Analog, FM, Wavetable,
+  Granular, Drums and Pluck (63 to 65); Qbldy Loops and Hits replacing the 0.35 s chops (66); packs (68).
 - **Plan:** the review doc https://claude.ai/artifact/QoAq7LzDGYD8XNyDDjPRHS, items MM-1 to MM-24, with an Outcome
   section at the top. MM-11 (Play Store) is last and notes only. MM-5 (Oboe) waits for real numbers from the Audio
   check. MM-15 (Fold layouts) skipped with a big note. MM-22 (creature cards) is an outline in the doc.
 - **Next:** sound engine plan v2, piece by piece (see Decisions). Built: 1 to 3 (build 61), 4 bake and Latency
-  (62), 5 the Synth tab with Analog (63), 6 and 7 FM and wavetable (64), 8 and 9 granular, drums and plucks (65), 10 loops and hits (66), 11 the Vault and packs (67). The first pack waits for Tyler's review in the Vault. Tyler's Latency note still decides MM-5.
+  (62), 5 the Synth tab with Analog (63), 6 and 7 FM and wavetable (64), 8 and 9 granular, drums and plucks (65), 10 loops and hits (66), 11 the Vault and packs (68; 67 failed to compile, see precheck rule 6). The first pack waits for Tyler's review in the Vault. Tyler's Latency note still decides MM-5.
 - **Not done, and why:** MM-14 strong skipping stays off: composable lambdas that read the mess without snapshot
   state would stop redrawing (note #6 again), and nothing measured says the UI costs audio time yet; the Audio
   check's "screen busy" flag will say. MM-21 (Heap sorting) needs ears: 0.35 s slices of full songs have no right
