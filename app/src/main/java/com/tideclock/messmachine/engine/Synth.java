@@ -147,8 +147,192 @@ public final class Synth {
         k.preset("Noise sweep", "w1", 0, "mix2", 0, "noise", 1, "ftype", 2, "cut", 300, "res", .6, "fenv", .9, "fa", 2, "fd", 2, "fs", .3, "aa", .4, "ar", 1.5);
     }
 
+    /* ---------- FM (SE-13) ---------- */
+
+    /** Operator frequency ratios: whole numbers for tones, 1.41 and 3.5 for bells and metal. */
+    public static final double[] RATIOS = {.5, 1, 1.41, 1.5, 2, 2.5, 3, 3.5, 4, 5, 6, 7, 8, 9, 11, 14};
+    private static final String[] RATIO_NAMES = {"0.5", "1", "1.41", "1.5", "2", "2.5", "3", "3.5", "4", "5", "6", "7", "8", "9", "11", "14"};
+    static int ri(double r) { for (int i = 0; i < RATIOS.length; i++) if (Math.abs(RATIOS[i] - r) < .01) return i; return 1; }
+
+    /** Who modulates whom: per algorithm, per operator, a bit for each operator feeding it; and which ones you hear. */
+    static final int[][] MODS = {
+        {0b0010, 0b0100, 0b1000, 0}, {0b0110, 0, 0b1000, 0}, {0b1110, 0, 0, 0}, {0b0010, 0, 0b1000, 0},
+        {0b1000, 0b1000, 0b1000, 0}, {0b0010, 0b0100, 0, 0}, {0b0010, 0, 0, 0}, {0, 0, 0, 0},
+    };
+    static final int[] CARRIERS = {0b0001, 0b0001, 0b0001, 0b0101, 0b0111, 0b1001, 0b1101, 0b1111};
+
+    private static Param[] fmParams() {
+        java.util.List<Param> l = new java.util.ArrayList<>();
+        l.add(p("mode", "Mode", "Voice", CHOICE, 0, 1, 0, "", true, "Poly", "Mono"));
+        l.add(p("algo", "Algorithm", "Operators", CHOICE, 0, 7, 3, "", true, "Stack", "Branch", "Three into one", "Two stacks", "One drives three", "Stack + sine", "Pair + two sines", "Organ"));
+        l.add(p("bright", "Brightness", "Operators", LIN, 0, 2, 1, "", true));
+        l.add(p("fb", "Feedback", "Operators", LIN, 0, 1, 0, "%", true));
+        l.add(p("det", "Detune", "Operators", LIN, 0, 20, 0, "c", false));
+        double[] lv = {1, .5, 1, .3};
+        for (int i = 1; i <= 4; i++) {
+            String g = "Operator " + i;
+            l.add(p("r" + i, "Ratio", g, CHOICE, 0, RATIOS.length - 1, 1, "", i == 2, RATIO_NAMES));
+            l.add(p("l" + i, "Level", g, LIN, 0, 1, lv[i - 1], "%", false));
+            l.add(p("a" + i, "Attack", g, LOG, .001, 5, .002, "s", i == 1));
+            l.add(p("d" + i, "Decay", g, LOG, .005, 8, .8, "s", i == 2));
+            l.add(p("s" + i, "Sustain", g, LIN, 0, 1, .6, "%", false));
+            l.add(p("rl" + i, "Release", g, LOG, .005, 8, .3, "s", i == 1));
+        }
+        l.add(p("lrate", "Rate", "LFO", LOG, .05, 20, 5, "Hz", false));
+        l.add(p("lpitch", "Vibrato", "LFO", LIN, 0, 1, 0, "%", false));
+        l.add(p("lamp", "Tremolo", "LFO", LIN, 0, 1, 0, "%", false));
+        l.add(p("glide", "Glide", "Voice", LOG, .001, 1.5, .001, "s", false));
+        l.add(p("oct", "Octave", "Voice", INT, -3, 2, 0, "", false));
+        l.add(p("level", "Level", "Voice", LIN, 0, 1, .7, "%", false));
+        return l.toArray(new Param[0]);
+    }
+
+    public static final Kind FM = new Kind("fm", "FM", "Four sine operators that bend each other into bells, electric pianos, metal and growl. Brightness is how hard they bend.", fmParams());
+
+    static {
+        Kind k = FM;
+        k.preset("E piano", "algo", 3, "r2", ri(1), "l2", .5, "d2", 1.5, "s2", .1, "r4", ri(14), "l4", .25, "d4", .3, "s4", 0, "d1", 2.5, "s1", .2, "rl1", .6, "l3", .5, "d3", 1.2, "s3", 0, "rl3", .4, "det", 3);
+        k.preset("Bell", "algo", 3, "r2", ri(3.5), "l2", .45, "d2", 3, "s2", 0, "r4", ri(1.41), "l4", .4, "d4", 2, "s4", 0, "d1", 4, "s1", 0, "rl1", 2.5, "l3", .6, "d3", 3, "s3", 0, "rl3", 2);
+        k.preset("FM bass", "mode", 1, "algo", 0, "r1", ri(.5), "r2", ri(1), "l2", .55, "d2", .35, "s2", .15, "l3", 0, "l4", 0, "fb", .2, "d1", 1, "s1", .7, "rl1", .1, "oct", -1, "glide", .03);
+        k.preset("Brass", "algo", 1, "r2", ri(1), "l2", .6, "a2", .08, "d2", .6, "s2", .5, "l3", .3, "a3", .05, "l4", 0, "a1", .04, "s1", .9, "rl1", .2, "fb", .1, "lpitch", .03);
+        k.preset("Marimba", "algo", 3, "r2", ri(4), "l2", .4, "d2", .08, "s2", 0, "r4", ri(9), "l4", .2, "d4", .05, "s4", 0, "d1", .6, "s1", 0, "rl1", .3, "l3", .5, "d3", .4, "s3", 0);
+        k.preset("Organ", "algo", 7, "r1", ri(.5), "r2", ri(1), "r3", ri(2), "r4", ri(3), "l1", .8, "l2", .7, "l3", .5, "l4", .4, "s1", 1, "s2", 1, "s3", 1, "s4", 1, "rl1", .08, "rl2", .08, "rl3", .08, "rl4", .08, "lamp", .1, "lrate", 6);
+        k.preset("Metal", "algo", 2, "r2", ri(1.41), "r3", ri(3.5), "r4", ri(7), "l2", .5, "l3", .4, "l4", .35, "d2", 2, "d3", 1.5, "d4", 1, "s2", 0, "s3", 0, "s4", 0, "d1", 3, "s1", 0, "rl1", 1.5);
+        k.preset("Growl", "mode", 1, "algo", 0, "fb", .85, "r2", ri(1), "l2", .7, "r3", ri(2), "l3", .4, "l4", .3, "s1", .9, "s2", .8, "oct", -1);
+        k.preset("Glass pad", "algo", 3, "a1", .8, "a3", .9, "r2", ri(2), "l2", .3, "r4", ri(5), "l4", .2, "s1", .8, "s2", .8, "s3", .8, "s4", .8, "d1", 2, "rl1", 1.5, "rl3", 1.5, "det", 6, "l3", .7);
+    }
+
+    /* ---------- Wavetable (SE-14) ---------- */
+
+    public static final Kind WAVE = new Kind("wave", "Wavetable", "One oscillator that sweeps through a table of shapes. Position picks the shape; the envelope and LFO can move it while the note plays.",
+        p("mode", "Mode", "Voice", CHOICE, 0, 1, 0, "", true, "Poly", "Mono"),
+        p("table", "Table", "Oscillator", CHOICE, 0, 5, 0, "", true, "Basic", "Pulse", "Sweep", "Vowels", "Hollow", "Grit"),
+        p("pos", "Position", "Oscillator", LIN, 0, 1, .3, "%", true),
+        p("penv", "Env to position", "Oscillator", LIN, -1, 1, 0, "", true),
+        p("plfo", "LFO to position", "Oscillator", LIN, 0, 1, 0, "%", false),
+        p("warp", "Warp", "Oscillator", LIN, 0, 1, 0, "%", false),
+        p("uni", "Unison", "Oscillator", INT, 1, 5, 1, "", false),
+        p("spread", "Spread", "Oscillator", LIN, 0, 1, .3, "%", false),
+        p("ftype", "Filter", "Filter", CHOICE, 0, 3, 0, "", false, "Low 24", "Low 12", "Band", "High"),
+        p("cut", "Cutoff", "Filter", LOG, 30, 18000, 6000, "Hz", true),
+        p("res", "Resonance", "Filter", LIN, 0, 1, .1, "%", false),
+        p("fenv", "Env amount", "Filter", LIN, -1, 1, .2, "", false),
+        p("track", "Key track", "Filter", LIN, 0, 1, .5, "%", false),
+        p("drive", "Drive", "Filter", LIN, 0, 1, 0, "%", false),
+        p("fa", "Attack", "Envelope 2 (filter, position)", LOG, .001, 5, .005, "s", false),
+        p("fd", "Decay", "Envelope 2 (filter, position)", LOG, .005, 5, .6, "s", false),
+        p("fs", "Sustain", "Envelope 2 (filter, position)", LIN, 0, 1, .3, "%", false),
+        p("fr", "Release", "Envelope 2 (filter, position)", LOG, .005, 8, .4, "s", false),
+        p("aa", "Attack", "Amp envelope", LOG, .001, 5, .005, "s", true),
+        p("ad", "Decay", "Amp envelope", LOG, .005, 5, .6, "s", false),
+        p("as", "Sustain", "Amp envelope", LIN, 0, 1, .8, "%", false),
+        p("ar", "Release", "Amp envelope", LOG, .005, 8, .4, "s", true),
+        p("lrate", "Rate", "LFO", LOG, .05, 20, 1, "Hz", false),
+        p("lshape", "Shape", "LFO", CHOICE, 0, 4, 0, "", false, "Sine", "Triangle", "Saw", "Square", "Random"),
+        p("lpitch", "To pitch", "LFO", LIN, 0, 1, 0, "%", false),
+        p("lcut", "To filter", "LFO", LIN, 0, 1, 0, "%", false),
+        p("lamp", "To volume", "LFO", LIN, 0, 1, 0, "%", false),
+        p("glide", "Glide", "Voice", LOG, .001, 1.5, .001, "s", false),
+        p("oct", "Octave", "Voice", INT, -3, 2, 0, "", false),
+        p("level", "Level", "Voice", LIN, 0, 1, .7, "%", false)
+    );
+
+    static {
+        Kind k = WAVE;
+        k.preset("Vowel pad", "table", 3, "pos", .3, "plfo", .5, "lrate", .2, "aa", .5, "ar", 1.5, "uni", 3, "spread", .3, "cut", 5000);
+        k.preset("Sweep lead", "mode", 1, "table", 2, "pos", .1, "penv", .8, "fd", .6, "fs", .2, "glide", .06, "cut", 9000, "lpitch", .04, "lrate", 5);
+        k.preset("PWM strings", "table", 1, "pos", .3, "plfo", .6, "lrate", .5, "uni", 3, "aa", .4, "ar", 1.2, "cut", 3500, "res", .1);
+        k.preset("Hollow keys", "table", 4, "pos", .6, "ad", .8, "as", .3, "ar", .5, "cut", 7000, "fenv", .3, "fd", .4, "fs", 0);
+        k.preset("Grit bass", "mode", 1, "table", 5, "pos", .4, "oct", -2, "cut", 600, "fenv", .4, "fd", .3, "fs", .1, "drive", .4, "res", .25);
+        k.preset("Morph pluck", "table", 0, "pos", 1, "penv", -.9, "fd", .25, "fs", 0, "ad", .5, "as", 0, "ar", .3, "cut", 8000);
+        k.preset("Vowel talk", "mode", 1, "table", 3, "pos", 0, "plfo", 1, "lrate", 2.5, "lshape", 1, "oct", -1, "cut", 4000);
+    }
+
     /** Every kind, in the order the Synth tab shows them. More arrive in later pieces. */
-    public static final Kind[] KINDS = {ANALOG};
+    public static final Kind[] KINDS = {ANALOG, FM, WAVE};
+
+    /** How long a note with no length rings: its attack and decay (FM: the slowest carrier's). */
+    public static double ringSec(Patch p) {
+        if (p.kind == FM) {
+            double m = 0; int cm = CARRIERS[(int) p.get("algo")];
+            for (int i = 0; i < 4; i++) if ((cm >> i & 1) != 0) m = Math.max(m, p.v[p.kind.at(FM_A[i])] + p.v[p.kind.at(FM_D[i])]);
+            return Math.min(4, m);
+        }
+        return Math.min(2, p.get("aa") + p.get("ad"));
+    }
+
+    static final String[] FM_R = {"r1", "r2", "r3", "r4"}, FM_L = {"l1", "l2", "l3", "l4"}, FM_A = {"a1", "a2", "a3", "a4"},
+        FM_D = {"d1", "d2", "d3", "d4"}, FM_S = {"s1", "s2", "s3", "s4"}, FM_RL = {"rl1", "rl2", "rl3", "rl4"};
+
+    /**
+     * The wavetables, made once on first use (about 2 MB): 6 tables of 16 shapes, each at 6 levels of detail so
+     * high notes never fold harmonics back down (the right level is picked by pitch).
+     */
+    static final class WT {
+        static final int N = 1024, FR = 16, MIPS = 6;
+        static final int[] HARM = {256, 128, 64, 32, 16, 8};
+        static final float[][][][] T = new float[6][MIPS][FR][];
+        static {
+            double[] a = new double[257];
+            double[] re = new double[N], im = new double[N];
+            java.util.Random rnd = new java.util.Random(505);
+            double[][] grit = new double[FR][257];
+            for (int f = 0; f < FR; f++) for (int h = 1; h <= 256; h++) grit[f][h] = rnd.nextDouble();
+            for (int t = 0; t < 6; t++) for (int f = 0; f < FR; f++) {
+                double x = f / (double) (FR - 1);
+                java.util.Arrays.fill(a, 0);
+                for (int h = 1; h <= 256; h++) a[h] = spectrum(t, x, h, grit[f][h]);
+                double norm = 0;
+                for (int m = 0; m < MIPS; m++) {
+                    java.util.Arrays.fill(re, 0); java.util.Arrays.fill(im, 0);
+                    for (int h = 1; h <= HARM[m]; h++) {
+                        // fade the top quarter of each level's harmonics so levels blend instead of stepping
+                        double fade = h > HARM[m] * .75 ? (HARM[m] - h) / (HARM[m] * .25) : 1;
+                        im[h] = -N * a[h] * fade / 2; im[N - h] = N * a[h] * fade / 2;
+                    }
+                    Bake.fft(re, im, true);
+                    if (m == 0) { for (int i = 0; i < N; i++) norm = Math.max(norm, Math.abs(re[i])); norm = Math.max(norm, 1e-9); }
+                    float[] w = new float[N + 1];
+                    for (int i = 0; i < N; i++) w[i] = (float) (re[i] / norm);
+                    w[N] = w[0];
+                    T[t][m][f] = w;
+                }
+            }
+        }
+
+        /** Harmonic h's level in table t at position x (0..1). */
+        private static double spectrum(int t, double x, int h, double r) {
+            switch (t) {
+                case 0: { // sine, triangle, saw, square
+                    double s = x * 3; int i = Math.min(2, (int) s); double fr = s - i;
+                    return basic(i, h) * (1 - fr) + basic(i + 1, h) * fr;
+                }
+                case 1: { double w = .5 - x * .47; return Math.abs(2 / (h * Math.PI) * Math.sin(Math.PI * h * w)); }
+                case 2: { double n = Math.pow(2, x * 6); return h <= n ? 1.0 / h : (h < n + 1 ? (n + 1 - h) / h : 0); }
+                case 3: { // vowels a, e, i, o, u by formants at harmonic numbers (for a voice near 110 Hz)
+                    double[][] V = {{6.6, 9.9}, {4.8, 16.7}, {2.5, 20.8}, {5.2, 7.6}, {2.7, 7.9}};
+                    double s = x * 4; int i = Math.min(3, (int) s); double fr = s - i;
+                    double f1 = V[i][0] + (V[i + 1][0] - V[i][0]) * fr, f2 = V[i][1] + (V[i + 1][1] - V[i][1]) * fr;
+                    double g = Math.exp(-Math.pow((h - f1) / 1.5, 2)) + .7 * Math.exp(-Math.pow((h - f2) / 2.5, 2)) + .04;
+                    return g / Math.pow(h, .7);
+                }
+                case 4: return h == 1 ? 1 : (h % 2 == 1 ? 1 - x : x) / h;
+                default: return h == 1 ? 1 : Math.pow(r, 3 - 2 * x) / Math.pow(h, 1.4 - x * .7);
+            }
+        }
+
+        private static double basic(int s, int h) {
+            switch (s) {
+                case 0: return h == 1 ? 1 : 0;
+                case 1: return h % 2 == 1 ? 8 / (Math.PI * Math.PI * h * h) : 0;
+                case 2: return 2 / (Math.PI * h);
+                default: return h % 2 == 1 ? 4 / (Math.PI * h) : 0;
+            }
+        }
+    }
+
+    /** Make the wavetables now (off the audio thread), so the first wavetable note does not wait for them. */
+    public static void warm() { if (WT.T[0][0][0] == null) throw new IllegalStateException(); }
 
     public static Kind kind(String id) { for (Kind k : KINDS) if (k.id.equals(id)) return k; return ANALOG; }
 
@@ -298,6 +482,16 @@ public final class Synth {
         boolean sync;
         double fNow = 1000, lfoV, lfoPitchMul = 1;
         final double[] det = new double[5];
+        /** 0 analog, 1 FM, 2 wavetable. */
+        int kindNo;
+        // FM: four operators
+        final double[] fph = new double[4], fr = new double[4], fl = new double[4], fdet = new double[4], mo = new double[4], co = new double[4];
+        final Env[] fe4 = {new Env(), new Env(), new Env(), new Env()};
+        int algo;
+        double fbAmt, bright, fb1, fb2;
+        // wavetable
+        int table;
+        double pos, penv, plfo, warp, wposNow;
 
         /** Start a note (or slide an already sounding mono note there when slide is true). */
         public void noteOn(Patch p, double hz, float vel, int rate, boolean slide) {
@@ -307,6 +501,8 @@ public final class Synth {
             hzTarget = hz;
             if (!slide || !on) {
                 this.hz = hz;
+                for (int i = 0; i < 4; i++) { fph[i] = 0; fe4[i].on(true); }
+                fb1 = fb2 = 0;
                 for (int i = 0; i < 5; i++) { ph1[i] = (i * .2137) % 1; ph2[i] = (i * .3971 + .5) % 1; }
                 phSub = 0; s1 = s2 = s3 = s4 = ic1 = ic2 = 0;
                 lph = 0;
@@ -323,36 +519,91 @@ public final class Synth {
             on = true; gate = true; ctl = 0;
         }
 
-        public void noteOff() { gate = false; amp.off(); fe.off(); }
+        public void noteOff() { gate = false; amp.off(); fe.off(); for (Env e : fe4) e.off(); }
 
-        public boolean done() { return on && !gate && amp.stage == 0; }
+        public boolean done() {
+            if (!on || gate) return false;
+            if (kindNo == 1) {
+                int cm = CARRIERS[algo];
+                for (int i = 0; i < 4; i++) if ((cm >> i & 1) != 0 && fe4[i].stage != 0) return false;
+                return true;
+            }
+            return amp.stage == 0;
+        }
 
         public float velocity() { return vel; }
 
         /** Seconds the release lasts at most, so the engine knows when the note is over. */
-        public double releaseSec() { return Math.min(8, patch == null ? .3 : patch.get("ar")) * 1.3 + .02; }
+        public double releaseSec() {
+            if (patch == null) return .3;
+            if (patch.kind == FM) {
+                double m = 0; int cm = CARRIERS[(int) patch.get("algo")];
+                for (int i = 0; i < 4; i++) if ((cm >> i & 1) != 0) m = Math.max(m, patch.v[patch.kind.at(FM_RL[i])]);
+                return Math.min(8, m) * 1.3 + .02;
+            }
+            return Math.min(8, patch.get("ar")) * 1.3 + .02;
+        }
+
+        private static double g(double[] v, Kind K, String id, double def) { int i = K.at(id); return i < 0 ? def : v[i]; }
 
         /** Read the knobs; called at the note's start and once per block, so knob turns reach held notes. */
         public void read(Patch p) {
             patch = p;
             double[] v = p.v;
             Kind K = p.kind;
-            mode = (int) v[K.at("mode")];
-            w1 = v[K.at("w1")]; pw1 = v[K.at("pw1")]; w2 = v[K.at("w2")];
-            semi2r = Math.pow(2, (v[K.at("semi2")] + v[K.at("fine2")] / 100) / 12);
-            mix2 = v[K.at("mix2")]; sync = v[K.at("sync")] > .5;
-            sub = v[K.at("sub")]; noise = v[K.at("noise")];
-            uni = (int) v[K.at("uni")]; spread = v[K.at("spread")];
-            ftype = (int) v[K.at("ftype")]; cut = v[K.at("cut")]; res = v[K.at("res")]; fenv = v[K.at("fenv")];
-            track = v[K.at("track")]; drive = v[K.at("drive")];
-            lrate = v[K.at("lrate")]; lshape = (int) v[K.at("lshape")];
-            lpitch = v[K.at("lpitch")]; lcut = v[K.at("lcut")]; lamp = v[K.at("lamp")]; lpw = v[K.at("lpw")];
-            glide = v[K.at("glide")]; accent = v[K.at("accent")]; oct = Math.pow(2, v[K.at("oct")]); level = v[K.at("level")];
-            if (rate > 0) {
-                fe.set(v[K.at("fa")], v[K.at("fd")], v[K.at("fs")], v[K.at("fr")], rate);
-                // acid: the amp holds while the gate is open, the filter does the shaping
-                amp.set(v[K.at("aa")], v[K.at("ad")], v[K.at("as")], v[K.at("ar")], rate);
+            kindNo = K == FM ? 1 : K == WAVE ? 2 : 0;
+            mode = (int) g(v, K, "mode", 0);
+            w1 = g(v, K, "w1", 2); pw1 = g(v, K, "pw1", .5); w2 = g(v, K, "w2", 2);
+            semi2r = Math.pow(2, (g(v, K, "semi2", 0) + g(v, K, "fine2", 0) / 100) / 12);
+            mix2 = g(v, K, "mix2", 0); sync = g(v, K, "sync", 0) > .5;
+            sub = g(v, K, "sub", 0); noise = g(v, K, "noise", 0);
+            uni = (int) g(v, K, "uni", 1); spread = g(v, K, "spread", .3);
+            ftype = (int) g(v, K, "ftype", 0); cut = g(v, K, "cut", 18000); res = g(v, K, "res", 0); fenv = g(v, K, "fenv", 0);
+            track = g(v, K, "track", .5); drive = g(v, K, "drive", 0);
+            lrate = g(v, K, "lrate", 1); lshape = (int) g(v, K, "lshape", 0);
+            lpitch = g(v, K, "lpitch", 0); lcut = g(v, K, "lcut", 0); lamp = g(v, K, "lamp", 0); lpw = g(v, K, "lpw", 0);
+            glide = g(v, K, "glide", .001); accent = g(v, K, "accent", .5); oct = Math.pow(2, g(v, K, "oct", 0)); level = g(v, K, "level", .7);
+            if (kindNo == 1) {
+                algo = (int) g(v, K, "algo", 0); fbAmt = g(v, K, "fb", 0); bright = g(v, K, "bright", 1);
+                double dc = g(v, K, "det", 0);
+                for (int i = 0; i < 4; i++) {
+                    fr[i] = RATIOS[(int) v[K.at(FM_R[i])]];
+                    fl[i] = v[K.at(FM_L[i])];
+                    fdet[i] = i == 1 ? Math.pow(2, dc / 1200) : i == 3 ? Math.pow(2, -dc / 1200) : 1;
+                    if (rate > 0) fe4[i].set(v[K.at(FM_A[i])], v[K.at(FM_D[i])], v[K.at(FM_S[i])], v[K.at(FM_RL[i])], rate);
+                }
+            } else if (kindNo == 2) {
+                table = (int) g(v, K, "table", 0); pos = g(v, K, "pos", 0); penv = g(v, K, "penv", 0); plfo = g(v, K, "plfo", 0); warp = g(v, K, "warp", 0);
             }
+            if (rate > 0) {
+                fe.set(g(v, K, "fa", .005), g(v, K, "fd", .4), g(v, K, "fs", .2), g(v, K, "fr", .3), rate);
+                amp.set(g(v, K, "aa", .004), g(v, K, "ad", .5), g(v, K, "as", .8), g(v, K, "ar", .25), rate);
+            }
+        }
+
+        /** FM: operators 4 down to 1, each bent by the ones the algorithm feeds into it; carriers are what you hear. */
+        private float fmNext(double f) {
+            int[] mods = MODS[algo];
+            for (int i = 3; i >= 0; i--) {
+                double m = 0;
+                int mask = mods[i];
+                for (int j = i + 1; j < 4; j++) if ((mask >> j & 1) != 0) m += mo[j];
+                if (i == 3) m += fbAmt * (fb1 + fb2) * .25;
+                double e = fe4[i].next();
+                double s = sin1(fph[i] + m);
+                fph[i] += f * fr[i] * fdet[i] / rate;
+                if (fph[i] >= 1) fph[i] -= Math.floor(fph[i]);
+                double lv = fl[i];
+                mo[i] = s * lv * lv * e * 2 * bright;   // as a modulator: phase in cycles
+                co[i] = s * lv * e;                     // as a carrier
+                if (i == 3) { fb2 = fb1; fb1 = s * e; }
+            }
+            int cm = CARRIERS[algo];
+            double out = 0; int nc = 0;
+            for (int i = 0; i < 4; i++) if ((cm >> i & 1) != 0) { out += co[i]; nc++; }
+            out /= Math.sqrt(Math.max(1, nc));
+            if (lamp > 0) out *= 1 - lamp * .5 * (1 + lfoV);
+            return (float) (out * level * vel * .7);
         }
 
         /** One sample. pitchMul carries bends, glides and wobble from the engine. */
@@ -374,6 +625,7 @@ public final class Synth {
                 int nu = Math.max(1, uni);
                 for (int u = 0; u < nu; u++) det[u] = nu == 1 ? 1 : Math.pow(2, spread * (u / (double) (nu - 1) - .5) / 12);
                 double fv = fe.skip(16);
+                if (kindNo == 2) wposNow = Math.max(0, Math.min(1, pos + penv * fv + plfo * lfoV * .5));
                 double acc = mode == 2 && fresh ? 1 + accent * .8 : 1;
                 double oct4 = fenv * fv * 6 * acc + lcut * lfoV * 3;
                 double base = cut * Math.pow(hz * oct / 261.63, track);
@@ -388,12 +640,34 @@ public final class Synth {
             }
             hz = glideK > 0 ? hzTarget + (hz - hzTarget) * glideK : hzTarget;
             double f = hz * oct * pitchMul * lfoPitchMul;
+            if (kindNo == 1) return fmNext(f);
             double dt1 = f / rate, dt2 = dt1 * semi2r;
             double pw = Math.max(.05, Math.min(.95, pw1 + lpw * lfoV * .4));
             // oscillators, with unison spread around the note
             double o = 0;
             int n = Math.max(1, uni);
-            for (int u = 0; u < n; u++) {
+            if (kindNo == 2) {
+                // wavetable: the right level of detail for this pitch, two shapes either side of the position, mixed
+                int m = 0;
+                double nh = .45 / Math.max(1e-9, dt1);
+                while (m < WT.MIPS - 1 && WT.HARM[m] > nh) m++;
+                float[][] tb = WT.T[table][m];
+                double fp = wposNow * (WT.FR - 1);
+                int f0 = Math.min(WT.FR - 2, (int) fp);
+                double ff = fp - f0;
+                float[] A = tb[f0], B = tb[f0 + 1];
+                for (int u = 0; u < n; u++) {
+                    double d1 = dt1 * det[u];
+                    double ph = ph1[u];
+                    if (warp > 0) { ph *= 1 + warp * 3; ph -= Math.floor(ph); }
+                    double xi = ph * WT.N;
+                    int i = (int) xi;
+                    double fr2 = xi - i;
+                    double av = A[i] + (A[i + 1] - A[i]) * fr2, bv = B[i] + (B[i + 1] - B[i]) * fr2;
+                    o += av + (bv - av) * ff;
+                    ph1[u] += d1; if (ph1[u] >= 1) ph1[u] -= 1;
+                }
+            } else for (int u = 0; u < n; u++) {
                 double d1 = dt1 * det[u], d2 = dt2 * det[u];
                 double a = osc(ph1[u], d1, w1, pw);
                 double b = mix2 > 0 ? osc(ph2[u], d2, w2, pw) : 0;

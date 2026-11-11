@@ -289,11 +289,15 @@ class AppState(private val app: Context) {
     private fun rebuild() {
         // SE-11: the mess's synths show in the Synths jar under their names, so every screen can name them
         for ((k, sp) in project.synths) lib.addSynth(k, sp.name)
+        // the wavetables are made once, off the audio thread, as soon as a mess has a wavetable synth
+        if (!tablesMade && project.synths.values.any { it.kind == Synth.WAVE }) { tablesMade = true; worker.execute { Synth.warm() } }
         engine.setSnapshot(Engine.Snapshot.build(project, lib, live))
         syncBakes()
     }
 
     /* ---------------- synths (SE-11) ---------------- */
+
+    private var tablesMade = false
 
     /** Simple, Full or Synthipad, for this session. */
     var synthView by mutableStateOf("simple")

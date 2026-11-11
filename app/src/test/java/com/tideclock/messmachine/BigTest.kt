@@ -752,6 +752,13 @@ class BigTest {
         rule.onNodeWithTag("knob-cut").performTouchInput { doubleClick(Offset(centerX, 20.dp.toPx())) }
         settle()
         assertEquals("double tap puts it back to its default", com.tideclock.messmachine.engine.Synth.ANALOG.params.first { it.id == "cut" }.def, state.synthOn(pad)!!.get("cut"), 1.0)
+        at("synthkind-fm").performClick(); settle()
+        assertEquals("the FM chip makes it an FM synth", "fm", state.synthOn(pad)!!.kind.id)
+        shot("44-synth-fm")
+        at("synthkind-wave").performClick(); settle()
+        assertEquals("the Wavetable chip makes it a wavetable synth", "wave", state.synthOn(pad)!!.kind.id)
+        shot("45-synth-wave")
+        at("synthkind-analog").performClick(); settle()
         at("synthmode-2").performClick(); settle()
         assertEquals("Acid", 2.0, state.synthOn(pad)!!.get("mode"), 0.0)
         shot("41-synth-simple")

@@ -12,7 +12,7 @@ Rewritten at the end of every session and at each step of a long job (BT-2). Rea
   section at the top. MM-11 (Play Store) is last and notes only. MM-5 (Oboe) waits for real numbers from the Audio
   check. MM-15 (Fold layouts) skipped with a big note. MM-22 (creature cards) is an outline in the doc.
 - **Next:** sound engine plan v2, piece by piece (see Decisions). Built: 1 to 3 (build 61), 4 bake and Latency
-  (62), 5 the Synth tab with Analog (63). Then 6 to 9 (FM, wavetable, granular, drums and plucks), 10 (loops,
+  (62), 5 the Synth tab with Analog (63), 6 and 7 FM and wavetable (64). Then 8 and 9 (FM, wavetable, granular, drums and plucks), 10 (loops,
   re-cut chops), 11 (the Vault and packs). Tyler's Latency note still decides MM-5.
 - **Not done, and why:** MM-14 strong skipping stays off: composable lambdas that read the mess without snapshot
   state would stop redrawing (note #6 again), and nothing measured says the UI costs audio time yet; the Audio
@@ -95,6 +95,12 @@ Sound engine plan v2 (doc https://claude.ai/artifact/Vsr6HBLcVa8wehHaNbqSD9), bu
   half a step); Roll notes for their length; acid notes that touch slide.
 - 2026-11-10 Knobs are not counted by the design check (they are a playing surface, like keys); each knob group
   is one row of controls. The design check now allows 6 tabs from design/exceptions.txt.
+- 2026-11-10 FM (Claude, SE-13): four operators, eight algorithms (bitmask tables), feedback on operator 4,
+  16 ratios including 1.41 and 3.5 for bells, an envelope per operator, no filter. About 2 to 5 ms of CPU per
+  voice-second on the workspace.
+- 2026-11-10 Wavetable (Claude, SE-14): six tables made in code on first use (92 ms, about 2 MB): 16 shapes each,
+  6 levels of detail picked by pitch so high notes do not alias. Shares Analog's filter, envelopes and LFO
+  (one voice class, a different oscillator per kind). Switching kind loads that kind's first preset.
 
 ## Control map
 

@@ -883,7 +883,7 @@ public final class Engine {
         if (hold) gateSec = -1;
         else if (durSec > 0 && gate) gateSec = mode == 2 ? durSec + .004 : durSec * .97;
         else if (durSec > 0) gateSec = Math.min(durSec, spbSec) * (mode == 2 ? .5 : .9);
-        else gateSec = Math.min(2, sp.get("aa") + sp.get("ad"));
+        else gateSec = Synth.ringSec(sp);
         Voice v = null;
         boolean slide = false;
         if (mode != 0) {

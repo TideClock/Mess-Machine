@@ -1,24 +1,20 @@
 {
-  "title": "The Synth tab: Poly, Mono and Acid",
+  "title": "FM and Wavetable synths",
   "thisBuild": [
-    "A new tab, SYNTH, right after PLAY. A synth sits on a pad like a sound, so steps, Roll, keys, Hold and Repeat all play it.",
-    "Open SYNTH with an empty pad free and tap On empty pad, or put one on the selected pad instead of its sound. Start from 11 presets: Warm pad, Soft keys, Brass, Chord stab, Mono bass, Acid line, Square acid, Sync lead, Wobble, Glass bell, Noise sweep.",
-    "Three views. Simple: the knobs that matter most and a keyboard. Full: every knob, grouped (two oscillators, mixer, filter, two envelopes, LFO, voice). Synthipad: the page becomes a playing surface, four rows of in-key notes with an XY square for the filter (across is cutoff, up is resonance).",
-    "Knobs: drag up or right to turn up, double tap for the default, hold to type a value. Turning a knob changes notes already playing.",
-    "Poly plays chords. Mono plays one note and glides between held keys (let go of the top key and it slides back). Acid is mono with a squelchy filter: in Roll, notes that touch slide into each other, and fresh notes get an accent.",
-    "On a synth pad, the pad menu and the button by the bank numbers say Synth and open this tab.",
-    "From build 62: Bake, and the Latency screen in Notes for Claude."
+    "The Synth tab has two new kinds beside Analog. Tap the kind at the top to switch (it starts from that kind's first preset; Undo brings back what you had).",
+    "FM: four sine operators that bend each other. Pick an Algorithm (who bends whom), then Brightness for how hard, Feedback for grit, a Ratio per operator, and each operator's own envelope. Presets: E piano, Bell, FM bass, Brass, Marimba, Organ, Metal, Growl, Glass pad.",
+    "Wavetable: one oscillator that moves through a table of shapes. Six tables (Basic, Pulse, Sweep, Vowels, Hollow, Grit). Position picks the shape; Env to position and LFO to position move it while the note plays; Warp folds it. It has Analog's filter and envelopes. Presets: Vowel pad, Sweep lead, PWM strings, Hollow keys, Grit bass, Morph pluck, Vowel talk.",
+    "Making a synth now offers every preset of every kind.",
+    "From build 63: the Synth tab with Analog (Poly, Mono, Acid), Simple, Full and Synthipad."
   ],
   "watch": [
-    "Make a Warm pad and hold a chord on the keyboard, then turn Cutoff while it sounds.",
-    "Make an Acid line, draw a few notes in Roll with some touching, and play the loop: touching notes should slide.",
-    "Try Mono bass on steps, and Synthipad with two or three fingers.",
-    "Watch the Latency screen's load with a big Warm pad chord: unison pads cost the most."
+    "Play the E piano and Bell presets on keys with a few fingers.",
+    "Try Vowel talk in Mono on steps, and turn Position on Vowel pad while a chord holds.",
+    "Switch a synth pad between kinds and use Undo: steps and Roll notes on the pad should stay."
   ],
   "limits": [
-    "Only the Analog synth so far. FM, wavetable, granular, drums and plucks come next, each as its own build.",
-    "A synth is mono out of its voice (pan and the effects still apply); no stereo unison spread yet.",
-    "Notes in Roll have no per-note accent or velocity yet; Acid's accent goes on every fresh note.",
-    "Synths are saved in the mess file. The website's Mess Machine does not know them yet, so a mess with a synth opens there without it."
+    "Granular, drum and pluck synths come next.",
+    "FM has no filter of its own (the pad's Tone and effects still work on it).",
+    "A synth is mono out of its voice; no stereo spread yet."
   ]
 }

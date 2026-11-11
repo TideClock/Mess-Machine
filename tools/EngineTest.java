@@ -162,6 +162,17 @@ public class EngineTest {
           Engine xe = eng.apply(x); xe.down(1, 0, new int[]{nt}, true); for (float f : run.apply(xe, .3)) { if (Float.isNaN(f) || Float.isInfinite(f)) bad = true; peak = Math.max(peak, Math.abs(f)); }
         }
         check(!bad && peak < 1.5, String.format("Synth: full resonance and drive in every mode and filter stay finite (peak %.2f)", peak));
+        // SE-13 FM and SE-14 wavetable: in tune, they end after their release, and every preset plays without blowing up
+        Synth.Patch fm1 = new Synth.Patch(Synth.FM, "t"); fm1.set("algo", 6); fm1.set("l2", 0); fm1.set("l3", 0); fm1.set("l4", 0); fm1.set("s1", 1);
+        Synth.Patch wv1 = new Synth.Patch(Synth.WAVE, "t"); wv1.set("pos", 0); wv1.set("fenv", 0); wv1.set("cut", 18000);
+        for (Synth.Patch kp : new Synth.Patch[]{fm1, wv1}) {
+          Engine ke = eng.apply(kp); ke.down(1, 0, new int[]{0}, true); run.apply(ke, .1); double kh = hz.apply(run.apply(ke, .5));
+          ke.up(1); run.apply(ke, 2.5);
+          check(Math.abs(kh - 261.6) < 3 && ke.activeVoices() == 0, String.format("Synth %s: middle C at %.1f Hz, and the note ends after its release", kp.kind.name, kh));
+        }
+        boolean kBad = false; double kPeak = 0;
+        for (Synth.Kind kk : Synth.KINDS) for (Synth.Patch pr : kk.presets) { Engine ke = eng.apply(pr.copy()); ke.down(1, 0, new int[]{0, 4, 7}, true); for (float f : run.apply(ke, .6)) { if (Float.isNaN(f) || Float.isInfinite(f)) kBad = true; kPeak = Math.max(kPeak, Math.abs(f)); } }
+        check(!kBad && kPeak < 1.5, String.format("Synth: all %d presets play a chord cleanly (peak %.2f)", java.util.Arrays.stream(Synth.KINDS).mapToInt(kk -> kk.presets.size()).sum(), kPeak));
         Project sv = new Project(); sv.kit[3] = "synth:2"; sv.synths.put("synth:2", Synth.ANALOG.presets.get(4).copy());
         Project back = Project.fromJson(sv.toJson(), k -> false).project;
         check("synth:2".equals(back.kit[3]) && back.synth("synth:2") != null && back.synth("synth:2").get("mode") == 1 && "Mono bass".equals(back.synth("synth:2").name), "Synth: saved and loaded with the mess, even where the library does not know the key");

@@ -69,6 +69,10 @@ fun SynthScreen(state: AppState) {
                 modifier = Modifier.weight(1f), tag = "synth-preset",
             )
         }
+        // what kind of synth (switching starts from that kind's first preset; Undo brings the old one back)
+        Row(Modifier.fillMaxWidth().padding(bottom = 8.dp, end = 4.dp).testTag("synthkind-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            for (k in Synth.KINDS) Btn(k.name, { if (sp.kind != k) state.loadSynthPreset(pad, k.presets.first()) }, on = sp.kind == k, onColor = C.Yellow, small = true, tag = "synthkind-${k.id}", modifier = Modifier.weight(1f))
+        }
         Row(Modifier.fillMaxWidth().padding(bottom = 12.dp, end = 4.dp).testTag("synthview-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for ((id, n) in listOf("simple" to "Simple", "full" to "Full", "pad" to "Synthipad")) Btn(n, { state.synthView = id }, on = state.synthView == id, onColor = C.Teal, small = true, tag = "synthview-$id", modifier = Modifier.weight(1f))
         }
@@ -100,10 +104,11 @@ fun SynthScreen(state: AppState) {
 @Composable
 private fun NoSynth(state: AppState, pad: Int) {
     val P = state.project
+    val all = remember { Synth.KINDS.flatMap { k -> k.presets.map { "${k.name}: ${it.name}" to it } } }
     var preset by remember { mutableStateOf(Synth.ANALOG.presets.first()) }
     Note("A synth plays on a pad like a sound: steps, Roll, keys, Hold and Repeat all work. Pick where to put one.", modifier = Modifier.padding(top = 10.dp, bottom = 12.dp))
     T("START FROM", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(bottom = 4.dp))
-    Select(preset.name, Synth.ANALOG.presets.map { it.name to it.name }, { n -> Synth.ANALOG.presets.firstOrNull { it.name == n }?.let { preset = it } }, tag = "nosynth-preset")
+    Select("${preset.kind.name}: ${preset.name}", all.map { it.first to it.first }, { n -> all.firstOrNull { it.first == n }?.let { preset = it.second } }, tag = "nosynth-preset")
     Spacer(Modifier.height(12.dp))
     val empty = state.emptyPadInBank()
     if (empty >= 0) Btn("On empty pad ${empty + 1}", { state.newSynth(empty, preset) }, on = true, onColor = C.Teal, tag = "synth-new-empty")
