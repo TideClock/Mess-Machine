@@ -825,7 +825,9 @@ class BigTest {
     /** MM-T: every lesson starts on a practice mess and puts the real mess back exactly, finished or stopped. */
     @Test fun lessonsPutTheMessBack() {
         state.project.name = "Tyler's real mess"
-        val before = state.project.toJson()
+        // the saved file carries the time it was written: compare everything but that
+        fun mess() = state.project.toJson().replace(Regex("\\d{4}-\\d\\d-\\d\\dT[0-9:.]+Z"), "")
+        val before = mess()
         for (t in Tutorials.all) {
             state.startTutorial(t)
             settle()
@@ -833,7 +835,7 @@ class BigTest {
             assertNotEquals("${t.id} runs on a practice mess", "Tyler's real mess", state.project.name)
             state.endTutorial(false)
             settle()
-            assertEquals("${t.id} puts the mess back", before, state.project.toJson())
+            assertEquals("${t.id} puts the mess back", before, mess())
         }
         assertFalse("nothing left over from the lessons", java.io.File(androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>().filesDir, "before-lesson.json").exists())
     }
@@ -844,9 +846,9 @@ class BigTest {
         settle()
         shot("50-learn")
         rule.onNodeWithTag("learn-hold").performScrollTo().performClick()
-        settle(); state.tutTick(); settle()
+        settle(); state.tutTick(); settle(); settle()
         assertEquals("hold", state.tut?.id)
-        assertTrue("the ring can find H in the dock", (TutHi.rects["dock-hold"]?.width ?: 0f) > 0f)
+        assertTrue("the ring can find H in the dock (dock-hold at ${TutHi.rects["dock-hold"]}, ${TutHi.rects.size} controls known, e.g. ${TutHi.rects.keys.take(8)})", (TutHi.rects["dock-hold"]?.width ?: 0f) > 0f)
         shot("51-lesson-hold")
         rule.onNodeWithTag("pad-2").performClick(); settle(); state.tutTick()
         assertEquals("tapping a pad before Hold is on does not count", 0, state.tutStep)
