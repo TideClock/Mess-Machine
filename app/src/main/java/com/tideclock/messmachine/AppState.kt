@@ -270,6 +270,8 @@ class AppState(private val app: Context) {
         padMenu = -1
         tab = Tab.Pads
         synthView = "simple"
+        // lessons point at H, RPT and the rate in the dock, so it opens for them (just this once, not saved)
+        dockOpen = true
         replaceProjectQuiet(Project.starter())
         t.setup(this)
         tut = t
