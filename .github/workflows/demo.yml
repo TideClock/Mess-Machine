@@ -47,7 +47,7 @@ jobs:
           cd app/build/demo
           for d in */; do
             d=${d%/}
-            ffmpeg -loglevel error -y -framerate 30 -i "$d/f_%05d.jpg" -c:v libx264 -crf 15 -preset medium -pix_fmt yuv420p "$d/frames.mp4" && rm "$d"/f_*.jpg
+            ffmpeg -loglevel error -y -framerate 30 -i "$d/f_%05d.jpg" -c:v libx264 -crf 17 -preset medium -pix_fmt yuv420p "$d/frames.mp4" && rm "$d"/f_*.jpg
           done
       - name: Put the output on the demo-out branch
         run: |
