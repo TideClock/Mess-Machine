@@ -42,20 +42,21 @@ object Tutorials {
             TutStep("Press and hold a pad: its menu opens (sounds, keys, Sample, clear).", t("pad-1")) { s, _ -> s.padMenu >= 0 },
             TutStep("Close the menu by tapping outside it.") { s, _ -> s.padMenu < 0 },
         )),
-        Tutorial("hold", "Playing", "Hold", "Latch pads so they keep playing while your hands do something else.", listOf(
+        Tutorial("hold", "Playing", "Hold", "Latch notes so they keep playing while your hands do something else.", listOf(
+            TutStep("Tap Keys at the top. The pads become notes of the selected sound.", t("mode-keys")) { s, _ -> s.keysMode },
             TutStep("Tap H in the dock to turn Hold on.", t("dock-hold")) { s, _ -> s.holdOn },
-            TutStep("Tap a pad. It keeps playing on its own.", t("pad-2")) { s, _ -> s.latched.isNotEmpty() },
-            TutStep("Tap the same pad again to let it go.") { s, _ -> s.latched.isEmpty() },
-            TutStep("Tap H again to turn Hold off.", t("dock-hold")) { s, _ -> !s.holdOn },
+            TutStep("Tap a key. It keeps playing after you let go.", t("pad-2")) { s, _ -> s.latched.isNotEmpty() },
+            TutStep("Tap the same key again to let it go.", t("pad-2")) { s, _ -> s.latched.isEmpty() },
+            TutStep("Turn Hold off with H, then tap Pads.", t("dock-hold")) { s, _ -> !s.holdOn && !s.keysMode },
         )),
         Tutorial("beat", "Playing", "On the beat", "A held pad that starts again on every beat, in time.", listOf(
             openSample,
             TutStep("Under When it is held, pick On the beat.", t("held-beat")) { s, _ -> selEdit(s).held == "beat" },
             TutStep("Pick 2 beats.", t("beat-2")) { s, _ -> selEdit(s).beatN == 2 },
             closeSheet,
-            TutStep("Turn Hold on with H.", t("dock-hold")) { s, _ -> s.holdOn },
-            TutStep("Tap the selected pad. It restarts every 2 beats.", { s -> "pad-${s.project.sel % Project.BANK}" }) { s, _ -> s.latched.isNotEmpty() },
-            TutStep("Tap it again, then turn Hold off.", t("dock-hold")) { s, _ -> s.latched.isEmpty() && !s.holdOn },
+            TutStep("Tap Keys at the top, then H in the dock to turn Hold on.", t("mode-keys")) { s, _ -> s.keysMode && s.holdOn },
+            TutStep("Tap a key. It starts again every 2 beats, in time.", t("pad-4")) { s, _ -> s.latched.isNotEmpty() },
+            TutStep("Tap it again, turn Hold off and go back to Pads.", t("dock-hold")) { s, _ -> s.latched.isEmpty() && !s.holdOn && !s.keysMode },
         )),
         Tutorial("repeat", "Playing", "Note repeat", "Hold a pad and it repeats in time; pick how the repeats sound.", listOf(
             TutStep("Tap RPT in the dock.", t("dock-repeat")) { s, _ -> s.live.nr },
