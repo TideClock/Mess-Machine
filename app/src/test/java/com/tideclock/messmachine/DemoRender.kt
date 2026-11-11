@@ -13,6 +13,10 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextClearance
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
 import androidx.core.view.drawToBitmap
@@ -187,7 +191,9 @@ class DemoRender {
     /** Tap something found by the words on it (menu rows have no tags). */
     private fun tapText(text: String, hold: Int = 3) {
         val node = rule.onNodeWithText(text, substring = true, ignoreCase = true, useUnmergedTree = true)
-        val b = node.fetchSemanticsNode().boundsInWindow
+        val sn = node.fetchSemanticsNode()
+        val off = if (sn.root !== rule.onNodeWithTag("topbar").fetchSemanticsNode().root) popupAt else Offset.Zero
+        val b = sn.boundsInWindow.translate(off)
         log.append("$frameNo,down,${b.center.x.toInt()},${b.center.y.toInt()},$text\n")
         node.performTouchInput { down(center) }
         frames(hold)
@@ -202,6 +208,42 @@ class DemoRender {
         frames(n)
         fingerUp(0, tag, note); frame()
     }
+    /** Tap something by its exact words. When several things carry them, the lowest on screen (or the nth from the top). */
+    private fun tapExact(text: String, hold: Int = 3, pick: Int = -1) {
+        val col = rule.onAllNodes(hasText(text), useUnmergedTree = true)
+        val nodes = col.fetchSemanticsNodes()
+        if (nodes.isEmpty()) throw AssertionError("nothing on screen says \"$text\"")
+        val order = nodes.indices.sortedBy { nodes[it].boundsInWindow.top }
+        val i = if (pick < 0) order.last() else order[pick]
+        val n = nodes[i]
+        val off = if (n.root !== rule.onNodeWithTag("topbar").fetchSemanticsNode().root) popupAt else Offset.Zero
+        val c = n.boundsInWindow.center + off
+        log.append("$frameNo,down,${c.x.toInt()},${c.y.toInt()},$text\n")
+        col[i].performTouchInput { down(center) }
+        frames(hold)
+        rule.onAllNodes(hasText(text), useUnmergedTree = true)[i].performTouchInput { up() }
+        log.append("$frameNo,up,${c.x.toInt()},${c.y.toInt()},$text\n")
+        frame()
+    }
+    private fun waitWhile(limit: Int = 900, cond: () -> Boolean) { var n = 0; while (cond() && n++ < limit) frame() }
+    /** Where a note sits on the Padiano once In key only has hidden the out-of-key squares. */
+    private fun inKeyPk(pad: Int, semis: Int): Float {
+        val base = state.padianoBase[pad] ?: 0
+        val pr = state.project
+        val notes = (base until base + state.padianoN).filter { pr.scale == "Chromatic" || Theory.inScale(it, pr.scale, pr.root) }
+        return (notes.indexOf(semis) + .5f) / notes.size
+    }
+    /** The small beat most shots play over: kick on the beats, hat between, and (if given) a one bar loop on pad 4. */
+    private fun beat(loop: String? = null, bpm: Int = 120) {
+        state.newMess(); state.setBpm(bpm)
+        if (loop != null) { state.putOnPad(3, loop); load(loop) }
+        state.edit {
+            for (j in listOf(0, 4, 8, 12)) pat().setStep(kit[0], j, true)
+            for (j in listOf(2, 6, 10, 14)) pat().setStep(kit[2], j, true)
+            if (loop != null) pat().setStep(loop, 0, true)
+        }
+    }
+    private fun bars(n: Int) { repeat(n) { untilStep(15); untilStep(0) } }
     private fun has(tag: String) = rule.onAllNodesWithTag(tag, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
 
     /** Run a shot; if it breaks, keep what was filmed plus a picture and the tag list of where it broke. */
@@ -663,5 +705,393 @@ class DemoRender {
         mark("out")
         untilStep(15); untilStep(0)
         tap("play"); secs(1.5)
+    }
+
+    private val throne = "loop:give-me-throne-2"
+
+    /** B9: Padiano. Hold a pad, open keys under it, then In key only so no square is a wrong note. */
+    @Test fun b9() = shoot("b9") {
+        state.newMess()
+        state.putOnPad(4, harp); load(harp)
+        settle(); action(); secs(.4)
+        mark("menu")
+        tap("pad-4", hold = 20); secs(.6)
+        tap("menu-piano"); secs(.7)
+        mark("keys")
+        for (n in listOf(0, 3, 7, 12, 10, 7)) { key(4, n, hold = 5); frames(7) }
+        secs(.5)
+        mark("wrong")
+        for (n in listOf(0, 1, 2, 3, 4)) { key(4, n, hold = 4); frames(5) }
+        secs(.4)
+        mark("settings")
+        tap("piano-set-4"); secs(.5)
+        tap("pset-inkey"); secs(.7)
+        tap("piano-set-4"); secs(.4)
+        mark("inkey")
+        for (n in listOf(0, 2, 3, 5, 7, 8, 10, 12, 10, 8, 7, 5, 3, 2, 0)) { tap("piano-keys-4", inKeyPk(4, n), .5f, hold = 3, note = "key"); frames(3) }
+        secs(1.2)
+    }
+
+    /** B10: Granular. Grains of a long sound, Position moved by hand, then the Freeze and Shimmer presets. */
+    @Test fun b10() = shoot("b10") {
+        state.newMess()
+        state.putOnPad(1, harp); load(harp)
+        state.newSynth(0, Synth.GRAIN.presets.first { it.name == "Cloud" })
+        state.setGrainSource(0, harp)
+        state.tab = Tab.Synth
+        settle(); action(); secs(.5)
+        mark("cloud")
+        fingerDown(0, "piano-keys-0", pk(0, 0), .5f, "key"); frames(20)
+        mark("position")
+        turnAt.remove("knob-pos")
+        fingerDown(1, "knob-pos", .5f, .28f, "knob"); frame()
+        turn("knob-pos", .5f, 45); turn("knob-pos", -.75f, 60); turn("knob-pos", .4f, 40)
+        fingerUp(1, "knob-pos", "knob"); frames(10)
+        fingerUp(0, "piano-keys-0", "key"); secs(1.2)
+        for (name in listOf("Freeze", "Shimmer")) {
+            mark(name.lowercase())
+            tap("synth-preset"); secs(.5)
+            tapExact(name); secs(.5)
+            fingerDown(0, "piano-keys-0", pk(0, 0), .5f, "key"); frames(12)
+            fingerDown(1, "piano-keys-0", pk(0, 7), .5f, "key2"); frames(75)
+            fingerUp(0, "piano-keys-0", "key"); fingerUp(1, "piano-keys-0", "key2"); secs(1.4)
+        }
+    }
+
+    /** B11: Bake. The same chords on keys with Bake off, then on. The difference is in the sound. */
+    @Test fun b11() = shoot("b11") {
+        state.newMess()
+        state.putOnPad(4, harp); load(harp)
+        state.selectPad(4, false); state.toggleKeyboard(4)
+        state.pickChordMode("triad"); state.switchChordPlay(true)
+        settle(); action(); secs(.4)
+        mark("live")
+        for (n in listOf(0, 5, 7)) { key(4, n, hold = 5); secs(1.5) }
+        mark("sheet")
+        tap("open-sample"); secs(.5)
+        tap("bake-it"); frames(6)
+        waitWhile { state.bakeState(harp) != "baked" }
+        println("DEMO bake state ${state.bakeState(harp)} at frame $frameNo")
+        secs(.6)
+        tap("done"); secs(.4)
+        mark("baked")
+        for (n in listOf(0, 5, 7)) { key(4, n, hold = 5); secs(1.5) }
+        secs(.8)
+    }
+
+    /** B12: the Sample sheet's tools. Trim a loop by dragging, add effects, chop it onto pads and play the slices. */
+    @Test fun b12() = shoot("b12") {
+        state.newMess(); state.setBpm(120)
+        state.putOnPad(4, throne); load(throne)
+        state.selectPad(4, false)
+        settle(); action(); secs(.4)
+        tap("pad-4", hold = 4); secs(2.1)
+        mark("trim")
+        tap("open-sample"); secs(.5)
+        tap("dtab-trim"); secs(.4)
+        val y = textBox("HEAR IT").top - 170f
+        val left = 28f; val right = 766f
+        slideAt(left + 6f, y, left + (right - left) * .25f, y, 18, "trim-start"); secs(1.0)
+        slideAt(right - 6f, y, left + (right - left) * .75f, y, 18, "trim-end"); secs(1.3)
+        mark("effects")
+        tap("dtab-fx"); secs(.4)
+        tap("dfx-rvb"); secs(1.3)
+        tap("dfx-echo"); secs(1.6)
+        mark("chop")
+        tap("dtab-tools"); secs(.4)
+        tapExact("4 SLICES"); secs(.6)
+        tapExact("CHOP TO PADS"); secs(.8)
+        if (state.overlay != null) { tap("done"); secs(.4) }
+        mark("slices")
+        val got = (8 until 16).filter { state.project.kit[it].isNotEmpty() }
+        println("DEMO chop pads $got")
+        for (d in listOf(0, 1, 2, 3, 0, 0, 2, 3, 1, 0)) { val pad = got.getOrNull(d) ?: continue; tap("pad-$pad", hold = 3, note = "slice"); frames(6) }
+        secs(.8)
+    }
+
+    /** B13: perform effects over a playing loop: stutter, echo throw, tape stop. */
+    @Test fun b13() = shoot("b13") {
+        beat(throne)
+        settle(); action(); secs(.3)
+        tap("play"); untilStep(8)
+        mark("fx-open")
+        tap("fx-toggle"); frames(8)
+        show("fx-tape"); bars(1)
+        untilStep(8); mark("stutter")
+        fingerDown(0, "fx-stutter", .55f, .5f, "fx"); untilStep(15); untilStep(0); fingerUp(0, "fx-stutter", "fx"); frame()
+        untilStep(12); mark("echo")
+        fingerDown(0, "fx-echo", .55f, .5f, "fx"); untilStep(15); untilStep(0); fingerUp(0, "fx-echo", "fx"); frame()
+        bars(1); untilStep(8); mark("tape")
+        fingerDown(0, "fx-tape", .55f, .5f, "fx"); frames(36); fingerUp(0, "fx-tape", "fx"); frame()
+        mark("back"); frames(75)
+        tap("play"); secs(.8)
+    }
+
+    /** B14: Song. Loops A, B and C painted into bars and played as a song. */
+    @Test fun b14() = shoot("b14") {
+        state.newMess(); state.setBpm(132)
+        state.newSynth(4, analog("Acid line"))
+        val acid = state.project.kit[4]
+        state.edit {
+            val k = kit[0]; val c = kit[1]; val h = kit[2]; val sn = kit[3]
+            for (j in listOf(0, 4, 8, 12)) { pats[0].setStep(k, j, true); pats[1].setStep(k, j, true) }
+            for (j in listOf(2, 6, 10, 14)) { pats[0].setStep(h, j, true); pats[1].setStep(h, j, true) }
+            for (j in listOf(4, 12)) pats[1].setStep(sn, j, true)
+            for ((st, p, l) in listOf(Triple(0, 0, 2), Triple(2, 0, 1), Triple(3, 12, 1), Triple(4, 0, 2), Triple(6, 3, 2), Triple(8, 0, 2), Triple(10, 7, 2), Triple(12, 10, 2), Triple(14, 7, 2))) pats[1].notes(acid).add(Project.Note(st, p, l))
+            for (j in listOf(0, 3, 6, 10)) pats[2].setStep(k, j, true)
+            for (j in listOf(4, 12, 14, 15)) pats[2].setStep(c, j, true)
+            for (j in 0 until 16) pats[2].setStep(h, j, true)
+        }
+        state.tab = Tab.Song
+        settle(); action(); secs(.5)
+        mark("paint")
+        tapExact("A"); frames(5); tap("bar-0"); frames(3); tap("bar-1"); frames(4)
+        tapExact("B"); frames(5); tap("bar-2"); frames(3); tap("bar-3"); frames(4)
+        tapExact("C"); frames(5); tap("bar-4"); frames(4)
+        tapExact("B"); frames(5); tap("bar-5"); frames(8)
+        mark("play")
+        tapExact("PLAY THE SONG"); frames(8)
+        tap("play"); frames(332)
+        tap("play"); secs(.8)
+    }
+
+    /** B15: resample. The whole loop becomes one sound on a pad, played back and then pitched on its own keys. */
+    @Test fun b15() = shoot("b15") {
+        beat(throne)
+        state.tab = Tab.Steps
+        settle(); action(); secs(.3)
+        tap("play"); bars(2)
+        tap("play"); frames(10)
+        mark("resample")
+        tapExact("RESAMPLE TO A PAD"); frames(4)
+        waitWhile { state.busy != null }; secs(1.2)
+        mark("result")
+        tap("tab-Pads"); secs(.5)
+        tap("pad-8", hold = 4); secs(2.2)
+        mark("keys")
+        tap("pad-8", hold = 20); secs(.5)
+        tap("menu-piano"); secs(.6)
+        for (n in listOf(0, 5, 7)) { key(8, n, hold = 5); secs(1.1) }
+        secs(1.2)
+    }
+
+    /** C3: a latched loop that restarts on the beat, Flow chords on a Padiano, and an XY sweep, all at once. */
+    @Test fun c3() = shoot("c3") {
+        beat(throne)
+        state.setRoot(2); state.setScale("Minor")
+        state.edit { pat().setStep(throne, 0, false) }
+        state.setEdit(throne, state.project.edit(throne).copy().also { it.held = "beat"; it.beatN = 4 }, true)
+        state.newSynth(4, analog("Soft keys"))
+        state.toggleKeyboard(4)
+        state.pickChordMode("triad"); state.switchChordPlay(true)
+        state.changeHoldCount(1)
+        state.setLive { nrRate = 2.0; nrStyle = "flow" }
+        state.switchDockOpen(true)
+        settle(); action(); secs(.3)
+        tap("play"); untilStep(10)
+        mark("hold")
+        tap("dock-hold"); frames(4); untilStep(15)
+        tap("pad-3", hold = 3, note = "loop pad"); bars(2); untilStep(10)
+        mark("flow")
+        tap("dock-repeat"); frames(4)
+        for ((i, n) in listOf(2, 10, 5, 0, 2).withIndex()) {
+            if (i == 2) { mark("xy"); tap("piano-xy-4"); frames(6) }
+            untilStep(0)
+            fingerDown(0, "piano-keys-4", pk(4, n), .5f, "chord"); frames(2)
+            if (i >= 2) {
+                fingerDown(1, "xyp-4", .15f, .75f, "xy"); frame()
+                var f = 0
+                while (state.heardStep != 15 && f < 200) {
+                    val t = Math.abs(((f % 40) / 20f) - 1f)
+                    fingerMove(1, "xyp-4", .85f - .7f * t, .25f + .5f * t, "xy"); frame(); f++
+                }
+                fingerUp(1, "xyp-4", "xy")
+            } else untilStep(15)
+            fingerUp(0, "piano-keys-4", "chord"); frame()
+        }
+        mark("out")
+        untilStep(0); tap("pad-3", hold = 3, note = "loop pad"); bars(1)
+        tap("play"); secs(.8)
+    }
+
+    /** C4: record a melody live with the loop running, see it in Roll, then paint the loop into the Song. */
+    @Test fun c4() = shoot("c4") {
+        beat(null, 110)
+        state.newSynth(4, Synth.PLUCK.presets.first { it.name == "Nylon" })
+        state.toggleKeyboard(4)
+        state.selectPad(4, false)
+        settle(); action(); secs(.4)
+        mark("rec")
+        tap("rec"); frames(6)
+        tap("play"); untilStep(13)
+        for ((st, n) in listOf(0 to 0, 3 to 3, 6 to 7, 8 to 12, 10 to 10, 12 to 7, 14 to 3)) { untilStep(st); tap("piano-keys-4", pk(4, n), .5f, hold = 2, note = "key") }
+        untilStep(15); untilStep(0)
+        tap("rec"); frames(4)
+        mark("playback"); bars(1)
+        mark("roll"); tap("tab-Roll"); bars(1)
+        mark("song"); tap("tab-Song"); secs(.5)
+        tapExact("A"); frames(5)
+        for (b in 0..3) { tap("bar-$b"); frames(3) }
+        tapExact("PLAY THE SONG"); frames(6)
+        bars(2)
+        tap("play"); secs(.8)
+        println("DEMO c4 notes recorded: ${state.project.pat().notes(state.project.kit[4]).size}")
+    }
+
+    /** C5: resample a loop to a pad, then make a granular synth whose grains come from that pad. */
+    @Test fun c5() = shoot("c5") {
+        beat(throne)
+        state.tab = Tab.Steps
+        settle(); action(); secs(.3)
+        tap("play"); bars(2)
+        tap("play"); frames(10)
+        mark("resample")
+        tapExact("RESAMPLE TO A PAD"); frames(4)
+        waitWhile { state.busy != null }; secs(1.0)
+        mark("hear")
+        tap("tab-Pads"); secs(.4)
+        tap("pad-8", hold = 4); secs(2.2)
+        mark("synth")
+        tap("tab-Synth"); secs(.6)
+        tap("nosynth-preset"); secs(.5)
+        tapExact("Granular: Cloud"); secs(.5)
+        tap("synth-new-empty"); secs(.7)
+        mark("source")
+        tap("grain-src"); secs(.5)
+        tapText("Resample A"); secs(.6)
+        mark("grains")
+        val sp = state.project.sel
+        fingerDown(0, "piano-keys-$sp", pk(sp, 0), .5f, "key"); frames(18)
+        turnAt.remove("knob-pos")
+        fingerDown(1, "knob-pos", .5f, .28f, "knob"); frame()
+        turn("knob-pos", .6f, 60); turn("knob-pos", -.85f, 80); turn("knob-pos", .35f, 35)
+        fingerUp(1, "knob-pos", "knob"); frames(8)
+        fingerUp(0, "piano-keys-$sp", "key"); secs(1.6)
+    }
+
+    /* ---------------- Tier 3 ---------------- */
+
+    /** E1: My Desk. Three saved layouts of the same machine, switched while the loop plays. */
+    @Test fun e1() = shoot("e1") {
+        beat(throne)
+        settle(); action(); secs(.3)
+        tap("play"); untilStep(8)
+        mark("desk")
+        tap("view-desk"); bars(1); dumpTags("desk-perform")
+        for (d in listOf(4, 5, 6, 5)) { tap("pad-$d", hold = 3, note = "pad"); frames(8) }
+        mark("beats")
+        tap("desk-1"); bars(1); dumpTags("desk-beats"); bars(1)
+        mark("sampling")
+        tap("desk-2"); bars(1); dumpTags("desk-sampling"); bars(1)
+        mark("arrange")
+        tap("desk-0"); frames(10)
+        tap("console-edit"); bars(1); dumpTags("desk-arrange")
+        tap("console-edit"); frames(10)
+        tap("play"); secs(.6)
+    }
+
+    /** E2: Sounds. The jars, the Qbldy Loops and Hits, search, a star, and a sound sent to a pad. */
+    @Test fun e2() = shoot("e2") {
+        state.newMess()
+        state.tab = Tab.Sounds
+        settle(); action(); secs(.6)
+        mark("jars")
+        tap("mode-jar"); secs(.8)
+        rule.onNodeWithTag("jar-loops").performScrollTo(); frames(10)
+        mark("loops")
+        tap("jar-loops"); secs(.8); dumpTags("loops")
+        tap("row-loop:ametrine-1", .3f, .5f, hold = 3); secs(2.1)
+        tap("row-loop:old-wheezy-1", .3f, .5f, hold = 3); secs(2.1)
+        mark("star")
+        tap("row-loop:ametrine-1", .73f, .5f, hold = 3); secs(.6)
+        mark("hits")
+        rule.onNodeWithTag("jar-hits").performScrollTo(); frames(6)
+        tap("jar-hits"); secs(.6)
+        for (k in listOf("hit:ametrine-1", "hit:ametrine-2", "hit:ametrine-3", "hit:old-wheezy-1")) { tap("row-$k", .3f, .5f, hold = 3); secs(.5) }
+        mark("search")
+        rule.onAllNodes(hasSetTextAction()).onFirst().performTextInput("wheezy"); secs(1.2); dumpTags("search")
+        if (has("row-samples/wheezy-organ.wav")) { tap("row-samples/wheezy-organ.wav", .3f, .5f, hold = 3); secs(1.4) }
+        rule.onAllNodes(hasSetTextAction()).onFirst().performTextClearance(); frames(8)
+        mark("favorites")
+        tap("mode-fav"); secs(.9); dumpTags("fav")
+        if (has("put-loop:ametrine-1")) { tap("put-loop:ametrine-1"); secs(.8) }
+        mark("on-pad")
+        tap("tab-Pads"); secs(.5)
+        val pad = state.project.kit.indexOf("loop:ametrine-1")
+        if (pad in 0..15) { tap("pad-$pad", hold = 4); secs(2.1) }
+    }
+
+    /** E3: FM presets: E piano, Bell and Metal from the same four operators. */
+    @Test fun e3() = shoot("e3") {
+        state.newMess()
+        state.newSynth(0, Synth.FM.presets.first { it.name == "E piano" })
+        state.tab = Tab.Synth
+        settle(); action(); secs(.5)
+        fun phrase() {
+            for (n in listOf(0, 3, 7, 12)) { key(0, n, hold = 6); frames(3) }
+            fingerDown(0, "piano-keys-0", pk(0, 0), .5f, "c"); fingerDown(1, "piano-keys-0", pk(0, 3), .5f, "eb"); fingerDown(2, "piano-keys-0", pk(0, 7), .5f, "g")
+            frames(36)
+            fingerUp(0, "piano-keys-0", "c"); fingerUp(1, "piano-keys-0", "eb"); fingerUp(2, "piano-keys-0", "g"); secs(.7)
+        }
+        mark("epiano"); phrase()
+        for (name in listOf("Bell", "Metal")) {
+            tap("synth-preset"); secs(.5)
+            tapExact(name); secs(.4)
+            mark(name.lowercase()); phrase()
+        }
+        secs(.5)
+    }
+
+    /** E4: Wavetable, Vowel talk: one oscillator sweeping through vowel shapes so a bass line seems to speak. */
+    @Test fun e4() = shoot("e4") {
+        state.newMess()
+        state.newSynth(0, Synth.WAVE.presets.first { it.name == "Vowel talk" })
+        state.tab = Tab.Synth
+        settle(); action(); secs(.5)
+        mark("talk")
+        val line = listOf(0, 0, 3, 5, 7, 5, 3, 0)
+        for ((i, n) in line.withIndex()) {
+            fingerDown(i % 2, "piano-keys-0", pk(0, n), .5f, "k${i % 2}"); frames(3)
+            if (i > 0) fingerUp((i + 1) % 2, "piano-keys-0", "k${(i + 1) % 2}")
+            frames(13)
+        }
+        mark("position")
+        turnAt.remove("knob-pos")
+        fingerDown(2, "knob-pos", .5f, .28f, "knob"); frame()
+        turn("knob-pos", .7f, 50, id = 2); turn("knob-pos", -.5f, 40, id = 2)
+        fingerUp(2, "knob-pos", "knob"); frames(6)
+        fingerUp((line.size - 1) % 2, "piano-keys-0", "k${(line.size - 1) % 2}"); secs(1.0)
+    }
+
+    /** E5: the Latency screen, in Notes for Claude. Screens only: this render has no speaker to measure. */
+    @Test fun e5() = shoot("e5") {
+        beat(null)
+        settle(); action(); secs(.4)
+        mark("menu")
+        tap("menu"); secs(.6)
+        tap("notes"); secs(.9)
+        mark("latency")
+        rule.onNodeWithTag("audio-check").performScrollTo(); frames(6)
+        tap("audio-check"); secs(1.2); dumpTags("latency")
+        if (has("check-pad")) { for (i in 0 until 5) { tap("check-pad", hold = 3); frames(12) } }
+        secs(1.2); dumpTags("latency2")
+        if (has("check-bake")) { rule.onNodeWithTag("check-bake").performScrollTo(); frames(20) }
+        secs(1.0)
+    }
+
+    /** E6: Notes for Claude: the bug button. A note is written and kept on the phone; nothing is sent. */
+    @Test fun e6() = shoot("e6") {
+        beat(null)
+        settle(); action(); secs(.4)
+        mark("menu")
+        tap("menu"); secs(.6)
+        tap("notes"); secs(1.0); dumpTags("notes")
+        mark("write")
+        rule.onNodeWithTag("category-chips").performScrollTo(); frames(10); dumpTags("notes-chips")
+        rule.onAllNodes(hasSetTextAction()).onFirst().performScrollTo(); frames(6)
+        val words = "The hat on pad 3 is louder than the kick."
+        for (i in 4..words.length step 4) { rule.onAllNodes(hasSetTextAction()).onFirst().performTextClearance(); rule.onAllNodes(hasSetTextAction()).onFirst().performTextInput(words.take(i)); frames(2) }
+        rule.onAllNodes(hasSetTextAction()).onFirst().performTextClearance(); rule.onAllNodes(hasSetTextAction()).onFirst().performTextInput(words)
+        secs(2.0); dumpTags("notes-written")
     }
 }
