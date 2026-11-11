@@ -56,6 +56,9 @@ class AudioOut(private val engine: Engine, private val rate: Int, framesPerBurst
 
     fun ms(frames: Int): Double = frames * 1000.0 / rate
 
+    /** The running average share of each block's time spent making sound (1.0 = all of it). */
+    fun load(): Double = loadAvg
+
     /** One line per recent long block: when, how long, voices playing, and what else was going on. */
     fun longBlocksText(max: Int = 6): String {
         val n = lbCount

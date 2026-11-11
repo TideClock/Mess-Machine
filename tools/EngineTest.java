@@ -123,6 +123,40 @@ public class EngineTest {
         return new double[]{last / (double) rate, zc / ((a1 - a0) / (double) rate)};
       };
       double[] st = octaveUp.apply("stretch", "loop"), gr = octaveUp.apply("grain", "loop"), au = octaveUp.apply("auto", "loop");
+      // ---- SE-3: bake. The same octave up played from the baked version: same length and pitch, no live grain
+      {
+        float[] up = Bake.shift(sine, 2);
+        int zc = 0; for (int i = sr / 10 + 1; i < sr * 9 / 10; i++) if (up[i - 1] < 0 && up[i] >= 0) zc++;
+        double e0 = 0, e1 = 0; for (int i = 0; i < sr; i++) { e0 += sine[i] * sine[i]; e1 += up[i] * up[i]; }
+        check(up.length == sine.length && Math.abs(zc / .8 - 440) < 3 && Math.abs(Math.sqrt(e1 / e0) - 1) < .1,
+            String.format("Bake: an octave up keeps the length (%d of %d) at %.1f Hz, level %.2f", up.length, sine.length, zc / .8, Math.sqrt(e1 / e0)));
+        float[] dn = Bake.shift(sine, Math.pow(2, -7 / 12.0));
+        zc = 0; for (int i = sr / 10 + 1; i < sr * 9 / 10; i++) if (dn[i - 1] < 0 && dn[i] >= 0) zc++;
+        check(Math.abs(zc / .8 - 146.8) < 3, String.format("Bake: 7 semitones down plays at %.1f Hz (146.8 wanted)", zc / .8));
+        sn.baked = Bake.all(sine, null);
+        check(sn.baked != null && sn.baked[Bake.RANGE] == null && sn.baked[0] != null && sn.baked[2 * Bake.RANGE] != null, "Bake: every semitone an octave either way, the sound itself left alone");
+        Project gp = new Project(); gp.kit[0] = "sine"; SoundEdit se = new SoundEdit(); se.pitch = "grain"; se.bake = true; gp.setEdit("sine", se);
+        Engine ge = new Engine(rate); ge.setSnapshot(Engine.Snapshot.build(gp, src, new Engine.Live()));
+        ge.down(1, 0, new int[]{12}, true);
+        float[] b = new float[256 * 2]; float[] all = new float[rate * 2];
+        int gv = 0;
+        for (int i = 0; i < rate * 2 / 256; i++) { ge.render(b, 256); gv = Math.max(gv, ge.grainVoices()); for (int jj = 0; jj < 256; jj++) all[i * 256 + jj] = b[jj * 2]; }
+        int last = 0; for (int i = 0; i < all.length; i++) if (Math.abs(all[i]) > .02) last = i;
+        zc = 0; for (int i = rate / 10 + 1; i < rate * 4 / 10; i++) if (all[i - 1] < 0 && all[i] >= 0) zc++;
+        check(ge.bakedPlays == 1 && gv == 0 && Math.abs(last / (double) rate - 1) < .08 && Math.abs(zc / .3 - 440) < 7,
+            String.format("Bake: the engine plays the baked octave as tape (%d baked plays, %d grain voices, %.2f s at %.0f Hz)", ge.bakedPlays, gv, last / (double) rate, zc / .3));
+        // 13 semitones is past the bake: live grain
+        Engine g2 = new Engine(rate); g2.setSnapshot(Engine.Snapshot.build(gp, src, new Engine.Live()));
+        g2.down(1, 0, new int[]{13}, true); g2.render(b, 256);
+        check(g2.bakedPlays == 0 && g2.grainVoices() == 1 && g2.grainUsed[0], "Bake: past an octave it plays live grain, and the pad is marked as needing it");
+        // Sustain stays live (it freezes grains), reversed plays stay live (the bake is forward)
+        SoundEdit ss = se.copy(); ss.held = "sustain"; gp.setEdit("sine", ss);
+        Engine g3 = new Engine(rate); g3.setSnapshot(Engine.Snapshot.build(gp, src, new Engine.Live()));
+        g3.down(1, 0, new int[]{12}, true); g3.render(b, 256);
+        check(g3.bakedPlays == 0 && g3.grainVoices() == 1, "Bake: Sustain still plays live grain");
+        check(SoundEdit.fromMap(se.toMap()).bake && !SoundEdit.fromMap(new SoundEdit().toMap()).bake, "Bake: saved and loaded with the sound's settings");
+        sn.baked = null;
+      }
       check(Math.abs(st[0] - .5) < .06 && Math.abs(st[1] - 440) < 6, "Stretch: an octave up plays twice as fast, half as long: " + fmt(st));
       check(Math.abs(gr[0] - 1.0) < .08 && Math.abs(gr[1] - 440) < 6, "Grain: an octave up keeps its length: " + fmt(gr));
       check(Math.abs(au[0] - 1.0) < .08 && Math.abs(au[1] - 440) < 6, "auto: a key played an octave up keeps its length: " + fmt(au));

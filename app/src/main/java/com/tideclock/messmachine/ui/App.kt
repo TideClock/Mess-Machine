@@ -107,6 +107,7 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
             Column(Modifier.fillMaxSize()) {
                 Transport(state)
                 if (state.micOn) RecordingBanner(state)
+                if (state.cpuAsk) CpuBanner(state)
                 Row(Modifier.weight(1f).fillMaxWidth()) {
                 Dock(state)
                 Box(Modifier.weight(1f).fillMaxHeight().testTag("screen-${state.tab.label}")) {
@@ -139,7 +140,7 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
                     Overlay.Settings -> Sheet(state, "Settings") { SettingsScreen(state) }
                     Overlay.Tempo -> Sheet(state, "Tempo + feel") { TempoScreen(state) }
                     Overlay.Notes -> Sheet(state, "Notes for Claude") { NotesScreen(state) }
-                    Overlay.AudioCheck -> Sheet(state, "Audio check") { AudioCheckScreen(state) }
+                    Overlay.AudioCheck -> Sheet(state, "Latency") { AudioCheckScreen(state) }
                     null -> Box(Modifier) {}
                 }
             }
@@ -272,6 +273,22 @@ fun RepeatControls(state: AppState, tag: String = "repeat") {
             else { val a = v.substring(1); state.setLive { arp = a; if (a != "rep") nr = true } }
         },
     )
+}
+
+/** SE-3: the phone has stayed busy with live grain playing; offer to bake those pads, once a session. */
+@Composable
+fun CpuBanner(state: AppState) {
+    val pads = state.grainPadsToBake()
+    Column(Modifier.fillMaxWidth().background(C.Card2).testTag("cpu-banner").padding(horizontal = 14.dp, vertical = 10.dp)) {
+        T("THE PHONE IS WORKING HARD (${(state.audio.load() * 100).toInt()}%)", size = 13.sp, color = C.Yellow, spacing = .06.em, lines = 1)
+        T("Live grain on " + (if (pads.size == 1) "pad ${pads[0] + 1}" else "${pads.size} pads") + " costs three times a plain sound. Baking keeps the lag low and sounds cleaner.",
+            size = 13.sp, weight = androidx.compose.ui.text.font.FontWeight.Medium, modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Btn("Bake them", { state.bakePads(pads); state.cpuAsk = false }, on = true, onColor = C.Teal, small = true, tag = "cpu-bake")
+            Btn("Latency", { state.cpuAsk = false; state.overlay = Overlay.AudioCheck }, small = true, tag = "cpu-latency")
+            Btn("Not now", { state.cpuAsk = false }, small = true, tag = "cpu-no")
+        }
+    }
 }
 
 /** While the mic records: a red bar you can see from any page, tap to stop. */

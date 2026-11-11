@@ -16,6 +16,19 @@ public final class Sample {
 
     public double seconds() { return data.length / (double) rate; }
 
+    /** SE-3: baked versions at other pitches with the length kept, index semitones + Bake.RANGE; null until baked. */
+    public volatile float[][] baked;
+
+    /** The baked version for a pitch ratio, when it lands within 3 cents of a whole semitone in range; else null. */
+    public float[] bakedFor(double ratio) {
+        float[][] b = baked;
+        if (b == null || ratio <= 0) return null;
+        double semis = 12 * Math.log(ratio) / Math.log(2);
+        long n = Math.round(semis);
+        if (Math.abs(semis - n) > .03 || n == 0 || Math.abs(n) > Bake.RANGE) return null;
+        return b[(int) n + Bake.RANGE];
+    }
+
     /** Loudest point inside a trim region, for normalize. Cached for the last region asked. */
     public synchronized double regionPeak(double st, double en) {
         long id = Math.round(st * 1e6) * 2_000_003L + Math.round(en * 1e6);

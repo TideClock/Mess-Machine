@@ -682,6 +682,8 @@ class BigTest {
         assertTrue("the Sample button opens the Sample sheet", state.overlay is Overlay.Doctor)
         rule.onNodeWithTag("pitch-grain").performClick(); settle()
         assertEquals("grain", state.project.edit(k).pitch)
+        rule.onNodeWithTag("bake-it").performScrollTo().performClick(); settle()
+        assertTrue("Bake it turns bake on", state.project.edit(k).bake)
         rule.onNodeWithTag("held-sustain").performScrollTo().performClick(); settle()
         assertEquals("sustain", state.project.edit(k).held)
         assertTrue("a sustained sound holds", state.project.edit(k).holds())
@@ -704,6 +706,29 @@ class BigTest {
             assertEquals("flow", state.live.nrStyle)
         }
         state.setLive { nrStyle = "cut" }
+    }
+
+    /** SE-3: the Latency screen offers to bake pads that needed live grain; the CPU pop-up offers the same. */
+    @Test fun latencyBakeAndCpuPopUp() {
+        val pad = state.project.sel
+        val k = state.project.kit[pad]
+        state.engine.grainUsed[pad] = true
+        assertTrue("a pad that played live grain is offered for baking", pad in state.grainPadsToBake())
+        state.overlay = Overlay.AudioCheck
+        settle()
+        rule.onNodeWithTag("check-bake").performScrollTo().performClick(); settle()
+        assertTrue("Bake them turns bake on for that pad's sound", state.project.edit(k).bake)
+        assertFalse("and it is no longer offered", pad in state.grainPadsToBake())
+        shot("38-latency")
+        state.overlay = null
+        state.setEdit(k, state.project.edit(k).copy().also { it.bake = false }, true)
+        state.cpuAsk = true
+        settle()
+        rule.onNodeWithTag("cpu-banner").assertExists()
+        shot("39-cpu-pop-up")
+        rule.onNodeWithTag("cpu-bake").performClick(); settle()
+        assertFalse("the pop-up closes", state.cpuAsk)
+        assertTrue("and bakes the pad", state.project.edit(k).bake)
     }
 
     @Test fun doctorEffects() {
@@ -915,7 +940,7 @@ class BigTest {
         at("mode-pads").performClick(); settle()
         for (t in listOf("Steps", "Roll", "Song", "Sounds")) { tab(t); page(t) }
         tab("Pads")
-        for ((n, o) in listOf("Messes" to Overlay.Files, "Settings" to Overlay.Settings, "Tempo" to Overlay.Tempo, "Notes for Claude" to Overlay.Notes, "Audio check" to Overlay.AudioCheck)) {
+        for ((n, o) in listOf("Messes" to Overlay.Files, "Settings" to Overlay.Settings, "Tempo" to Overlay.Tempo, "Notes for Claude" to Overlay.Notes, "Latency" to Overlay.AudioCheck)) {
             state.overlay = o; sheet(n); state.overlay = null; settle()
         }
         state.overlay = Overlay.Doctor(state.project.kit[0])

@@ -795,6 +795,13 @@ public final class Engine {
         else if ("grain".equals(e.pitch)) timeR = 1;
         else timeR = Math.abs(rateMul - 1) > .0006 ? Math.max(.05, tuneR) : r;
         boolean grain = sustain || Math.abs(timeR - r) > 1e-9;
+        // SE-3: a baked version already has the new pitch at the old length, so it plays like tape at the time rate
+        double incR = r;
+        if (grain && !sustain && !rev) {
+            float[] bk = s.bakedFor(r / timeR);
+            if (bk != null && bk.length == N) { d = bk; incR = timeR; grain = false; bakedPlays++; }
+        }
+        if (grain && !sustain && ps.index >= 0 && ps.index < 64) grainUsed[ps.index] = true;
         double natural = len / s.rate / timeR;
         boolean g = "gate".equals(e.mode) || gate;
         double play = hold ? 600 : e.loop ? (durSec > 0 ? durSec : natural) : (g && durSec > 0 ? Math.min(durSec, natural) : natural);
@@ -804,7 +811,7 @@ public final class Engine {
         Voice v = freeVoice();
         v.active = true; v.preview = false; v.dry = false; v.hold = hold; v.releasing = false; v.choked = false;
         v.d = d; v.a = (int) Math.max(0, Math.floor(a)); v.len = len; v.zEnd = (int) Math.min(N, Math.ceil(a + len));
-        v.pos = 0; v.inc = r * s.rate / rate; v.loop = e.loop; v.loopFrom = 0; v.glideLeft = 0; v.glideMul = 1;
+        v.pos = 0; v.inc = incR * s.rate / rate; v.loop = e.loop; v.loopFrom = 0; v.glideLeft = 0; v.glideMul = 1;
         v.grain = grain; v.frozen = false; v.flow = false; v.pulseAt = -1; v.srate = s.rate;
         if (grain) {
             v.tPos = 0; v.tInc = timeR * s.rate / rate;
@@ -1160,6 +1167,9 @@ public final class Engine {
     private int gateSteps = 1;
     private final float[] mixAmt = {1, 1, 1, 1, 1, 1, 1, 1, 1};
     public int triggers;
+    /** SE-3: plays that used a baked version, and pads that needed live grain this session (for the Latency screen). */
+    public int bakedPlays;
+    public final boolean[] grainUsed = new boolean[64];
 
     /** Move one thing on one pad: semitones for pitch, -1..1 for volume and pan, seconds for attack, release and glide, 0..1 for the rest. */
     public void mod(int pad, int what, float value) { cmds.add(new Object[]{"mod", pad, what, value}); }
@@ -1321,6 +1331,9 @@ public final class Engine {
     public volatile int hits;
 
     public int activeVoices() { int n = 0; for (Voice v : pool) if (v.active) n++; return n; }
+
+    /** Voices running live grain right now: each costs about three plain voices. */
+    public int grainVoices() { int n = 0; for (Voice v : pool) if (v.active && v.grain) n++; return n; }
 
     /* ================= bouncing to a file ================= */
 

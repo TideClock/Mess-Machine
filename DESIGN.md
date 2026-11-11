@@ -77,6 +77,14 @@ Sound engine plan v2 (doc https://claude.ai/artifact/Vsr6HBLcVa8wehHaNbqSD9), bu
   the latency screen, and a pop-up when the CPU stays high.
 - 2026-11-10 The 0.35 s Heap and Qbldy chops go once loops and re-cut chops replace them; the song chop switch
   (SE-8) is dropped (Tyler).
+- 2026-11-10 Bake built as a phase vocoder (Claude, SE-3): 2048-point frames, hop 512, identity phase locking,
+  phase reset on hits, then a cubic resample with a 63-tap anti-alias filter going up. Every semitone within an
+  octave, sounds up to 6 s, 96 MB for all bakes in a mess. Measured against live grain (added envelope wobble in
+  40 ms windows): chords and bass 13 to 41% live vs 4 to 14% baked, glass harp 16 to 18% vs under 1%, sine 3% vs
+  1%. Bake stays off by default, as agreed; turning it on for keys automatically is a question for Tyler.
+- 2026-11-10 The Audio check is renamed Latency and is the "latency screen" of the bake plan (Claude): same home,
+  in Notes for Claude, plus Keep it light. The CPU pop-up asks once a session, after 20 s over 70% load with live
+  grain playing.
 
 ## Control map
 

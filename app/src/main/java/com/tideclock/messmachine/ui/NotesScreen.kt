@@ -185,7 +185,7 @@ fun SpeedCard(state: AppState) {
             T("How it is running", size = 13.sp, color = C.Dim)
             T(text, size = 13.sp, weight = FontWeight.Medium, modifier = Modifier.padding(top = 4.dp))
             // the Audio check's one home (MM-1): the start guide points here
-            Btn("Audio check", { state.overlay = com.tideclock.messmachine.Overlay.AudioCheck }, small = true, tag = "audio-check", modifier = Modifier.padding(top = 10.dp))
+            Btn("Latency", { state.overlay = com.tideclock.messmachine.Overlay.AudioCheck }, small = true, tag = "audio-check", modifier = Modifier.padding(top = 10.dp))
         }
     }
 }

@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.FileProvider
+import com.tideclock.messmachine.engine.Bake
 import com.tideclock.messmachine.engine.Engine
 import com.tideclock.messmachine.engine.Json
 import com.tideclock.messmachine.engine.Library
@@ -284,7 +285,67 @@ class AppState(private val app: Context) {
         }
     }
 
-    private fun rebuild() { engine.setSnapshot(Engine.Snapshot.build(project, lib, live)) }
+    private fun rebuild() { engine.setSnapshot(Engine.Snapshot.build(project, lib, live)); syncBakes() }
+
+    /* ---------------- bake (SE-3) ---------------- */
+
+    // its own low-priority thread, so a bake never holds up loading a sound or the audio
+    private val baker = Executors.newSingleThreadExecutor { r -> Thread({ android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND); r.run() }, "mess-bake") }
+    /** Sounds being baked right now. */
+    var baking by mutableStateOf<Set<String>>(emptySet())
+        private set
+
+    /** "off", "baking", "baked", "too long" or "loading", for the Sample sheet and the Latency screen. */
+    fun bakeState(key: String): String {
+        if (!project.edit(key).bake) return "off"
+        val s = lib.get(key) ?: return "loading"
+        return when { key in baking -> "baking"; s.baked != null -> "baked"; s.seconds() > Bake.MAX_SECONDS -> "too long"; bakedBytes() + bakeBytes(s) > BAKE_BUDGET -> "full"; else -> "baking" }
+    }
+
+    /** Memory all bakes together may take: 96 MB, a third or less of what Android gives the app on most phones. */
+    private val BAKE_BUDGET = 96L shl 20
+    private fun bakeBytes(s: Sample): Long = s.data.size.toLong() * 4 * 2 * Bake.RANGE
+    private fun bakedBytes(): Long = project.kit.toSet().sumOf { k -> lib.get(k)?.takeIf { it.baked != null }?.let { bakeBytes(it) } ?: 0L }
+
+    /** Bake what is asked for and not baked yet; drop bakes nobody wants, so their memory comes back. */
+    private fun syncBakes() {
+        for (k in project.kit.toSet()) {
+            if (k.isEmpty()) continue
+            val s = lib.get(k) ?: continue
+            if (!project.edit(k).bake) { if (s.baked != null && k !in baking) s.baked = null; continue }
+            if (s.baked != null || k in baking || s.seconds() > Bake.MAX_SECONDS || bakedBytes() + bakeBytes(s) > BAKE_BUDGET) continue
+            baking = baking + k
+            baker.execute {
+                val t0 = System.nanoTime()
+                val out = try { Bake.all(s.data, null) } catch (_: Throwable) { null }
+                val ms = (System.nanoTime() - t0) / 1_000_000
+                main.post {
+                    baking = baking - k
+                    if (out != null && project.edit(k).bake) { s.baked = out; notes.trail("baked ${lib.titleOf(k)} in $ms ms") }
+                    version++
+                }
+            }
+        }
+    }
+
+    /** Pads that needed live grain this session and are not baked: what the Latency screen and the CPU pop-up offer. */
+    fun grainPadsToBake(): List<Int> = (0 until Project.NPADS).filter { i ->
+        val k = project.kit[i]
+        k.isNotEmpty() && engine.grainUsed.getOrElse(i) { false } && !project.edit(k).bake && (lib.get(k)?.seconds() ?: 99.0) <= Bake.MAX_SECONDS
+    }
+
+    /** Turn bake on for these pads' sounds. */
+    fun bakePads(pads: List<Int>) {
+        val keys = pads.map { project.kit[it] }.filter { it.isNotEmpty() }.toSet()
+        if (keys.isEmpty()) return
+        edit { for (k in keys) setEdit(k, edit(k).copy().also { it.bake = true }) }
+        say(if (keys.size == 1) "Baking ${lib.titleOf(keys.first())}" else "Baking ${keys.size} sounds")
+    }
+
+    /** SE-3: asked once a session when the phone stays busy and live grain is part of why. */
+    var cpuAsk by mutableStateOf(false)
+    private var cpuAsked = false
+    private var busySince = 0L
 
     /** Make a change to the mess. */
     fun edit(commit: Boolean = true, block: Project.() -> Unit) {
@@ -385,6 +446,9 @@ class AppState(private val app: Context) {
         if (now - winStart > 10_000_000_000L) {
             val secs = (now - winStart) / 1e9
             uiPerf = "%.0f fps, %d slow frames, worst %d ms".format(frames / secs, slow, worst / 1_000_000)
+            // the CPU pop-up: over 70% of each block's time for 20 seconds, with live grain playing and pads to bake
+            if (audio.load() > .7 && engine.grainVoices() > 0) { if (busySince == 0L) busySince = now } else busySince = 0L
+            if (!cpuAsked && busySince != 0L && now - busySince >= 20_000_000_000L && grainPadsToBake().isNotEmpty()) { cpuAsked = true; cpuAsk = true; notes.trail("cpu pop-up at ${(audio.load() * 100).toInt()}%") }
             winStart = now; frames = 0; slow = 0; worst = 0
         }
         val p = engine.heard()
@@ -927,7 +991,7 @@ class AppState(private val app: Context) {
         Overlay.Settings -> "settings"
         Overlay.Tempo -> "tempo"
         Overlay.Notes -> "notes"
-        Overlay.AudioCheck -> "audio check"
+        Overlay.AudioCheck -> "latency"
     }
 
     // ---- Audio check (MM-1): where the time goes between a tap and the sound ----

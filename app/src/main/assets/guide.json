@@ -1,25 +1,22 @@
 {
-  "title": "Stretch or Grain, Sustain, and the Sample sheet",
+  "title": "Bake, and the Latency screen",
   "thisBuild": [
-    "The Doctor is now the Sample sheet, with a new first page, Play. Open it with the Sample button beside the bank numbers on Pads (for the pad you last played), or hold a pad and pick Sample.",
-    "Pitch on the Play page: Stretch plays a pitch change like tape (higher is faster and shorter). Grain keeps the length. Auto, the default, keeps the length for keys, chords and Roll notes and lets the sound's own Tune stay tape.",
-    "So a long sound played up the keyboard now lasts as long at every key instead of shrinking at the top.",
-    "When it is held (moved here from Shape): Loop it, Hold the tail, Play once, plus two new ones.",
-    "Sustain: the sound plays its attack, then holds like a pad for as long as your finger (or Hold) keeps it, and fades when you let go.",
-    "On the beat: with Hold on, the sound plays whole and starts again every beat, every 2 beats or every bar, in time with the music.",
-    "Repeat styles, in the repeat rate menu under RPT: Cut each repeat (as before), Let repeats ring (each repeat plays out over the last), and Flow (hold the note and pulse its volume, good for pads and chords). The dock shows RNG or FLO when one is on."
+    "Bake: on a sound's Sample sheet, Play page, tap Bake it. In a few seconds it renders the sound at every semitone an octave up and down, length kept. Played from the bake, Grain sounds cleaner (much less flutter on chords, bass and glassy tones) and costs no more than Stretch.",
+    "Within an octave of the sound's own pitch it plays from the bake. Further away, Sustain, and reversed plays stay live grain.",
+    "Sounds up to 6 seconds bake. The bakes in one mess share about 96 MB of memory; the Play page says when that is full.",
+    "The Audio check is now Latency (Notes for Claude, then Latency). New section, Keep it light: how many live grain voices are playing, which pads needed live grain this session, and Bake them for all of them in one tap.",
+    "If the phone stays over 70% busy for 20 seconds with live grain playing, a bar at the top offers to bake those pads, once a session. Bake them, Latency, or Not now.",
+    "From build 61: the Sample sheet (the Doctor's new name) with the Play page, Stretch or Grain, Sustain, On the beat, and Cut, Ring or Flow in the repeat rate menu."
   ],
   "watch": [
-    "Play a long sound on Keys from low to high. In Auto it should keep its length; switch the pad to Stretch on the Play page and hear the old tape way.",
-    "Listen for a flutter or a soft chorus on Grain, mostly on very clean tones far from the root. Send a note naming the sound if it bothers you.",
-    "Set a pad to Sustain and hold it for a few seconds: it should keep going smoothly, then fade on release.",
-    "Turn Hold on with a pad set to On the beat: it should restart on each beat, and stop when you unlatch it.",
-    "Try Flow on a chord with Repeat on: the chord should hold and breathe with the repeat rate."
+    "Bake a long tonal sound (a chord or a bass note), play it up and down Keys, and compare with Bake off. Baked should sound steadier.",
+    "Bake a sound while the music plays: listen for clicks during the few seconds it bakes.",
+    "Open Latency after playing keys for a while: the pads you played should be listed under Keep it light.",
+    "Run the speaker test and Save as a note, if you have not yet: that number still decides the next audio work."
   ],
   "limits": [
-    "Grain costs about three times the CPU of Stretch per voice. If you hear clicks with many held notes, switch those pads to Stretch and send a note. A bake option that does the work ahead of time is next.",
-    "Grain blurs very sharp hits a little (a drum played up the keys). Drums on pads are not affected: pads play at their own pitch.",
-    "The repeat style is for this session only, like the repeat rate. It is not saved in the mess yet.",
+    "A bake lasts while the app is open and is redone (a few seconds) when you open the mess again. Bake on stays saved with the sound.",
+    "The bake does not follow Bend or Glide exactly: those move the baked pitch like tape, a little shorter or longer, as before.",
     "Synths, loops and the RC-505 library are coming in later builds."
   ]
 }

@@ -33,8 +33,9 @@ import com.tideclock.messmachine.Overlay
 import kotlinx.coroutines.delay
 
 /**
- * Audio check (MM-1): what the phone adds between a tap and the sound. The live numbers, a pad to tap,
- * and a speaker test that times clicks with the mic. Every note carries the same numbers.
+ * Latency (MM-1, SE-3): what the phone adds between a tap and the sound. The live numbers, a pad to tap,
+ * a speaker test that times clicks with the mic, and what live grain costs with a way to bake it away.
+ * Every note carries the same numbers.
  */
 @Composable
 fun AudioCheckScreen(state: AppState) {
@@ -98,6 +99,21 @@ fun AudioCheckScreen(state: AppState) {
                 val t = state.touchMs()
                 if (state.speakerMs >= 0 && t >= 0) T("Tap to sound, about ${t + state.speakerMs.toInt()} ms (plus the screen's own scan, which no app can see).",
                     size = 13.sp, color = C.Teal, weight = FontWeight.Medium, modifier = Modifier.padding(top = 6.dp))
+            }
+        }
+        Card(Modifier.fillMaxWidth().padding(bottom = 14.dp).testTag("check-light")) {
+            Column {
+                T("3. KEEP IT LIGHT", size = 12.sp, color = C.Yellow, spacing = .1.em)
+                Note("Grain keeps a sound's length when it changes pitch, live, at about three times the work of Stretch. Bake does that work ahead of time, a few seconds per sound, and plays at Stretch's cost. It also sounds cleaner.", modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
+                val toBake = state.grainPadsToBake()
+                val baked = state.project.kit.filter { it.isNotEmpty() }.toSet().count { state.project.edit(it).bake }
+                T("Live grain voices now: ${state.engine.grainVoices()}. Sounds baked: $baked" + if (state.baking.isNotEmpty()) " (baking ${state.baking.size})" else "",
+                    size = 13.sp, weight = FontWeight.Medium)
+                if (toBake.isEmpty()) Note("No pad has needed live grain yet this session.", modifier = Modifier.padding(top = 6.dp))
+                else {
+                    T("Played with live grain: " + toBake.joinToString(", ") { "pad ${it + 1} (${state.lib.titleOf(state.project.kit[it])})" }, size = 13.sp, weight = FontWeight.Medium, modifier = Modifier.padding(top = 6.dp, bottom = 8.dp))
+                    Btn("Bake them", { state.bakePads(toBake) }, small = true, tag = "check-bake")
+                }
             }
         }
         Btn("Save as a note", {

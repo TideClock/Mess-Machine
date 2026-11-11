@@ -28,6 +28,8 @@ public final class SoundEdit {
      * stays tape, so a tuned-down kick still slows down.
      */
     public String pitch = "auto";
+    /** App only (SE-3): keep baked versions at every semitone within an octave, so Grain costs what Stretch costs. */
+    public boolean bake;
     /** App only: the doctor's effects, 0 = off. rvbSize 0..1, echoT picks 1/16, 1/8, 3/16, 1/4; wobRate 0..1. */
     public double rvb = 0, rvbSize = .5, echo = 0, dirt = 0, crush = 0, chorus = 0, wob = 0, wobRate = .3;
     public int echoT = 1;
@@ -38,14 +40,14 @@ public final class SoundEdit {
         SoundEdit e = new SoundEdit();
         e.st = st; e.en = en; e.att = att; e.rel = rel; e.rev = rev; e.loop = loop; e.norm = norm;
         e.mode = mode; e.tune = tune; e.fine = fine; e.vol = vol; e.pan = pan; e.tone = tone; e.choke = choke;
-        e.held = held; e.beatN = beatN; e.pitch = pitch;
+        e.held = held; e.beatN = beatN; e.pitch = pitch; e.bake = bake;
         e.rvb = rvb; e.rvbSize = rvbSize; e.echo = echo; e.echoT = echoT; e.dirt = dirt; e.crush = crush; e.chorus = chorus; e.wob = wob; e.wobRate = wobRate;
         return e;
     }
 
     public boolean isDefault() {
         return st == 0 && en == 1 && att == 0 && rel == 0 && !rev && !loop && !norm && "one".equals(mode)
-                && tune == 0 && fine == 0 && vol == 1 && pan == 0 && tone == 0 && choke == 0 && "loop".equals(held) && beatN == 1 && "auto".equals(pitch) && !hasFx() && rvbSize == .5 && echoT == 1 && wobRate == .3;
+                && tune == 0 && fine == 0 && vol == 1 && pan == 0 && tone == 0 && choke == 0 && "loop".equals(held) && beatN == 1 && "auto".equals(pitch) && !bake && !hasFx() && rvbSize == .5 && echoT == 1 && wobRate == .3;
     }
 
     public boolean hasFx() { return rvb > 0 || echo > 0 || dirt > 0 || crush > 0 || chorus > 0 || wob > 0; }
@@ -60,6 +62,7 @@ public final class SoundEdit {
         if (!"loop".equals(held)) m.put("held", held);
         if (beatN != 1) m.put("beatN", (double) beatN);
         if (!"auto".equals(pitch)) m.put("pitch", pitch);
+        if (bake) m.put("bake", true);
         if (hasFx() || rvbSize != .5 || echoT != 1 || wobRate != .3) {
             Map<String, Object> f = new LinkedHashMap<>();
             f.put("rvb", rvb); f.put("rvbSize", rvbSize); f.put("echo", echo); f.put("echoT", (double) echoT); f.put("dirt", dirt);
@@ -92,6 +95,7 @@ public final class SoundEdit {
         e.beatN = bn == 2 || bn == 4 ? bn : 1;
         Object pm = m.get("pitch");
         e.pitch = "stretch".equals(pm) || "grain".equals(pm) ? (String) pm : "auto";
+        e.bake = Json.bool(m.get("bake"), false);
         Map<String, Object> f = Json.map(m.get("fx"));
         e.rvb = clamp(Json.num(f.get("rvb"), 0), 0, 1); e.rvbSize = clamp(Json.num(f.get("rvbSize"), .5), 0, 1);
         e.echo = clamp(Json.num(f.get("echo"), 0), 0, 1); e.echoT = (int) clamp(Json.num(f.get("echoT"), 1), 0, 3);

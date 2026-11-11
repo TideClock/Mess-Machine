@@ -158,6 +158,21 @@ fun DoctorScreen(state: AppState, key: String) {
         Row(Modifier.fillMaxWidth().padding(bottom = 14.dp, end = 4.dp).testTag("pitch-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for ((v, n) in listOf("auto" to "Auto", "stretch" to "Stretch", "grain" to "Grain")) Btn(n, { upd(true) { pitch = v } }, on = e.pitch == v, onColor = C.Teal, small = true, tag = "pitch-$v", modifier = Modifier.weight(1f))
         }
+        // SE-3: bake, for anything that is not plain Stretch
+        if (e.pitch != "stretch") {
+            val bs = state.bakeState(key)
+            Row(Modifier.fillMaxWidth().padding(bottom = 14.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Btn(if (e.bake) "Baked" else "Bake it", { upd(true) { bake = !bake } }, on = e.bake, onColor = C.Teal, small = true, tag = "bake-it")
+                Help(when (bs) {
+                    "baking" -> "Baking every semitone an octave either way. It plays live until it is done."
+                    "baked" -> "Plays from the bake within an octave: cleaner, and as light as Stretch. Further away, and Sustain, stay live."
+                    "too long" -> "Too long to bake (over 6 s). Play it as Stretch, or keep a shorter trim as its own sound (Tools)."
+                    "loading" -> "Bakes once the sound has loaded."
+                    "full" -> "The bakes already in this mess fill the memory set aside for them. Unbake another sound to make room."
+                    else -> "Bake renders it at every semitone an octave either way, so Grain plays cleaner and as light as Stretch. A few seconds, once."
+                }, modifier = Modifier.weight(1f))
+            }
+        }
         // SE-5, SE-7: what Hold (and a finger, for Sustain) does with it
         T("WHEN IT IS HELD", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(bottom = 4.dp))
         Help("Loop its trim, freeze its tail, play it once, sustain it like a pad for as long as it is held, or play it whole and start it again on the beat while Hold keeps it.", modifier = Modifier.padding(bottom = 6.dp))
