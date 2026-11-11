@@ -12,6 +12,10 @@ class TutCtx {
     var v0 = 0
     var bpm0 = 0
     var num0 = 0.0
+    var kit0 = 0
+    var con0 = 0
+    var fav0 = 0
+    var xy0 = ""
     val seen = HashSet<String>()
 }
 
@@ -42,21 +46,21 @@ object Tutorials {
             TutStep("Press and hold a pad: its menu opens (sounds, keys, Sample, clear).", t("pad-1")) { s, _ -> s.padMenu >= 0 },
             TutStep("Close the menu by tapping outside it.") { s, _ -> s.padMenu < 0 },
         )),
-        Tutorial("hold", "Playing", "Hold", "Latch notes so they keep playing while your hands do something else.", listOf(
-            TutStep("Tap Keys at the top. The pads become notes of the selected sound.", t("mode-keys")) { s, _ -> s.keysMode },
+        Tutorial("hold", "Playing", "Hold", "Latch pads so they keep playing while your hands do something else.", listOf(
             TutStep("Tap H in the dock to turn Hold on.", t("dock-hold")) { s, _ -> s.holdOn },
-            TutStep("Tap a key. It keeps playing after you let go.", t("pad-2")) { s, _ -> s.latched.isNotEmpty() },
-            TutStep("Tap the same key again to let it go.", t("pad-2")) { s, _ -> s.latched.isEmpty() },
-            TutStep("Turn Hold off with H, then tap Pads.", t("dock-hold")) { s, _ -> !s.holdOn && !s.keysMode },
+            TutStep("Tap a pad. It keeps playing on its own, and an H shows in its corner.", t("pad-2")) { s, _ -> s.latched.isNotEmpty() },
+            TutStep("Tap a second pad. It holds too: Hold keeps as many as the number under H (3 to start; at Last, the newest takes over).", t("pad-3")) { s, c -> played(s, c, 1) },
+            TutStep("Tap each held pad again to let them go.") { s, _ -> s.latched.isEmpty() },
+            TutStep("Tap H again to turn Hold off.", t("dock-hold")) { s, _ -> !s.holdOn },
         )),
         Tutorial("beat", "Playing", "On the beat", "A held pad that starts again on every beat, in time.", listOf(
             openSample,
             TutStep("Under When it is held, pick On the beat.", t("held-beat")) { s, _ -> selEdit(s).held == "beat" },
             TutStep("Pick 2 beats.", t("beat-2")) { s, _ -> selEdit(s).beatN == 2 },
             closeSheet,
-            TutStep("Tap Keys at the top, then H in the dock to turn Hold on.", t("mode-keys")) { s, _ -> s.keysMode && s.holdOn },
-            TutStep("Tap a key. It starts again every 2 beats, in time.", t("pad-4")) { s, _ -> s.latched.isNotEmpty() },
-            TutStep("Tap it again, turn Hold off and go back to Pads.", t("dock-hold")) { s, _ -> s.latched.isEmpty() && !s.holdOn && !s.keysMode },
+            TutStep("Turn Hold on with H.", t("dock-hold")) { s, _ -> s.holdOn },
+            TutStep("Tap the selected pad. It starts again every 2 beats, in time.", { s -> "pad-${s.project.sel % Project.BANK}" }) { s, _ -> s.latched.isNotEmpty() },
+            TutStep("Tap it again, then turn Hold off.", t("dock-hold")) { s, _ -> s.latched.isEmpty() && !s.holdOn },
         )),
         Tutorial("repeat", "Playing", "Note repeat", "Hold a pad and it repeats in time; pick how the repeats sound.", listOf(
             TutStep("Tap RPT in the dock.", t("dock-repeat")) { s, _ -> s.live.nr },
@@ -138,6 +142,86 @@ object Tutorials {
             TutStep("Tap Packs.", t("open-packs")) { s, _ -> s.overlay == Overlay.Packs },
             TutStep("Tap Check for packs. Install any that are there.", t("packs-refresh")) { s, _ -> s.packOffers != null && s.packNote != "Looking for packs…" },
             closeSheet,
+        )),
+        Tutorial("filter", "Playing", "Dock filter", "Sweep a filter over the whole mix, or one pad.", listOf(
+            TutStep("Tap a pad, then drag the filter slider in the dock down.", t("dock-cut")) { s, _ -> s.dockCut < .8f },
+            TutStep("Let go: it springs back open.", t("dock-cut")) { s, _ -> s.dockCut > .95f },
+        )),
+        Tutorial("lock", "Playing", "Lock", "Lock the screen so only pads play: no menus, no accidents mid-set.", listOf(
+            TutStep("Tap the lock in the dock.", t("dock-lock")) { s, _ -> s.locked },
+            TutStep("Play some pads. Tabs and menus stay shut while it's locked.", t("pad-1")) { s, c -> played(s, c, 3) },
+            TutStep("Unlock it the same way.", t("dock-lock")) { s, _ -> !s.locked },
+        )),
+        Tutorial("chords", "Playing", "Chords and key", "Pick the mess's key and scale, and play chords from one finger.", listOf(
+            TutStep("Tap Keys at the top.", t("mode-keys")) { s, _ -> s.keysMode },
+            TutStep("Pick a different scale.", t("pick-scale")) { s, _ -> s.project.scale != "Minor" },
+            TutStep("Pick a different root note.", t("pick-root")) { s, _ -> s.project.root != 0 },
+            TutStep("Pick a chord type: each key now plays a chord in the key.", t("pick-chord")) { s, _ -> s.chordMode != "off" },
+            TutStep("Play a few keys.", t("pad-4")) { s, c -> played(s, c, 3) },
+            TutStep("Back to Pads.", t("mode-pads")) { s, _ -> !s.keysMode },
+        )),
+        Tutorial("live", "Writing", "Record live", "Play pads while the loop runs and they land on the steps.", listOf(
+            TutStep("Tap the record button at the top so it lights up.", t("rec")) { s, _ -> s.live.rec },
+            TutStep("Press Play.", t("play")) { s, _ -> s.playing },
+            TutStep("Play a beat on the pads, in time with the loop.", t("pad-0")) { s, _ -> s.project.pat().used() },
+            TutStep("Press Stop, then tap record again to turn it off.", t("stop")) { s, _ -> !s.playing && !s.live.rec },
+            TutStep("Tap STEPS to see what you played.", t("tab-Steps")) { s, _ -> s.tab == Tab.Steps },
+        )),
+        Tutorial("song", "Writing", "Song", "Chain loops into a song, bar by bar.", listOf(
+            TutStep("Tap STEPS and tap a few steps, so loop A has something in it.", t("tab-Steps")) { s, _ -> s.project.pat().used() },
+            TutStep("Tap SONG.", t("tab-Song")) { s, _ -> s.tab == Tab.Song },
+            TutStep("Tap a few bars to fill them with the loop.", t("bar-0")) { s, _ -> s.project.songLen() > 0 },
+            TutStep("Press Play: it plays the song, bar by bar.", t("play")) { s, _ -> s.playing },
+            TutStep("Press Stop.", t("stop")) { s, _ -> !s.playing },
+        )),
+        Tutorial("bottle", "Writing", "Bottle it", "Turn the loop you made into one sound on a pad.", listOf(
+            TutStep("Tap STEPS and tap a few steps.", t("tab-Steps")) { s, _ -> s.project.pat().used() },
+            TutStep("Tap Bottle it. The loop becomes a sound on a free pad.", t("bottle")) { s, c -> s.project.kit.count { it.isNotEmpty() } > c.kit0 },
+            TutStep("Tap PLAY and play the new pad.", t("tab-Pads")) { s, c -> s.tab == Tab.Pads && played(s, c, 1) },
+        )),
+        Tutorial("mic", "Sounds", "Record onto a pad", "Any empty pad is a record button: catch a sound with the mic.", listOf(
+            TutStep("Tap 2 under BANK: these pads are empty.", t("bank-1")) { s, _ -> s.bank == 1 },
+            TutStep("Tap an empty pad to start recording (or hold it and tap Record onto this pad). The first time, allow the mic.", t("pad-0")) { s, _ -> s.micOn },
+            TutStep("Make a sound, then tap the pad again to stop.", t("pad-0")) { s, c -> !s.micOn && s.project.kit.count { it.isNotEmpty() } > c.kit0 },
+            TutStep("Play your new sound.", t("pad-0")) { s, c -> played(s, c, 1) },
+        )),
+        Tutorial("sheet", "Samples", "The Sample sheet", "Trim a sound, shape it, add effects, and the tools that chop and fit it.", listOf(
+            openSample,
+            TutStep("Tap Trim. Drag the yellow lines to cut the start or the end.", t("dtab-trim")) { s, _ -> selEdit(s).st > 0.001 || selEdit(s).en < .999 },
+            TutStep("Tap Effects and turn one up (reverb, echo, dirt...).", t("dtab-fx")) { s, _ -> selEdit(s).hasFx() },
+            TutStep("Tap Tools: fit to tempo, chop to pads, keep it as a new sound. Have a look, then tap Skip step.", t("dtab-tools")) { _, _ -> false },
+            closeSheet,
+        )),
+        Tutorial("xy", "Playing", "XY setup", "Choose what a pad's XY sphere does when you push it around.", listOf(
+            TutStep("Press and hold the first pad, then tap XY setup.", t("pad-0")) { s, c -> (s.overlay is Overlay.Xy).also { if (it) c.xy0 = s.xyOf(s.project.sel).name } },
+            TutStep("Pick a different preset.", t("xy-editor")) { s, c -> s.xyOf(s.project.sel).name != c.xy0 },
+            closeSheet,
+            TutStep("Draw a circle on that pad and push the ball around: hear the new setup.", t("pad-0")) { s, c -> if (s.sphere != null) c.seen.add("sphere"); "sphere" in c.seen && s.sphere == null },
+        )),
+        Tutorial("desk", "Playing", "My Desk", "Build your own playing surface from pieces: pads, keys, XY, effects.", listOf(
+            TutStep("Tap My Desk, next to Pads and Keys.", t("view-desk")) { s, c -> (s.tab == Tab.Console).also { if (it) c.con0 = s.console.size } },
+            TutStep("Tap + Add and pick a piece.", t("console-add")) { s, c -> s.console.size > c.con0 },
+            TutStep("Play the piece you added.") { s, c -> played(s, c, 2) },
+            TutStep("Back to Pads.", t("mode-pads")) { s, _ -> s.tab == Tab.Pads },
+        )),
+        Tutorial("granular", "Synths", "Granular from your sounds", "Turn any sound in your mess into a cloud of grains.", listOf(
+            TutStep("Tap SYNTH.", t("tab-Synth")) { s, _ -> s.tab == Tab.Synth },
+            TutStep("Tap On empty pad.", t("synth-new-empty")) { s, _ -> s.synthOn(s.project.sel) != null },
+            TutStep("Tap Granular at the top.", t("synthkind-grain")) { s, c -> (s.synthOn(s.project.sel)?.kind == Synth.GRAIN).also { if (it) { c.num0 = s.synthOn(s.project.sel)!!.get("pos"); c.xy0 = s.synthOn(s.project.sel)!!.src } } },
+            TutStep("Under Grains of, pick a different sound to read.", t("grain-src")) { s, c -> (s.synthOn(s.project.sel)?.src ?: c.xy0) != c.xy0 },
+            TutStep("Hold a key and drag Position: you move through the sound.", t("knob-pos")) { s, c -> Math.abs((s.synthOn(s.project.sel)?.get("pos") ?: 0.0) - c.num0) > .05 },
+        )),
+        Tutorial("acid", "Synths", "Acid slides", "Notes that touch in Roll slide into each other on an Acid synth.", listOf(
+            TutStep("Tap SYNTH, then On empty pad.", t("tab-Synth")) { s, _ -> s.synthOn(s.project.sel) != null },
+            TutStep("Pick Acid.", t("synthmode-2")) { s, _ -> s.synthOn(s.project.sel)?.get("mode") == 2.0 },
+            TutStep("Tap ROLL and draw a few notes, some touching end to start.", t("tab-Roll")) { s, c -> s.tab == Tab.Roll && s.version >= c.v0 + 3 },
+            TutStep("Press Play and listen for the slides.", t("play")) { s, _ -> s.playing },
+            TutStep("Press Stop.", t("stop")) { s, _ -> !s.playing },
+        )),
+        Tutorial("favorites", "Sounds", "Favorites", "Star the sounds you love and find them in one place.", listOf(
+            TutStep("Press and hold a pad, then tap Star.", t("pad-0")) { s, c -> s.favs.size > c.fav0 },
+            TutStep("Tap SOUNDS.", t("tab-Sounds")) { s, _ -> s.tab == Tab.Sounds },
+            TutStep("Tap Favorites: your starred sounds. (Unstar from the same pad menu if you like; stars aren't part of the practice mess.)", t("mode-fav")) { s, _ -> s.soundsMode == "fav" },
         )),
         Tutorial("latency", "Help", "Latency and notes", "See what the phone adds to each tap, and send Claude a note.", listOf(
             TutStep("Open the menu (☰) and pick Notes for Claude.", t("menu")) { s, _ -> s.overlay == Overlay.Notes },

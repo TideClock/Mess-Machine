@@ -255,6 +255,8 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
         T(top, size = 11.sp, color = if (empty) C.Empty else ink(fill).copy(alpha = .75f), modifier = Modifier.align(Alignment.TopStart))
         if (!keys && !empty && P.edits.containsKey(key)) T("✂", size = 12.sp, color = ink(fill), modifier = Modifier.align(Alignment.TopEnd))
         if (!keys && !empty && P.opt(i).route > 0) T("B${P.opt(i).route}", size = 10.sp, color = ink(fill), family = Mono, modifier = Modifier.align(Alignment.TopCenter))
+        // held by Hold: an H in the corner, so you can see what is still playing on its own
+        if (!keys && (1000 + i) in state.latched) T("H", size = 12.sp, color = ink(fill), family = Mono, weight = FontWeight.Black, modifier = Modifier.align(Alignment.BottomEnd))
         if (!keys) PadMenu(state, i)
         T(main, size = if (keys) 18.sp else padFont(main, state.dockOpen), color = if (empty) C.Empty else ink(fill), weight = FontWeight.Black, lines = 3, modifier = Modifier.align(Alignment.BottomStart))
     }

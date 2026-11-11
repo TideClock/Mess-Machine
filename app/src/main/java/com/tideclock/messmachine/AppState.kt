@@ -321,6 +321,9 @@ class AppState(private val app: Context) {
         tutCtx.trig0 = engine.triggers
         tutCtx.v0 = version
         tutCtx.bpm0 = project.bpm
+        tutCtx.kit0 = project.kit.count { it.isNotEmpty() }
+        tutCtx.con0 = console.size
+        tutCtx.fav0 = favs.size
     }
 
     /** The practice mess goes in without touching your file choice. */
@@ -744,8 +747,10 @@ class AppState(private val app: Context) {
             }
             overlay = Overlay.Picker(i); return
         }
-        downIds[d] = d
         notes.trail("pad ${i + 1}")
+        // Hold latches grid pads too, under their own ids (1000 + pad), so a latch survives a bank switch
+        if (holdOn) { val id = 1000 + i; downIds[d] = id; melodicDown(id, i, intArrayOf(0), mel = false); return }
+        downIds[d] = d
         engine.down(d, i, intArrayOf(0), false)
     }
 
@@ -753,7 +758,7 @@ class AppState(private val app: Context) {
         val i = bank * Project.BANK + d
         if (recordHold && holdRecPad == i && micOn && micPad == i) { holdRecPad = -1; bench.stopMic() }
         val id = downIds[d]
-        if (id >= 2000) melodicUp(id) else if (id >= 0) engine.up(id)
+        if (id >= 1000) melodicUp(id) else if (id >= 0) engine.up(id)
         downIds[d] = -1
     }
 
@@ -1394,7 +1399,7 @@ class AppState(private val app: Context) {
     fun heldPitches(pad: Int): Set<Int> = latched.filter { it >= 10000 && (it - 10000) / 100 == pad }.map { (it - 10000) % 100 - 48 }.toSet()
 
     /** A melodic press with hold rules: a held note pressed again lets go; a free slot holds; otherwise it plays normally. */
-    private fun melodicDown(id: Int, pad: Int, ps: IntArray) {
+    private fun melodicDown(id: Int, pad: Int, ps: IntArray, mel: Boolean = true) {
         if (id in latched) {
             latched.remove(id)
             engine.unlatch(id)
@@ -1406,12 +1411,12 @@ class AppState(private val app: Context) {
             for (o in latched) engine.unlatch(o)
             latched.clear()
             latched.add(id)
-            engine.down(id, pad, ps, true, true)
+            engine.down(id, pad, ps, mel, true)
             return
         }
         val latch = latched.size < holdSlots
         if (latch) latched.add(id)
-        engine.down(id, pad, ps, true, latch)
+        engine.down(id, pad, ps, mel, latch)
     }
 
     private fun melodicUp(id: Int) {

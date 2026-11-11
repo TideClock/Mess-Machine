@@ -4,6 +4,7 @@
 
 Rewritten at the end of every session and at each step of a long job (BT-2). Read this first.
 
+- **Next build:** Hold on grid pads, 29 lessons.
 - **Live:** build 72: interactive lessons (Learn, 16 lessons). Builds 69 to 71 failed their tests on the way: the
   mess comparison tripped on the save time, the dock started folded so H wasn't on screen (lessons now open it),
   and Hold latches notes played as keys, not grid pads (the Hold and On the beat lessons go through Keys).
@@ -136,6 +137,10 @@ Sound engine plan v2 (doc https://claude.ai/artifact/Vsr6HBLcVa8wehHaNbqSD9), bu
   records where the control is on screen, so the lesson card can ring it. Lessons run on a practice mess:
   autosave pauses, the real mess is kept in before-lesson.json and restored at the end or on the next start.
   Menu items open in their own window, so lessons ring the pad instead and say what to tap.
+- 2026-11-11 Hold latches grid pads (Tyler: "fix the hold issue"): a grid press under Hold uses the same latch
+  rules as keys (slots, Last), under ids 1000 + pad so a latch survives bank switches; latched pads show an H.
+- 2026-11-11 Lessons finished (Tyler): 29 in all. The Tools step of the Sample sheet lesson waits for Skip step
+  (the open tab isn't app state). Favorites stars a real sound: stars live outside the practice mess.
 
 ## Control map
 

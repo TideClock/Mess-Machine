@@ -141,6 +141,18 @@ public class EngineTest {
         check(Math.abs(lastL / (double) rate - want) < .04, String.format("Loops: at %d bpm the loop lasts one bar of the mess (%.3f s, %.3f wanted)", lq.bpm, lastL / (double) rate, want));
         check(ll.has("qb:bass-whimsy-01") && ll.load("qb:bass-whimsy-01") != null && ll.titleOf("qb:bass-whimsy-01").contains("hit"), "Loops: an old Heap key still loads (now " + ll.titleOf("qb:bass-whimsy-01") + "), so old messes keep their pads");
       }
+      // ---- Hold on grid pads: a latched pad (not a key) keeps sounding after the finger lifts, until let go
+      {
+        Sample kk = lib.load("samples/basement-kick.wav");
+        Project hq = new Project(); hq.kit[0] = "samples/basement-kick.wav";
+        Engine he = new Engine(rate); he.setSnapshot(Engine.Snapshot.build(hq, k -> k.equals(hq.kit[0]) ? kk : null, new Engine.Live()));
+        he.down(1000, 0, new int[]{0}, false, true); he.up(1000);
+        float[] hb = new float[512]; double late = 0;
+        for (int i = 0; i < rate * 2 / 256; i++) { he.render(hb, 256); if (i > rate * 3 / 2 / 256) for (int qq = 0; qq < 512; qq++) late = Math.max(late, Math.abs(hb[qq])); }
+        check(late > .01 && he.activeVoices() > 0, String.format("Hold: a latched grid pad is still sounding 1.5 s after the finger lifted (peak %.3f)", late));
+        he.unlatch(1000); for (int i = 0; i < rate / 256; i++) he.render(hb, 256);
+        check(he.activeVoices() == 0, "Hold: letting it go stops it");
+      }
       // ---- SE-11, SE-12: synths on pads
       {
         Engine.SampleSource ss = k -> new Sample(k, new float[64], 44100);

@@ -1,20 +1,18 @@
 {
-  "title": "Lessons for every feature",
+  "title": "Hold works on pads, and 29 lessons",
   "thisBuild": [
-    "New in the menu (☰): Learn. 16 short lessons, each one a feature: Pads and banks, Hold, On the beat, Note repeat, Padiano, XY sphere, Stretch or Grain, Sustain, Bake, Make a synth, Synthipad, Steps, Roll, Loops at your tempo, Packs, Latency and notes.",
-    "A lesson rings the control it means with a pulsing yellow box and waits until you have really done the step (the app watches itself), then moves on. Back, Skip step and Stop lesson are on its card.",
-    "Lessons run on a practice mess. Your own mess is put back exactly when the lesson ends or stops, and autosave is paused while a lesson runs. If the app closes mid-lesson, your mess comes back the next time it opens.",
-    "Finished lessons get a check mark in Learn.",
-    "From build 68: Packs in Sounds, and the Vault for reviewing the RC-505 clips."
+    "Hold now latches pads on the grid, not just keys. Turn on H, tap a pad: it keeps playing, with an H in its corner. Tap it again to let it go. It keeps as many as the number under H, like keys do.",
+    "Learn (in the ☰ menu) now has 29 lessons. New: Dock filter, Lock, Chords and key, XY setup, My Desk, Record live, Song, Bottle it, Record onto a pad, The Sample sheet, Granular from your sounds, Acid slides, Favorites.",
+    "The Hold and On the beat lessons are back on the pad grid."
   ],
   "watch": [
-    "Run two or three lessons start to finish. Send a note if a step does not move on after you did it, or if the yellow box points at the wrong thing.",
-    "Stop a lesson halfway and check your mess is exactly as you left it.",
-    "The Padiano lesson's first step is in the pad menu, which opens over the screen: the box can't ring menu items, so the card says what to tap."
+    "Hold on, tap two pads, switch to bank 2 and back: both should still be playing, and tapping each lets it go.",
+    "Run a few of the new lessons. Send a note wherever a step doesn't move on or the yellow box points at the wrong thing.",
+    "The Favorites lesson stars a real sound (stars aren't part of the practice mess): unstar it from the pad menu if you don't want it."
   ],
   "limits": [
-    "Lessons can't tell how something sounds, only that you did it.",
-    "Ending a lesson clears Undo history for your mess (the mess itself is untouched).",
-    "Song and My Desk do not have lessons yet."
+    "The Sample sheet lesson can't see which tab is open, so its Tools step waits for you to tap Skip step.",
+    "Steps in menus (pad menu, ☰) ring the pad or button that opens the menu, not the item inside it.",
+    "Lessons know you did a step, not how it sounded."
   ]
 }
