@@ -1,7 +1,7 @@
 # Mess Machine demo library: shot list
 
-Updated 2026-11-11. Rendered from the app's own code on branch `demo-render` (main as of build 73, plus three fixes
-listed below), not filmed on a phone.
+Updated 2026-11-11. Rendered from the app's own code on branch `demo-render`, not filmed on a phone. B3, B15 and T2
+were rendered again after build 75, so they show loop keys.
 
 ## How these were made
 
@@ -106,9 +106,7 @@ I measure timing, level and length. I cannot judge whether it sounds good or in 
 | T4 | Does the bass line seem to speak? | Quiet: peak at 36% |
 | C2 | Clipping when the sample pads join | 84 samples at full scale |
 
-## Fixed on the `demo-render` branch (not on main yet)
-
-The app's full big test passes on the branch with these in.
+## Fixed in the app (on main, build 75)
 
 1. **Holding a pad no longer opens its menu by accident.** A lift opens the menu only between about half a second
    and 1.3 seconds after the touch; hold longer and you are playing. A pad that sounds for as long as it is held
@@ -116,7 +114,11 @@ The app's full big test passes on the branch with these in.
 2. **The tempo follows the slider while it moves.** Both numbers agree, and letting go is one undo step.
 3. **The Repeat menu is one small panel.** Three rows of choices (Every, Plays, Each repeat) in place of 11 list rows.
 4. **The button by the bank numbers follows the pad you tapped last.** It could keep the pad from before and open
-   the wrong pad's Sample sheet (found while testing fix 1).
+   the wrong pad's Sample sheet.
+5. **Loops show their tempo and key.** 38 of the 90 Qbldy loops carry a measured key (the rest were not clear
+   enough to name). Sounds and the Sample sheet show it with both names for the same notes, and search finds loops
+   by key. Sounds made in the app are measured too; a resampled loop stores its tempo and length and follows the
+   mess's tempo, and a mic take remembers the tempo it was made at.
 
 ## Tester log
 
@@ -136,8 +138,7 @@ Things that were confusing, slow or broken while scripting these shots. Items 1 
 7. **Padiano name is cut to "5 ..." when the dock is open.**
 8. **The piano roll starts with all 25 rows.** The sound's own pitch (C4) sits near the bottom of the screen until
    you use Fold to scale.
-9. **Loop keys are not shown anywhere.** C1 was out of key because nothing says the Ametrine loop is in B flat
-   minor. A key label on loops (I measured all 90) would have prevented it.
+9. **Loop keys were not shown anywhere,** which is how C1 ended up out of key. Fixed in build 75 (above).
 10. **Loop titles with swearing show on the first screen of the Qbldy Loops jar.** The T2 clip is cropped above them.
 11. **Speed.** Not tested. These renders run off the clock, so they say nothing about lag on a real phone.
 12. **Render only:** jumping a list straight to a far item crashed the renderer twice (out of memory). Real swipes
