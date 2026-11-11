@@ -4,10 +4,10 @@
 
 Rewritten at the end of every session and at each step of a long job (BT-2). Read this first.
 
-- **Next build:** loop keys and tempo (KeyFinder, 38 of 90 loops keyed, Workbench sounds keep tempo and key), the
+- **Live:** build 75: loop keys and tempo (KeyFinder, 38 of 90 loops keyed, Workbench sounds keep tempo and key), the
   pad menu window, tempo that follows the slider, the Repeat panel, the Sample button fix. From the demo
-  conversation (see the 2026-11-11 decisions).
-- **Live:** build 74: Hold latches grid pads; 29 lessons. (73 failed one test: the test had to render audio for "played" to count.)
+  conversation (see the 2026-11-11 decisions). Tyler is checking the loop keys by ear.
+- **Before that:** build 74: Hold latches grid pads; 29 lessons. (73 failed one test: the test had to render audio for "played" to count.)
 - **Before that:** build 72: interactive lessons (Learn, 16 lessons). Builds 69 to 71 failed their tests on the way: the
   mess comparison tripped on the save time, the dock started folded so H wasn't on screen (lessons now open it),
   and Hold latches notes played as keys, not grid pads (the Hold and On the beat lessons go through Keys).
