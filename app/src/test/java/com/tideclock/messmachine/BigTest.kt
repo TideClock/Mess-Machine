@@ -790,6 +790,35 @@ class BigTest {
         assertEquals("on the same pad", key, back.kit[pad])
     }
 
+    /** SE-17: a pack installs from its zip as a jar of sounds, refuses entries outside its folder, and removes. */
+    @Test fun packInstallAndRemove() {
+        fun zipOf(vararg entries: Pair<String, ByteArray>): java.io.File {
+            val f = java.io.File.createTempFile("pack", ".zip")
+            java.util.zip.ZipOutputStream(f.outputStream()).use { z -> for ((n, b) in entries) { z.putNextEntry(java.util.zip.ZipEntry(n)); z.write(b); z.closeEntry() } }
+            return f
+        }
+        val wav = java.io.ByteArrayOutputStream().also { o -> com.tideclock.messmachine.engine.Wav.writeStereo16(o, FloatArray(8820) { i -> (.4 * Math.sin(i * .05)).toFloat() }, 44100) }.toByteArray()
+        val json = """{"id":"test-pack","name":"Test Pack","version":1,"clips":[{"id":"beep","file":"clips/beep.wav","title":"Beep","type":"perc"}]}"""
+        state.packs.installZip(zipOf("pack.json" to json.toByteArray(), "clips/beep.wav" to wav), "test-pack")
+        assertTrue("the pack's sound is in the library", state.lib.has("pack:test-pack:beep") && state.lib.load("pack:test-pack:beep") != null)
+        assertEquals("in its own jar", "Test Pack", state.lib.cab("pack:test-pack").name)
+        var refused = false
+        try { state.packs.installZip(zipOf("pack.json" to json.toByteArray(), "../evil.txt" to "x".toByteArray()), "test-pack") } catch (e: SecurityException) { refused = true }
+        assertTrue("a zip entry outside the pack's folder is refused", refused)
+        assertTrue("and the installed pack is untouched", state.lib.has("pack:test-pack:beep"))
+        state.packOffers = listOf(Packs.Offer("test-pack", "Test Pack", "Made by the big test.", 2, 1, 9000, ""))
+        state.overlay = Overlay.Packs
+        settle()
+        rule.onNodeWithTag("pack-test-pack").assertExists()
+        rule.onNodeWithTag("pack-install-test-pack").assertExists()   // version 2 offered over 1: Update
+        shot("49-packs")
+        rule.onNodeWithTag("pack-remove-test-pack").performClick()
+        settle()
+        assertFalse("Remove takes the pack off the phone", state.lib.has("pack:test-pack:beep"))
+        state.overlay = null
+        settle()
+    }
+
     @Test fun doctorEffects() {
         val k = state.project.kit[0]
         state.overlay = Overlay.Doctor(k)

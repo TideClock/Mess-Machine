@@ -136,6 +136,21 @@ public final class Library implements Engine.SampleSource {
 
     public void putSample(String key, Sample s) { cache.put(key, s); }
 
+    /** SE-17: a jar for an installed pack (its sounds come in through addUser). */
+    public void addCab(String id, String name, int color) {
+        if (cabById.containsKey(id)) return;
+        Cab c = new Cab(id, name, color);
+        cabs.add(c);
+        cabById.put(id, c);
+    }
+
+    /** Take a pack's jar and every sound in it back out. */
+    public void removeCab(String id) {
+        for (Sound s : new ArrayList<>(sounds)) if (s.cab.equals(id)) removeUser(s.key);
+        Cab c = cabById.remove(id);
+        if (c != null) cabs.remove(c);
+    }
+
     public String chopOf(String key) { return chopBase.get(key); }
 
     /** SE-11: a synth in the Synths jar. It "loads" as a short silence: the engine plays the patch, not the sample. */
@@ -170,7 +185,7 @@ public final class Library implements Engine.SampleSource {
         DECODING.incrementAndGet();
         try {
         if (snd.file.startsWith("/")) {
-            try (InputStream in = new java.io.FileInputStream(snd.file)) { s = Wav.read(key, in); }
+            try (InputStream in = new java.io.FileInputStream(snd.file)) { s = decode(key, snd.file, in); }
         } else if (snd.sliced()) {
             Sample sprite = sprite(snd.file);
             s = Sample.slice(key, sprite, snd.a, snd.d);

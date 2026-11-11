@@ -78,6 +78,7 @@ sealed class Overlay {
     data object Tempo : Overlay()
     data object Notes : Overlay()
     data object AudioCheck : Overlay()
+    data object Packs : Overlay()
     data class Xy(val pad: Int) : Overlay()
 }
 
@@ -237,7 +238,40 @@ class AppState(private val app: Context) {
 
     private val downIds = IntArray(16) { -1 }
 
+    /* ---------------- packs (SE-17) ---------------- */
+
+    val packs = Packs(app.filesDir, lib)
+    /** What the packs release offers, once fetched; null until asked. */
+    var packOffers by mutableStateOf<List<Packs.Offer>?>(null)
+    var packNote by mutableStateOf("")
+    var packBusy by mutableStateOf("")
+
+    fun refreshPacks() {
+        packNote = "Looking for packs…"
+        worker.execute {
+            try { val l = packs.fetchOffers(); main.post { packOffers = l; packNote = if (l.isEmpty()) "No packs have been sent yet." else "" } }
+            catch (e: Exception) { main.post { packNote = "Could not reach the packs: ${e.message ?: "no connection"}" } }
+        }
+    }
+
+    fun installPack(o: Packs.Offer) {
+        if (packBusy.isNotEmpty()) return
+        packBusy = o.id
+        notes.trail("install pack ${o.id} v${o.version}")
+        worker.execute {
+            try { packs.install(o); main.post { packBusy = ""; version++; say("${o.name} is in Sounds, in its own jar") } }
+            catch (e: Exception) { main.post { packBusy = ""; say("${o.name} did not install: ${e.message ?: "unknown"}") } }
+        }
+    }
+
+    fun removePack(id: String) {
+        packs.remove(id)
+        version++
+        rebuild()
+    }
+
     init {
+        try { packs.loadInstalled() } catch (_: Exception) {}
         try {
             val f = File(app.filesDir, "last_crash.txt")
             if (f.exists()) { crash = f.readText(); f.delete() }
@@ -1062,6 +1096,7 @@ class AppState(private val app: Context) {
         Overlay.Settings -> "settings"
         Overlay.Tempo -> "tempo"
         Overlay.Notes -> "notes"
+        Overlay.Packs -> "packs"
         Overlay.AudioCheck -> "latency"
     }
 

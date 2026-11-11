@@ -86,6 +86,7 @@ fun SoundsScreen(state: AppState, pickFor: Int?) {
             Btn("By type", { state.soundsMode = "type"; q = "" }, on = mode == "type", small = true, modifier = Modifier.weight(1f), tag = "mode-type")
             Btn("By jar", { state.soundsMode = "jar"; q = "" }, on = mode == "jar", small = true, modifier = Modifier.weight(1f), tag = "mode-jar")
             Btn("★ Favorites", { state.soundsMode = "fav"; q = "" }, on = mode == "fav", small = true, onColor = C.Pink, modifier = Modifier.weight(1.2f), tag = "mode-fav")
+            Btn("Packs", { state.overlay = com.tideclock.messmachine.Overlay.Packs; if (state.packOffers == null) state.refreshPacks() }, small = true, onColor = C.Teal, modifier = Modifier.weight(1f), tag = "open-packs")
         }
         when (mode) {
             "type" -> {

@@ -12,7 +12,7 @@ Rewritten at the end of every session and at each step of a long job (BT-2). Rea
   section at the top. MM-11 (Play Store) is last and notes only. MM-5 (Oboe) waits for real numbers from the Audio
   check. MM-15 (Fold layouts) skipped with a big note. MM-22 (creature cards) is an outline in the doc.
 - **Next:** sound engine plan v2, piece by piece (see Decisions). Built: 1 to 3 (build 61), 4 bake and Latency
-  (62), 5 the Synth tab with Analog (63), 6 and 7 FM and wavetable (64), 8 and 9 granular, drums and plucks (65), 10 loops and hits (66). Then 11 (the Vault and packs). Tyler's Latency note still decides MM-5.
+  (62), 5 the Synth tab with Analog (63), 6 and 7 FM and wavetable (64), 8 and 9 granular, drums and plucks (65), 10 loops and hits (66), 11 the Vault and packs (67). The first pack waits for Tyler's review in the Vault. Tyler's Latency note still decides MM-5.
 - **Not done, and why:** MM-14 strong skipping stays off: composable lambdas that read the mess without snapshot
   state would stop redrawing (note #6 again), and nothing measured says the UI costs audio time yet; the Audio
   check's "screen busy" flag will say. MM-21 (Heap sorting) needs ears: 0.35 s slices of full songs have no right
@@ -120,6 +120,14 @@ Sound engine plan v2 (doc https://claude.ai/artifact/Vsr6HBLcVa8wehHaNbqSD9), bu
 - 2026-11-10 RC-505 library (SE-10): 600 clips from the 96 stems in library/rc505/ (back end, not in the app);
   CI ignores library/**. Verified here: all decode with the app's FLAC reader, all 322 loops exact to half a
   sample.
+- 2026-11-10 The Vault (Claude, SE-17): a published review page, https://claude.ai/artifact/QEtqaBRxjr9qZDchAM92rS,
+  with all 600 RC-505 clips (one WAV per song, played through Web Audio so loops repeat without the gap an audio
+  element leaves; FLAC is not a type artifacts serve). Verdicts and packs live in its shared store
+  ("decisions", "packs"). Claude's 48 starter picks are marked, not kept: Tyler decides.
+- 2026-11-10 Packs pipeline (Claude, SE-17): tools/make_pack.py turns a Ready Vault pack (kept clips only) into
+  <id>.zip (pack.json + clips/*.flac) and packs.json, uploaded to the `packs` release; the app's Packs sheet lists
+  it, installs into its own storage (zip entries outside the pack folder are refused), shows a jar, updates by
+  version, removes. Packs are public and free; paid packs would need accounts and Play billing (a later call).
 
 ## Control map
 
