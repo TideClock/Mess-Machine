@@ -134,13 +134,7 @@ private fun DockItem(state: AppState, t: String) {
                     size = 10.sp, color = if (state.live.nr) C.Pink else C.Dim, family = Mono, lines = 1,
                     modifier = Modifier.padding(top = 3.dp).clickable { rates = true }.tagged("dock-rate"),
                 )
-                HoldMenu(rates, "Repeat", { rates = false }, listOf(
-                    Triple("Every 1/8", "rate-r2") { state.setLive { nrRate = 2.0 } },
-                    Triple("Every 1/16", "rate-r1") { state.setLive { nrRate = 1.0 } },
-                    Triple("Every 1/32", "rate-r.5") { state.setLive { nrRate = .5 } },
-                ) + listOf("rep", "up", "down", "updown", "rand").map { a ->
-                    Triple(arpName(a), "rate-a$a") { state.setLive { arp = a; if (a != "rep") nr = true } }
-                } + REPEAT_STYLES.map { (s, n) -> Triple((if (state.live.nrStyle == s) "✓ " else "") + n, "rate-s$s") { state.setLive { nrStyle = s } } })
+                RepeatMenu(state, rates) { rates = false }
             }
         }
         "rec" -> { val pulse = beatPulse(state); DockBtn("●", { state.setLive { rec = !rec } }, tag = "dock-rec", on = state.live.rec, onColor = C.Riot, modifier = Modifier.recGlow(state, pulse)) }
@@ -240,5 +234,38 @@ private fun UpSlider(value: Float, color: androidx.compose.ui.graphics.Color, ta
         val h = size.height * value
         drawRect(color.copy(alpha = .85f), topLeft = Offset(0f, size.height - h), size = Size(size.width, h))
         drawRect(C.Cream, style = Stroke(2.dp.toPx()))
+    }
+}
+
+/**
+ * Repeat's settings as one small panel: three rows of choices (how often, what it plays, how the repeats
+ * sound) in place of a list of eleven rows. Picking one closes it, as before.
+ */
+@Composable
+private fun RepeatMenu(state: AppState, open: Boolean, onClose: () -> Unit) {
+    @Suppress("UNUSED_VARIABLE") val lv = state.liveV
+    DropdownMenu(expanded = open, onDismissRequest = onClose, modifier = Modifier.background(C.Ink)) {
+        Column(Modifier.width(268.dp).padding(horizontal = 12.dp, vertical = 4.dp)) {
+            T("REPEAT", size = 12.sp, color = C.Yellow, lines = 1, spacing = .06.em, modifier = Modifier.padding(bottom = 8.dp))
+            T("EVERY", size = 10.sp, color = C.Dim, spacing = .12.em, modifier = Modifier.padding(bottom = 4.dp))
+            Wrap(Modifier.padding(bottom = 10.dp).testTag("rate-chips"), gap = 6.dp) {
+                for ((r, n, tag) in listOf(Triple(2.0, "1/8", "rate-r2"), Triple(1.0, "1/16", "rate-r1"), Triple(.5, "1/32", "rate-r.5"))) {
+                    Btn(n, { onClose(); state.setLive { nrRate = r } }, on = state.live.nrRate == r, onColor = C.Pink, small = true, tag = tag)
+                }
+            }
+            T("PLAYS", size = 10.sp, color = C.Dim, spacing = .12.em, modifier = Modifier.padding(bottom = 4.dp))
+            Wrap(Modifier.padding(bottom = 10.dp).testTag("arp-chips"), gap = 6.dp) {
+                for ((a, n) in listOf("rep" to "Repeat", "up" to "Up", "down" to "Down", "updown" to "Up-down", "rand" to "Random")) {
+                    Btn(n, { onClose(); state.setLive { arp = a; if (a != "rep") nr = true } }, on = state.live.arp == a, onColor = C.Teal, small = true, tag = "rate-a$a")
+                }
+            }
+            T("EACH REPEAT", size = 10.sp, color = C.Dim, spacing = .12.em, modifier = Modifier.padding(bottom = 4.dp))
+            Wrap(Modifier.padding(bottom = 6.dp).testTag("style-chips"), gap = 6.dp) {
+                for ((st, n) in listOf("cut" to "Cut", "ring" to "Ring", "flow" to "Flow")) {
+                    Btn(n, { onClose(); state.setLive { nrStyle = st } }, on = state.live.nrStyle == st, onColor = C.Yellow, small = true, tag = "rate-s$st")
+                }
+            }
+            Note("Cut stops each repeat at the next. Ring lets them play out. Flow holds the note and pulses it.", modifier = Modifier.padding(bottom = 6.dp))
+        }
     }
 }

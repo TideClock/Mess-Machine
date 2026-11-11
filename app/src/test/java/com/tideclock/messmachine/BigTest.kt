@@ -107,10 +107,11 @@ class BigTest {
         rule.mainClock.advanceTimeBy(600)
         settle()
         rule.onNodeWithTag(tag).performTouchInput { down(center) }
-        rule.mainClock.advanceTimeBy(800)
+        // past the 0.45 s the menu needs, and well inside the 1.3 s after which a hold counts as playing
+        rule.mainClock.advanceTimeBy(600)
         settle()
         println("LONGPRESS $tag menu while held=${state.padMenu}")
-        rule.onNodeWithTag(tag).performTouchInput { advanceEventTime(800); up() }
+        rule.onNodeWithTag(tag).performTouchInput { advanceEventTime(100); up() }
         println("LONGPRESS $tag menu after lift=${state.padMenu}")
         settle()
     }
@@ -477,6 +478,33 @@ class BigTest {
         state.putOnPad(5, key)
         waitFor("the burp to load") { state.lib.loaded(key) }
         rule.onNodeWithText(state.lib.titleOf(key).uppercase(), useUnmergedTree = true).assertExists()
+    }
+
+    /** A long hold is playing, not asking: the menu offer ends about 1.3 s after the touch, and a pad that sounds while held never makes it. */
+    @Test fun longHoldsDoNotOpenThePadMenu() {
+        rule.onNodeWithTag("pad-2").performScrollTo()
+        rule.mainClock.advanceTimeBy(600); settle()
+        rule.onNodeWithTag("pad-2").performTouchInput { down(center) }
+        rule.mainClock.advanceTimeBy(1600); settle()
+        rule.onNodeWithTag("pad-2").performTouchInput { up() }
+        settle()
+        assertEquals("held past the offer: no menu", -1, state.padMenu)
+        // Sustain: the pad sounds for as long as it is held, so holding it never opens the menu; the bank row button does
+        val k = state.project.kit[2]
+        state.setEdit(k, state.project.edit(k).copy().also { it.held = "sustain" }, true)
+        settle()
+        assertTrue(state.soundsWhileHeld(2))
+        rule.mainClock.advanceTimeBy(600); settle()
+        rule.onNodeWithTag("pad-2").performTouchInput { down(center) }
+        rule.mainClock.advanceTimeBy(800); settle()
+        rule.onNodeWithTag("pad-2").performTouchInput { up() }
+        settle()
+        assertEquals("a sustaining pad's hold is playing: no menu", -1, state.padMenu)
+        rule.onNodeWithTag("open-sample").performClick()
+        settle()
+        assertEquals("its menu opens from the bank row button", 2, state.padMenu)
+        state.padMenu = -1
+        settle()
     }
 
     @Test fun menusOpenOnLiftNotOnDrag() {

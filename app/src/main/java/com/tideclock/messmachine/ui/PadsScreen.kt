@@ -64,8 +64,11 @@ fun PadsScreen(state: AppState) {
             }
             // the Sample sheet for the pad under your hands, one tap away (holding a pad opens it too, for any pad)
             val selKey = P.kit.getOrNull(P.sel).orEmpty()
-            val selSynth = com.tideclock.messmachine.engine.Project.isSynth(selKey)
-            Btn(if (selSynth) "Synth" else "Sample", { if (selSynth) state.tab = com.tideclock.messmachine.Tab.Synth else state.overlay = Overlay.Doctor(selKey) }, small = true, enabled = selKey.isNotEmpty(), tag = "open-sample")
+            // a pad that sounds while it is held gets no menu from a long press, so this button is its menu
+            val selHeld = selKey.isNotEmpty() && state.soundsWhileHeld(P.sel)
+            Btn(if (selHeld) "Menu" else "Sample", {
+                if (selHeld) { state.bank = P.sel / Project.BANK; state.padMenu = P.sel } else state.overlay = Overlay.Doctor(selKey)
+            }, small = true, enabled = selKey.isNotEmpty(), tag = "open-sample")
         }
         if (state.keysMode || state.keyboards.isNotEmpty()) KeysBar(state)
         // zoomed out, the pad grid shrinks with everything else so more of the machine fits
@@ -234,9 +237,13 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
                     }
                     val early = withTimeoutOrNull(450) { follow(); true }
                     if (early == null) {
-                        // held still long enough: lift now for the pad's menu (like a right click)
-                        if (!moved && !state.keysMode && !state.locked) armed = true
-                        follow()
+                        // held still long enough: lift now for the pad's menu (like a right click). Not on a pad that
+                        // sounds for as long as it is held (a synth, Sustain, gate): there a long press is playing
+                        if (!moved && !state.keysMode && !state.locked && !state.soundsWhileHeld(pi)) armed = true
+                        // the offer lasts until about 1.3 s after the touch; hold on longer and you are playing the
+                        // pad, so the yellow outline goes and lifting opens nothing (and a drifting finger carries nothing)
+                        val soon = withTimeoutOrNull(850) { follow(); true }
+                        if (soon == null) { armed = false; follow() }
                     }
                     pressed = false
                     state.padUp(d)

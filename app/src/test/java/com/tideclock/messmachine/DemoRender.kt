@@ -334,6 +334,43 @@ class DemoRender {
         tap("tab-Song"); frames(6); dumpTags("song")
     }
 
+    /** Not a demo: lists the controls on the screens the Tier 2 and 3 shots use. */
+    @Test fun t2() = shoot("t2") {
+        state.newMess()
+        state.putOnPad(8, harp); load(harp)
+        state.selectPad(4, false); state.toggleKeyboard(4)
+        settle(); action()
+        frames(3)
+        fun step(name: String, f: () -> Unit) { try { f(); frames(6); dumpTags(name) } catch (e: Throwable) { println("DEMO t2 $name: $e") } }
+        step("fx") { tap("fx-toggle") }
+        step("fx-off") { tap("fx-toggle") }
+        step("padxy") { tap("piano-xy-4") }
+        step("pset") { tap("piano-set-4") }
+        step("pset-inkey") { tap("pset-inkey") }
+        step("sample-trim") { tap("open-sample"); frames(6); tap("dtab-trim") }
+        step("sample-shape") { tap("dtab-shape") }
+        step("sample-fx") { tap("dtab-fx") }
+        step("sample-tools") { tap("dtab-tools") }
+        step("sample-closed") { tap("done") }
+        step("topmenu") { tap("menu") }
+        step("settings") { tap("settings") }
+        step("settings-closed") { tap("done") }
+        step("notes") { tap("menu"); frames(6); tap("notes") }
+        step("notes-closed") { tap("done") }
+        step("learn") { tap("menu"); frames(6); dumpTags("topmenu2"); if (has("learn")) tap("learn") }
+        step("learn-closed") { if (has("done")) tap("done") }
+        step("desk") { tap("view-desk") }
+        step("pads-again") { tap("mode-pads") }
+        step("steps") { tap("tab-Steps") }
+        step("sounds-jar") { tap("tab-Sounds"); frames(6); tap("mode-jar") }
+        step("sounds-fav") { tap("mode-fav") }
+        step("packs") { tap("open-packs") }
+        step("packs-closed") { if (has("done")) tap("done") }
+        step("song") { tap("tab-Song") }
+        step("rec") { tap("tab-Pads"); frames(6); tap("rec") }
+        step("rec-off") { tap("rec") }
+    }
+
     private fun drum(name: String) = Synth.DRUM.presets.first { it.name == name }
 
     /** C2: drum synths on four pads, programmed on Steps while the loop plays, sample pads on top. */
@@ -414,10 +451,10 @@ class DemoRender {
         tap("held-sustain"); secs(1.3)
         tap("done"); secs(.4)
         mark("held")
-        holdPad("pad-4", 105)
+        tap("pad-4", hold = 105)
         mark("released"); secs(1.2)
         mark("held2")
-        holdPad("pad-4", 50); secs(1.0)
+        tap("pad-4", hold = 50); secs(1.0)
     }
 
     /** B3: Hold, On the beat. A latched loop starts again every beat, then every bar, in time with the drums. */
@@ -592,14 +629,20 @@ class DemoRender {
         tap("play"); secs(.6)
     }
 
-    /** C1: an acid line, a Qbldy loop and a granular cloud, built up one layer at a time. */
+    /**
+     * C1: a Qbldy loop, an acid line and a granular cloud, built up one layer at a time. The loop (Ametrine 1)
+     * measures as B flat minor, so the mess is set to B flat minor and the acid line is written in it. The cloud's
+     * grains come from the glass harp, whose own note is E: Padiano keys +1 and +6 sound F and B flat.
+     */
     @Test fun c1() = shoot("c1") {
         val loop = "loop:ametrine-1"
         state.newMess(); state.setBpm(120)
+        state.setRoot(10); state.setScale("Minor")
         state.putOnPad(0, loop); state.putOnPad(3, harp); load(loop, harp)
         state.newSynth(2, Synth.GRAIN.presets.first { it.name == "Cloud" })
         state.setGrainSource(2, harp)
         state.newSynth(1, analog("Acid line"))
+        state.toggleKeyboard(2)
         state.selectPad(1, false)
         state.tab = Tab.Steps
         settle(); action(); secs(.4)
@@ -608,15 +651,15 @@ class DemoRender {
         tap("steps-0", .5f / 16f, .5f, hold = 2, note = "step loop"); untilStep(15); untilStep(0); untilStep(15); untilStep(0); untilStep(12)
         mark("acid")
         tap("tab-Roll"); secs(.4)
-        for ((p, st) in listOf(0 to 0, 0 to 4, 3 to 6, 0 to 8, 7 to 10, 10 to 12, 7 to 14)) { rollTap(p, st); frames(4) }
+        for ((p, st) in listOf(10 to 0, 10 to 4, 5 to 6, 10 to 8, 8 to 10, 5 to 12, 1 to 14)) { rollTap(p, st); frames(4) }
         untilStep(15); untilStep(0); untilStep(15); untilStep(0); untilStep(12)
         mark("cloud")
         tap("tab-Pads"); secs(.4)
         untilStep(0)
-        fingerDown(0, "pad-2", .45f, .5f, "cloud"); frames(2)
-        fingerMove(0, "pad-2", .63f, .58f, "cloud"); frame()
+        fingerDown(0, "piano-keys-2", pk(2, 1), .5f, "cloud-f"); frames(3)
+        fingerDown(1, "piano-keys-2", pk(2, 6), .5f, "cloud-bb")
         untilStep(15); untilStep(0); untilStep(15); untilStep(0); untilStep(15); untilStep(0)
-        fingerUp(0, "pad-2", "cloud"); frame()
+        fingerUp(0, "piano-keys-2", "cloud-f"); fingerUp(1, "piano-keys-2", "cloud-bb"); frame()
         mark("out")
         untilStep(15); untilStep(0)
         tap("play"); secs(1.5)

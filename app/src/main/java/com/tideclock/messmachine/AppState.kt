@@ -724,6 +724,17 @@ class AppState(private val app: Context) {
 
     fun selKey(): String = project.kit[project.sel]
 
+    /**
+     * Does this pad's sound last as long as the finger stays down (a synth, Sustain, gate, a looped sound)?
+     * On such a pad a long press is playing, not asking for the menu, so holding it never opens the menu:
+     * the bank row's button reads Menu for it instead.
+     */
+    fun soundsWhileHeld(pad: Int): Boolean {
+        val k = project.kit.getOrNull(pad).orEmpty()
+        if (k.isEmpty()) return false
+        return Project.isSynth(k) || project.edit(k).holds()
+    }
+
     fun padDown(d: Int) {
         if (keysMode) {
             val pad = project.sel

@@ -63,3 +63,24 @@ jobs:
             app/build/test-results/testDebugUnitTest/*DemoRender*.xml
             demo-failures.txt
           retention-days: 14
+
+  bigtest:
+    # the app's own checks on this branch (it carries app fixes too): quick checks, engine tests, the big test
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Engine tests
+        run: |
+          mkdir -p build/enginetest
+          javac -d build/enginetest $(find app/src/main/java -name "*.java") tools/EngineTest.java
+          java -cp build/enginetest EngineTest app/src/main/assets/sounds/ build/enginetest
+      - name: The big test
+        run: ./gradlew testDebugUnitTest --stacktrace
