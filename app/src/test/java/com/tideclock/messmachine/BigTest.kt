@@ -857,7 +857,8 @@ class BigTest {
         rule.onNodeWithTag("pad-2").performClick(); settle(); state.tutTick()
         assertEquals("a grid pad latches under Hold", 2, state.tutStep)
         assertTrue("as pad 3's own latch", (1000 + state.bank * 16 + 2) in state.latched)
-        rule.onNodeWithTag("pad-3").performClick(); settle(); state.tutTick()
+        // "played" counts notes the engine really started: on a phone the audio thread renders all the time, here we render a block
+        rule.onNodeWithTag("pad-3").performClick(); settle(); state.engine.render(FloatArray(512), 256); state.tutTick()
         assertEquals(3, state.tutStep)
         assertEquals("both pads hold (three slots to start)", 2, state.latched.size)
         rule.onNodeWithTag("pad-2").performClick(); settle()
