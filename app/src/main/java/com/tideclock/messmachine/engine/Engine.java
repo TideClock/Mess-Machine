@@ -362,6 +362,8 @@ public final class Engine {
     public void render(float[] out, int frames) {
         long nanos = System.nanoTime();
         Snapshot S = snap;
+        // the step length first: notes started by this block's commands fit loops to the tempo (SE-4)
+        if (S != null) spbNow = spb(S);
         Object[] c;
         while ((c = cmds.poll()) != null) command(S, c, nanos);
         java.util.Arrays.fill(out, 0, frames * 2, 0f);
@@ -819,6 +821,11 @@ public final class Engine {
         if (tapeNow || "stretch".equals(e.pitch)) timeR = r;
         else if ("grain".equals(e.pitch)) timeR = 1;
         else timeR = Math.abs(rateMul - 1) > .0006 ? Math.max(.05, tuneR) : r;
+        // SE-4: a loop plays at the mess's tempo; Grain keeps its pitch (Stretch and tape stop change it, like tape)
+        if (s.bpm > 0 && spbNow > 0) {
+            double fit = rate * 15.0 / spbNow / s.bpm;
+            if (Math.abs(fit - 1) > 1e-4) { if (tapeNow || "stretch".equals(e.pitch)) { r *= fit; timeR *= fit; } else timeR *= fit; }
+        }
         boolean grain = sustain || Math.abs(timeR - r) > 1e-9;
         // SE-3: a baked version already has the new pitch at the old length, so it plays like tape at the time rate
         double incR = r;

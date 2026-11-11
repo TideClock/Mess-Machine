@@ -19,6 +19,10 @@ public final class Sample {
     /** SE-3: baked versions at other pitches with the length kept, index semitones + Bake.RANGE; null until baked. */
     public volatile float[][] baked;
 
+    /** SE-4: a loop's own tempo (0 for one-shots), so it can play at the mess's tempo. */
+    public double bpm;
+    public int beats;
+
     /** The baked version for a pitch ratio, when it lands within 3 cents of a whole semitone in range; else null. */
     public float[] bakedFor(double ratio) {
         float[][] b = baked;

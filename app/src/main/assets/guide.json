@@ -1,22 +1,23 @@
 {
-  "title": "Granular, Drums and Pluck synths",
+  "title": "Loops, and hits cut at the music",
   "thisBuild": [
-    "Three more kinds on the Synth tab, so there are six: Analog, FM, Wavetable, Granular, Drums and Pluck.",
-    "Granular plays a sound from your mess as a cloud of tiny grains, at any pitch. Grains of picks the sound (any sound on a pad). Position is where in it, Spray scatters them, Size and Density shape the cloud, Scan crawls through the sound while you hold, Pitch spray and Reverse add sparkle. Presets: Cloud, Freeze, Crawl, Shimmer, Stutter, Backwards wash, Glitch.",
-    "Drums are made from scratch: pick a model (Kick, Snare, Hat, Open hat, Clap, Tom, Cowbell, Zap), then Tune, Decay, Tone and Snap; Sweep and Sweep time bend kicks, toms and zaps. They are one-shots, and on keys they go up and down in pitch. Presets include Deep kick, Punch kick, Boom 808, Rim snare and Cowbell.",
-    "Pluck is a plucked string: Bright is the pick, Damp the string, Body the wood, Let go how fast it stops when you lift. Presets: Nylon, Steel, Harp, Koto, Pluck bass, Muted, Bell string.",
-    "The kind buttons now wrap onto two lines on narrow screens.",
-    "From build 64: FM and Wavetable."
+    "New jar: Qbldy Loops. 90 one-bar loops, two from each of 45 Qbldy songs, each exactly four beats long and tagged with its tempo. They loop without a click.",
+    "A loop plays at your mess's tempo, with its pitch kept (Grain). Set the pad to Stretch on the Sample sheet if you would rather it speed up and slow down like tape.",
+    "Put a loop on a pad and a step on 1: it plays one bar of your mess, every bar.",
+    "New jar: Qbldy Hits. 180 hits, four per song, each cut where an attack starts and running to the next one, instead of the old fixed 0.35 seconds.",
+    "The Heap and the Qbldy shelves (390 chops of 0.35 s) are gone. Messes that used them still open: each old chop plays a hit from the same song now.",
+    "The song tempos were measured again: most are exactly 120, 80, 75, 85, 90, 100, 140, 150 or 160. The old numbers (like 120.19) were slightly off.",
+    "From build 65: Granular, Drums and Pluck synths."
   ],
   "watch": [
-    "Make a Granular synth from a long sound (a chord or a vocal) and hold a note while you move Position.",
-    "Put Drums on four pads (kick, snare, hat, clap) and program a beat: compare them with the sample drums.",
-    "Play Nylon and Harp on keys: high notes should stay in tune.",
-    "Check the Latency screen's load with a busy Granular Shimmer chord."
+    "Put a loop on a pad at your usual tempo with a step on 1, and listen for a bump where it repeats.",
+    "Set the mess tempo far from a loop's own (say 90 for a 120 loop): Grain should keep it in tune; listen for flutter.",
+    "Open an older mess that used Heap chops: those pads should still play something from the same song."
   ],
   "limits": [
-    "Granular reads sounds that are on a pad in this mess; picking from the whole library comes later.",
-    "Drums ignore Hold and Sustain: they always play once.",
-    "Next in the plan: the Loops shelf, re-cut chops, and the RC-505 library."
+    "Six old Heap sounds (from Dodo Screamoff and Hovel) had no song file here, so they now point at hits from other songs.",
+    "Hits are labeled as chops: telling a kick from a hat inside a full mix is not reliable yet.",
+    "Loops fit the tempo live with Grain; a cleaner baked stretch for loops is a later step.",
+    "The RC-505 library (600 clips) is built and saved on the back end; it is not in the app yet."
   ]
 }

@@ -12,8 +12,7 @@ Rewritten at the end of every session and at each step of a long job (BT-2). Rea
   section at the top. MM-11 (Play Store) is last and notes only. MM-5 (Oboe) waits for real numbers from the Audio
   check. MM-15 (Fold layouts) skipped with a big note. MM-22 (creature cards) is an outline in the doc.
 - **Next:** sound engine plan v2, piece by piece (see Decisions). Built: 1 to 3 (build 61), 4 bake and Latency
-  (62), 5 the Synth tab with Analog (63), 6 and 7 FM and wavetable (64), 8 and 9 granular, drums and plucks (65). Then 10 (loops,
-  re-cut chops), 11 (the Vault and packs). Tyler's Latency note still decides MM-5.
+  (62), 5 the Synth tab with Analog (63), 6 and 7 FM and wavetable (64), 8 and 9 granular, drums and plucks (65), 10 loops and hits (66). Then 11 (the Vault and packs). Tyler's Latency note still decides MM-5.
 - **Not done, and why:** MM-14 strong skipping stays off: composable lambdas that read the mess without snapshot
   state would stop redrawing (note #6 again), and nothing measured says the UI costs audio time yet; the Audio
   check's "screen busy" flag will say. MM-21 (Heap sorting) needs ears: 0.35 s slices of full songs have no right
@@ -109,6 +108,18 @@ Sound engine plan v2 (doc https://claude.ai/artifact/Vsr6HBLcVa8wehHaNbqSD9), bu
   off the string length, so it stays within 1 cent up to G6) and a body resonance. The pluck burst is
   normalized (it clipped before the fix).
 - 2026-11-10 Six kind chips wrap rather than squeeze into one row (Claude).
+- 2026-11-10 Loops and hits (Claude, SE-4, SE-9, SE-10; tools/make_loops.py): song tempo from bar self-similarity,
+  sharpened by a least-squares sixteenth grid through every attack; 44 of 45 songs land within 0.04 bpm of a
+  whole number, so tempos snap when within 0.35 (the old manifests' 120.19 and 80.75 were 0.2 to 0.9% off).
+  Two one-bar loops per song (loud, repeating into the next bar, 15 s apart), cut to the sample with a 5 ms
+  crossfade (no seam step larger than the loop's own); four hits per song from attack to next attack, max 0.6 s.
+- 2026-11-10 The 390 Heap and Qbldy chops are removed (Tyler); their keys alias to hits from the same song in
+  library.json "aliases", so old messes still open with sound on those pads. Hits are typed "chop" (the
+  kick/hat guess on full mixes was unreliable). Sounds: 15 MB to 18 MB.
+- 2026-11-10 Loops fit the mess tempo (Claude, SE-4): Grain keeps pitch; Stretch or tape stop fit it like tape.
+- 2026-11-10 RC-505 library (SE-10): 600 clips from the 96 stems in library/rc505/ (back end, not in the app);
+  CI ignores library/**. Verified here: all decode with the app's FLAC reader, all 322 loops exact to half a
+  sample.
 
 ## Control map
 

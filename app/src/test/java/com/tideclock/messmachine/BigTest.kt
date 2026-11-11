@@ -1326,10 +1326,14 @@ class BigTest {
         settle()
         rule.onNodeWithTag("type-bass").performScrollTo().performClick()
         settle()
-        rule.onNodeWithTag("put-qb:block-of-meat-bass").assertExists()
+        rule.onNodeWithTag("put-samples/bw-bass-note.wav").assertExists()
         rule.onNodeWithTag("feel-dark").performScrollTo().performClick()
         settle()
         shot("10b-sounds-by-type-bass-dark")
+        // piece 10: the Loops and Hits jars replace the Heap and the Qbldy shelves
+        assertTrue("the Loops jar is there", state.lib.cabs.any { it.id == "loops" } && state.lib.cabs.none { it.id == "heap" || it.id == "qbldy" })
+        val loop = state.lib.sounds.first { it.cab == "loops" }
+        assertTrue("loops carry their tempo", loop.bpm > 0 && loop.beats == 4)
         // favorites
         state.toggleFav("samples/sub-drop.wav")
         rule.onNodeWithTag("mode-fav").performClick()

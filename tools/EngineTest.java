@@ -10,16 +10,17 @@ public class EngineTest {
   public static void main(String[] a) throws Exception {
     String base = a[0];
     Library lib = new Library(p -> new FileInputStream(p), base);
-    check(lib.sounds.size() == 433, "library has 433 sounds: " + lib.sounds.size());
+    // piece 10: 43 named sounds, 90 loops and 180 hits (the 390 0.35 s chops are gone, their keys alias to hits)
+    check(lib.sounds.size() == 313, "library has 313 sounds: " + lib.sounds.size());
     check(lib.sounds.stream().allMatch(x -> !x.type.isEmpty()), "every sound has an instrument type");
-    check("kick".equals(lib.sound("samples/basement-kick.wav").type) && "bass".equals(lib.sound("qb:block-of-meat-bass").type), "named sounds sort by name: " + lib.sound("qb:block-of-meat-bass").type);
+    check("kick".equals(lib.sound("samples/basement-kick.wav").type) && "chop".equals(lib.sound("loop:ametrine-1").type), "named sounds sort by name, loops are chops: " + lib.sound("loop:ametrine-1").type);
     // MM-8: the bundled sounds are FLAC; the kick must decode to exactly the WAV it came from (length and a checksum)
     Sample kick = lib.load("samples/basement-kick.wav");
     long sumAbs = 0; for (float v : kick.data) sumAbs += Math.abs(Math.round(v * 32768f));
     check(kick.data.length == 26460 && kick.rate == 44100 && sumAbs == 92183135L, "FLAC kick is sample-exact: " + kick.data.length + " frames, sum " + sumAbs);
     Project p = Project.demo();
     for (String k : p.kit) if (!k.isEmpty()) check(lib.load(k) != null, "load " + k);
-    Sample sl = lib.load("qb:stwretch-hit"); check(sl != null && Math.abs(sl.seconds() - .35) < .01, "qbldy slice length " + (sl == null ? -1 : sl.seconds()));
+    Sample sl = lib.load("qb:stwretch-hit"); check(sl != null && sl.seconds() > .05 && sl.seconds() < .7, "an old Qbldy key plays a hit cut at the music: " + lib.titleOf("qb:stwretch-hit") + ", " + (sl == null ? -1 : sl.seconds()) + " s");
     // JSON round trip
     String j = p.toJson();
     Project q = Project.fromJson(j, lib::has).project;
@@ -123,6 +124,23 @@ public class EngineTest {
         return new double[]{last / (double) rate, zc / ((a1 - a0) / (double) rate)};
       };
       double[] st = octaveUp.apply("stretch", "loop"), gr = octaveUp.apply("grain", "loop"), au = octaveUp.apply("auto", "loop");
+      // ---- SE-4, SE-9, SE-10: loops at the mess's tempo, hits, and old chop keys still playing
+      {
+        Library ll = new Library(pth -> new FileInputStream(pth), a[0]);
+        long nLoops = ll.sounds.stream().filter(x -> x.cab.equals("loops")).count(), nHits = ll.sounds.stream().filter(x -> x.cab.equals("hits")).count();
+        long nOld = ll.sounds.stream().filter(x -> x.cab.equals("heap") || x.cab.equals("qbldy")).count();
+        check(nLoops >= 80 && nHits >= 150 && nOld == 0, "Loops: " + nLoops + " loops and " + nHits + " hits on the shelves, no 0.35 s chops left");
+        Library.Sound lp = ll.sounds.stream().filter(x -> x.cab.equals("loops")).findFirst().get();
+        Sample ls = ll.load(lp.key);
+        double barSec = lp.beats * 60.0 / lp.bpm;
+        check(Math.abs(ls.data.length / (double) ls.rate - barSec) < 1.0 / ls.rate, String.format("Loops: %s is exactly %d beats at %.0f bpm (%.4f s)", lp.title, lp.beats, lp.bpm, ls.data.length / (double) ls.rate));
+        Project lq = new Project(); lq.kit[0] = lp.key; lq.bpm = (int) Math.round(lp.bpm * 1.25); lq.pats[0].setStep(lp.key, 0, true);
+        float[] lb = Engine.bounce(lq, k -> k.equals(lp.key) ? ls : null, rate, false, 1);
+        int lastL = 0; for (int i = 0; i < lb.length / 2; i++) if (Math.abs(lb[i * 2]) > .003) lastL = i;
+        double want = lp.beats * 60.0 / lq.bpm;
+        check(Math.abs(lastL / (double) rate - want) < .04, String.format("Loops: at %d bpm the loop lasts one bar of the mess (%.3f s, %.3f wanted)", lq.bpm, lastL / (double) rate, want));
+        check(ll.has("qb:bass-whimsy-01") && ll.load("qb:bass-whimsy-01") != null && ll.titleOf("qb:bass-whimsy-01").contains("hit"), "Loops: an old Heap key still loads (now " + ll.titleOf("qb:bass-whimsy-01") + "), so old messes keep their pads");
+      }
       // ---- SE-11, SE-12: synths on pads
       {
         Engine.SampleSource ss = k -> new Sample(k, new float[64], 44100);

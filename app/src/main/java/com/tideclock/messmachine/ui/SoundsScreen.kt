@@ -54,7 +54,7 @@ fun jarArt(cab: String): Int = when (cab) {
     "tones" -> R.drawable.jar_tones
     "goo" -> R.drawable.jar_goo
     "bw" -> R.drawable.jar_bw
-    "qbldy" -> R.drawable.jar_qbldy
+    "qbldy", "loops" -> R.drawable.jar_qbldy
     "mine" -> R.drawable.jar_mine
     else -> R.drawable.jar_heap
 }
@@ -206,6 +206,7 @@ fun SoundRow(state: AppState, s: Library.Sound, target: Int, picking: Boolean) {
                 T(s.title, size = 15.sp, lines = 1)
                 val info = listOfNotNull(
                     if (onPad >= 0) "on pad ${onPad + 1}" else null,
+                    if (s.bpm > 0) "${s.beats} beats at ${Math.round(s.bpm)} bpm" else null,
                     state.lib.cab(s.cab).name.takeIf { it.isNotEmpty() },
                     s.tags.joinToString(" ").takeIf { it.isNotEmpty() },
                 ).joinToString(" · ")

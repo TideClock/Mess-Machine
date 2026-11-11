@@ -39,6 +39,9 @@ public final class Library implements Engine.SampleSource {
         public final String key, title, cab, file, group, album;
         public final double a, d;
         public String type = "";
+        /** SE-4: a loop's tempo and length in beats (0 for one-shots). */
+        public double bpm;
+        public int beats;
         public java.util.List<String> tags = new ArrayList<>();
         public Sound(String key, String title, String cab, String file, double a, double d, String group, String album) {
             this.key = key; this.title = title; this.cab = cab; this.file = file; this.a = a; this.d = d; this.group = group; this.album = album;
@@ -78,8 +81,15 @@ public final class Library implements Engine.SampleSource {
                     Json.num(s.get("a"), 0), Json.num(s.get("d"), 0), Json.str(s.get("g"), ""), Json.str(s.get("al"), ""));
             snd.type = Json.str(s.get("ty"), "");
             for (Object q : Json.list(s.get("q"))) if (q instanceof String) snd.tags.add((String) q);
+            snd.bpm = Json.num(s.get("bpm"), 0);
+            snd.beats = (int) Json.num(s.get("beats"), 0);
             sounds.add(snd);
             byKey.put(snd.key, snd);
+        }
+        // sounds that were replaced keep working in old messes: their keys play the sound that replaced them
+        for (Map.Entry<String, Object> e : Json.map(m.get("aliases")).entrySet()) {
+            Sound to = byKey.get(Json.str(e.getValue(), ""));
+            if (to != null && !byKey.containsKey(e.getKey())) byKey.put(e.getKey(), to);
         }
     }
 
@@ -168,6 +178,7 @@ public final class Library implements Engine.SampleSource {
             try (InputStream in = opener.open(base + snd.file)) { s = decode(key, snd.file, in); }
         }
         } finally { DECODING.decrementAndGet(); }
+        if (s != null && snd.bpm > 0) { s.bpm = snd.bpm; s.beats = snd.beats; }
         cache.put(key, s);
         return s;
     }
