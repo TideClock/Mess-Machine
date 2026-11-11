@@ -163,7 +163,7 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
         modifier
             .aspectRatio(1f)
             .scale(if (pressed) .93f else 1f)
-            .testTag("pad-$d")
+            .tagged("pad-$d")
             .drawBehind {
                 val r = CornerRadius(7.dp.toPx())
                 if (empty && state.micOn && state.micPad == i) {
@@ -305,14 +305,14 @@ fun PadMenu(state: AppState, i: Int) {
     val k = P.kit[i]
     val open = state.padMenu == i
     fun close() { state.padMenu = -1 }
-    DropdownMenu(expanded = open, onDismissRequest = { close() }, modifier = Modifier.background(C.Ink).border(3.dp, C.Cream).testTag("padmenu")) {
+    DropdownMenu(expanded = open, onDismissRequest = { close() }, modifier = Modifier.background(C.Ink).border(3.dp, C.Cream).tagged("padmenu")) {
         T("PAD ${i + 1}" + if (k.isNotEmpty()) " · ${state.lib.titleOf(k).uppercase()}" else "", size = 12.sp, color = C.Yellow, lines = 1, spacing = .06.em,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
         @Composable
         fun item(label: String, tag: String, enabled: Boolean = true, danger: Boolean = false, onClick: () -> Unit) {
             DropdownMenuItem(
                 text = { T(label.uppercase(), size = 13.sp, color = if (!enabled) C.Empty else if (danger) C.Riot else C.Cream, spacing = .06.em) },
-                onClick = { close(); onClick() }, enabled = enabled, modifier = Modifier.testTag(tag),
+                onClick = { close(); onClick() }, enabled = enabled, modifier = Modifier.tagged(tag),
             )
         }
         // over 8 items, so in groups (BT-1): playing it, the sound itself, then clears last

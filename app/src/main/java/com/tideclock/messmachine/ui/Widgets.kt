@@ -179,7 +179,7 @@ fun T(
 /** Small lab-notes text, like the site's mono captions. */
 @Composable
 fun Help(text: String, modifier: Modifier = Modifier) {
-    if (LocalHelp.current) Note(text, modifier.testTag("help"), C.Teal)
+    if (LocalHelp.current) Note(text, modifier.tagged("help"), C.Teal)
 }
 
 @Composable
@@ -240,7 +240,7 @@ fun Btn(
             .sticker(bg, shadow = sh - sink, border = edge, borderColor = edgeColor)
             .alpha(if (enabled) 1f else .38f)
             .clickable(src, indication = null, enabled = enabled) { onClick() }
-            .then(if (tag != null) Modifier.testTag(tag) else Modifier)
+            .then(if (tag != null) Modifier.tagged(tag) else Modifier)
             .semantics { selected = on }
             .padding(horizontal = if (small) 10.dp else 14.dp, vertical = if (small) 6.dp else 9.dp),
         contentAlignment = Alignment.Center,
@@ -301,7 +301,7 @@ fun ScrollPane(modifier: Modifier = Modifier, hPad: Dp = 12.dp, vPad: Dp = 12.dp
     val ss = rememberScrollState()
     val locked = LocalLocked.current
     Box(modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize().verticalScroll(ss, enabled = !locked).testTag(tag).padding(start = hPad, top = vPad, bottom = vPad + 24.dp, end = hPad + 14.dp), content = content)
+        Column(Modifier.fillMaxSize().verticalScroll(ss, enabled = !locked).tagged(tag).padding(start = hPad, top = vPad, bottom = vPad + 24.dp, end = hPad + 14.dp), content = content)
         if (!locked) ScrollBar(ss, Modifier.align(Alignment.CenterEnd))
     }
 }
@@ -315,7 +315,7 @@ fun ScrollBar(ss: ScrollState, modifier: Modifier = Modifier) {
         modifier
             .fillMaxHeight()
             .width(24.dp)
-            .testTag("scrollbar")
+            .tagged("scrollbar")
             .pointerInput(max) {
                 detectTapGestures { o ->
                     val track = size.height.toFloat()
@@ -355,7 +355,7 @@ fun LazyScrollBar(ls: LazyListState, count: Int, modifier: Modifier = Modifier) 
         modifier
             .fillMaxHeight()
             .width(24.dp)
-            .testTag("scrollbar")
+            .tagged("scrollbar")
             .pointerInput(count) {
                 detectTapGestures { o -> scope.launch { ls.scrollToItem(((o.y / size.height) * count).toInt().coerceIn(0, count - 1)) } }
             }
@@ -419,7 +419,7 @@ fun HoldMenu(open: Boolean, title: String, onClose: () -> Unit, items: List<Trip
     DropdownMenu(expanded = open, onDismissRequest = onClose, modifier = Modifier.background(C.Ink).border(3.dp, C.Cream)) {
         T(title.uppercase(), size = 12.sp, color = C.Yellow, lines = 1, spacing = .06.em, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
         for ((label, tag, act) in items) {
-            DropdownMenuItem(text = { T(label.uppercase(), size = 13.sp, spacing = .06.em) }, onClick = { onClose(); act() }, modifier = Modifier.testTag(tag))
+            DropdownMenuItem(text = { T(label.uppercase(), size = 13.sp, spacing = .06.em) }, onClick = { onClose(); act() }, modifier = Modifier.tagged(tag))
         }
     }
 }

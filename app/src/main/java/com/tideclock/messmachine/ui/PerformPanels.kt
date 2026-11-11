@@ -53,7 +53,7 @@ fun FxPanel(state: AppState) {
                 Row(Modifier.padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     for (c in 0 until 3) {
                         val (id, label) = names[r * 3 + c]
-                        FxButton(state, id, label, Modifier.weight(1f).testTag("fx-$id"), C.Letters[(r * 3 + c) % C.Letters.size])
+                        FxButton(state, id, label, Modifier.weight(1f).tagged("fx-$id"), C.Letters[(r * 3 + c) % C.Letters.size])
                     }
                 }
             }
@@ -104,7 +104,7 @@ fun XyPad(state: AppState, height: androidx.compose.ui.unit.Dp = 180.dp) {
             .height(height)
             .padding(end = 6.dp, bottom = 6.dp)
             .sticker(C.Paper, shadow = 6.dp, shadowColor = C.Teal)
-            .testTag("xy")
+            .tagged("xy")
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val d = awaitFirstDown(requireUnconsumed = false)
@@ -246,7 +246,7 @@ fun PianoKeyboard(state: AppState, pad: Int, keysHeight: Dp = 132.dp, filter: Bo
     var showXy by remember(pad) { mutableStateOf(false) }
     val squares = !state.padianoKeys || state.inKeyOnly
     val base = state.padianoBase[pad] ?: 0
-    Column(Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 6.dp).testTag("piano-$pad")) {
+    Column(Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 6.dp).tagged("piano-$pad")) {
         // one thin header so the keys get the room: name, octave, Glide, XY, settings, close.
         // Hold lives on the dock and the keys bar now; the pad filter is the dock's (aim it at this pad) or a desk piece.
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(bottom = 4.dp)) {
@@ -332,7 +332,7 @@ fun PadianoSquares(state: AppState, pad: Int, col: Color, base: Int) {
                 .padding(end = 6.dp, bottom = 6.dp)
                 .height(rowH * rows)
                 .sticker(C.Ink, shadow = 5.dp, shadowColor = col)
-                .testTag("piano-keys-$pad")
+                .tagged("piano-keys-$pad")
                 .trackOrigin(origin)
                 .playNotes(state, pad, notes, origin, { o ->
                     if (o.x < 0 || o.x > size.width || o.y < 0 || o.y > size.height) null
@@ -405,7 +405,7 @@ fun PadianoKeys(state: AppState, pad: Int, col: Color, keysHeight: Dp) {
                     .padding(end = 6.dp, bottom = 6.dp)
                     .height(keysHeight)
                     .sticker(C.Ink, shadow = 6.dp, shadowColor = col)
-                    .testTag("piano-keys-$pad")
+                    .tagged("piano-keys-$pad")
                     .trackOrigin(origin)
                     .playNotes(state, pad, listOf(first, visible), origin, { o ->
                         val ww = size.width / visible.toFloat()
@@ -508,7 +508,7 @@ fun PadFilterStrip(state: AppState, pad: Int, modifier: Modifier = Modifier, hei
                 .height(height)
                 .padding(end = 6.dp, bottom = 5.dp)
                 .sticker(C.Black, shadow = 5.dp, shadowColor = col)
-                .testTag("pfilt-$pad")
+                .tagged("pfilt-$pad")
                 .pointerInput(pad) {
                     awaitEachGesture {
                         val d = awaitFirstDown(requireUnconsumed = false)

@@ -92,7 +92,7 @@ fun FxButton(state: AppState, id: String, label: String, modifier: Modifier, col
             T((if (s.target >= 0) state.fxTargetName(s.target).replace("Pad ", "P").replace("Bus ", "B") else "") + (if (s.behave == "stays") " ●" else if (s.behave == "slider") " ═" else ""),
                 size = 9.sp, color = if (lit) C.Ink else C.Yellow, family = Mono, modifier = Modifier.align(Alignment.BottomEnd).padding(end = 4.dp, bottom = 6.dp))
         }
-        Box(Modifier.align(Alignment.TopEnd).size(24.dp).clickable { state.fxEditing = if (state.fxEditing == id) null else id }.testTag("fxedit-$id"), contentAlignment = Alignment.Center) {
+        Box(Modifier.align(Alignment.TopEnd).size(24.dp).clickable { state.fxEditing = if (state.fxEditing == id) null else id }.tagged("fxedit-$id"), contentAlignment = Alignment.Center) {
             T("✎", size = 11.sp, color = if (lit) C.Ink else C.Dim)
         }
     }
@@ -104,7 +104,7 @@ fun FxEditor(state: AppState) {
     val id = state.fxEditing ?: return
     val name = FX_NAMES.firstOrNull { it.first == id }?.second ?: id
     val s = state.fxSet(id)
-    Column(Modifier.fillMaxWidth().padding(bottom = 10.dp).sticker(C.Black, shadow = 0.dp, border = 2.dp, borderColor = C.Yellow).padding(10.dp).testTag("fx-editor")) {
+    Column(Modifier.fillMaxWidth().padding(bottom = 10.dp).sticker(C.Black, shadow = 0.dp, border = 2.dp, borderColor = C.Yellow).padding(10.dp).tagged("fx-editor")) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             T("EDIT ${name.uppercase()}", size = 12.sp, color = C.Yellow, spacing = .08.em, modifier = Modifier.weight(1f))
             Btn("Done", { state.fxEditing = null }, small = true, tag = "fx-editor-done")
@@ -160,7 +160,7 @@ fun PadXy(state: AppState, pad: Int, modifier: Modifier = Modifier, tag: String 
                 .height(side)
                 .padding(end = 6.dp, bottom = 6.dp)
                 .then(if (x.ring) Modifier else Modifier.sticker(C.Paper, shadow = 5.dp, shadowColor = col))
-                .testTag(tag)
+                .tagged(tag)
                 .pointerInput(pad, x) {
                     awaitEachGesture {
                         val d = awaitFirstDown(requireUnconsumed = false)
@@ -242,7 +242,7 @@ fun XyEditor(state: AppState, pad: Int) {
                 Select(t.name, XY_TARGETS.map { it.id to it.name }, { id ->
                     val nd = x.dirs.toMutableList(); nd[i] = XyDir(id, xyTarget(id).def)
                     state.setXy(pad, x.copy(dirs = nd, name = "Custom"))
-                }, modifier = Modifier.testTag("xy-dir-$i"))
+                }, modifier = Modifier.tagged("xy-dir-$i"))
             }
             if (d.target >= 0) SliderRow("At the edge", d.to, t.lo..t.hi, { v -> "%.2f ${t.unit}".format(v).trim() }, { v -> // format-ok: units are letters only (Xy.kt)
                 val nd = x.dirs.toMutableList(); nd[i] = d.copy(to = v)
@@ -309,7 +309,7 @@ fun SphereOverlay(state: AppState) {
     val me = remember { Origin() }
     val k = state.project.kit.getOrElse(s.pad) { "" }
     val col = if (k.isEmpty()) C.Teal else padColor(Color(state.lib.colorOf(k)))
-    Canvas(Modifier.fillMaxSize().trackOrigin(me).testTag("sphere")) {
+    Canvas(Modifier.fillMaxSize().trackOrigin(me).tagged("sphere")) {
         val c = Offset(s.cx - me.at.x, s.cy - me.at.y)
         drawCircle(col.copy(alpha = .16f), radius = s.r, center = c)
         drawCircle(C.Cream.copy(alpha = .7f), radius = s.r, center = c, style = Stroke(3.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 10f))))

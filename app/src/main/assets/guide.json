@@ -1,18 +1,20 @@
 {
-  "title": "Packs, and the Vault behind them",
+  "title": "Lessons for every feature",
   "thisBuild": [
-    "Sounds has a new Packs button. Packs are sounds picked in the Vault (a review page Claude made) and sent to the app. Each installs as its own jar in Sounds, with Update when a newer version is sent, and Remove.",
-    "No pack has been sent yet: the first one, RC-505 Starter, waits for your review in the Vault.",
-    "The Vault holds all 600 clips cut from your 96 RC-505 stems: 322 loops (each exactly 1, 2, 4 or 8 beats), 195 single notes, 82 drum hits and a stab. Claude pre-picked 48 for the starter pack; they are marked, not kept, until you keep them.",
-    "From build 66: Qbldy Loops and Hits replace the 0.35 s chops, and loops play at your mess's tempo."
+    "New in the menu (☰): Learn. 16 short lessons, each one a feature: Pads and banks, Hold, On the beat, Note repeat, Padiano, XY sphere, Stretch or Grain, Sustain, Bake, Make a synth, Synthipad, Steps, Roll, Loops at your tempo, Packs, Latency and notes.",
+    "A lesson rings the control it means with a pulsing yellow box and waits until you have really done the step (the app watches itself), then moves on. Back, Skip step and Stop lesson are on its card.",
+    "Lessons run on a practice mess. Your own mess is put back exactly when the lesson ends or stops, and autosave is paused while a lesson runs. If the app closes mid-lesson, your mess comes back the next time it opens.",
+    "Finished lessons get a check mark in Learn.",
+    "From build 68: Packs in Sounds, and the Vault for reviewing the RC-505 clips."
   ],
   "watch": [
-    "Tap Packs in Sounds: it should say no packs have been sent yet.",
-    "In the Vault: J and K move, Space plays, Y keeps, N skips, P puts a clip in the pack. When the pack looks right, mark it Ready and tell Claude to send it."
+    "Run two or three lessons start to finish. Send a note if a step does not move on after you did it, or if the yellow box points at the wrong thing.",
+    "Stop a lesson halfway and check your mess is exactly as you left it.",
+    "The Padiano lesson's first step is in the pad menu, which opens over the screen: the box can't ring menu items, so the card says what to tap."
   ],
   "limits": [
-    "Packs come from the app's GitHub releases, so installing one needs a connection.",
-    "A removed pack's sounds go quiet on pads that used them until it is installed again.",
-    "Packs are free and public for now; selling them would need accounts and the Play Store's billing, which is a later decision."
+    "Lessons can't tell how something sounds, only that you did it.",
+    "Ending a lesson clears Undo history for your mess (the mess itself is untouched).",
+    "Song and My Desk do not have lessons yet."
   ]
 }

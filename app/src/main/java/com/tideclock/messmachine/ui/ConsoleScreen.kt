@@ -72,7 +72,7 @@ fun ConsoleScreen(state: AppState) {
         }
         if (arranging) {
             Wrap(Modifier.padding(bottom = 10.dp), gap = 6.dp) {
-                Select("+ Add", CONSOLE_TYPES, { state.addModule(it) }, color = C.Teal, modifier = Modifier.testTag("console-add"))
+                Select("+ Add", CONSOLE_TYPES, { state.addModule(it) }, color = C.Teal, modifier = Modifier.tagged("console-add"))
                 Btn("Start over", { state.resetConsole() }, small = true, tag = "console-reset")
             }
             // this desk: its name, a saved copy, or throw it away
@@ -82,7 +82,7 @@ fun ConsoleScreen(state: AppState) {
                     value = deskName, onValueChange = { deskName = it.take(24); state.renameDesk(deskName) }, singleLine = true,
                     textStyle = androidx.compose.ui.text.TextStyle(color = C.Cream, fontFamily = Archivo, fontSize = 14.sp),
                     colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(focusedBorderColor = C.Pink, unfocusedBorderColor = C.Card2, cursorColor = C.Pink),
-                    modifier = Modifier.weight(1f).testTag("desk-name"),
+                    modifier = Modifier.weight(1f).tagged("desk-name"),
                 )
                 Btn("Save a copy", { state.copyDesk() }, small = true, tag = "desk-copy")
                 Btn("Delete", { state.deleteDesk() }, small = true, enabled = state.desks.size > 1, tier = Tier.Danger, tag = "desk-delete")
@@ -95,7 +95,7 @@ fun ConsoleScreen(state: AppState) {
             val col = maxWidth / 12
             val unit = 24.dp
             val rows = (state.console.maxOfOrNull { it.y + it.h } ?: 0) + if (arranging) 8 else 1
-            Box(Modifier.fillMaxWidth().height(unit * rows).testTag("desk-grid")) {
+            Box(Modifier.fillMaxWidth().height(unit * rows).tagged("desk-grid")) {
                 if (arranging) Canvas(Modifier.matchParentSize()) {
                     val cw = size.width / 12; val rh = unit.toPx()
                     for (c in 1 until 12) drawLine(C.Card2, Offset(c * cw, 0f), Offset(c * cw, size.height), strokeWidth = 1f)
@@ -125,7 +125,7 @@ private fun DeskPiece(state: AppState, i: Int, m: Module, col: Dp, unit: Dp, arr
             .offset { IntOffset((m.x * colPx + dx).roundToInt(), (m.y * unitPx + dy).roundToInt()) }
             .size(width = with(dens) { (m.w * colPx + dw).coerceAtLeast(colPx * 2).toDp() }, height = with(dens) { (m.h * unitPx + dh).coerceAtLeast(unitPx * 2).toDp() })
             .padding(3.dp)
-            .testTag("mod-$i"),
+            .tagged("mod-$i"),
     ) {
         // no scrolling inside a piece (a scroll inside a scrolling page fights your thumb): resize it instead
         // measured at full height and clipped (note #8: squeezing a piece's content below zero crashed)
@@ -151,18 +151,18 @@ private fun DeskPiece(state: AppState, i: Int, m: Module, col: Dp, unit: Dp, arr
                             onDragCancel = { dx = 0f; dy = 0f },
                         )
                     }
-                    .testTag("mod-drag-$i"),
+                    .tagged("mod-drag-$i"),
             ) {
                 Row(Modifier.fillMaxWidth().background(C.Ink.copy(alpha = .9f)).padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
                     T(name.uppercase(), size = 10.sp, color = if (m.pinned) C.Yellow else C.Pink, lines = 1, spacing = .06.em, modifier = Modifier.weight(1f))
                     Box {
-                        T("⚙", size = 14.sp, modifier = Modifier.clickable { gear = true }.padding(horizontal = 6.dp).testTag("mod-gear-$i"))
+                        T("⚙", size = 14.sp, modifier = Modifier.clickable { gear = true }.padding(horizontal = 6.dp).tagged("mod-gear-$i"))
                         DropdownMenu(expanded = gear, onDismissRequest = { gear = false }, modifier = Modifier.background(C.Ink)) {
                             ModuleControls(state, i, m)
                         }
                     }
-                    T(if (m.pinned) "📌" else "📍", size = 13.sp, modifier = Modifier.clickable { state.pinModule(i) }.padding(horizontal = 6.dp).testTag("mod-pin-$i"))
-                    T("✕", size = 13.sp, color = C.Riot, modifier = Modifier.clickable { state.removeModule(i) }.padding(horizontal = 6.dp).testTag("mod-x-$i"))
+                    T(if (m.pinned) "📌" else "📍", size = 13.sp, modifier = Modifier.clickable { state.pinModule(i) }.padding(horizontal = 6.dp).tagged("mod-pin-$i"))
+                    T("✕", size = 13.sp, color = C.Riot, modifier = Modifier.clickable { state.removeModule(i) }.padding(horizontal = 6.dp).tagged("mod-x-$i"))
                 }
                 if (!m.pinned) Box(
                     Modifier
@@ -181,7 +181,7 @@ private fun DeskPiece(state: AppState, i: Int, m: Module, col: Dp, unit: Dp, arr
                                 onDragCancel = { dw = 0f; dh = 0f },
                             )
                         }
-                        .testTag("mod-size-$i"),
+                        .tagged("mod-size-$i"),
                     contentAlignment = Alignment.Center,
                 ) { T("◢", size = 14.sp, color = C.Ink) }
             }
@@ -202,7 +202,7 @@ private fun ModuleControls(state: AppState, i: Int, m: Module) {
         }
         if (needsPad(m.type)) {
             val opts = (0 until Project.NPADS).filter { P.kit[it].isNotEmpty() }.map { it to "Pad ${it + 1} · ${state.lib.titleOf(P.kit[it])}" }
-            Select("Pad ${m.pad + 1}", opts, { state.changeModule(i, m.copy(pad = it)) }, modifier = Modifier.testTag("mod-pad-$i"))
+            Select("Pad ${m.pad + 1}", opts, { state.changeModule(i, m.copy(pad = it)) }, modifier = Modifier.tagged("mod-pad-$i"))
         }
         if (m.type == "row") Select("Row ${m.pad + 1}", (0 until 4).map { it to "Row ${it + 1} (pads ${it * 4 + 1} to ${it * 4 + 4})" }, { state.changeModule(i, m.copy(pad = it)) })
         if (m.type == "fx1") Select(FX_NAMES.getOrNull(m.pad)?.second ?: "Effect", FX_NAMES.mapIndexed { k, f -> k to f.second }, { state.changeModule(i, m.copy(pad = it)) })
@@ -247,7 +247,7 @@ private fun ModuleBody(state: AppState, m: Module) {
                             val k = r * cols + c
                             if (k < FX_NAMES.size) {
                                 val (id, label) = FX_NAMES[k]
-                                FxButton(state, id, label, Modifier.weight(1f).testTag("cfx-$id"), C.Letters[k % C.Letters.size], height = h)
+                                FxButton(state, id, label, Modifier.weight(1f).tagged("cfx-$id"), C.Letters[k % C.Letters.size], height = h)
                             } else Spacer(Modifier.weight(1f))
                         }
                     }
@@ -256,7 +256,7 @@ private fun ModuleBody(state: AppState, m: Module) {
         }
         "fx1" -> {
             val (id, label) = FX_NAMES.getOrElse(m.pad) { FX_NAMES[0] }
-            FxButton(state, id, label, Modifier.fillMaxWidth().testTag("cfx1-$id"), C.Letters[m.pad.coerceAtLeast(0) % C.Letters.size], height = pick(m.size, 58.dp, 90.dp, 140.dp))
+            FxButton(state, id, label, Modifier.fillMaxWidth().tagged("cfx1-$id"), C.Letters[m.pad.coerceAtLeast(0) % C.Letters.size], height = pick(m.size, 58.dp, 90.dp, 140.dp))
         }
         "xyp" -> if (m.pad in 0 until Project.NPADS && P.kit[m.pad].isNotEmpty()) PadXy(state, m.pad, tag = "cxyp-${m.pad}", edge = pick(m.size, 130.dp, 190.dp, 260.dp))
             else EmptyModule("Pad ${m.pad + 1} is empty. Edit to point this XY at another pad.")
@@ -277,7 +277,7 @@ private fun ModuleBody(state: AppState, m: Module) {
                 Box(
                     Modifier.weight(1f).height(pick(m.size, 34.dp, 42.dp, 56.dp))
                         .sticker(if (on) C.Yellow else C.Ink, shadow = if (on) 1.dp else 3.dp, border = if (here) 4.dp else 2.5.dp, borderColor = if (here) C.Pink else C.Cream)
-                        .clickable { state.selectSlot(k) }.testTag("cslot-$k"),
+                        .clickable { state.selectSlot(k) }.tagged("cslot-$k"),
                     contentAlignment = Alignment.Center,
                 ) { T(Project.LETTERS[k].toString(), size = 14.sp, weight = FontWeight.Black, color = if (on) C.Ink else if (used) C.Cream else C.Empty) }
             }

@@ -65,7 +65,7 @@ fun NotesScreen(state: AppState) {
         Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
             Column {
                 T("New note for Claude", size = 15.sp)
-                Wrap(Modifier.padding(vertical = 8.dp).testTag("category-chips"), gap = 6.dp) {
+                Wrap(Modifier.padding(vertical = 8.dp).tagged("category-chips"), gap = 6.dp) {
                     for ((c, label) in NOTE_CATS) Btn(label, { cat = c }, on = cat == c, onColor = catColor[c] ?: C.Yellow, small = true)
                 }
                 T(

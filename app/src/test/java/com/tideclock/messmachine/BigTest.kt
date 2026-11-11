@@ -28,7 +28,10 @@ import com.tideclock.messmachine.engine.Engine
 import com.tideclock.messmachine.engine.Project
 import com.tideclock.messmachine.ui.MessMachineApp
 import com.tideclock.messmachine.ui.UiFlags
+import com.tideclock.messmachine.ui.TutHi
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -817,6 +820,45 @@ class BigTest {
         assertFalse("Remove takes the pack off the phone", state.lib.has("pack:test-pack:beep"))
         state.overlay = null
         settle()
+    }
+
+    /** MM-T: every lesson starts on a practice mess and puts the real mess back exactly, finished or stopped. */
+    @Test fun lessonsPutTheMessBack() {
+        state.project.name = "Tyler's real mess"
+        val before = state.project.toJson()
+        for (t in Tutorials.all) {
+            state.startTutorial(t)
+            settle()
+            rule.onNodeWithTag("tut-card").assertExists()
+            assertNotEquals("${t.id} runs on a practice mess", "Tyler's real mess", state.project.name)
+            state.endTutorial(false)
+            settle()
+            assertEquals("${t.id} puts the mess back", before, state.project.toJson())
+        }
+        assertFalse("nothing left over from the lessons", java.io.File(androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>().filesDir, "before-lesson.json").exists())
+    }
+
+    /** MM-T: the Hold lesson, done by touch: each step moves on only when it is really done, and the ring finds its control. */
+    @Test fun holdLessonByTouch() {
+        state.overlay = Overlay.Learn
+        settle()
+        shot("50-learn")
+        rule.onNodeWithTag("learn-hold").performScrollTo().performClick()
+        settle(); state.tutTick(); settle()
+        assertEquals("hold", state.tut?.id)
+        assertTrue("the ring can find H in the dock", (TutHi.rects["dock-hold"]?.width ?: 0f) > 0f)
+        shot("51-lesson-hold")
+        rule.onNodeWithTag("pad-2").performClick(); settle(); state.tutTick()
+        assertEquals("tapping a pad before Hold is on does not count", 0, state.tutStep)
+        rule.onNodeWithTag("dock-hold").performClick(); settle(); state.tutTick()
+        assertEquals(1, state.tutStep)
+        rule.onNodeWithTag("pad-2").performClick(); settle(); state.tutTick()
+        assertEquals(2, state.tutStep)
+        rule.onNodeWithTag("pad-2").performClick(); settle(); state.tutTick()
+        assertEquals(3, state.tutStep)
+        rule.onNodeWithTag("dock-hold").performClick(); settle(); state.tutTick(); settle()
+        assertNull("the lesson ends when the last step is done", state.tut)
+        assertTrue("and counts as done", "hold" in state.tutsDone)
     }
 
     @Test fun doctorEffects() {

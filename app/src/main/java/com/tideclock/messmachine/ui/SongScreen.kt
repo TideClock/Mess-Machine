@@ -66,7 +66,7 @@ fun SongScreen(state: AppState) {
                                 .weight(1f)
                                 .aspectRatio(1f)
                                 .sticker(bg, shadow = if (i == playBar) 4.dp else 0.dp, border = if (i == playBar) 3.dp else 2.dp, borderColor = if (i == playBar) C.Cream else if (v >= 0) C.Black else C.Empty)
-                                .testTag("bar-$i")
+                                .tagged("bar-$i")
                                 .tapOrHold(i, { state.paintSong(i) }, { if (!state.locked) state.barMenu = i }),
                             contentAlignment = Alignment.Center,
                         ) {

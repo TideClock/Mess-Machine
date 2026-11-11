@@ -4,6 +4,7 @@
 
 Rewritten at the end of every session and at each step of a long job (BT-2). Read this first.
 
+- **Next build (69):** interactive lessons for every feature.
 - **Live:** build 68 (2026-11-11): the whole sound engine plan v2. Grain and Stretch, Sustain, repeat styles,
   Hold on the beat, the Sample sheet (61); bake and Latency (62); the Synth tab with Analog, FM, Wavetable,
   Granular, Drums and Pluck (63 to 65); Qbldy Loops and Hits replacing the 0.35 s chops (66); packs (68).
@@ -127,6 +128,12 @@ Sound engine plan v2 (doc https://claude.ai/artifact/Vsr6HBLcVa8wehHaNbqSD9), bu
   <id>.zip (pack.json + clips/*.flac) and packs.json, uploaded to the `packs` release; the app's Packs sheet lists
   it, installs into its own storage (zip entries outside the pack folder are refused), shows a jar, updates by
   version, removes. Packs are public and free; paid packs would need accounts and Play billing (a later call).
+- 2026-11-11 Interactive lessons (Tyler asked for "interactive tutorials for each feature"; Claude designed them,
+  MM-T): 16 lessons in Learn (top menu). Each step has a target tag and a check on the app's own state, so it
+  moves on only when the thing is really done. Every UI tag now goes through Modifier.tagged(), which also
+  records where the control is on screen, so the lesson card can ring it. Lessons run on a practice mess:
+  autosave pauses, the real mess is kept in before-lesson.json and restored at the end or on the next start.
+  Menu items open in their own window, so lessons ring the pad instead and say what to tap.
 
 ## Control map
 

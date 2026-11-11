@@ -31,7 +31,7 @@ fun PacksScreen(state: AppState) {
         val installed = state.packs.installed
         for (o in offers) {
             val have = installed[o.id]
-            Card(Modifier.fillMaxWidth().padding(bottom = 10.dp).testTag("pack-${o.id}")) {
+            Card(Modifier.fillMaxWidth().padding(bottom = 10.dp).tagged("pack-${o.id}")) {
                 Column {
                     T(o.name.uppercase(), size = 13.sp, color = C.Yellow, spacing = .08.em)
                     if (o.blurb.isNotEmpty()) T(o.blurb, size = 13.sp, color = C.Cream, modifier = Modifier.padding(top = 2.dp))

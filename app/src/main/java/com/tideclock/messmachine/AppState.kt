@@ -79,6 +79,7 @@ sealed class Overlay {
     data object Notes : Overlay()
     data object AudioCheck : Overlay()
     data object Packs : Overlay()
+    data object Learn : Overlay()
     data class Xy(val pad: Int) : Overlay()
 }
 
@@ -238,6 +239,100 @@ class AppState(private val app: Context) {
 
     private val downIds = IntArray(16) { -1 }
 
+    /* ---------------- tutorials (MM-T) ---------------- */
+
+    /** The lesson running now, and its step. */
+    var tut by mutableStateOf<Tutorial?>(null)
+        private set
+    var tutStep by mutableIntStateOf(0)
+        private set
+    private val tutCtx = TutCtx()
+    /** Lessons finished at least once. */
+    var tutsDone by mutableStateOf(prefs.getStringSet("tutsDone", emptySet())!!.toSet())
+        private set
+    private var tutBackup: String? = null
+    private var tutBackupFile: String? = null
+    private val tutFile get() = File(app.filesDir, "before-lesson.json")
+
+    /** Start a lesson on a practice mess. Your mess is kept in a file until the lesson ends (even if the app is closed). */
+    fun startTutorial(t: Tutorial) {
+        if (tut == null) {
+            val j = project.toJson()
+            tutBackup = j
+            tutBackupFile = fileId
+            try { tutFile.writeText(j); File(app.filesDir, "before-lesson.id").writeText(fileId.orEmpty()) } catch (_: Exception) {}
+        }
+        if (playing) togglePlay()
+        if (holdOn) switchHold()
+        keyboards.clear()
+        keysMode = false
+        overlay = null
+        padMenu = -1
+        tab = Tab.Pads
+        synthView = "simple"
+        replaceProjectQuiet(Project.starter())
+        t.setup(this)
+        tut = t
+        tutStep = 0
+        markStep()
+        notes.trail("lesson ${t.id}")
+    }
+
+    /** Check the current step; called a few times a second while a lesson runs. */
+    fun tutTick() {
+        val t = tut ?: return
+        val s = t.steps.getOrNull(tutStep) ?: return
+        if (try { s.done(this, tutCtx) } catch (_: Exception) { false }) {
+            if (tutStep + 1 >= t.steps.size) endTutorial(true) else { tutStep++; markStep() }
+        }
+    }
+
+    fun tutBack() { if (tutStep > 0) { tutStep--; markStep() } }
+    fun tutSkip() { val t = tut ?: return; if (tutStep + 1 >= t.steps.size) endTutorial(true) else { tutStep++; markStep() } }
+
+    /** End the lesson and put your own mess back exactly as it was. */
+    fun endTutorial(finished: Boolean) {
+        val t = tut ?: return
+        tut = null
+        if (playing) togglePlay()
+        if (holdOn) switchHold()
+        keyboards.clear()
+        keysMode = false
+        overlay = null
+        restoreAfterLesson()
+        if (finished) {
+            tutsDone = tutsDone + t.id
+            prefs.edit().putStringSet("tutsDone", tutsDone).apply()
+            say("${t.title}: done. Your mess is back.")
+        } else say("Lesson stopped. Your mess is back.")
+    }
+
+    private fun restoreAfterLesson() {
+        val j = tutBackup ?: (if (tutFile.exists()) tutFile.readText() else null) ?: return
+        val id = tutBackupFile ?: File(app.filesDir, "before-lesson.id").takeIf { it.exists() }?.readText()?.ifEmpty { null }
+        replaceProject(Project.fromJson(j, lib::has).project, id)
+        tutBackup = null; tutBackupFile = null
+        tutFile.delete(); File(app.filesDir, "before-lesson.id").delete()
+    }
+
+    private fun markStep() {
+        tutCtx.trig0 = engine.triggers
+        tutCtx.v0 = version
+        tutCtx.bpm0 = project.bpm
+    }
+
+    /** The practice mess goes in without touching your file choice. */
+    private fun replaceProjectQuiet(p: Project) {
+        if (playing) engine.stop()
+        project = p
+        bank = 0; page = 0
+        hist.clear(); hi = -1
+        commitUndo()
+        version++
+        rebuild()
+        loadKit()
+    }
+
     /* ---------------- packs (SE-17) ---------------- */
 
     val packs = Packs(app.filesDir, lib)
@@ -272,6 +367,8 @@ class AppState(private val app: Context) {
 
     init {
         try { packs.loadInstalled() } catch (_: Exception) {}
+        // the app closed in the middle of a lesson: put the mess from before it back
+        if (tutFile.exists()) main.post { try { restoreAfterLesson(); say("Your mess from before the lesson is back.") } catch (_: Exception) {} }
         try {
             val f = File(app.filesDir, "last_crash.txt")
             if (f.exists()) { crash = f.readText(); f.delete() }
@@ -306,6 +403,8 @@ class AppState(private val app: Context) {
 
     fun saveNow() {
         main.removeCallbacks(saveRun)
+        // a lesson's practice mess is never saved over yours
+        if (tut != null) return
         val json = project.toJson()
         worker.execute { try { currentFile.writeText(json) } catch (_: Exception) {} }
     }
@@ -1097,6 +1196,7 @@ class AppState(private val app: Context) {
         Overlay.Tempo -> "tempo"
         Overlay.Notes -> "notes"
         Overlay.Packs -> "packs"
+        Overlay.Learn -> "learn"
         Overlay.AudioCheck -> "latency"
     }
 

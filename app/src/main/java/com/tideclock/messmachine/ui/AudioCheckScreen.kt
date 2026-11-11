@@ -59,7 +59,7 @@ fun AudioCheckScreen(state: AppState) {
     }
     ScrollPane(hPad = 14.dp, vPad = 0.dp) {
         Note("What the phone adds between your tap and the sound. Every note you send carries these numbers.", modifier = Modifier.padding(top = 4.dp, bottom = 10.dp))
-        Card(Modifier.fillMaxWidth().padding(bottom = 14.dp).testTag("check-live")) {
+        Card(Modifier.fillMaxWidth().padding(bottom = 14.dp).tagged("check-live")) {
             Column {
                 T("RIGHT NOW", size = 12.sp, color = C.Yellow, spacing = .1.em)
                 T(live, size = 13.sp, weight = FontWeight.Medium, modifier = Modifier.padding(top = 4.dp))
@@ -70,7 +70,7 @@ fun AudioCheckScreen(state: AppState) {
                 T("1. TAP", size = 12.sp, color = C.Yellow, spacing = .1.em)
                 Note("Tap the square ten times. Each tap plays a click and times your touch reaching the app.", modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
                 Box(
-                    Modifier.fillMaxWidth().height(110.dp).sticker(C.Card2).testTag("check-pad")
+                    Modifier.fillMaxWidth().height(110.dp).sticker(C.Card2).tagged("check-pad")
                         .pointerInput(Unit) {
                             awaitEachGesture {
                                 val d = awaitFirstDown(requireUnconsumed = false)
@@ -101,7 +101,7 @@ fun AudioCheckScreen(state: AppState) {
                     size = 13.sp, color = C.Teal, weight = FontWeight.Medium, modifier = Modifier.padding(top = 6.dp))
             }
         }
-        Card(Modifier.fillMaxWidth().padding(bottom = 14.dp).testTag("check-light")) {
+        Card(Modifier.fillMaxWidth().padding(bottom = 14.dp).tagged("check-light")) {
             Column {
                 T("3. KEEP IT LIGHT", size = 12.sp, color = C.Yellow, spacing = .1.em)
                 Note("Grain keeps a sound's length when it changes pitch, live, at about three times the work of Stretch. Bake does that work ahead of time, a few seconds per sound, and plays at Stretch's cost. It also sounds cleaner.", modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
