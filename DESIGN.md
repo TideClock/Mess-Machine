@@ -4,8 +4,8 @@
 
 Rewritten at the end of every session and at each step of a long job (BT-2). Read this first.
 
-- **Next build:** Hold on grid pads, 29 lessons.
-- **Live:** build 72: interactive lessons (Learn, 16 lessons). Builds 69 to 71 failed their tests on the way: the
+- **Live:** build 74: Hold latches grid pads; 29 lessons. (73 failed one test: the test had to render audio for "played" to count.)
+- **Before that:** build 72: interactive lessons (Learn, 16 lessons). Builds 69 to 71 failed their tests on the way: the
   mess comparison tripped on the save time, the dock started folded so H wasn't on screen (lessons now open it),
   and Hold latches notes played as keys, not grid pads (the Hold and On the beat lessons go through Keys).
 - **Before that:** build 68 (2026-11-11): the whole sound engine plan v2. Grain and Stretch, Sustain, repeat styles,
