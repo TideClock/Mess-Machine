@@ -894,7 +894,7 @@ class BigTest {
         rule.onNodeWithTag("pat-xxo").performClick(); settle()
         assertEquals("2 on, 1 off is hit, hit, skip", "xx.", state.live.nrPat)
         assertTrue("picking a pattern turns Repeat on", state.live.nr)
-        rule.onNodeWithTag("pattern-strip").performTouchInput { down(Offset(width / 6f, height / 2)); up() }
+        rule.onNodeWithTag("pattern-strip").performTouchInput { down(Offset(width / 6f, height / 2f)); up() }
         settle()
         assertEquals("tapping the first step flips it into your own pattern", ".x.", state.live.nrPat)
         shot("51-repeat-pattern")
