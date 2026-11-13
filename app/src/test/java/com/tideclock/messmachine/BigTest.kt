@@ -847,7 +847,7 @@ class BigTest {
         at("hold-toggle").performClick(); settle()
         while (state.holdCount > 1) { at("hold-down").performClick(); settle() }
         assertTrue("Hold is on with one slot (${state.holdCount})", state.holdOn && state.holdCount == 1)
-        shot("49-synth-hold")
+        shot("53-synth-hold")
         at("piano-keys-$pad").performTouchInput { down(Offset(width * .05f, height * .5f)); up() }
         settle(); state.engine.render(FloatArray(512), 256)
         assertEquals("the first note holds", 1, state.latched.size)
@@ -868,13 +868,10 @@ class BigTest {
         settle(); state.engine.render(FloatArray(512), 256)
         assertTrue("the grid's Padiano plays the synth", state.engine.triggers > t1)
         rule.onNodeWithTag("piano-synth-$pad").assertExists()
-        // XL and two rows: a taller Padiano, the top row an octave up
-        val h0 = rule.onNodeWithTag("piano-keys-$pad").fetchSemanticsNode().boundsInRoot.height
+        // two rows: the top row an octave up (at M, so both rows are on screen for the taps)
+        val h0 = rule.onNodeWithTag("piano-keys-$pad").fetchSemanticsNode().size.height.toFloat()
         at("piano-set-$pad").performClick(); settle()
-        at("pset-size-3").performClick(); settle()
         at("pset-rows-2").performClick(); settle()
-        val h1 = rule.onNodeWithTag("piano-keys-$pad").fetchSemanticsNode().boundsInRoot.height
-        assertTrue("XL with two rows is well over twice as tall ($h0 to $h1)", h1 > h0 * 2.5f)
         at("piano-keys-$pad").performTouchInput { down(Offset(width * .02f, height * .25f)) }
         settle()
         val top = state.lastChord
@@ -885,8 +882,12 @@ class BigTest {
         rule.onNodeWithTag("piano-keys-$pad").performTouchInput { up() }
         settle()
         assertTrue("the top row is an octave above the bottom one ($top over $bottom)", top.isNotEmpty() && top != bottom && top.filter { it.isLetter() || it == '#' } == bottom.filter { it.isLetter() || it == '#' })
+        // XL: much taller (the node's own size: boundsInRoot is clipped to what the page shows)
+        at("pset-size-3").performClick(); settle()
+        val h1 = rule.onNodeWithTag("piano-keys-$pad").fetchSemanticsNode().size.height.toFloat()
+        assertTrue("XL with two rows is well over twice as tall as one M row ($h0 to $h1)", h1 > h0 * 2.5f)
         at("piano-set-$pad").performClick(); settle()
-        shot("50-padiano-xl-two-rows")
+        shot("54-padiano-xl-two-rows")
         state.changePadianoSize(1); state.changePadianoRows(1); settle()
         // Repeat patterns, from the dock's Repeat panel
         state.switchDockOpen(true); settle()
@@ -897,7 +898,7 @@ class BigTest {
         rule.onNodeWithTag("pattern-strip").performTouchInput { down(Offset(width / 6f, height / 2f)); up() }
         settle()
         assertEquals("tapping the first step flips it into your own pattern", ".x.", state.live.nrPat)
-        shot("51-repeat-pattern")
+        shot("55-repeat-pattern")
         rule.onNodeWithTag("pat-all").performClick(); settle()
         assertEquals("", state.live.nrPat)
         state.setLive { nr = false }
@@ -905,7 +906,7 @@ class BigTest {
         // mouth control: the sheet, and a reading moving the synth's filter (dark closes it, bright opens it)
         state.overlay = Overlay.Mouth; settle()
         rule.onNodeWithTag("mouth-toggle").assertExists()
-        shot("52-mouth-control")
+        shot("56-mouth-control")
         state.mouthApply(.1f, .5f, true); settle()
         val dark = state.padFilt[pad]?.first ?: 1f
         state.mouthApply(.9f, .5f, true); settle()
