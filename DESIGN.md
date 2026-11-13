@@ -4,9 +4,10 @@
 
 Rewritten at the end of every session and at each step of a long job (BT-2). Read this first.
 
-- **Next build:** note #11 (Hold bar on the Synth tab, the synth's Padiano on the grid), Padiano XL and rows,
-  Repeat patterns, mouth control. See the 2026-11-12 decisions.
-- **Live:** build 75: loop keys and tempo (KeyFinder, 38 of 90 loops keyed, Workbench sounds keep tempo and key), the
+- **Live:** build 79: note #11 (Hold bar on the Synth tab, the synth's Padiano on the grid), Padiano XL and rows,
+  Repeat patterns, mouth control (see the 2026-11-12 decisions). 76 to 78 failed on the way: setX functions next to
+  var x clash on the JVM (precheck rule 8 now), an Int in a test Offset, and a test measuring the clipped bounds.
+- **Before that:** build 75: loop keys and tempo (KeyFinder, 38 of 90 loops keyed, Workbench sounds keep tempo and key), the
   pad menu window, tempo that follows the slider, the Repeat panel, the Sample button fix. From the demo
   conversation (see the 2026-11-11 decisions). Tyler is checking the loop keys by ear.
 - **Before that:** build 74: Hold latches grid pads; 29 lessons. (73 failed one test: the test had to render audio for "played" to count.)
