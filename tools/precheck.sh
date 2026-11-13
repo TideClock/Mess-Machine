@@ -68,6 +68,16 @@ for f in glob.glob('app/src/**/*.kt', recursive=True):
         t = line.strip()
         if (t.startswith('*') or t.startswith('//')) and '/*' in t.lstrip('/*'):
             print(f"PRECHECK /* inside a comment opens a nested comment in Kotlin: {f}:{n}"); bad = 1
+# 8. a fun named setX next to a var x (or getX next to a val x) has the same JVM name as the property's setter
+#    (build 76: setMouthGate next to var mouthGate). Name the function something else (change, pick, switch)
+for f in glob.glob('app/src/main/**/*.kt', recursive=True):
+    t = open(f, encoding='utf-8').read()
+    vars_ = set(re.findall(r'^    (?:private |internal )?var ([a-z][A-Za-z0-9]*)\b', t, re.M))
+    vals_ = set(re.findall(r'^    (?:private |internal )?val ([a-z][A-Za-z0-9]*)\b', t, re.M))
+    for m in re.finditer(r'^    (?:private |internal )?fun (set|get)([A-Z][A-Za-z0-9]*)\(', t, re.M):
+        name = m.group(2)[0].lower() + m.group(2)[1:]
+        if name in vars_ or (m.group(1) == 'get' and name in vals_):
+            print(f"PRECHECK fun {m.group(1)}{m.group(2)} clashes with the {name} property's {m.group(1)}ter on the JVM: {f}"); bad = 1
 sys.exit(bad)
 EOF
 

@@ -1443,10 +1443,10 @@ class AppState(private val app: Context) {
         if (project.kit[project.sel].isEmpty()) say("Mouth control moves the pad you picked. Pick a pad with a sound.")
     }
 
-    fun setMouthVowelTo(t: Int) { mouthRelease(); mouthVowelTo = t; prefs.edit().putInt("mouthX", t).apply() }
-    fun setMouthLevelTo(t: Int) { mouthRelease(); mouthLevelTo = t; prefs.edit().putInt("mouthY", t).apply() }
+    fun pickMouthVowel(t: Int) { mouthRelease(); mouthVowelTo = t; prefs.edit().putInt("mouthX", t).apply() }
+    fun pickMouthLevel(t: Int) { mouthRelease(); mouthLevelTo = t; prefs.edit().putInt("mouthY", t).apply() }
     fun switchMouthStay(v: Boolean) { mouthStay = v; prefs.edit().putBoolean("mouthStay", v).apply(); if (!v) mouthRelease() }
-    fun setMouthGate(db: Float) { mouthGate = db.coerceIn(-70f, -20f); mouthMic.tracker.gateDb = mouthGate; prefs.edit().putFloat("mouthGate", mouthGate).apply() }
+    fun changeMouthGate(db: Float) { mouthGate = db.coerceIn(-70f, -20f); mouthMic.tracker.gateDb = mouthGate; prefs.edit().putFloat("mouthGate", mouthGate).apply() }
 
     /** Let go of the pad the mouth was moving (it springs back, or keeps the last place with Stay). */
     private fun mouthRelease() {

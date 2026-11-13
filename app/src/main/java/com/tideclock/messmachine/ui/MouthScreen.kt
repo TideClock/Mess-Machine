@@ -36,15 +36,15 @@ fun MouthScreen(state: AppState) {
         }
         MouthMeter(state)
         T("THE VOWEL MOVES", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
-        Select(xyTarget(state.mouthVowelTo).name, XY_TARGETS.map { it.id to it.name }, { state.setMouthVowelTo(it) }, tag = "mouth-vowel-to")
+        Select(xyTarget(state.mouthVowelTo).name, XY_TARGETS.map { it.id to it.name }, { state.pickMouthVowel(it) }, tag = "mouth-vowel-to")
         T("LOUDNESS MOVES", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
-        Select(xyTarget(state.mouthLevelTo).name, XY_TARGETS.map { it.id to it.name }, { state.setMouthLevelTo(it) }, tag = "mouth-level-to")
+        Select(xyTarget(state.mouthLevelTo).name, XY_TARGETS.map { it.id to it.name }, { state.pickMouthLevel(it) }, tag = "mouth-level-to")
         T("WHEN YOU GO QUIET", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
         Wrap(Modifier.tagged("mouth-quiet-chips"), gap = 6.dp) {
             Btn("Stay put", { state.switchMouthStay(true) }, on = state.mouthStay, onColor = C.Teal, small = true, tag = "mouth-stay")
             Btn("Spring back", { state.switchMouthStay(false) }, on = !state.mouthStay, onColor = C.Teal, small = true, tag = "mouth-letgo")
         }
-        SliderRow("Sensitivity", -state.mouthGate, 20f..70f, { "quiet under -${it.toInt()} dB" }, { state.setMouthGate(-it) }, {}, accent = C.Pink)
+        SliderRow("Sensitivity", -state.mouthGate, 20f..70f, { "quiet under -${it.toInt()} dB" }, { state.changeMouthGate(-it) }, {}, accent = C.Pink)
         Help("Headphones work best: on the speaker the mic hears the music too, and the music would move things. Turn Sensitivity down if it moves while you're silent. With Rec on while the loop plays, what your mouth does lands in the loop as XY moves (Clear moves takes it out). Nothing you say is kept: only the two numbers.", modifier = Modifier.padding(top = 8.dp))
         T(" ", size = 30.sp)
     }
