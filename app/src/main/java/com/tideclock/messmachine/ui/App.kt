@@ -95,9 +95,10 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
         val micPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
             val pad = state.askMicFor
             state.askMicFor = -1
-            if (ok && pad >= 0) state.recordToPad(pad) else if (!ok) state.say("The mic needs permission. You can allow it in the phone's settings for Mess Machine.")
+            if (ok && pad == com.tideclock.messmachine.MIC_FOR_MOUTH) state.switchMouth(true)
+            else if (ok && pad >= 0) state.recordToPad(pad) else if (!ok) state.say("The mic needs permission. You can allow it in the phone's settings for Mess Machine.")
         }
-        LaunchedEffect(state.askMicFor) { if (state.askMicFor >= 0) micPerm.launch(android.Manifest.permission.RECORD_AUDIO) }
+        LaunchedEffect(state.askMicFor) { if (state.askMicFor != -1) micPerm.launch(android.Manifest.permission.RECORD_AUDIO) }
         @Suppress("UNUSED_VARIABLE") val v = state.version
         val dn = LocalDensity.current
         CompositionLocalProvider(LocalDensity provides Density(dn.density * state.uiScale, dn.fontScale), LocalLocked provides state.locked, LocalHelp provides state.helpShows(state.tab.label)) {
@@ -144,6 +145,7 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
                     Overlay.AudioCheck -> Sheet(state, "Latency") { AudioCheckScreen(state) }
                     Overlay.Packs -> Sheet(state, "Packs") { PacksScreen(state) }
                     Overlay.Learn -> Sheet(state, "Learn") { LearnScreen(state) }
+                    Overlay.Mouth -> Sheet(state, "Mouth control") { MouthScreen(state) }
                     null -> Box(Modifier) {}
                 }
             }
@@ -246,6 +248,7 @@ fun TopMenu(state: AppState, modifier: Modifier = Modifier) {
                 Triple("☰  Messes", "messes") { state.refreshFiles(); state.overlay = Overlay.Files },
                 Triple("⚙  Settings", "settings") { state.overlay = Overlay.Settings },
                 Triple("🎓  Learn: lessons for every feature", "learn") { state.overlay = Overlay.Learn },
+                Triple("👄  Mouth control: wub with your voice", "mouth") { state.overlay = Overlay.Mouth },
                 Triple("↷  Redo", "redo") { state.redo() },
                 Triple("🐞  Notes for Claude" + if (state.crash != null) " (a crash to send)" else "", "notes") { state.overlay = Overlay.Notes },
             )) {

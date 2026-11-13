@@ -4,6 +4,8 @@
 
 Rewritten at the end of every session and at each step of a long job (BT-2). Read this first.
 
+- **Next build:** note #11 (Hold bar on the Synth tab, the synth's Padiano on the grid), Padiano XL and rows,
+  Repeat patterns, mouth control. See the 2026-11-12 decisions.
 - **Live:** build 75: loop keys and tempo (KeyFinder, 38 of 90 loops keyed, Workbench sounds keep tempo and key), the
   pad menu window, tempo that follows the slider, the Repeat panel, the Sample button fix. From the demo
   conversation (see the 2026-11-11 decisions). Tyler is checking the loop keys by ear.
@@ -159,6 +161,28 @@ Sound engine plan v2 (doc https://claude.ai/artifact/Vsr6HBLcVa8wehHaNbqSD9), bu
 - 2026-11-11 Demo videos are rendered, not filmed (Tyler): branch `demo-render` holds DemoRender.kt (frame by frame
   video of the real screens with engine audio), its own workflow and tools/demo. None of it is on main; output
   goes to branch `demo-out`.
+- 2026-11-12 Note #11, "the hold options dont appear on the synth screen" (Tyler: a held chord plus single notes on
+  top works on the Padiano, not on the synth). The engine was fine (probe: poly holds three and plays a fourth on
+  top, mono slides to the fourth and back). The Synth tab had only the dock's H, whose count you change by tapping
+  the small number, so a count of Last or 8 meant every note took the hold. Fix: the Hold bar (count, Let go) sits
+  over the keys in every Synth view. "🎹 On pads" opens the synth's Padiano on the pad grid (since build 75 a synth
+  pad's long press gives no menu, so the Padiano was hard to reach); a synth's Padiano has ◎ back to its knobs.
+- 2026-11-12 Padiano XL and rows (Tyler): size S M L XL; XL rows are 124 dp and squares at least 30 dp wide (they
+  wrap sooner), keys at least 44 dp. Rows 1 to 3: each row up is the same notes an octave higher (Claude's call:
+  octaves, like stacked keyboards, over fourths like a Push; easy to change). Padiano ids are now 10000 + pad x 200
+  + (pitch + 96), so the high rows never collide.
+- 2026-11-12 Repeat patterns (Tyler: "trigger every two notes, and then skip one"): Live.nrPat, one letter per
+  repeat, x plays and . rests. While playing it counts from the top of the loop (on the grid the same way each
+  pass); while stopped it counts from the press, which is repeat 0. Presets plus your own (tap a step, 2 to 16
+  long), kept between launches. Hold's latched notes follow it (they repeat through Repeat). A separate gate
+  pattern for Hold without Repeat was not built: Repeat plus Flow does that.
+- 2026-11-12 Mouth control (Tyler: "make wubby noises and then convert it to automation"): the mic at 16 kHz into
+  `engine/MouthTracker` (32 ms windows every 8 ms; vowel = pre-emphasized spectral centroid, 600 Hz to 1.8 kHz on
+  a log scale; level -50 to -10 dB; a gate with 80 ms hang). The vowel moves one XY target (Filter by default: ooo
+  closes, eee opens), loudness another (Nothing by default), on the picked pad, through xyMove, so Rec while
+  playing records it as XY moves. Stay put (default) or spring back when quiet. Mic source: voice recognition (no
+  loudness evening-out) plus the phone's echo canceller where there is one; headphones advised. Camera mouth
+  tracking was not built: it needs ML Kit and the camera, a bigger step; mic first.
 
 ## Control map
 

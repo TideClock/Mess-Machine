@@ -28,7 +28,16 @@ public final class Engine {
         public String arp = "rep";     // rep, up, down, updown, rand
         /** SE-6: how repeat plays each hit. "cut" stops it before the next, "ring" lets it play out, "flow" plays it once and pulses its volume. */
         public String nrStyle = "cut";
-        public Live copy() { Live l = new Live(); l.click = click; l.rec = rec; l.nr = nr; l.nrRate = nrRate; l.arp = arp; l.nrStyle = nrStyle; return l; }
+        /** Repeat's pattern, one letter per repeat: x plays, . rests ("xx." is hit, hit, skip). Empty plays every one. */
+        public String nrPat = "";
+        public Live copy() { Live l = new Live(); l.click = click; l.rec = rec; l.nr = nr; l.nrRate = nrRate; l.arp = arp; l.nrStyle = nrStyle; l.nrPat = nrPat; return l; }
+        /** Does repeat number i (counted from 0) play, by the pattern? */
+        public boolean patOn(long i) {
+            String p = nrPat;
+            if (p == null || p.isEmpty()) return true;
+            char c = p.charAt((int) Math.floorMod(i, (long) p.length()));
+            return c != '.' && c != '-';
+        }
     }
 
     public static final class PadSlot {
@@ -593,6 +602,8 @@ public final class Engine {
         if (L.nr && !playing && !freeOn) {
             freeOn = true;
             freeNextAt = frame + Math.max(.5, L.nrRate) * spb(S);
+            // the press itself was repeat 0 (an arpeggio plays its first note now, as repeat 0)
+            nrFreeI = arpLive ? 0 : 1;
             if (arpLive) nrFree(S);
         }
         if (L.rec && playing && !L.nr && !mel) {
@@ -632,6 +643,9 @@ public final class Engine {
         if (held.isEmpty()) { arpI = 0; freeOn = false; }
     }
 
+    /** Repeats played while stopped since the first note went down, for the pattern. */
+    private long nrFreeI;
+
     private void fireFree(Snapshot S) {
         if (!S.live.nr || held.isEmpty()) { freeOn = false; return; }
         nrFree(S);
@@ -640,6 +654,8 @@ public final class Engine {
 
     private void nrFree(Snapshot S) {
         double dur = Math.max(.5, S.live.nrRate) * spb(S) / rate * .9;
+        // the pattern's rests: nothing new starts (cut notes have already stopped, ring and flow notes play on)
+        if (!S.live.patOn(nrFreeI++)) return;
         if (!"rep".equals(S.live.arp)) {
             if (arpNext(S)) trigger(arpHeld.pad, oct() * Math.pow(2, arpPitch / 12.0), dur, true, .85f, 0, false);
             return;
@@ -771,6 +787,9 @@ public final class Engine {
     }
 
     private void nrTick(Snapshot S, long delay, int s, int pi, boolean half, double every, double spb) {
+        // while playing the pattern counts from the start of the loop, so it sits on the beat the same way each time
+        long idx = every >= 1 ? s / (int) every : s * 2L + (half ? 1 : 0);
+        if (!S.live.patOn(idx)) return;
         if ("rep".equals(S.live.arp)) {
             for (Held h : held.values()) {
                 if (h.flow) { pulse(h, delay, Math.round(spb * (every < 1 ? .5 : every))); continue; }

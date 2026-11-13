@@ -834,6 +834,87 @@ class BigTest {
         assertEquals("on the same pad", key, back.kit[pad])
     }
 
+    /**
+     * Note #11 and what came with it: the Synth tab has Hold's settings (a held note plus single notes on top),
+     * a synth's Padiano opens on the pad grid, the Padiano has XL and extra rows, Repeat has patterns, and
+     * mouth control moves the picked pad's filter.
+     */
+    @Test fun synthHoldPadianoPatternsAndMouth() {
+        tab("Synth")
+        at("synth-new-empty").performClick(); settle()
+        val pad = state.project.sel
+        // Hold on the Synth tab, one slot: the first note holds, the next ones play and stop
+        at("hold-toggle").performClick(); settle()
+        while (state.holdCount > 1) { at("hold-down").performClick(); settle() }
+        assertTrue("Hold is on with one slot (${state.holdCount})", state.holdOn && state.holdCount == 1)
+        shot("49-synth-hold")
+        at("piano-keys-$pad").performTouchInput { down(Offset(width * .05f, height * .5f)); up() }
+        settle(); state.engine.render(FloatArray(512), 256)
+        assertEquals("the first note holds", 1, state.latched.size)
+        val t0 = state.engine.triggers
+        at("piano-keys-$pad").performTouchInput { down(Offset(width * .5f, height * .5f)) }
+        settle(); state.engine.render(FloatArray(512), 256)
+        val playing = state.engine.triggers > t0
+        rule.onNodeWithTag("piano-keys-$pad").performTouchInput { up() }
+        settle()
+        assertTrue("a second note plays on top of the held one (and doesn't take its place)", playing && state.latched.size == 1)
+        at("hold-release").performClick(); settle()
+        state.switchHold(false); settle()
+        // the same synth as a Padiano on the pad grid
+        at("synth-to-pads").performClick(); settle()
+        assertTrue("On pads shows the grid with this synth's Padiano open", state.tab == Tab.Pads && pad in state.keyboards)
+        val t1 = state.engine.triggers
+        at("piano-keys-$pad").performTouchInput { down(Offset(width * .3f, height * .5f)); up() }
+        settle(); state.engine.render(FloatArray(512), 256)
+        assertTrue("the grid's Padiano plays the synth", state.engine.triggers > t1)
+        rule.onNodeWithTag("piano-synth-$pad").assertExists()
+        // XL and two rows: a taller Padiano, the top row an octave up
+        val h0 = rule.onNodeWithTag("piano-keys-$pad").fetchSemanticsNode().boundsInRoot.height
+        at("piano-set-$pad").performClick(); settle()
+        at("pset-size-3").performClick(); settle()
+        at("pset-rows-2").performClick(); settle()
+        val h1 = rule.onNodeWithTag("piano-keys-$pad").fetchSemanticsNode().boundsInRoot.height
+        assertTrue("XL with two rows is well over twice as tall ($h0 to $h1)", h1 > h0 * 2.5f)
+        at("piano-keys-$pad").performTouchInput { down(Offset(width * .02f, height * .25f)) }
+        settle()
+        val top = state.lastChord
+        rule.onNodeWithTag("piano-keys-$pad").performTouchInput { up() }
+        at("piano-keys-$pad").performTouchInput { down(Offset(width * .02f, height * .75f)) }
+        settle()
+        val bottom = state.lastChord
+        rule.onNodeWithTag("piano-keys-$pad").performTouchInput { up() }
+        settle()
+        assertTrue("the top row is an octave above the bottom one ($top over $bottom)", top.isNotEmpty() && top != bottom && top.filter { it.isLetter() || it == '#' } == bottom.filter { it.isLetter() || it == '#' })
+        at("piano-set-$pad").performClick(); settle()
+        shot("50-padiano-xl-two-rows")
+        state.changePadianoSize(1); state.changePadianoRows(1); settle()
+        // Repeat patterns, from the dock's Repeat panel
+        state.switchDockOpen(true); settle()
+        at("dock-rate").performClick(); settle()
+        rule.onNodeWithTag("pat-xxo").performClick(); settle()
+        assertEquals("2 on, 1 off is hit, hit, skip", "xx.", state.live.nrPat)
+        assertTrue("picking a pattern turns Repeat on", state.live.nr)
+        rule.onNodeWithTag("pattern-strip").performTouchInput { down(Offset(width / 6f, height / 2)); up() }
+        settle()
+        assertEquals("tapping the first step flips it into your own pattern", ".x.", state.live.nrPat)
+        shot("51-repeat-pattern")
+        rule.onNodeWithTag("pat-all").performClick(); settle()
+        assertEquals("", state.live.nrPat)
+        state.setLive { nr = false }
+        state.overlay = null; settle()
+        // mouth control: the sheet, and a reading moving the synth's filter (dark closes it, bright opens it)
+        state.overlay = Overlay.Mouth; settle()
+        rule.onNodeWithTag("mouth-toggle").assertExists()
+        shot("52-mouth-control")
+        state.mouthApply(.1f, .5f, true); settle()
+        val dark = state.padFilt[pad]?.first ?: 1f
+        state.mouthApply(.9f, .5f, true); settle()
+        val bright = state.padFilt[pad]?.first ?: 1f
+        assertTrue("\"ooo\" closes the filter and \"eee\" opens it ($dark, $bright)", dark < .3f && bright > .7f)
+        state.mouthApply(.9f, 0f, false); settle()
+        state.overlay = null; settle()
+    }
+
     /** SE-17: a pack installs from its zip as a jar of sounds, refuses entries outside its folder, and removes. */
     @Test fun packInstallAndRemove() {
         fun zipOf(vararg entries: Pair<String, ByteArray>): java.io.File {
