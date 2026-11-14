@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -112,6 +113,17 @@ private fun DockBtn(label: String, onClick: () -> Unit, tag: String, on: Boolean
     Btn(label, onClick, modifier = modifier.fillMaxWidth(), small = true, on = on, color = color, onColor = onColor, enabled = enabled, tag = tag)
 }
 
+/**
+ * A small word under a dock button that is a button itself (Repeat's rate, Hold's count, the filter's target):
+ * the dock's whole width and 32 dp tall. As bare text they were about 24 by 13 dp, too small to hit while playing.
+ */
+@Composable
+private fun DockWord(text: String, color: androidx.compose.ui.graphics.Color, tag: String, onClick: () -> Unit) {
+    Box(Modifier.fillMaxWidth().heightIn(min = 32.dp).clickable { onClick() }.tagged(tag), contentAlignment = Alignment.Center) {
+        T(text, size = 10.sp, color = color, family = Mono, lines = 1)
+    }
+}
+
 @Composable
 private fun DockItem(state: AppState, t: String) {
     // Repeat and Rec live outside the mess: read their change counter so the dock lights up with them (note #7)
@@ -120,8 +132,9 @@ private fun DockItem(state: AppState, t: String) {
         "lock" -> LockButton(state)
         "hold" -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
             DockBtn("H", { state.switchHold() }, tag = "dock-hold", on = state.holdOn)
-            T(if (state.holdCount == 0) "LAST" else if (state.holdOn) "${state.latched.size}/${state.holdCount}" else "${state.holdCount}", size = 10.sp, color = if (state.holdOn) C.Yellow else C.Dim, family = Mono,
-                modifier = Modifier.padding(top = 3.dp).clickable { state.changeHoldCount(if (state.holdCount >= 8) 0 else state.holdCount + 1) }.tagged("dock-hold-n"))
+            DockWord(if (state.holdCount == 0) "LAST" else if (state.holdOn) "${state.latched.size}/${state.holdCount}" else "${state.holdCount}", if (state.holdOn) C.Yellow else C.Dim, "dock-hold-n") {
+                state.changeHoldCount(if (state.holdCount >= 8) 0 else state.holdCount + 1)
+            }
         }
         "filter" -> DockFilter(state)
         "repeat" -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -129,11 +142,10 @@ private fun DockItem(state: AppState, t: String) {
             var rates by remember { mutableStateOf(false) }
             DockBtn("RPT", { state.setLive { nr = !nr } }, tag = "dock-repeat", on = state.live.nr, onColor = C.Pink)
             Box {
-                T(
+                DockWord(
                     (when (state.live.nrRate) { 2.0 -> "1/8"; 0.5 -> "1/32"; else -> "1/16" }) + (if (state.live.arp != "rep") " " + arpShort(state.live.arp) else "") + styleShort(state.live.nrStyle) + (if (state.live.nrPat.isNotEmpty()) " P" else ""),
-                    size = 10.sp, color = if (state.live.nr) C.Pink else C.Dim, family = Mono, lines = 1,
-                    modifier = Modifier.padding(top = 3.dp).clickable { rates = true }.tagged("dock-rate"),
-                )
+                    if (state.live.nr) C.Pink else C.Dim, "dock-rate",
+                ) { rates = true }
                 RepeatMenu(state, rates) { rates = false }
             }
         }
@@ -147,8 +159,7 @@ private fun DockItem(state: AppState, t: String) {
         "mouth" -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
             // mouth control: tap to listen; the word under it opens its settings
             DockBtn("MTH", { state.switchMouth() }, tag = "dock-mouth", on = state.mouthOn, onColor = C.Pink)
-            T(if (state.mouthOn && state.mouthHeard) "WUB" else "SET", size = 9.sp, color = if (state.mouthOn) C.Pink else C.Dim, family = Mono,
-                modifier = Modifier.padding(top = 3.dp).clickable { state.overlay = com.tideclock.messmachine.Overlay.Mouth }.tagged("dock-mouth-set"))
+            DockWord(if (state.mouthOn && state.mouthHeard) "WUB" else "SET", if (state.mouthOn) C.Pink else C.Dim, "dock-mouth-set") { state.overlay = com.tideclock.messmachine.Overlay.Mouth }
         }
         "xy" -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
             val pad = state.project.sel
@@ -206,10 +217,8 @@ private fun DockFilter(state: AppState) {
             T("C", size = 9.sp, color = C.Teal, family = Mono)
             T("R", size = 9.sp, color = C.Pink, family = Mono)
         }
-        T(if (state.dockTarget < 0) "MIX" else "P${state.dockTarget + 1}", size = 10.sp, color = C.Yellow, family = Mono, weight = FontWeight.Bold,
-            modifier = Modifier.padding(top = 4.dp).clickable { state.cycleDockTarget() }.tagged("dock-target"))
-        T(if (state.dockStay) "STAY" else "SPRING", size = 9.sp, color = if (state.dockStay) C.Teal else C.Dim, family = Mono,
-            modifier = Modifier.padding(top = 3.dp).clickable { state.dockStay = !state.dockStay; if (!state.dockStay) state.dockFilter(false) }.tagged("dock-stay"))
+        DockWord(if (state.dockTarget < 0) "MIX" else "P${state.dockTarget + 1}", C.Yellow, "dock-target") { state.cycleDockTarget() }
+        DockWord(if (state.dockStay) "STAY" else "SPRING", if (state.dockStay) C.Teal else C.Dim, "dock-stay") { state.dockStay = !state.dockStay; if (!state.dockStay) state.dockFilter(false) }
     }
 }
 

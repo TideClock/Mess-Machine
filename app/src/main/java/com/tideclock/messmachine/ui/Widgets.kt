@@ -225,6 +225,7 @@ enum class Tier { Primary, Normal, Quiet, Danger }
 fun Btn(
     text: String, onClick: () -> Unit, modifier: Modifier = Modifier, color: Color = C.Ink, on: Boolean = false,
     onColor: Color = C.Yellow, enabled: Boolean = true, small: Boolean = false, tag: String? = null, tier: Tier = Tier.Normal,
+    tight: Boolean = false,
 ) {
     val src = remember { MutableInteractionSource() }
     val pressed by src.collectIsPressedAsState()
@@ -242,7 +243,8 @@ fun Btn(
             .clickable(src, indication = null, enabled = enabled) { onClick() }
             .then(if (tag != null) Modifier.tagged(tag) else Modifier)
             .semantics { selected = on }
-            .padding(horizontal = if (small) 10.dp else 14.dp, vertical = if (small) 6.dp else 9.dp),
+            // tight: for buttons that share a row by weight, where 10 dp of padding each side cut the words short on narrow phones
+            .padding(horizontal = if (tight) 4.dp else if (small) 10.dp else 14.dp, vertical = if (small) 6.dp else 9.dp),
         contentAlignment = Alignment.Center,
     ) {
         T(text.uppercase(), color = if (on) ink(bg) else when (tier) { Tier.Quiet -> C.Dim; Tier.Danger -> C.Riot; else -> ink(bg) },

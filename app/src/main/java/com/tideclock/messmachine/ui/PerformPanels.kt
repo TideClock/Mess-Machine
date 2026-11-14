@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -302,18 +303,18 @@ fun PadianoSettings(state: AppState) {
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 8.dp)) {
             T("NOTES", size = 11.sp, color = C.Dim, spacing = .1.em)
-            Btn("−", { state.changePadianoN(state.padianoN - 1) }, small = true, enabled = state.padianoN > 7, tag = "pset-n-down")
+            Btn("−", { state.changePadianoN(state.padianoN - 1) }, small = true, enabled = state.padianoN > 7, tag = "pset-n-down", modifier = Modifier.widthIn(min = 40.dp))
             T("${state.padianoN}", size = 14.sp, color = C.Yellow, family = Mono)
-            Btn("+", { state.changePadianoN(state.padianoN + 1) }, small = true, enabled = state.padianoN < 36, tag = "pset-n-up")
+            Btn("+", { state.changePadianoN(state.padianoN + 1) }, small = true, enabled = state.padianoN < 36, tag = "pset-n-up", modifier = Modifier.widthIn(min = 40.dp))
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 8.dp)) {
             T("SIZE", size = 11.sp, color = C.Dim, spacing = .1.em)
-            for ((z, n) in listOf("S", "M", "L", "XL").withIndex()) Btn(n, { state.changePadianoSize(z) }, on = state.padianoSize == z, small = true, tag = "pset-size-$z")
+            for ((z, n) in listOf("S", "M", "L", "XL").withIndex()) Btn(n, { state.changePadianoSize(z) }, on = state.padianoSize == z, small = true, tag = "pset-size-$z", modifier = Modifier.widthIn(min = 40.dp))
         }
         // its own line: beside Size the third button ran off the edge on a phone
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 8.dp)) {
             T("ROWS", size = 11.sp, color = C.Dim, spacing = .1.em)
-            for (r in 1..3) Btn("$r", { state.changePadianoRows(r) }, on = state.padianoRows == r, small = true, tag = "pset-rows-$r")
+            for (r in 1..3) Btn("$r", { state.changePadianoRows(r) }, on = state.padianoRows == r, small = true, tag = "pset-rows-$r", modifier = Modifier.widthIn(min = 40.dp))
         }
         Help("Fewer notes make bigger squares. XL is tall, with wider squares (they wrap sooner). Each extra row is the same notes an octave up.", modifier = Modifier.padding(top = 6.dp))
     }

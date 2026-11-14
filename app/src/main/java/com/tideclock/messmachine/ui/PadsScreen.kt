@@ -193,6 +193,9 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
     var armed by remember { mutableStateOf(false) }
     val origin = remember { Origin() }
     val view = androidx.compose.ui.platform.LocalView.current
+    // the pad's own width in dp once it is laid out, so its name is sized to fit this pad on this screen
+    val dens = androidx.compose.ui.platform.LocalDensity.current.density
+    var padDp by remember { mutableStateOf(0f) }
     val keys = state.keysMode
     val i = state.bank * Project.BANK + d
     val key = if (keys) state.selKey() else P.kit[i]
@@ -239,7 +242,7 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
             }
             .then(if (!empty) Modifier.border(if (sel) 3.dp else 2.dp, if (sel) C.Cream else C.Black, RoundedCornerShape(7.dp)) else Modifier)
             .trackOrigin(origin)
-            .onGloballyPositioned { state.padRects[d] = androidx.compose.ui.geometry.Rect(it.positionInRoot(), it.size.toSize()) }
+            .onGloballyPositioned { state.padRects[d] = androidx.compose.ui.geometry.Rect(it.positionInRoot(), it.size.toSize()); padDp = it.size.width / dens }
             .pointerInput(d) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
@@ -323,7 +326,7 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
         // held by Hold: an H in the corner, so you can see what is still playing on its own
         if (!keys && (1000 + i) in state.latched) T("H", size = 12.sp, color = ink(fill), family = Mono, weight = FontWeight.Black, modifier = Modifier.align(Alignment.BottomEnd))
         if (!keys) PadMenu(state, i)
-        T(main, size = if (keys) 18.sp else padFont(main, state.dockOpen), color = if (empty) C.Empty else ink(fill), weight = FontWeight.Black, lines = 3, modifier = Modifier.align(Alignment.BottomStart))
+        T(main, size = if (keys) 18.sp else padFont(main, state.dockOpen, padDp), color = if (empty) C.Empty else ink(fill), weight = FontWeight.Black, lines = 3, modifier = Modifier.align(Alignment.BottomStart))
     }
 }
 
@@ -335,10 +338,10 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
 fun PlayViews(state: AppState) {
     val desk = state.tab == com.tideclock.messmachine.Tab.Console
     Row(Modifier.fillMaxWidth().padding(bottom = 10.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Btn("Pads", { state.keysMode = false; state.tab = com.tideclock.messmachine.Tab.Pads }, on = !desk && !state.keysMode, small = true, tag = "mode-pads", modifier = Modifier.weight(1f))
-        Btn("Keys", { state.keysMode = true; state.tab = com.tideclock.messmachine.Tab.Pads }, on = !desk && state.keysMode, onColor = C.Teal, small = true, tag = "mode-keys", modifier = Modifier.weight(1f))
-        Btn("My Desk", { state.tab = com.tideclock.messmachine.Tab.Console }, on = desk, onColor = C.Teal, small = true, enabled = !state.locked, tag = "view-desk", modifier = Modifier.weight(1.4f))
-        Btn("FX", { state.showFx = !state.showFx }, on = state.showFx && !desk, onColor = C.Pink, small = true, enabled = !desk, tag = "fx-toggle", modifier = Modifier.weight(.8f))
+        Btn("Pads", { state.keysMode = false; state.tab = com.tideclock.messmachine.Tab.Pads }, on = !desk && !state.keysMode, small = true, tight = true, tag = "mode-pads", modifier = Modifier.weight(1f))
+        Btn("Keys", { state.keysMode = true; state.tab = com.tideclock.messmachine.Tab.Pads }, on = !desk && state.keysMode, onColor = C.Teal, small = true, tight = true, tag = "mode-keys", modifier = Modifier.weight(1f))
+        Btn("My Desk", { state.tab = com.tideclock.messmachine.Tab.Console }, on = desk, onColor = C.Teal, small = true, tight = true, enabled = !state.locked, tag = "view-desk", modifier = Modifier.weight(1.4f))
+        Btn("FX", { state.showFx = !state.showFx }, on = state.showFx && !desk, onColor = C.Pink, small = true, tight = true, enabled = !desk, tag = "fx-toggle", modifier = Modifier.weight(.8f))
     }
 }
 
@@ -348,12 +351,12 @@ fun PlayViews(state: AppState) {
 fun HoldBar(state: AppState, modifier: Modifier = Modifier) {
     Wrap(modifier.padding(top = 8.dp), gap = 6.dp) {
         HoldToggle(state, tag = "hold-toggle")
-        Btn("−", { state.changeHoldCount(state.holdCount - 1) }, small = true, enabled = state.holdCount > 0, tag = "hold-down")
+        Btn("−", { state.changeHoldCount(state.holdCount - 1) }, small = true, enabled = state.holdCount > 0, tag = "hold-down", modifier = Modifier.widthIn(min = 40.dp))
         Box(Modifier.size(width = 54.dp, height = 34.dp).background(C.Black).border(2.dp, if (state.holdOn) C.Yellow else C.Cream), contentAlignment = Alignment.Center) {
             val n = if (state.holdCount == 0) "LAST" else "${state.holdCount}"
             T(if (state.holdOn && state.holdCount > 0) "${state.latched.size}/$n" else n, size = 13.sp, color = if (state.holdOn) C.Yellow else C.Dim, family = Mono, weight = FontWeight.Bold)
         }
-        Btn("+", { state.changeHoldCount(state.holdCount + 1) }, small = true, enabled = state.holdCount < 8, tag = "hold-up")
+        Btn("+", { state.changeHoldCount(state.holdCount + 1) }, small = true, enabled = state.holdCount < 8, tag = "hold-up", modifier = Modifier.widthIn(min = 40.dp))
         Btn("Let go", { state.releaseHolds() }, small = true, color = C.Riot, enabled = state.latched.isNotEmpty(), tag = "hold-release")
     }
 }
@@ -413,8 +416,15 @@ fun PadMenu(state: AppState, i: Int) {
 }
 
 /** A pad's name size: smaller for long words, so a word never breaks in the middle. */
-fun padFont(title: String, narrow: Boolean): androidx.compose.ui.unit.TextUnit {
+fun padFont(title: String, narrow: Boolean, padDp: Float = 0f): androidx.compose.ui.unit.TextUnit {
     val longest = title.split(" ").maxOfOrNull { it.length } ?: 1
+    if (padDp > 0f) {
+        // sized from the pad itself: a small phone's pads are narrower than the guess below (words broke in the
+        // middle there), and a Fold opened has room for bigger names
+        val room = padDp - 16f
+        val cap = (room / 6f).coerceIn(11.5f, 15f)
+        return minOf(cap, room * 1.13f / maxOf(1, longest)).coerceAtLeast(7f).sp
+    }
     val base = if (narrow) 10f else 11.5f
     return minOf(base, (if (narrow) 66f else 78f) / maxOf(1, longest)).coerceAtLeast(7f).sp
 }

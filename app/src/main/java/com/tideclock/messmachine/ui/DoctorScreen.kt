@@ -7,6 +7,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -156,7 +157,7 @@ fun DoctorScreen(state: AppState, key: String) {
         Row(Modifier.fillMaxWidth().padding(bottom = 10.dp, end = 4.dp).tagged("dtab-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             // each tab as wide as its word needs (equal widths cut Shape and Effects short on a phone); Effects is FX here so all five fit
             for ((t, n) in listOf("play" to "Play", "trim" to "Trim", "shape" to "Shape", "fx" to "FX", "tools" to "Tools")) {
-                Btn(n, { dtab = t }, on = dtab == t, onColor = C.Yellow, small = true, tag = "dtab-$t", modifier = Modifier.weight(n.length + 2.5f))
+                Btn(n, { dtab = t }, on = dtab == t, onColor = C.Yellow, small = true, tight = true, tag = "dtab-$t", modifier = Modifier.weight(n.length + 2.5f))
             }
         }
         if (dtab == "play") {
@@ -218,7 +219,7 @@ fun DoctorScreen(state: AppState, key: String) {
         SliderRow("Release", e.rel.toFloat(), 0f..1.5f, { "${(it * 1000).roundToInt()} ms" }, { v -> upd(false) { rel = v.toDouble() } }, { upd(true) {} }, accent = C.Yellow)
         Help("Choke group: sounds in the same group cut each other off, like an open and closed hat.", modifier = Modifier.padding(top = 4.dp, bottom = 6.dp))
         Wrap(Modifier.tagged("choke-chips")) {
-            for (g in 0..6) Btn(if (g == 0) "Off" else "$g", { upd(true) { choke = g } }, on = e.choke == g, small = true)
+            for (g in 0..6) Btn(if (g == 0) "Off" else "$g", { upd(true) { choke = g } }, on = e.choke == g, small = true, modifier = Modifier.widthIn(min = 40.dp))
         }
         }
         if (dtab == "fx") {

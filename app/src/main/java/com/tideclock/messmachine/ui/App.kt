@@ -218,13 +218,13 @@ fun Transport(state: AppState) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
-        Btn(if (state.playing) "❚❚" else "▶ Play", { state.togglePlay() }, color = C.Teal, on = state.playing, onColor = C.Yellow, small = true, tag = "play", tier = Tier.Primary, modifier = Modifier.weight(1.25f))
-        Btn("■", { state.stop() }, small = true, tag = "stop", modifier = Modifier.weight(.55f))
-        RecBtn(state, Modifier.weight(.95f))
-        Btn("↶", { state.undo() }, enabled = state.canUndo && free, small = true, tag = "undo", modifier = Modifier.weight(.5f))
+        Btn(if (state.playing) "❚❚" else "▶ Play", { state.togglePlay() }, color = C.Teal, on = state.playing, onColor = C.Yellow, small = true, tag = "play", tier = Tier.Primary, tight = true, modifier = Modifier.weight(1.25f))
+        Btn("■", { state.stop() }, small = true, tag = "stop", tight = true, modifier = Modifier.weight(.55f))
+        RecBtn(state, Modifier.weight(1.05f))
+        Btn("↶", { state.undo() }, enabled = state.canUndo && free, small = true, tag = "undo", tight = true, modifier = Modifier.weight(.5f))
         // tempo and where the music is, in one button: tap for tempo, swing and click
         Box(
-            Modifier.weight(1.25f).height(36.dp).sticker(C.Black, shadow = 2.dp, border = 2.dp)
+            Modifier.weight(1.15f).height(36.dp).sticker(C.Black, shadow = 2.dp, border = 2.dp)
                 .clickable(enabled = free) { state.overlay = Overlay.Tempo }.tagged("bpm"),
             contentAlignment = Alignment.Center,
         ) {
@@ -233,7 +233,7 @@ fun Transport(state: AppState) {
                 T(position(state), size = 10.sp, color = C.Yellow, lines = 1, family = Mono, weight = FontWeight.Bold, modifier = Modifier.tagged("position"))
             }
         }
-        Btn("?", { state.switchHelp() }, small = true, on = state.helpOn, onColor = C.Teal, tag = "help-toggle", tier = Tier.Quiet, modifier = Modifier.weight(.45f))
+        Btn("?", { state.switchHelp() }, small = true, on = state.helpOn, onColor = C.Teal, tag = "help-toggle", tier = Tier.Quiet, tight = true, modifier = Modifier.weight(.45f))
         TopMenu(state, Modifier.weight(.5f))
     }
 }
@@ -244,7 +244,7 @@ fun TopMenu(state: AppState, modifier: Modifier = Modifier) {
     var open by remember { mutableStateOf(false) }
     val free = !state.locked
     Box(modifier) {
-        Btn("☰", { open = true }, small = true, enabled = free, color = if (state.crash != null) C.Riot else C.Ink, tag = "menu", tier = if (state.crash != null) Tier.Normal else Tier.Quiet, modifier = Modifier.fillMaxWidth())
+        Btn("☰", { open = true }, small = true, tight = true, enabled = free, color = if (state.crash != null) C.Riot else C.Ink, tag = "menu", tier = if (state.crash != null) Tier.Normal else Tier.Quiet, modifier = Modifier.fillMaxWidth())
         androidx.compose.material3.DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.background(C.Ink).border(3.dp, C.Cream).tagged("topmenu")) {
             for ((label, tag, act) in listOf(
                 Triple("☰  Messes", "messes") { state.refreshFiles(); state.overlay = Overlay.Files },
@@ -366,7 +366,7 @@ fun BeatLight(state: AppState, pulse: Animatable<Float, AnimationVector1D>) {
 fun RecBtn(state: AppState, modifier: Modifier = Modifier) {
     @Suppress("UNUSED_VARIABLE") val lv = state.liveV
     val pulse = beatPulse(state)
-    Btn("● Rec", { state.setLive { rec = !rec } }, on = state.live.rec, onColor = C.Riot, small = true, tag = "rec", tier = Tier.Primary, modifier = modifier.recGlow(state, pulse))
+    Btn("● Rec", { state.setLive { rec = !rec } }, on = state.live.rec, onColor = C.Riot, small = true, tag = "rec", tier = Tier.Primary, tight = true, modifier = modifier.recGlow(state, pulse))
 }
 
 /**

@@ -1455,7 +1455,9 @@ class AppState(private val app: Context) {
     fun noteDetails(cat: String = "bug", crashed: Boolean = false): String {
         val p = project
         val loops = (0 until Project.NSLOTS).count { p.pats[it].used() }
-        return "**Device:** ${NotesBook.device()}\n" +
+        val dm = app.resources.displayMetrics
+        val shape = "${(dm.widthPixels / dm.density).toInt()} x ${(dm.heightPixels / dm.density).toInt()} dp, view size ${(uiScale * 100).toInt()}%, dock ${if (dockOpen) "open" else "folded"}"
+        return "**Device:** ${NotesBook.device()}, screen $shape\n" +
             "**Audio:** ${rate} Hz, buffer ${audio.bufferFrames} frames, burst ${burst}, underruns ${audio.underruns}, engine load ${audio.loadText()}\n" +
             "**Lag:** ${lagText()}\n" +
             "**Long audio blocks:** ${audio.longBlocksText()}\n" +

@@ -83,11 +83,12 @@ fun SoundsScreen(state: AppState, pickFor: Int?) {
         else -> state.lib.inCab(cab)
     }
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 16.dp, top = 10.dp, bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Btn("By type", { state.soundsMode = "type"; q = "" }, on = mode == "type", small = true, modifier = Modifier.weight(9.5f), tag = "mode-type")
-            Btn("By jar", { state.soundsMode = "jar"; q = "" }, on = mode == "jar", small = true, modifier = Modifier.weight(8.5f), tag = "mode-jar")
-            Btn("★ Starred", { state.soundsMode = "fav"; q = "" }, on = mode == "fav", small = true, onColor = C.Pink, modifier = Modifier.weight(11.5f), tag = "mode-fav")
-            Btn("Packs", { state.overlay = com.tideclock.messmachine.Overlay.Packs; if (state.packOffers == null) state.refreshPacks() }, small = true, onColor = C.Teal, modifier = Modifier.weight(7.5f), tag = "open-packs")
+        // each view at its own width; on a narrow phone Packs drops to a second line (equal shares cut every word short there)
+        Wrap(Modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 10.dp), gap = 6.dp) {
+            Btn("By type", { state.soundsMode = "type"; q = "" }, on = mode == "type", small = true, tag = "mode-type")
+            Btn("By jar", { state.soundsMode = "jar"; q = "" }, on = mode == "jar", small = true, tag = "mode-jar")
+            Btn("★ Starred", { state.soundsMode = "fav"; q = "" }, on = mode == "fav", small = true, onColor = C.Pink, tag = "mode-fav")
+            Btn("Packs", { state.overlay = com.tideclock.messmachine.Overlay.Packs; if (state.packOffers == null) state.refreshPacks() }, small = true, onColor = C.Teal, tag = "open-packs")
         }
         when (mode) {
             "type" -> {
@@ -217,7 +218,7 @@ fun SoundRow(state: AppState, s: Library.Sound, target: Int, picking: Boolean) {
                 ).joinToString(" · ")
                 if (info.isNotEmpty()) Note(info, color = if (onPad >= 0) C.Teal else C.Dim, size = 11.sp)
             }
-            T(if (s.key in state.favs) "★" else "☆", size = 22.sp, color = C.Yellow, modifier = Modifier.clickable { state.toggleFav(s.key) }.padding(horizontal = 8.dp))
+            T(if (s.key in state.favs) "★" else "☆", size = 22.sp, color = C.Yellow, modifier = Modifier.clickable { state.toggleFav(s.key) }.padding(horizontal = 10.dp, vertical = 6.dp))
             if (s.cab == "mine") {
                 Btn("Share", { state.shareSoundWav(s.key) }, small = true, modifier = Modifier.padding(end = 8.dp), tag = "share-${s.key}")
                 var sure by remember { mutableStateOf(false) }

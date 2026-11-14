@@ -4,7 +4,9 @@
 
 Rewritten at the end of every session and at each step of a long job (BT-2). Read this first.
 
-- **Live:** build 81 (when its run is green; 80 passed the big test but was replaced before it published, because
+- **Live:** build 82 (when its run is green): the second test pass (narrow screens, small targets; see the
+  2026-11-14 decisions).
+- **Before that:** build 81 (80 passed the big test but was replaced before it published, because
   its new Menu button squeezed the bank numbers to dots with the dock open): the slim keys bar (Hold, key and chords, always there, on the Play tab
   and the Synth tab), Menu by the bank numbers for every pad, the Synth tab's pad picker (note #12), and the MIDI
   map (see the 2026-11-14 decisions).
@@ -223,6 +225,16 @@ Sound engine plan v2 (doc https://claude.ai/artifact/Vsr6HBLcVa8wehHaNbqSD9), bu
   sheet's tabs are sized by their words and Effects is FX there; Favorites is Starred; Octave down a size smaller;
   the Padiano's Rows on its own line; "Env to pos"; the keys bar's ▴ is 44 dp wide. A MIDI key on an empty pad
   does nothing (a finger there opens the jars; a stray controller key should not).
+- 2026-11-14 Second test pass, from the audit's first numbers and its pictures at 360 and 673 dp. The first run's
+  "cut off text" column was wrong (hasVisualOverflow is true for nearly every label with this app's line height);
+  it now means a line that ends in an ellipsis or dropped lines. Widths are now 344, 369 (about a Z Fold's cover
+  screen), 411 and 707 (about a Z Fold opened), and at 369 and up the words a player steers by must not be cut
+  off or the test fails. Fixed: `Btn(tight = true)` (4 dp side padding) for buttons that share a row by weight
+  (top bar, Play tab views, Sample tabs); Sounds views wrap at their own widths; pad names are sized from the
+  pad's measured width (words broke mid-word at 360; bigger names on an opened Fold); the words under dock
+  buttons are `DockWord` buttons 32 dp tall and the dock's width (they were about 24 by 13 dp); one-letter
+  buttons are at least 40 dp wide. Notes now report the screen's dp size, view size and dock state. Left on
+  purpose: the effect buttons' 24 dp pencil corner (bigger would take playing surface) and the ? in the top bar.
 
 ## Control map
 

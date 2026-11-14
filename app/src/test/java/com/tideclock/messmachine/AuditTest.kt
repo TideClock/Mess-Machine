@@ -31,7 +31,7 @@ import java.io.File
 
 /**
  * The usability audit (2026-11-14, Tyler: "a full bug test and usability test as well as design test"). It walks
- * every page, sheet and menu at three screen widths (a small phone, the usual phone, a Fold opened) and measures
+ * every page, sheet and menu at four screen widths (very narrow, a Fold's cover screen, the usual phone, a Fold opened) and measures
  * what a finger and an eye run into:
  *
  *  - buttons too small to hit (outside the playing surfaces, which are sized on purpose)
@@ -132,7 +132,10 @@ class AuditTest {
             val r = res.firstOrNull() ?: continue
             val txt = r.layoutInput.text.text.trim().replace(Regex("\\s+"), " ").take(48)
             if (txt.isEmpty()) continue
-            if (r.hasVisualOverflow) add("cut off text", "\"$txt\"")
+            // cut off = the line ends in "…" or lines were dropped. (hasVisualOverflow is no use here: the app's
+            // line height makes it true for nearly every label, which the first run of this audit showed.)
+            val cut = (0 until r.lineCount).any { r.isLineEllipsized(it) } || r.multiParagraph.didExceedMaxLines
+            if (cut) add("cut off text", "\"$txt\"")
             val fs = r.layoutInput.style.fontSize
             if (fs.isSp && fs.value < tinySp) add("tiny text", "\"$txt\" (${"%.1f".format(fs.value)} sp)")
         }
@@ -197,13 +200,27 @@ class AuditTest {
         File("build/screens/usability-$width.md").writeText(out.toString())
         println(out)
         assertTrue("the audit walked the whole app (${pages.size} pages)", pages.size >= 35)
+        // the words a player steers by must never be cut off, at any width a phone in use has (344 is reported only:
+        // narrower than any phone these builds have run on)
+        if (mustFit) for (m in listOf("▶ PLAY", "● REC", "PADS", "KEYS", "MY DESK", "SAMPLE", "MENU", "PLAY", "SYNTH", "STEPS", "ROLL", "SONG", "SOUNDS", "TRIM", "SHAPE", "TOOLS", "BY TYPE", "BY JAR", "★ STARRED", "PACKS")) {
+            val where = found["cut off text | \"$m\""]
+            assertTrue("\"$m\" is cut off at $width on ${where?.joinToString(", ")}", where == null)
+        }
     }
+
+    private var mustFit = true
 
     @Test fun auditPhone() = walk("w411")
 
-    @Config(qualifiers = "w360dp-h740dp-xhdpi")
-    @Test fun auditSmallPhone() = walk("w360")
+    /** About a Galaxy Z Fold's cover screen at its usual display size (Tyler's phone, folded). */
+    @Config(qualifiers = "w369dp-h905dp-xhdpi")
+    @Test fun auditFoldCover() = walk("w369")
 
-    @Config(qualifiers = "w673dp-h841dp-xhdpi")
-    @Test fun auditFoldOpen() = walk("w673")
+    /** Narrower than any phone these builds have met: reported, not enforced. */
+    @Config(qualifiers = "w344dp-h800dp-xhdpi")
+    @Test fun auditNarrow() { mustFit = false; walk("w344") }
+
+    /** About a Galaxy Z Fold opened. */
+    @Config(qualifiers = "w707dp-h822dp-xhdpi")
+    @Test fun auditFoldOpen() = walk("w707")
 }

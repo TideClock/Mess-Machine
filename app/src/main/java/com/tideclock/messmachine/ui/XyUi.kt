@@ -231,7 +231,7 @@ fun XyEditor(state: AppState, pad: Int) {
             Btn("Four-way", { state.setXy(pad, x.copy(four = true, size = maxOf(1, x.size))) }, on = x.four, onColor = C.Pink, small = true, tag = "xy-four")
             Btn(if (x.spring) "Springs back" else "Stays put", { state.setXy(pad, x.copy(spring = !x.spring)) }, small = true, tag = "xy-spring")
             Btn(if (x.ring) "Ring" else "Square", { state.setXy(pad, x.copy(ring = !x.ring)) }, small = true, tag = "xy-shape")
-            for (z in (if (x.four) 1 else 0)..2) Btn("SML"[z].toString(), { state.setXy(pad, x.copy(size = z)) }, on = x.size == z, small = true)
+            for (z in (if (x.four) 1 else 0)..2) Btn("SML"[z].toString(), { state.setXy(pad, x.copy(size = z)) }, on = x.size == z, small = true, modifier = Modifier.widthIn(min = 40.dp))
             Btn(if (x.steps) "Pitch: scale steps" else "Pitch: smooth", { state.setXy(pad, x.copy(steps = !x.steps)) }, small = true, tag = "xy-steps")
         }
         val labels = if (x.four) listOf("Right →", "Up ↑", "Left ←", "Down ↓") else listOf("Across →", "Up ↑")
