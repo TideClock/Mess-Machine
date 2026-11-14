@@ -4,7 +4,15 @@
 
 Rewritten at the end of every session and at each step of a long job (BT-2). Read this first.
 
-- **Live:** build 83 (when its run is green; 82 passed the big test and was replaced by the third pass): the second and third test passes (narrow screens, small targets; see the
+- **Live:** build 83 (green, published 2026-11-14; note #12 closed): the full test pass. 59 tests pass (51 big test
+  flows, the monkey test, 4 audit widths, 3 chord tests); the emulator phone test is clean (no crash, two monkey
+  runs clean). Audit at 369 dp: 8 cut-off labels left (all sound names, plus the keys bar's button with the dock
+  open), 6 buttons under 32 dp (five of them 30 or 31 dp wide in the top bar and the Song palette, and the effect
+  pencil). 82 passed the big test and was replaced by the third pass before publishing.
+- **Next for the tests:** make the audit a ratchet (a baseline file of today's findings; any new small button or
+  cut-off label fails the build), with the next app change so it does not cost a build of its own. Not tested by
+  anything: real MIDI hardware, real mic input for mouth control, and how the sound is by ear.
+- **Before that:** the second and third test passes (narrow screens, small targets; see the
   2026-11-14 decisions).
 - **Before that:** build 81 (80 passed the big test but was replaced before it published, because
   its new Menu button squeezed the bank numbers to dots with the dock open): the slim keys bar (Hold, key and chords, always there, on the Play tab
