@@ -62,6 +62,8 @@ fun SynthScreen(state: AppState) {
         // header: which pad, the preset, the view
         Row(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 8.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             T("PAD ${pad + 1}", size = 12.sp, color = C.Yellow, spacing = .08.em)
+            // the same synth as a Padiano on the pad grid, next to your other pads (note #11)
+            Btn("🎹 On pads", { state.padianoOnGrid(pad) }, small = true, tag = "synth-to-pads")
             Select(
                 sp.name,
                 sp.kind.presets.map { it.name to it.name },
@@ -95,6 +97,7 @@ fun SynthScreen(state: AppState) {
                     KnobRows(state, pad, sp, ps, "knobs-${g.lowercase().replace(' ', '-')}-chips")
                 }
                 Spacer(Modifier.height(10.dp))
+                HoldBar(state, Modifier.padding(bottom = 8.dp))
                 PianoKeyboard(state, pad, close = false)
             }
             "pad" -> Synthipad(state, pad, sp)
@@ -102,6 +105,7 @@ fun SynthScreen(state: AppState) {
                 ModeChips(state, pad, sp)
                 KnobRows(state, pad, sp, sp.kind.params.filter { it.simple && it.id != "mode" && it.id != "model" }, "knobs-simple-chips")
                 Help(sp.kind.blurb + " Full has every knob.", modifier = Modifier.padding(top = 4.dp, bottom = 10.dp))
+                HoldBar(state, Modifier.padding(bottom = 8.dp))
                 PianoKeyboard(state, pad, close = false)
             }
         }
@@ -273,6 +277,8 @@ private fun Synthipad(state: AppState, pad: Int, sp: Synth.Patch) {
             T("CUTOFF ${cutP.show(sp.get("cut"))} · RESONANCE ${resP.show(sp.get("res"))}", size = 10.sp, color = C.Dim, spacing = .04.em, modifier = Modifier.padding(start = 8.dp, top = 6.dp))
         }
     }
+    // Hold's settings here too, so a held chord and single notes on top work like on the Padiano (note #11)
+    HoldBar(state, Modifier.padding(bottom = 8.dp))
     // four rows of in-key notes, lowest at the bottom, like a pad controller
     val scale = if (P.scale == "Chromatic") "Major" else P.scale
     val notes = (-12..24).filter { Theory.inScale(it, scale, P.root) }.take(16 + 4).let { all -> if (all.size >= 16) all.take(16) else all }

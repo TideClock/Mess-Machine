@@ -19,6 +19,13 @@ Rewritten at the end of every session and at each step of a long job. Read this 
   for it; `site/tools/precheck.sh` covers the checks until then.
 - **Not done:** the three Nov 3 comment threads on the site are fixed but open; they are not sent to Claude.
 - **Watch:** Tyler has not seen the walk overhaul or the darker machine yet. Feel numbers are in `tools/walk.js`.
+- **Nov 12:** the band page's game block is an arcade cabinet (the broken "Find it in Coin-Op Purgatory" button is gone).
+  Clips uploaded in Channel Nowhere also play on the band page (`renderClips`); full episodes still open YouTube,
+  because claude.ai blocks YouTube inside a page. The Brotherwife site has a Merch room: the Junk Drawer engine
+  with `BW_DESIGNS` (empty until Tyler sends the band's shirt designs; each needs `img/<key>_shirt.jpg` and
+  `img/<key>_mug.jpg` mockups, made with the print-art pipeline from the first NSD chat).
+- **Waiting on Tyler:** share the Brotherwife site and the Ergot Pizza Party game with the band on claude.ai (both are
+  owner only); send the Brotherwife shirt designs (not in Drive under any shirt or merch name).
 
 ## Two tracks, one repo
 

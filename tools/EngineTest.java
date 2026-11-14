@@ -640,6 +640,78 @@ public class EngineTest {
     int zi = (int) Math.round(z * hat.data.length);
     check(zi > 0 && (hat.data[zi - 1] <= 0) != (hat.data[zi] <= 0), "snap lands on a zero crossing");
     System.out.println(failures == 0 ? "ALL GOOD" : failures + " FAILED");
+    repeatPatternTests(rate);
+    mouthTests();
     if (failures > 0) System.exit(1);
+  }
+
+  static void repeatPatternTests(int rate) {
+    // ---- repeat patterns (Tyler: "trigger every two notes, then skip one"): x plays, . rests
+    {
+      float[] tone = new float[4410]; for (int i = 0; i < tone.length; i++) tone[i] = (float) (.5 * Math.sin(2 * Math.PI * 440 * i / 44100.0));
+      Engine.SampleSource ts = k -> new Sample(k, tone, 44100);
+      Project rp = new Project(); rp.kit[0] = "tone"; rp.bpm = 120;
+      double spbR = rate * 60.0 / rp.bpm / 4.0;
+      float[] rb = new float[512];
+      for (String pat : new String[]{"", "xx.", "x.", "x..x..x."}) {
+        Engine.Live rl = new Engine.Live(); rl.nr = true; rl.nrRate = 1; rl.nrPat = pat;
+        Engine re = new Engine(rate); re.setSnapshot(Engine.Snapshot.build(rp, ts, rl));
+        re.down(1, 0, new int[]{0}, false);
+        // 24 repeats while stopped: the press is repeat 0, then one every sixteenth
+        int rt0 = re.triggers;
+        for (int i = 0; i < (int) (24 * spbR / 256) - 1; i++) re.render(rb, 256);
+        int rgot = re.triggers - rt0;
+        int rwant = 0; for (int i = 0; i < 24; i++) if (rl.patOn(i)) rwant++;
+        // playing: the pattern counts from the top of the loop, one letter per sixteenth
+        Engine rq = new Engine(rate); rq.setSnapshot(Engine.Snapshot.build(rp, ts, rl));
+        rq.down(1, 0, new int[]{0}, false); rq.play();
+        int rt1 = rq.triggers;
+        for (int i = 0; i < (int) (16 * spbR / 256) - 1; i++) rq.render(rb, 256);
+        int rgotP = rq.triggers - rt1;
+        int rwantP = 0; for (int i = 0; i < 16; i++) if (rl.patOn(i)) rwantP++;
+        check(Math.abs(rgot - rwant) <= 1 && Math.abs(rgotP - rwantP) <= 1, String.format("Repeat pattern \"%s\": %d of 24 repeats play while stopped (%d wanted), %d of 16 while playing (%d wanted)", pat.isEmpty() ? "every one" : pat, rgot, rwant, rgotP, rwantP));
+      }
+      // Hold plus a pattern: a latched note keeps the pattern after the finger lifts
+      Engine.Live hl = new Engine.Live(); hl.nr = true; hl.nrPat = "xx.";
+      Engine he2 = new Engine(rate); he2.setSnapshot(Engine.Snapshot.build(rp, ts, hl));
+      he2.down(1000, 0, new int[]{0}, false, true); he2.up(1000);
+      int rh0 = he2.triggers;
+      for (int i = 0; i < (int) (12 * spbR / 256) - 1; i++) he2.render(rb, 256);
+      check(Math.abs((he2.triggers - rh0) - 8) <= 1, "Repeat pattern with Hold: a held pad goes hit, hit, skip after the finger lifts (" + (he2.triggers - rh0) + " of 12, 8 wanted)");
+    }
+  }
+
+  static void mouthTests() {
+    // ---- mouth control: vowels into a number (dark "ooo" low, bright "eee" high), loudness, a gate
+    {
+      int mr = 16000;
+      // a voice at 120 Hz through two formants, like a mouth shaping a vowel
+      java.util.function.BiFunction<double[], Double, float[]> vowelOf = (fm, sec) -> {
+        float[] o = new float[(int) (sec * mr)];
+        for (int k = 1; k * 120 < mr / 2; k++) {
+          double f = k * 120, amp = 0;
+          for (int j = 0; j < 2; j++) amp += 1 / (1 + Math.pow((f - fm[j]) / 90, 2));
+          amp /= k * .6 + .4;
+          for (int i = 0; i < o.length; i++) o[i] += (float) (.12 * amp * Math.sin(2 * Math.PI * f * i / mr));
+        }
+        return o;
+      };
+      double[][] fms = {{300, 870}, {730, 1090}, {270, 2290}};
+      String[] names = {"ooo", "aah", "eee"};
+      float[] vs = new float[3];
+      for (int j = 0; j < 3; j++) { MouthTracker mt = new MouthTracker(mr); float[] x = vowelOf.apply(fms[j], .4); mt.feed(x, 0, x.length); vs[j] = mt.on ? mt.vowel : -1; }
+      check(vs[0] >= 0 && vs[0] < vs[1] && vs[1] < vs[2] && vs[2] - vs[0] > .45, String.format("Mouth: vowels come out in order, ooo %.2f < aah %.2f < eee %.2f", vs[0], vs[1], vs[2]));
+      MouthTracker mq = new MouthTracker(mr); float[] hush = new float[mr / 2]; java.util.Random rnd = new java.util.Random(4);
+      for (int i = 0; i < hush.length; i++) hush[i] = (float) (rnd.nextGaussian() * .0005);
+      mq.feed(hush, 0, hush.length);
+      check(!mq.on && mq.level < .05, String.format("Mouth: a quiet room is off (%.0f dB, level %.2f)", mq.db, mq.level));
+      // how fast it follows: ooo then eee, time until the number is most of the way there
+      MouthTracker mf = new MouthTracker(mr); float[] a1 = vowelOf.apply(fms[0], .3), a2 = vowelOf.apply(fms[2], .3);
+      mf.feed(a1, 0, a1.length); float from = mf.vowel; int ms = -1;
+      for (int i = 0; i < a2.length; i += 16) { mf.feed(a2, i, Math.min(16, a2.length - i)); if (ms < 0 && mf.vowel > from + (vs[2] - from) * .8) ms = i * 1000 / mr; }
+      check(ms > 0 && ms < 70, "Mouth: from ooo to eee it gets 80% of the way in " + ms + " ms (under 70 wanted)");
+      mf.feed(hush, 0, hush.length);
+      check(!mf.on, "Mouth: stop making the sound and it goes off");
+    }
   }
 }

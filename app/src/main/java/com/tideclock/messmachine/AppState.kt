@@ -55,6 +55,7 @@ data class Module(
 val DOCK_TYPES = listOf(
     "lock" to "Lock", "hold" to "Hold", "filter" to "Filter + resonance", "repeat" to "Repeat",
     "rec" to "Rec", "beat" to "Beat light", "stutter" to "Stutter", "echo" to "Echo throw", "xy" to "XY setup for the picked pad", "desk" to "Desk layouts",
+    "mouth" to "Mouth control",
 )
 
 /** Every module you can add, with its name. */
@@ -81,6 +82,7 @@ sealed class Overlay {
     data object AudioCheck : Overlay()
     data object Packs : Overlay()
     data object Learn : Overlay()
+    data object Mouth : Overlay()
     data class Xy(val pad: Int) : Overlay()
 }
 
@@ -653,6 +655,7 @@ class AppState(private val app: Context) {
             if (dt > worst) worst = dt
         }
         lastFrame = now
+        mouthTick()
         if (winStart == 0L) winStart = now
         if (now - winStart > 10_000_000_000L) {
             val secs = (now - winStart) / 1e9
@@ -1318,6 +1321,7 @@ class AppState(private val app: Context) {
         Overlay.Notes -> "notes"
         Overlay.Packs -> "packs"
         Overlay.Learn -> "learn"
+        Overlay.Mouth -> "mouth control"
         Overlay.AudioCheck -> "latency"
     }
 
@@ -1429,6 +1433,14 @@ class AppState(private val app: Context) {
         notes.trail("piano pad ${pad + 1}")
     }
 
+    /** From the Synth tab: this pad's Padiano opens under its row on the pad grid, and the grid shows (note #11). */
+    fun padianoOnGrid(pad: Int) {
+        if (project.kit[pad].isEmpty()) return
+        keysMode = false
+        if (pad !in keyboards) toggleKeyboard(pad) else bank = pad / Project.BANK
+        tab = Tab.Pads
+    }
+
     /** View size, so more fits on the screen. 1 = normal. */
     var uiScale by mutableFloatStateOf(prefs.getFloat("uiScale", 1f))
         private set
@@ -1438,8 +1450,8 @@ class AppState(private val app: Context) {
         prefs.edit().putFloat("uiScale", uiScale).apply()
     }
 
-    /** Padiano note ids: 10000 + pad * 100 + (pitch + 48), so pitch -48..51 never collide. */
-    private fun pianoId(pad: Int, p: Int) = 10000 + pad * 100 + (p + 48)
+    /** Padiano note ids: 10000 + pad * 200 + (pitch + 96), so pitch -96..103 never collide (extra rows reach high). */
+    fun pianoId(pad: Int, p: Int) = 10000 + pad * 200 + (p + 96)
 
     /* ---------------- Padiano settings ---------------- */
 
@@ -1449,15 +1461,19 @@ class AppState(private val app: Context) {
     /** How many semitones the Squares show, 7 to 36. */
     var padianoN by mutableIntStateOf(prefs.getInt("padN", 13).coerceIn(7, 36))
         private set
-    /** Height: 0 small, 1 medium, 2 large. */
-    var padianoSize by mutableIntStateOf(prefs.getInt("padSize", 1).coerceIn(0, 2))
+    /** Height: 0 small, 1 medium, 2 large, 3 extra large (taller, and the squares a bit wider). */
+    var padianoSize by mutableIntStateOf(prefs.getInt("padSize", 1).coerceIn(0, 3))
+        private set
+    /** Rows of notes on each Padiano, 1 to 3: each row up is the same notes an octave higher. */
+    var padianoRows by mutableIntStateOf(prefs.getInt("padRows", 1).coerceIn(1, 3))
         private set
     /** Lowest note shown on each pad's Padiano (moved an octave at a time with ◀ ▶). */
     val padianoBase = mutableStateMapOf<Int, Int>()
 
     fun switchPadianoKeys(v: Boolean) { padianoKeys = v; prefs.edit().putBoolean("padKeys", v).apply() }
     fun changePadianoN(n: Int) { padianoN = n.coerceIn(7, 36); prefs.edit().putInt("padN", padianoN).apply() }
-    fun changePadianoSize(n: Int) { padianoSize = n.coerceIn(0, 2); prefs.edit().putInt("padSize", padianoSize).apply() }
+    fun changePadianoSize(n: Int) { padianoSize = n.coerceIn(0, 3); prefs.edit().putInt("padSize", padianoSize).apply() }
+    fun changePadianoRows(n: Int) { padianoRows = n.coerceIn(1, 3); prefs.edit().putInt("padRows", padianoRows).apply(); notes.trail("padiano rows $padianoRows") }
     fun shiftPadiano(pad: Int, by: Int) { padianoBase[pad] = ((padianoBase[pad] ?: 0) + by).coerceIn(-36, 24) }
 
     /** Chords can play, or just show their notes on the piano so you can play them yourself. */
@@ -1474,6 +1490,122 @@ class AppState(private val app: Context) {
         val strip = Theory.stripNotes(project.scale, project.root)
         val idx = strip.indexOf(p)
         return if (chordMode.startsWith("set:") && idx < 0) intArrayOf(p) else Theory.chordOf(p, idx.coerceAtLeast(0), chordMode, project.scale, project.root)
+    }
+
+    /* ---------------- mouth control: the mic as a hands-free XY ---------------- */
+
+    val mouthMic = MouthMic()
+    /** Mouth control is listening. */
+    var mouthOn by mutableStateOf(false)
+        private set
+    /** What the vowel moves (dark "ooo" to bright "eee"), and what loudness moves; -1 is nothing. */
+    var mouthVowelTo by mutableIntStateOf(prefs.getInt("mouthX", Engine.T_FILTER))
+        private set
+    var mouthLevelTo by mutableIntStateOf(prefs.getInt("mouthY", -1))
+        private set
+    /** When you go quiet: true keeps the last place (like Stay), false lets go (springs back). */
+    var mouthStay by mutableStateOf(prefs.getBoolean("mouthStay", true))
+        private set
+    /** The gate in dB: quieter than this is not you. */
+    var mouthGate by mutableFloatStateOf(prefs.getFloat("mouthGate", -46f))
+        private set
+    /** What the meter shows: vowel 0..1, level 0..1, and whether you are making a sound. */
+    var mouthNow by mutableStateOf(Triple(0f, 0f, false))
+        private set
+    /** You are making a sound right now (its own state, so the dock doesn't redraw for every wobble of the meter). */
+    var mouthHeard by mutableStateOf(false)
+        private set
+    private var mouthPadNow = -1
+    private var mouthLast = 0f to 0f
+
+    /** The mouth's own two-way XY: X is the vowel, Y the loudness. Filter (and anything set to turn down) closes as
+     * you go dark or quiet, so "ooo" is a closed filter and "eee" an open one, the way a wah sounds. */
+    private fun mouthSetup(): XySetup {
+        fun dir(t: Int) = if (t < 0) XyDir() else XyDir(t, xyTarget(t).def)
+        return XySetup("Mouth", false, listOf(dir(mouthVowelTo), dir(mouthLevelTo), XyDir(), XyDir()), spring = !mouthStay)
+    }
+    private fun mouthAmount(t: Int, v: Float): Float = if (t == Engine.T_FILTER || xyTarget(t).def < 0) 1f - v else v
+
+    fun switchMouth(v: Boolean = !mouthOn) {
+        if (v == mouthOn) return
+        if (!v) {
+            mouthMic.stop()
+            mouthOn = false
+            mouthHeard = false
+            mouthRelease()
+            notes.trail("mouth off")
+            return
+        }
+        if (micOn) { say("The mic is recording onto a pad. Stop that first."); return }
+        val ok = androidx.core.content.ContextCompat.checkSelfPermission(app, android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (!ok) { askMicFor = MIC_FOR_MOUTH; return }
+        mouthMic.tracker.gateDb = mouthGate
+        if (!mouthMic.start()) { say("The mic would not open. Another app may be using it."); return }
+        mouthOn = true
+        notes.trail("mouth on, vowel moves ${xyTarget(mouthVowelTo).name}, loudness moves ${xyTarget(mouthLevelTo).name}")
+        if (project.kit[project.sel].isEmpty()) say("Mouth control moves the pad you picked. Pick a pad with a sound.")
+    }
+
+    fun pickMouthVowel(t: Int) { mouthRelease(); mouthVowelTo = t; prefs.edit().putInt("mouthX", t).apply() }
+    fun pickMouthLevel(t: Int) { mouthRelease(); mouthLevelTo = t; prefs.edit().putInt("mouthY", t).apply() }
+    fun switchMouthStay(v: Boolean) { mouthStay = v; prefs.edit().putBoolean("mouthStay", v).apply(); if (!v) mouthRelease() }
+    fun changeMouthGate(db: Float) { mouthGate = db.coerceIn(-70f, -20f); mouthMic.tracker.gateDb = mouthGate; prefs.edit().putFloat("mouthGate", mouthGate).apply() }
+
+    /** Let go of the pad the mouth was moving (it springs back, or keeps the last place with Stay). */
+    private fun mouthRelease() {
+        val pad = mouthPadNow
+        if (pad < 0) return
+        mouthPadNow = -1
+        xyMove(pad, mouthLast.first, mouthLast.second, false, setup = mouthSetup().copy(spring = true))
+    }
+
+    /** Every frame while listening: the mouth moves the picked pad (and Rec, while playing, records it). */
+    private fun mouthTick() {
+        if (!mouthOn) return
+        val t = mouthMic.tracker
+        if (!mouthMic.running) { mouthOn = false; mouthRelease(); say("The mic stopped."); return }
+        mouthApply(t.vowel, t.level, t.on)
+    }
+
+    /** One reading of the mouth (vowel 0..1, level 0..1, making a sound or not) moves the picked pad. Tests call it too. */
+    fun mouthApply(vw: Float, lv: Float, heard: Boolean) {
+        if (overlay == Overlay.Mouth && (mouthNow.first != vw || mouthNow.second != lv || mouthNow.third != heard)) mouthNow = Triple(vw, lv, heard)
+        if (mouthHeard != heard) mouthHeard = heard
+        val pad = project.sel
+        if (mouthPadNow >= 0 && mouthPadNow != pad) mouthRelease()
+        if (project.kit.getOrNull(pad).isNullOrEmpty()) return
+        if (heard) {
+            val fx = if (mouthVowelTo < 0) 0f else mouthAmount(mouthVowelTo, vw)
+            val fy = if (mouthLevelTo < 0) 0f else mouthAmount(mouthLevelTo, lv)
+            mouthLast = fx to fy
+            mouthPadNow = pad
+            xyMove(pad, fx, fy, true, setup = mouthSetup())
+        } else if (mouthPadNow >= 0 && !mouthStay) mouthRelease()
+    }
+
+    /* ---------------- repeat patterns: which repeats play ---------------- */
+
+    /** Your own pattern, kept for next time (x plays, . rests), 2 to 16 long. */
+    var ownPattern by mutableStateOf(prefs.getString("nrPatOwn", "xx.x..x.")!!.filter { it == 'x' || it == '.' }.take(16).ifEmpty { "xx." })
+        private set
+
+    init { live.nrPat = prefs.getString("nrPat", "")!!.filter { it == 'x' || it == '.' }.take(16) }
+
+    /** Pick repeat's pattern ("" plays every repeat). Turns Repeat on, since a pattern is for hearing. */
+    fun setRepeatPattern(p: String) {
+        val clean = p.filter { it == 'x' || it == '.' }.take(16)
+        prefs.edit().putString("nrPat", clean).apply()
+        notes.trail("repeat pattern ${clean.ifEmpty { "all" }}")
+        setLive { nrPat = clean; if (clean.isNotEmpty()) nr = true }
+    }
+
+    /** Change your own pattern: tap a step to flip it, or make it longer or shorter. It plays as you change it. */
+    fun editOwnPattern(p: String) {
+        val clean = p.filter { it == 'x' || it == '.' }.take(16)
+        if (clean.length < 2) return
+        ownPattern = clean
+        prefs.edit().putString("nrPatOwn", clean).apply()
+        setRepeatPattern(clean)
     }
 
     /* ---------------- hold: the first N notes keep sounding ---------------- */
@@ -1510,7 +1642,7 @@ class AppState(private val app: Context) {
     }
 
     /** Pitches holding on one pad's piano, for drawing. */
-    fun heldPitches(pad: Int): Set<Int> = latched.filter { it >= 10000 && (it - 10000) / 100 == pad }.map { (it - 10000) % 100 - 48 }.toSet()
+    fun heldPitches(pad: Int): Set<Int> = latched.filter { it >= 10000 && (it - 10000) / 200 == pad }.map { (it - 10000) % 200 - 96 }.toSet()
 
     /** A melodic press with hold rules: a held note pressed again lets go; a free slot holds; otherwise it plays normally. */
     private fun melodicDown(id: Int, pad: Int, ps: IntArray, mel: Boolean = true) {
@@ -2009,8 +2141,8 @@ class AppState(private val app: Context) {
      * middle. on = false: the finger lifted (spring back unless the setup stays). note >= 0 moves one
      * Padiano note's pitch and level instead of the whole pad's.
      */
-    fun xyMove(pad: Int, fx: Float, fy: Float, on: Boolean, note: Int = Int.MIN_VALUE) {
-        val x = xyOf(pad)
+    fun xyMove(pad: Int, fx: Float, fy: Float, on: Boolean, note: Int = Int.MIN_VALUE, setup: XySetup? = null) {
+        val x = setup ?: xyOf(pad)
         val vals = if (on || !x.spring) x.values(fx, fy) else emptyMap()
         val used = x.targets() + (xyUsed[pad] ?: emptySet())
         for (t in used) {
@@ -2019,7 +2151,7 @@ class AppState(private val app: Context) {
                 Engine.T_FILTER, Engine.T_RES -> {}
                 Engine.T_PITCH -> {
                     if (x.steps && v != 0f) v = snapToScale(v)
-                    if (note != Int.MIN_VALUE) engine.noteMod(10000 + pad * 100 + (note + 48), v, 1f + (vals[Engine.T_VOL] ?: 0f))
+                    if (note != Int.MIN_VALUE) engine.noteMod(pianoId(pad, note), v, 1f + (vals[Engine.T_VOL] ?: 0f))
                     else engine.mod(pad, t, v)
                 }
                 Engine.T_VOL -> if (note == Int.MIN_VALUE) engine.mod(pad, t, v)
@@ -2105,6 +2237,8 @@ class AppState(private val app: Context) {
     }
 
     private fun startMic() {
+        // one mic at a time: recording onto a pad stops mouth control
+        if (mouthOn) switchMouth(false)
         micOn = true
         val pad = micPad
         notes.trail(if (pad >= 0) "record onto pad ${pad + 1}" else "mic on")

@@ -130,7 +130,7 @@ private fun DockItem(state: AppState, t: String) {
             DockBtn("RPT", { state.setLive { nr = !nr } }, tag = "dock-repeat", on = state.live.nr, onColor = C.Pink)
             Box {
                 T(
-                    (when (state.live.nrRate) { 2.0 -> "1/8"; 0.5 -> "1/32"; else -> "1/16" }) + (if (state.live.arp != "rep") " " + arpShort(state.live.arp) else "") + styleShort(state.live.nrStyle),
+                    (when (state.live.nrRate) { 2.0 -> "1/8"; 0.5 -> "1/32"; else -> "1/16" }) + (if (state.live.arp != "rep") " " + arpShort(state.live.arp) else "") + styleShort(state.live.nrStyle) + (if (state.live.nrPat.isNotEmpty()) " P" else ""),
                     size = 10.sp, color = if (state.live.nr) C.Pink else C.Dim, family = Mono, lines = 1,
                     modifier = Modifier.padding(top = 3.dp).clickable { rates = true }.tagged("dock-rate"),
                 )
@@ -143,6 +143,12 @@ private fun DockItem(state: AppState, t: String) {
         "desk" -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
             DockBtn("DSK", { state.nextDesk() }, tag = "dock-desk", onColor = C.Teal)
             T(state.desks.getOrNull(state.deskIdx)?.name?.uppercase()?.take(6) ?: "", size = 9.sp, color = C.Teal, family = Mono, modifier = Modifier.padding(top = 3.dp))
+        }
+        "mouth" -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            // mouth control: tap to listen; the word under it opens its settings
+            DockBtn("MTH", { state.switchMouth() }, tag = "dock-mouth", on = state.mouthOn, onColor = C.Pink)
+            T(if (state.mouthOn && state.mouthHeard) "WUB" else "SET", size = 9.sp, color = if (state.mouthOn) C.Pink else C.Dim, family = Mono,
+                modifier = Modifier.padding(top = 3.dp).clickable { state.overlay = com.tideclock.messmachine.Overlay.Mouth }.tagged("dock-mouth-set"))
         }
         "xy" -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
             val pad = state.project.sel
@@ -265,7 +271,59 @@ private fun RepeatMenu(state: AppState, open: Boolean, onClose: () -> Unit) {
                     Btn(n, { onClose(); state.setLive { nrStyle = st } }, on = state.live.nrStyle == st, onColor = C.Yellow, small = true, tag = "rate-s$st")
                 }
             }
-            Note("Cut stops each repeat at the next. Ring lets them play out. Flow holds the note and pulses it.", modifier = Modifier.padding(bottom = 6.dp))
+            Note("Cut stops each repeat at the next. Ring lets them play out. Flow holds the note and pulses it.", modifier = Modifier.padding(bottom = 10.dp))
+            RepeatPatternPicker(state)
         }
     }
+}
+
+/** Ready patterns for Repeat: x plays, . rests. */
+val REPEAT_PATTERNS = listOf(
+    "" to "Every one", "xx." to "2 on, 1 off", "x." to "On, off", "xxx." to "3 on, 1 off",
+    "x.." to "1 on, 2 off", "x.xx" to "Gallop", "x..x..x." to "Tresillo", "x..x..x...x.x..." to "Clave",
+)
+
+/**
+ * Repeat's pattern: which repeats play and which rest, so Repeat (and anything Hold keeps going) can go
+ * hit, hit, skip. Tap a step in the strip to flip it; that makes it your own pattern, kept for next time.
+ */
+@Composable
+fun RepeatPatternPicker(state: AppState) {
+    @Suppress("UNUSED_VARIABLE") val lv = state.liveV
+    val cur = state.live.nrPat
+    T("PATTERN", size = 10.sp, color = C.Dim, spacing = .12.em, modifier = Modifier.padding(bottom = 4.dp))
+    Wrap(Modifier.padding(bottom = 8.dp).testTag("pattern-chips"), gap = 6.dp) {
+        for ((pt, n) in REPEAT_PATTERNS) {
+            val code = pt.replace('.', 'o').ifEmpty { "all" }
+            Btn(n, { state.setRepeatPattern(pt) }, on = cur == pt, onColor = C.Teal, small = true, tag = "pat-$code")
+        }
+        if (REPEAT_PATTERNS.none { it.first == state.ownPattern }) Btn("Mine", { state.setRepeatPattern(state.ownPattern) }, on = cur == state.ownPattern, onColor = C.Teal, small = true, tag = "pat-mine")
+    }
+    // the strip shows the pattern playing (or yours, when every repeat plays); tap a step to flip it
+    val shown = cur.ifEmpty { state.ownPattern }
+    Canvas(
+        Modifier.fillMaxWidth().height(30.dp).background(C.Black).tagged("pattern-strip")
+            .pointerInput(shown) {
+                awaitEachGesture {
+                    val d = awaitFirstDown(requireUnconsumed = false)
+                    d.consume()
+                    val i = (d.position.x / (size.width / shown.length.toFloat())).toInt().coerceIn(0, shown.length - 1)
+                    val flipped = shown.toCharArray().also { it[i] = if (it[i] == 'x') '.' else 'x' }.concatToString()
+                    state.editOwnPattern(flipped)
+                }
+            },
+    ) {
+        val w = size.width / shown.length
+        for ((i, ch) in shown.withIndex()) {
+            val on = ch == 'x'
+            val c = if (cur.isEmpty()) C.Dim else if (on) C.Teal else C.Card2
+            drawRect(c, topLeft = Offset(i * w + 2f, if (on) 3f else size.height * .55f), size = Size(w - 4f, if (on) size.height - 6f else size.height * .45f - 3f))
+        }
+    }
+    Row(Modifier.padding(top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Btn("−", { state.editOwnPattern(shown.dropLast(1)) }, small = true, enabled = shown.length > 2, tag = "pat-shorter")
+        T("${shown.length} STEPS", size = 10.sp, color = C.Dim, family = Mono)
+        Btn("+", { state.editOwnPattern(shown + "x") }, small = true, enabled = shown.length < 16, tag = "pat-longer")
+    }
+    Note("Each step is one repeat. With Hold on, held notes follow the pattern too.", modifier = Modifier.padding(bottom = 6.dp))
 }
