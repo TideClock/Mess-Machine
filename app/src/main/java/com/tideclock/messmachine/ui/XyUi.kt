@@ -303,23 +303,29 @@ fun sphereXy(s: AppState.Sphere, four: Boolean, at: Offset): Pair<Float, Float> 
 /** The mostly clear sphere drawn over the screen while a circled pad or note is being played. */
 @Composable
 fun SphereOverlay(state: AppState) {
-    val s = state.sphere ?: return
-    val x = state.xyOf(s.pad)
-    val live = state.xyLive[s.pad]
+    // every open sphere is drawn: two fingers on two pads each get their own
+    val all = state.spheres.toList()
+    if (all.isEmpty()) return
     val me = remember { Origin() }
-    val k = state.project.kit.getOrElse(s.pad) { "" }
-    val col = if (k.isEmpty()) C.Teal else padColor(Color(state.lib.colorOf(k)))
+    val look = all.map { s ->
+        val k = state.project.kit.getOrElse(s.pad) { "" }
+        Triple(s, state.xyOf(s.pad), if (k.isEmpty()) C.Teal else padColor(Color(state.lib.colorOf(k))))
+    }
+    val lives = all.map { state.xyLive[it.pad] }
     Canvas(Modifier.fillMaxSize().trackOrigin(me).tagged("sphere")) {
-        val c = Offset(s.cx - me.at.x, s.cy - me.at.y)
-        drawCircle(col.copy(alpha = .16f), radius = s.r, center = c)
-        drawCircle(C.Cream.copy(alpha = .7f), radius = s.r, center = c, style = Stroke(3.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 10f))))
-        if (x.four) {
-            drawLine(C.Cream.copy(alpha = .25f), Offset(c.x - s.r, c.y), Offset(c.x + s.r, c.y), strokeWidth = 2f)
-            drawLine(C.Cream.copy(alpha = .25f), Offset(c.x, c.y - s.r), Offset(c.x, c.y + s.r), strokeWidth = 2f)
-        }
-        live?.let { (fx, fy) ->
-            val p = if (x.four) Offset(c.x + fx * s.r, c.y - fy * s.r) else Offset(c.x - s.r + fx * 2 * s.r, c.y + s.r - fy * 2 * s.r)
-            drawCircle(C.Pink, radius = 16f, center = p)
+        for ((i, t) in look.withIndex()) {
+            val (s, x, col) = t
+            val c = Offset(s.cx - me.at.x, s.cy - me.at.y)
+            drawCircle(col.copy(alpha = .16f), radius = s.r, center = c)
+            drawCircle(C.Cream.copy(alpha = .7f), radius = s.r, center = c, style = Stroke(3.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 10f))))
+            if (x.four) {
+                drawLine(C.Cream.copy(alpha = .25f), Offset(c.x - s.r, c.y), Offset(c.x + s.r, c.y), strokeWidth = 2f)
+                drawLine(C.Cream.copy(alpha = .25f), Offset(c.x, c.y - s.r), Offset(c.x, c.y + s.r), strokeWidth = 2f)
+            }
+            lives[i]?.let { (fx, fy) ->
+                val p = if (x.four) Offset(c.x + fx * s.r, c.y - fy * s.r) else Offset(c.x - s.r + fx * 2 * s.r, c.y + s.r - fy * 2 * s.r)
+                drawCircle(C.Pink, radius = 16f, center = p)
+            }
         }
     }
 }

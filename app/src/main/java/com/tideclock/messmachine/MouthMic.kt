@@ -19,11 +19,14 @@ class MouthMic {
     @Volatile var running = false
         private set
     private var th: Thread? = null
+    /** For renders and tests: no mic is opened, and whoever set this feeds the tracker itself. */
+    @Volatile var testFeed = false
 
     /** Open the mic (permission already granted); false when it would not open. */
     @SuppressLint("MissingPermission")
     fun start(): Boolean {
         if (running) return true
+        if (testFeed) { tracker.reset(); running = true; return true }
         val rate = tracker.rate
         val min = AudioRecord.getMinBufferSize(rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
         fun open(src: Int): AudioRecord? = try {

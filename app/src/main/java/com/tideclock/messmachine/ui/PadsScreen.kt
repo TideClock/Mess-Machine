@@ -280,7 +280,7 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
                     }
                     pressed = false
                     state.padUp(d)
-                    sph?.let { s0 -> state.xyMove(pi, lastXy.first, lastXy.second, false); if (state.sphere == s0) state.sphere = null }
+                    sph?.let { s0 -> state.xyMove(pi, lastXy.first, lastXy.second, false); state.dropSphere(s0) }
                     if (armed && !moved) state.padMenu = pi
                     if (carry) {
                         val at = origin.at + lastPos

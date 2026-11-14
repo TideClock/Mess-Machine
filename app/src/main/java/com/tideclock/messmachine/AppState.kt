@@ -1537,7 +1537,7 @@ class AppState(private val app: Context) {
             return
         }
         if (micOn) { say("The mic is recording onto a pad. Stop that first."); return }
-        val ok = androidx.core.content.ContextCompat.checkSelfPermission(app, android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        val ok = mouthMic.testFeed || androidx.core.content.ContextCompat.checkSelfPermission(app, android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED
         if (!ok) { askMicFor = MIC_FOR_MOUTH; return }
         mouthMic.tracker.gateDb = mouthGate
         if (!mouthMic.start()) { say("The mic would not open. Another app may be using it."); return }
@@ -2180,7 +2180,14 @@ class AppState(private val app: Context) {
 
     /** A circle drawn on a pad or a Padiano key: the sphere it opened, in screen pixels. */
     data class Sphere(val pad: Int, val note: Int, val cx: Float, val cy: Float, val r: Float)
-    var sphere by mutableStateOf<Sphere?>(null)
+    /** Every sphere open right now: one for each finger that drew a circle, so two pads (or two notes) show theirs at once. */
+    val spheres = mutableStateListOf<Sphere>()
+    /** The newest sphere. Setting one adds it; setting null closes them all. */
+    var sphere: Sphere?
+        get() = spheres.lastOrNull()
+        set(v) { if (v == null) spheres.clear() else if (v !in spheres) spheres.add(v) }
+    /** A finger lifted: its sphere closes, the others stay. */
+    fun dropSphere(s: Sphere) { spheres.remove(s) }
 
     /* ---------------- per-pad settings: glide, routing, XY ---------------- */
 

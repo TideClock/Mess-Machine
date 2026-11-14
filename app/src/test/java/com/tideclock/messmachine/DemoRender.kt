@@ -1130,4 +1130,256 @@ class DemoRender {
         secs(1.6)
         File(dir, "jam.txt").writeText("key=${state.jamKey} root=${state.project.root} scale=${state.project.scale} secs=${state.jamSecs}\n")
     }
+
+    /* ---------------- the hardcore cut (v shots): what Tyler says matters most ---------------- */
+
+    /** A finger goes down on a tagged thing and draws a circle on it (and stays down): the pad's XY opens as a sphere. */
+    private fun circle(id: Int, tag: String, r: Float = .22f, n: Int = 18, note: String = "circle") {
+        fingerDown(id, tag, .5f + r, .5f, note); frame()
+        for (i in 1..n) {
+            val a = 2 * Math.PI * i / n * 1.08
+            fingerMove(id, tag, .5f + r * Math.cos(a).toFloat(), .5f + r * Math.sin(a).toFloat(), note); frame()
+        }
+    }
+
+    /** Play one bar of things on their steps: (step, what to do). The loop must be running. */
+    private fun bar(vararg ev: Pair<Int, () -> Unit>) {
+        for ((st, act) in ev.sortedBy { it.first }) { untilStep(st); act() }
+    }
+
+    /** V1: two Padianos at once. A bass line under one row, a melody under the next, one hand on each. */
+    @Test fun v1() = shoot("v1") {
+        beat(null, 120)
+        state.setRoot(2); state.setScale("Minor")
+        state.newSynth(4, Synth.PLUCK.presets.first { it.name == "Nylon" })
+        state.newSynth(8, analog("Acid line"))
+        state.toggleKeyboard(4); state.toggleKeyboard(8)
+        state.selectPad(4, false)
+        settle(); action(); secs(.3); dumpTags("two")
+        tap("play"); untilStep(12)
+        val bass = mapOf(0 to 2, 3 to 2, 6 to 5, 8 to 2, 11 to 9, 14 to 12)
+        val mel = mapOf(0 to 9, 2 to 12, 4 to 9, 6 to 5, 10 to 7, 12 to 10, 14 to 9)
+        mark("bass")
+        repeat(2) {
+            untilStep(15)
+            for (st in 0..15) { val n = bass[st] ?: continue; untilStep(st); tap("piano-keys-8", pk(8, n), .5f, hold = 2, note = "bass") }
+        }
+        mark("both")
+        repeat(4) {
+            untilStep(15)
+            for (st in 0..15) {
+                val b = bass[st]; val m = mel[st]
+                if (b == null && m == null) continue
+                untilStep(st)
+                if (b != null) fingerDown(0, "piano-keys-8", pk(8, b), .5f, "bass")
+                if (m != null) fingerDown(1, "piano-keys-4", pk(4, m), .5f, "melody")
+                frames(2)
+                if (b != null) fingerUp(0, "piano-keys-8", "bass")
+                if (m != null) fingerUp(1, "piano-keys-4", "melody")
+                frame()
+            }
+        }
+        untilStep(15); untilStep(0)
+        tap("play"); secs(.8)
+    }
+
+    /** V2: XY spheres. A circle on a pad opens its XY as a sphere; a second finger opens another on another pad,
+     * and each pad's sphere moves its own things (set in XY setup). */
+    @Test fun v2() = shoot("v2") {
+        beat(throne, 120)
+        state.setRoot(2); state.setScale("Minor")
+        state.newSynth(4, analog("Soft keys"))
+        state.setXy(4, state.allXy().first { it.name == "Sweep" })
+        state.setXy(3, state.allXy().first { it.name == "Dub" })
+        settle(); action(); secs(.3)
+        tap("play"); bars(1); untilStep(14)
+        mark("sphere1")
+        circle(0, "pad-4")
+        // push the ball around: across closes the filter, up adds resonance
+        for (i in 0 until 75) {
+            val t = i / 75f
+            val w = Math.abs(((i % 30) / 15f) - 1f)
+            fingerMove(0, "pad-4", -.25f + 1.5f * w, .9f - .9f * t, "sphere"); frame()
+        }
+        mark("sphere2")
+        // a second finger, a second sphere, on the loop: echo to the right, reverb up
+        circle(1, "pad-3")
+        for (i in 0 until 105) {
+            val w = Math.abs(((i % 30) / 15f) - 1f)
+            val u = Math.abs(((i % 50) / 25f) - 1f)
+            fingerMove(0, "pad-4", -.25f + 1.5f * w, .3f, "sphere")
+            fingerMove(1, "pad-3", .5f + .7f * u, .5f - .6f * (i / 105f), "sphere 2"); frame()
+        }
+        println("DEMO v2 spheres open: ${state.spheres.size}")
+        fingerUp(1, "pad-3", "sphere 2"); frames(4)
+        fingerUp(0, "pad-4", "sphere"); secs(.8)
+        mark("setup")
+        // what a sphere moves is yours to pick, pad by pad
+        state.selectPad(4, false)
+        state.overlay = Overlay.Xy(4); secs(.7); dumpTags("xy")
+        tap("xy-preset-Bend"); secs(.8)
+        tap("xy-preset-Lo-fi"); secs(.8)
+        tap("xy-preset-Dub"); secs(.9)
+        tap("done"); secs(.4)
+        mark("again")
+        circle(0, "pad-4")
+        for (i in 0 until 60) {
+            val w = Math.abs(((i % 30) / 15f) - 1f)
+            fingerMove(0, "pad-4", .5f + .7f * w, .5f - .5f * w, "sphere"); frame()
+        }
+        fingerUp(0, "pad-4", "sphere"); bars(1)
+        tap("play"); secs(.8)
+    }
+
+    /** One video frame's worth of a voice for the mouth tracker: a 120 Hz buzz through two formants. v is the
+     * vowel (0 = "ooo", 1 = the bright end), amp 0 is silence. */
+    private val vph = DoubleArray(40)
+    private fun mouthFeed(v: Float, amp: Float, bright: Boolean) {
+        val mr = state.mouthMic.tracker.rate
+        val n = mr / fps
+        val x = FloatArray(n)
+        if (amp > 0f) {
+            // "ooo" 300/870 Hz; "aah" 730/1090 Hz; "eee" 270/2290 Hz
+            val f1 = if (bright) 300.0 - 30.0 * v else 300.0 + 430.0 * v
+            val f2 = if (bright) 870.0 + 1420.0 * v else 870.0 + 220.0 * v
+            var k = 1
+            while (k * 120 < mr / 2 && k < vph.size) {
+                val f = k * 120.0
+                val a = (1 / (1 + Math.pow((f - f1) / 90, 2.0)) + 1 / (1 + Math.pow((f - f2) / 90, 2.0))) / (k * .6 + .4)
+                val w = 2 * Math.PI * f / mr
+                for (i in 0 until n) x[i] += (.12 * amp * a * Math.sin(vph[k] + w * i)).toFloat()
+                vph[k] = (vph[k] + w * n) % (2 * Math.PI)
+                k++
+            }
+        }
+        state.mouthMic.tracker.feed(x, 0, n)
+    }
+
+    /** V3: mouth control. A held bass note, then a voice ("wow wow") opens and closes its filter; Rec writes it into the loop.
+     * No mic here: the tracker is fed a made-up voice, so everything after the mic is the real thing. */
+    @Test fun v3() = shoot("v3") {
+        beat(null, 120)
+        state.setRoot(2); state.setScale("Minor")
+        val wub = analog("Mono bass").copy().also { it.set("cut", 6500.0); it.set("fenv", 0.0); it.set("res", .3); it.set("drive", .6); it.set("as", 1.0); it.set("oct", -1.0) }
+        state.newSynth(4, wub)
+        state.toggleKeyboard(4); state.selectPad(4, false)
+        state.changeHoldCount(1)
+        state.mouthMic.testFeed = true
+        settle(); action(); secs(.3)
+        tap("play"); untilStep(10)
+        tap("hold-toggle"); frames(4)
+        untilStep(0)
+        mark("drone")
+        key(4, 2, hold = 5); bars(1); untilStep(12)
+        mark("sheet")
+        state.overlay = Overlay.Mouth; secs(.6); dumpTags("mouth")
+        tap("mouth-toggle"); frames(6)
+        mark("wow")
+        // "wow wow": ooo to aah and back, once a beat, for two bars
+        var f = 0
+        untilStep(0)
+        while (f < 120) { val ph = (f % 15) / 15f; mouthFeed(Math.sin(Math.PI * ph).toFloat(), 1f, false); frame(); f++ }
+        mark("wee")
+        // faster and brighter: ooo to eee twice a beat, with a breath at the end of each bar
+        f = 0
+        while (f < 120) { val ph = (f % 8) / 8f; val rest = f % 60 >= 52; mouthFeed(Math.sin(Math.PI * ph).toFloat(), if (rest) 0f else 1f, true); frame(); f++ }
+        mark("rec")
+        tap("done"); frames(4)
+        tap("rec"); frames(3)
+        untilStep(0)
+        f = 0
+        while (f < 60 || state.heardStep != 0) { val ph = (f % 15) / 15f; mouthFeed(Math.sin(Math.PI * ph).toFloat(), 1f, true); frame(); f++; if (f > 200) break }
+        tap("rec"); frames(2)
+        mark("alone")
+        // the voice stops and mouth control goes off: what Rec wrote keeps moving the filter
+        state.switchMouth(false)
+        println("DEMO v3 motion lanes: ${state.project.pat().motion.keys}")
+        bars(2)
+        key(4, 2, hold = 4); frames(6)
+        tap("play"); secs(.8)
+    }
+
+    /** V4: six layers in six bars. A loop goes onto a pad, the Sample sheet chops it to pads, then with Rec on every
+     * pass of the bar adds a layer: the chops, kick, hat and clap, a bass line, a melody, and an XY move. */
+    @Test fun v4() = shoot("v4") {
+        state.newMess(); state.setBpm(120)
+        state.setRoot(2); state.setScale("Minor")
+        state.putOnPad(3, throne); load(throne)
+        state.newSynth(6, analog("Acid line"))
+        state.newSynth(7, Synth.PLUCK.presets.first { it.name == "Nylon" })
+        state.toggleKeyboard(6); state.toggleKeyboard(7)
+        state.selectPad(3, false)
+        settle(); action(); secs(.3)
+        mark("loop")
+        tap("pad-3", hold = 4); secs(2.2)
+        mark("chop")
+        tap("open-sample"); secs(.5)
+        tap("dtab-tools"); secs(.4)
+        tapExact("4 SLICES"); secs(.5)
+        tapExact("CHOP TO PADS"); secs(.6)
+        if (state.overlay != null) { tap("done"); secs(.4) }
+        val got = (8 until 16).filter { state.project.kit[it].isNotEmpty() }
+        println("DEMO v4 chop pads $got")
+        dumpTags("layers")
+        mark("rec")
+        tap("rec"); frames(5)
+        tap("play"); untilStep(13)
+        mark("layer1")
+        bar(0 to { tap("pad-${got[0]}", hold = 2, note = "chop") }, 4 to { tap("pad-${got[2]}", hold = 2, note = "chop") },
+            8 to { tap("pad-${got[1]}", hold = 2, note = "chop") }, 12 to { tap("pad-${got[3]}", hold = 2, note = "chop") })
+        untilStep(15); mark("layer2")
+        bar(0 to { tap("pad-0", hold = 2, note = "kick") }, 4 to { tap("pad-0", hold = 2, note = "kick") },
+            8 to { tap("pad-0", hold = 2, note = "kick") }, 12 to { tap("pad-0", hold = 2, note = "kick") })
+        untilStep(15); mark("layer3")
+        bar(2 to { tap("pad-2", hold = 2, note = "hat") }, 4 to { tap("pad-1", hold = 2, note = "clap") }, 6 to { tap("pad-2", hold = 2, note = "hat") },
+            10 to { tap("pad-2", hold = 2, note = "hat") }, 12 to { tap("pad-1", hold = 2, note = "clap") }, 14 to { tap("pad-2", hold = 2, note = "hat") })
+        untilStep(15); mark("layer4")
+        bar(0 to { key(6, 2, hold = 2) }, 3 to { key(6, 2, hold = 2) }, 6 to { key(6, 5, hold = 2) }, 8 to { key(6, 2, hold = 2) }, 11 to { key(6, 9, hold = 2) }, 14 to { key(6, 12, hold = 2) })
+        untilStep(15); mark("layer5")
+        bar(0 to { key(7, 9, hold = 2) }, 2 to { key(7, 12, hold = 2) }, 4 to { key(7, 9, hold = 2) }, 6 to { key(7, 5, hold = 2) }, 10 to { key(7, 7, hold = 2) }, 12 to { key(7, 10, hold = 2) })
+        tap("piano-xy-6"); frames(3)
+        untilStep(15); mark("layer6")
+        untilStep(0)
+        fingerDown(1, "xyp-6", .1f, .8f, "xy"); frame()
+        var f = 0
+        while (state.heardStep != 15 && f < 200) {
+            val t = Math.abs(((f % 30) / 15f) - 1f)
+            fingerMove(1, "xyp-6", .1f + .75f * t, .8f - .5f * t, "xy"); frame(); f++
+        }
+        fingerUp(1, "xyp-6", "xy"); frame()
+        untilStep(0)
+        tap("rec"); frames(3)
+        mark("all")
+        bars(2)
+        val pt = state.project.pat()
+        println("DEMO v4 notes: " + state.project.kit.filter { it.isNotEmpty() }.joinToString { "${state.lib.titleOf(it)}=${pt.notes(it).size}" } + " motion=${pt.motion.keys}")
+        tap("play"); secs(.8)
+    }
+
+    /** V5: MIDI in. No fingers: the notes arrive the way a plugged-in keyboard sends them (36 to 51 hit the pads,
+     * the rest play the picked pad as keys). The toast is the app's own, with a made-up device name. */
+    @Test fun v5() = shoot("v5") {
+        beat(null, 120)
+        state.setRoot(2); state.setScale("Minor")
+        state.newSynth(4, analog("Soft keys"))
+        state.toggleKeyboard(4); state.selectPad(4, false)
+        settle(); action(); secs(.4)
+        mark("plug")
+        state.say("MIDI: USB keyboard plugged in. Notes 36 to 51 hit pads 1 to 16; the rest play the selected pad as keys.")
+        secs(1.6)
+        tap("play"); untilStep(13)
+        mark("keys")
+        val tune = listOf(0 to 62, 2 to 65, 4 to 69, 6 to 72, 8 to 70, 10 to 69, 12 to 65, 14 to 64)
+        repeat(2) {
+            untilStep(15)
+            for ((st, note) in tune) { untilStep(st); state.midiDown(note); frames(3); state.midiUp(note); frame() }
+        }
+        mark("pads")
+        repeat(2) {
+            untilStep(15)
+            for ((st, note) in listOf(0 to 36, 3 to 36, 4 to 37, 6 to 38, 8 to 36, 10 to 39, 12 to 37, 14 to 38)) { untilStep(st); state.midiDown(note); frames(2); state.midiUp(note); frame() }
+        }
+        untilStep(15); untilStep(0)
+        tap("play"); secs(.8)
+    }
 }

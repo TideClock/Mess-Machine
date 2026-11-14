@@ -216,7 +216,7 @@ private fun Modifier.playNotes(state: AppState, pad: Int, key: Any, origin: Orig
                         spheres.remove(c.id)?.let { s0 ->
                             val v = lastXy[c.id] ?: (0f to 0f)
                             state.xyMove(pad, v.first, v.second, false, note = s0.note)
-                            if (state.sphere == s0) state.sphere = null
+                            state.dropSphere(s0)
                         }
                         if (cur != null) { state.pianoUp(pad, cur); active.remove(c.id) }
                         dets.remove(c.id); starts.remove(c.id)
@@ -225,7 +225,7 @@ private fun Modifier.playNotes(state: AppState, pad: Int, key: Any, origin: Orig
                 onFingers(active.values.toSet())
             } while (ev.changes.any { it.pressed })
             for ((id, s0) in spheres) { val v = lastXy[id] ?: (0f to 0f); state.xyMove(pad, v.first, v.second, false, note = s0.note) }
-            if (spheres.isNotEmpty()) state.sphere = null
+            for (s0 in spheres.values) state.dropSphere(s0)
             for (p in active.values) state.pianoUp(pad, p)
             onFingers(emptySet())
         }
