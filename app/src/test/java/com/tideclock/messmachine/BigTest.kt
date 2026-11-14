@@ -124,7 +124,7 @@ class BigTest {
         if (state.soundsWhileHeld(state.bank * 16 + d)) {
             tapPad(d)
             rule.mainClock.advanceTimeBy(300); settle()
-            at("open-sample").performClick()
+            at("open-padmenu").performClick()
             settle()
         } else longPress("pad-$d")
     }
@@ -513,9 +513,10 @@ class BigTest {
         rule.onNodeWithTag("pad-2").performTouchInput { up() }
         settle()
         assertEquals("a sustaining pad's hold is playing: no menu", -1, state.padMenu)
-        rule.onNodeWithTag("open-sample").performClick()
+        assertTrue("and it says where that pad's menu is (${state.toast})", state.toast.orEmpty().contains("Menu"))
+        rule.onNodeWithTag("open-padmenu").performClick()
         settle()
-        assertEquals("its menu opens from the bank row button", 2, state.padMenu)
+        assertEquals("its menu opens from the Menu button by the banks", 2, state.padMenu)
         state.padMenu = -1
         settle()
     }
@@ -845,6 +846,9 @@ class BigTest {
         val pad = state.project.sel
         // Hold on the Synth tab, one slot: the first note holds, the next ones play and stop
         at("hold-toggle").performClick(); settle()
+        // the keys bar starts as its slim row (Hold, and what key and chords are set); its button opens the rest
+        assertTrue("the slim bar is what shows first", !state.keysBarOpen)
+        at("keysbar-open").performClick(); settle()
         while (state.holdCount > 1) { at("hold-down").performClick(); settle() }
         assertTrue("Hold is on with one slot (${state.holdCount})", state.holdOn && state.holdCount == 1)
         shot("53-synth-hold")
@@ -1351,6 +1355,91 @@ class BigTest {
         state.backgroundPlay(true)
         assertEquals(null, app.nextStartedService)
         shot("51-settings-background")
+    }
+
+    /**
+     * The MIDI map: aim at a pad and the next keys land on it and the pads after it (right, then down); a Padiano key
+     * and a synth knob take a key and a controller knob the same way. Menu by the banks opens any pad's menu, the
+     * keys bar opens and shuts from its slim row, and the Synth tab picks which pad's synth it shows (note #12).
+     */
+    @Test fun midiMapMenuButtonAndKeysBar() {
+        // the slim keys bar is always on the Play tab; its button opens key, chords and Hold's settings
+        assertTrue("no Padiano yet: the bar is slim", !state.keysBarOpen)
+        at("keysbar-open").performClick(); settle()
+        rule.onNodeWithTag("pick-chord").assertExists()
+        rule.onNodeWithTag("hold-up").assertExists()
+        at("keysbar-shut").performClick(); settle()
+        assertTrue(!state.keysBarOpen)
+        // Menu by the banks opens the picked pad's menu, whatever kind of pad it is
+        tapPad(1)
+        rule.mainClock.advanceTimeBy(300); settle()
+        at("open-padmenu").performClick(); settle()
+        assertEquals("Menu opens the picked pad's menu", 1, state.padMenu)
+        state.padMenu = -1
+        rule.mainClock.advanceTimeBy(1000); settle()
+
+        // the MIDI map, from the top menu
+        rule.onNodeWithTag("menu").performClick(); settle()
+        rule.onNodeWithTag("midimap-open").performClick(); settle()
+        rule.mainClock.advanceTimeBy(600); settle()
+        assertTrue("the MIDI map panel is up", state.midiMapOn)
+        rule.onNodeWithTag("midimap").assertExists()
+        tapPad(0)
+        for (k in 0 until 8) { state.midiDown(72 + k); state.midiUp(72 + k) }
+        settle()
+        assertEquals("the first key landed on pad 1", MidiTarget("pad", 0), state.midiNotes[72])
+        assertEquals("the eighth on pad 8: right, then down a row", MidiTarget("pad", 7), state.midiNotes[79])
+        assertEquals("and the next one is waiting on pad 9", MidiTarget("pad", 8), state.midiCursor)
+        shot("57-midi-map")
+        // a Padiano key: open one, touch a key, and the next controller key is that key
+        state.toggleKeyboard(0); settle()
+        at("piano-keys-0").performTouchInput { down(Offset(width * .05f, height * .5f)); up() }
+        settle()
+        val aimed = state.midiCursor
+        assertTrue("touching a Padiano key aims at it ($aimed)", aimed != null && aimed.kind == "key" && aimed.a == 0)
+        state.midiDown(90); state.midiUp(90); settle()
+        assertEquals("the controller key now plays that Padiano key", aimed, state.midiNotes[90])
+        state.toggleKeyboard(0); settle()
+        rule.onNodeWithTag("midimap-done").performClick(); settle()
+        assertTrue(!state.midiMapOn)
+        // played back: key 74 was the third one, so it hits pad 3
+        loudest()
+        state.midiDown(74)
+        assertTrue("a mapped key sounds its pad", loudest() > .01f)
+        assertEquals("and picks it, like a finger would", 2, state.project.sel)
+        state.midiUp(74)
+        // an unmapped note still does what it always did
+        state.midiDown(36); state.midiUp(36)
+        assertEquals(0, state.project.sel)
+
+        // a synth knob: touch it, turn a controller knob, and that knob turns it from then on
+        tab("Synth")
+        at("synth-new-empty").performClick(); settle()
+        val pad = state.project.sel
+        val sp = state.synthOn(pad)!!
+        val pm = sp.kind.params.first { it.simple && it.id != "mode" && it.id != "model" }
+        state.switchMidiMap(true); settle()
+        at("knob-${pm.id}").performTouchInput { down(Offset(width / 2f, height * .25f)); up() }
+        rule.mainClock.advanceTimeBy(600); settle()
+        assertEquals("a tap on a knob aims at it", MidiTarget("knob", pad, 0, pm.id), state.midiCursor)
+        state.midiCc(21, 127); state.midiCc(21, 100); settle()
+        assertEquals("the controller knob maps to it, and turning on does not map the next knob", 1, state.midiKnobs.size)
+        assertEquals(MidiTarget("knob", pad, 0, pm.id), state.midiKnobs[21])
+        shot("58-midi-map-knob")
+        state.switchMidiMap(false); settle()
+        state.midiCc(21, 0); settle()
+        val low = pm.toKnob(sp.get(pm.id))
+        state.midiCc(21, 127); settle()
+        val high = pm.toKnob(sp.get(pm.id))
+        assertTrue("the mapped controller knob turns the synth knob ($low to $high)", low < .1 && high > .9)
+        // note #12: the Synth tab picks which pad's synth it shows
+        rule.onNodeWithTag("synth-pad").assertExists()
+        tab("Pads")
+        tapPad(0)
+        tab("Synth")
+        rule.onNodeWithTag("synth-go-$pad").performClick(); settle()
+        assertEquals("one tap from a pad with no synth to the synth this mess has", pad, state.project.sel)
+        state.midiClearAll()
     }
 
     @Test fun midiNotesHitPadsAndKeys() {

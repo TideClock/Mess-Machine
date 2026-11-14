@@ -1,20 +1,21 @@
 {
-  "title": "Hold on the Synth tab, patterns, and mouth wubs",
+  "title": "Find things faster: Menu for every pad, the slim keys bar, MIDI map",
   "thisBuild": [
-    "The Synth tab has Hold's full settings over its keys: the count, − and +, and Let go. Set it to 3, hold a chord, then play single notes on top, like on the Padiano. (Your note: with only the dock's H there, a count of Last or 8 made every note take the hold.)",
-    "🎹 On pads, next to the pad number on the Synth tab, opens that synth's Padiano on the pad grid. Its ◎ button takes you back to the knobs.",
-    "Padiano sizes now go S, M, L and XL (⚙ on the Padiano). XL is much taller, with wider squares. Rows 1, 2 or 3: each row up is the same notes an octave higher.",
-    "Repeat patterns: tap the rate under RPT on the dock. PATTERN has ready ones (2 on 1 off, On off, Gallop, Tresillo, Clave) and a strip you tap to make your own. Held notes follow the pattern too.",
-    "Mouth control (☰ menu, or add MTH to the dock with ⋯): tap Listen and make sounds. Ooo closes the picked pad's filter, eee opens it, so \"wow wow wow\" over a held synth is a wub. Pick what the vowel and your loudness move. With Rec on while the loop plays, it records like a finger on XY."
+    "Why holding a pad sometimes gave no menu: a pad that sounds while you hold it (any synth, or a sample set to Sustain or gate) never opens its menu from a hold, because there a hold is playing. So there is now a Menu button by the bank numbers. Tap a pad, tap Menu: it opens that pad's menu for every pad. That is also how a synth gets a Padiano: Menu, then Padiano under this row.",
+    "Next to Menu, Sample opens the picked pad's Sample sheet. On a synth pad it says Synth and goes straight to the knobs.",
+    "Key, chords and Hold are always on the Play tab now, as one slim row: the Hold switch, and a button that reads what is set (like D minor, chords off). Tap that button to open root, scale, chords, Hold's count and Let go. The ▴ shuts it again. A Padiano still opens it by itself.",
+    "The same bar sits over the keys on the Synth tab, in Simple, Full and Synthipad. Chords work there now too.",
+    "Synth tab: the pad name at the top is a picker, so you can jump between your synths without leaving the tab (your note). With no synth on the picked pad, the page lists the synths you have.",
+    "MIDI map (☰ menu): a small panel floats under the top bar. Tap a pad, then press keys on your keyboard: each key lands on the next pad, to the right and then down. Tap a Padiano key and the keys go up the Padiano from there. Tap a synth knob on the Synth tab and turn a knob or slider on your controller: it turns that knob from then on. Skip passes one, Clear empties the map, Done closes it."
   ],
   "watch": [
-    "On the Synth tab: Hold on, count 3, play three notes, then play more. The first three should keep going and the rest play only while you hold them.",
-    "Mouth control with headphones, then on the speaker. Send a note on how fast it follows you and whether the music moves it on its own.",
-    "Try a pattern with Hold and a synth, while stopped and while playing."
+    "MIDI map with your real keyboard: I could only test it with notes sent in software. Does each key land where the panel says, and do your controller's knobs move the synth knobs smoothly?",
+    "Hold a normal sample pad for its menu ten times. I gave a still finger a little more room to roll (it was strict). Send a note if it still misses, with which pad.",
+    "The slim keys bar: is one row the right size, and is it clear that the button opens the rest?"
   ],
   "limits": [
-    "Mouth control hears the music through the speaker. Headphones work best; turn Sensitivity down if it moves while you're quiet.",
-    "It follows the vowel and the loudness, not your pitch. Camera mouth tracking isn't built yet.",
-    "A Mono synth still plays one note at a time, held or not."
+    "A hold on a synth pad still opens no menu, on purpose: use Menu. The app says so once when you try.",
+    "MIDI map covers pads, Padiano keys and synth knobs. Buttons like Play and Rec, velocity, and the pad filter are not mappable yet.",
+    "Pads map by their place on screen, so a mapped key hits whichever bank is showing. The map is kept on the phone, not in the mess."
   ]
 }

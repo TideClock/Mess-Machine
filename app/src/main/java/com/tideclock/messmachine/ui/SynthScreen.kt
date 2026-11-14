@@ -61,7 +61,8 @@ fun SynthScreen(state: AppState) {
         }
         // header: which pad, the preset, the view
         Row(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 8.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            T("PAD ${pad + 1}", size = 12.sp, color = C.Yellow, spacing = .08.em)
+            // which pad's synth this page shows: pick another one right here (note #12)
+            Select("Pad ${pad + 1}", state.synthPads().map { it to "Pad ${it + 1} · ${state.lib.titleOf(P.kit[it])}" }, { state.selectPad(it, false) }, tag = "synth-pad")
             // the same synth as a Padiano on the pad grid, next to your other pads (note #11)
             Btn("🎹 On pads", { state.padianoOnGrid(pad) }, small = true, tag = "synth-to-pads")
             Select(
@@ -97,7 +98,7 @@ fun SynthScreen(state: AppState) {
                     KnobRows(state, pad, sp, ps, "knobs-${g.lowercase().replace(' ', '-')}-chips")
                 }
                 Spacer(Modifier.height(10.dp))
-                HoldBar(state, Modifier.padding(bottom = 8.dp))
+                KeysBar(state)
                 PianoKeyboard(state, pad, close = false)
             }
             "pad" -> Synthipad(state, pad, sp)
@@ -105,7 +106,7 @@ fun SynthScreen(state: AppState) {
                 ModeChips(state, pad, sp)
                 KnobRows(state, pad, sp, sp.kind.params.filter { it.simple && it.id != "mode" && it.id != "model" }, "knobs-simple-chips")
                 Help(sp.kind.blurb + " Full has every knob.", modifier = Modifier.padding(top = 4.dp, bottom = 10.dp))
-                HoldBar(state, Modifier.padding(bottom = 8.dp))
+                KeysBar(state)
                 PianoKeyboard(state, pad, close = false)
             }
         }
@@ -119,6 +120,14 @@ private fun NoSynth(state: AppState, pad: Int) {
     val P = state.project
     val all = remember { Synth.KINDS.flatMap { k -> k.presets.map { "${k.name}: ${it.name}" to it } } }
     var preset by remember { mutableStateOf(Synth.ANALOG.presets.first()) }
+    // the synths this mess already has: one tap to each (note #12)
+    val have = state.synthPads()
+    if (have.isNotEmpty()) {
+        T("SYNTHS IN THIS MESS", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
+        Wrap(Modifier.tagged("synthpads-chips"), gap = 6.dp) {
+            for (i in have) Btn("Pad ${i + 1} · ${state.lib.titleOf(P.kit[i])}", { state.selectPad(i, false) }, small = true, tag = "synth-go-$i")
+        }
+    }
     Note("A synth plays on a pad like a sound: steps, Roll, keys, Hold and Repeat all work. Pick where to put one.", modifier = Modifier.padding(top = 10.dp, bottom = 12.dp))
     T("START FROM", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(bottom = 4.dp))
     Select("${preset.kind.name}: ${preset.name}", all.map { it.first to it.first }, { n -> all.firstOrNull { it.first == n }?.let { preset = it.second } }, tag = "nosynth-preset")
@@ -151,7 +160,13 @@ private fun KnobRows(state: AppState, pad: Int, sp: Synth.Patch, ps: List<Synth.
     Column(Modifier.fillMaxWidth().tagged(tag)) {
         for (row in ps.chunked(4)) {
             Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-                for (pm in row) Knob(pm, sp.get(pm.id), { x, c -> state.setSynth(pad, pm.id, x, c) }, Modifier.weight(1f), "knob-${pm.id}")
+                for (pm in row) {
+                    // the MIDI map is up: touching a knob aims the next controller knob at it, and it shows what it has
+                    val here = com.tideclock.messmachine.MidiTarget("knob", pad, 0, pm.id)
+                    val badge = if (!state.midiMapOn) "" else if (state.midiCursor == here) "turn a knob" else state.midiMappedTo(here)
+                    Knob(pm, sp.get(pm.id), { x, c -> state.midiAim(here); state.setSynth(pad, pm.id, x, c) }, Modifier.weight(1f), "knob-${pm.id}",
+                        onTap = { state.midiAim(here) }, badge = badge)
+                }
                 repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
             }
         }
@@ -163,17 +178,18 @@ private fun KnobRows(state: AppState, pad: Int, sp: Synth.Patch, ps: List<Synth.
  * for its default, hold to type a value. The arc shows where it is; the label under it says the value in words.
  */
 @Composable
-fun Knob(pm: Synth.Param, value: Double, set: (Double, Boolean) -> Unit, modifier: Modifier = Modifier, tag: String) {
+fun Knob(pm: Synth.Param, value: Double, set: (Double, Boolean) -> Unit, modifier: Modifier = Modifier, tag: String, onTap: () -> Unit = {}, badge: String = "") {
     var typing by remember { mutableStateOf(false) }
     val pos = pm.toKnob(value).toFloat()
     // the gestures are set up once per knob; these keep them reading today's value and pad
     val cur by rememberUpdatedState(value)
     val setNow by rememberUpdatedState(set)
+    val tapNow by rememberUpdatedState(onTap)
     Column(modifier.tagged(tag), horizontalAlignment = Alignment.CenterHorizontally) {
         Canvas(
             Modifier.size(54.dp)
                 .pointerInput(pm.id) {
-                    detectTapGestures(onDoubleTap = { setNow(pm.def, true) }, onLongPress = { typing = true })
+                    detectTapGestures(onTap = { tapNow() }, onDoubleTap = { setNow(pm.def, true) }, onLongPress = { typing = true })
                 }
                 .pointerInput(pm.id, "drag") {
                     awaitEachGesture {
@@ -213,7 +229,9 @@ fun Knob(pm: Synth.Param, value: Double, set: (Double, Boolean) -> Unit, modifie
             drawLine(C.Cream, center, Offset(center.x + (r * .7f * Math.cos(a)).toFloat(), center.y + (r * .7f * Math.sin(a)).toFloat()), strokeWidth = 3.dp.toPx(), cap = StrokeCap.Round)
         }
         T(pm.name.uppercase(), size = 10.sp, color = C.Dim, spacing = .04.em, lines = 1)
-        T(pm.show(value), size = 11.sp, color = C.Cream, lines = 1)
+        // while the MIDI map is up: the controller knob mapped here, in place of the value
+        if (badge.isEmpty()) T(pm.show(value), size = 11.sp, color = C.Cream, lines = 1)
+        else T(badge.uppercase(), size = 10.sp, color = C.Yellow, lines = 1, family = Mono)
     }
     if (typing) {
         var text by remember { mutableStateOf(if (pm.curve == Synth.CHOICE) "" else "%.3f".format(value).trimEnd('0').trimEnd('.')) } // format-ok: number only
@@ -277,8 +295,8 @@ private fun Synthipad(state: AppState, pad: Int, sp: Synth.Patch) {
             T("CUTOFF ${cutP.show(sp.get("cut"))} · RESONANCE ${resP.show(sp.get("res"))}", size = 10.sp, color = C.Dim, spacing = .04.em, modifier = Modifier.padding(start = 8.dp, top = 6.dp))
         }
     }
-    // Hold's settings here too, so a held chord and single notes on top work like on the Padiano (note #11)
-    HoldBar(state, Modifier.padding(bottom = 8.dp))
+    // key, chords and Hold here too, so a held chord and single notes on top work like on the Padiano (note #11)
+    KeysBar(state)
     // four rows of in-key notes, lowest at the bottom, like a pad controller
     val scale = if (P.scale == "Chromatic") "Major" else P.scale
     val notes = (-12..24).filter { Theory.inScale(it, scale, P.root) }.take(16 + 4).let { all -> if (all.size >= 16) all.take(16) else all }

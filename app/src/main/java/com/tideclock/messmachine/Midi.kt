@@ -14,6 +14,8 @@ import android.os.Looper
  * MIDI over USB (MM-12): plug in a pad controller or a keyboard and play. Notes 36 to 51 (the usual pad
  * controller layout, C1 to D#2) hit pads 1 to 16 of the bank on screen; every other note plays the selected
  * pad as a key, with middle C (60) at the sound's own pitch. Velocity is not used yet: every hit is full.
+ * The MIDI map (the menu's "MIDI map") teaches it your own layout: any key to any pad or Padiano key, and any
+ * knob or slider (a control change) to a synth knob.
  */
 class MidiIn(private val ctx: Context, private val state: AppState) {
     private val main = Handler(Looper.getMainLooper())
@@ -52,7 +54,10 @@ class MidiIn(private val ctx: Context, private val state: AppState) {
             val port = dev.openOutputPort(0) ?: run { dev.close(); return@openDevice }
             port.connect(Parser())
             open[info.id] = dev to port
-            state.say("MIDI: ${name(info)} plugged in. Notes 36 to 51 hit pads 1 to 16; the rest play the selected pad as keys.")
+            state.say(
+                if (state.midiNotes.isEmpty() && state.midiKnobs.isEmpty()) "MIDI: ${name(info)} plugged in. Notes 36 to 51 hit pads 1 to 16; the rest play the selected pad as keys. MIDI map, in the menu, teaches it your own layout."
+                else "MIDI: ${name(info)} plugged in, playing your MIDI map."
+            )
         }, main)
     }
 
@@ -65,11 +70,14 @@ class MidiIn(private val ctx: Context, private val state: AppState) {
                 val b = msg[k].toInt() and 0xFF
                 if (b >= 0xF8) continue // clock and other real-time bytes can arrive anywhere
                 if (b >= 0x80) { status = b; d1 = -1; continue }
+                // program change and channel pressure carry one data byte, not two: skip it, or every pair after it is off by one
+                if ((status and 0xF0) == 0xC0 || (status and 0xF0) == 0xD0) continue
                 if (d1 < 0) { d1 = b; continue }
                 val note = d1; val vel = b; d1 = -1 // running status: the next pair uses the same status
                 when (status and 0xF0) {
                     0x90 -> if (vel > 0) main.post { state.midiDown(note) } else main.post { state.midiUp(note) }
                     0x80 -> main.post { state.midiUp(note) }
+                    0xB0 -> main.post { state.midiCc(note, vel) }
                 }
             }
         }

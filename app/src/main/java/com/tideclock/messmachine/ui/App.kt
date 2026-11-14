@@ -150,6 +150,8 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
                 }
             }
             SphereOverlay(state)
+            // the MIDI map floats under the top bar, over the page's own header, so the pads, keys and knobs you aim at stay in view and live
+            if (state.midiMapOn) MidiMapPanel(state, Modifier.align(Alignment.TopCenter).padding(start = 22.dp, end = 12.dp, top = 56.dp))
             // a lesson sits over everything, sheets included; its ring lets taps through
             TutorOverlay(state)
             state.toast?.let { msg ->
@@ -249,6 +251,7 @@ fun TopMenu(state: AppState, modifier: Modifier = Modifier) {
                 Triple("⚙  Settings", "settings") { state.overlay = Overlay.Settings },
                 Triple("🎓  Learn: lessons for every feature", "learn") { state.overlay = Overlay.Learn },
                 Triple("👄  Mouth control: wub with your voice", "mouth") { state.overlay = Overlay.Mouth },
+                Triple("🎛  MIDI map: teach your keyboard", "midimap-open") { state.switchMidiMap(true) },
                 Triple("↷  Redo", "redo") { state.redo() },
                 Triple("🐞  Notes for Claude" + if (state.crash != null) " (a crash to send)" else "", "notes") { state.overlay = Overlay.Notes },
             )) {

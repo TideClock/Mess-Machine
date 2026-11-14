@@ -4,7 +4,10 @@
 
 Rewritten at the end of every session and at each step of a long job (BT-2). Read this first.
 
-- **Live:** build 79: note #11 (Hold bar on the Synth tab, the synth's Padiano on the grid), Padiano XL and rows,
+- **Live:** build 80 (when its run is green): the slim keys bar (Hold, key and chords, always there, on the Play tab
+  and the Synth tab), Menu by the bank numbers for every pad, the Synth tab's pad picker (note #12), and the MIDI
+  map (see the 2026-11-14 decisions).
+- **Before that:** build 79: note #11 (Hold bar on the Synth tab, the synth's Padiano on the grid), Padiano XL and rows,
   Repeat patterns, mouth control (see the 2026-11-12 decisions). 76 to 78 failed on the way: setX functions next to
   var x clash on the JVM (precheck rule 8 now), an Int in a test Offset, and a test measuring the clipped bounds.
 - **Before that:** build 75: loop keys and tempo (KeyFinder, 38 of 90 loops keyed, Workbench sounds keep tempo and key), the
@@ -184,6 +187,34 @@ Sound engine plan v2 (doc https://claude.ai/artifact/Vsr6HBLcVa8wehHaNbqSD9), bu
   playing records it as XY moves. Stay put (default) or spring back when quiet. Mic source: voice recognition (no
   loudness evening-out) plus the phone's echo canceller where there is one; headphones advised. Camera mouth
   tracking was not built: it needs ML Kit and the camera, a bigger step; mic first.
+- 2026-11-14 The keys bar is always there (Tyler: "I would prefer that they always have at least a mini bar so that
+  you can click it open. Same inside of the synth deep menu"): shut, it is one slim row with the Hold switch and a
+  button that reads the key and chords ("D minor · chords off ▾") and opens the rest; open, it has root, scale,
+  chords, Hold's count and Let go, and a ▴ to shut it. Opening a Padiano opens it and closing the last one shuts
+  it, as before; Keys mode always shows it open. The Synth tab uses the same bar over its keys in all three views
+  (it had only Hold's settings, and no chords). One switch for both tabs, not kept between launches.
+- 2026-11-14 The pad menu on every pad (Tyler: "the press and hold on the pad to open options isn't working ...
+  sometimes it just does work and sometimes it doesn't"): what he hit is the rule that a pad which sounds while
+  held (a synth, Sustain, gate) gets no menu from a hold, because there a hold is playing. That rule stays, but
+  the button by the bank numbers is now two: Sample (or Synth, for a synth pad: straight to its knobs) and Menu,
+  which opens the picked pad's menu for every pad, always under the same name (it used to be one button that
+  changed between Sample and Menu). A hold-and-lift on a pad that plays while held now says where its menu is,
+  once per launch. The still-finger allowance for the hold went from 10 to 14 dp. Not done: a menu handle on
+  the pad itself (it would take playing surface).
+- 2026-11-14 Note #12: the Synth tab's "PAD n" is a picker of the pads that have synths, and with no synth on the
+  picked pad the page lists the synths the mess has, one tap each.
+- 2026-11-14 MIDI map (Tyler: "you just click on a pad or a note on Padiano, and it has like a little floating thing
+  that pops up ... whatever you press on an attached MIDI keyboard, it moves to the right and down"): ☰ > MIDI map
+  puts a small panel under the top bar; the page stays live under it, tabs included. What you touch is where the
+  next controller key lands: a pad (then the next pad, right and down, to the end of the bank), a Padiano key (then
+  the next key up, in key only when the Padiano is), or a synth knob (then the next knob the page shows; knobs take
+  control changes, so any knob, slider or wheel that sends CC). Skip passes one; Clear empties the map. A mapped
+  key plays its target exactly like a finger (pad taps pick the pad and record; Padiano keys play chords and obey
+  Hold). Pads map by their place in the bank on screen, like notes 36 to 51 always did; unmapped notes keep the
+  old rule. The map lives on the phone (prefs `midiNotes`, `midiKnobs`), not in the mess. Not built yet: mapping
+  buttons (Play, Rec, the dock), velocity, a controller knob on pad filters or XY, and a map per controller.
+  The MIDI reader also skips program change and channel pressure bytes now (one data byte each; they used to
+  shift every pair after them). No hardware here: the tests feed notes and control changes in software.
 
 ## Control map
 
@@ -194,7 +225,7 @@ so they never count as a second home. `design/exceptions.txt` holds the same rea
 |---|---|---|---|
 | Play, Stop, Rec, Undo, tempo | Top bar | Desk transport piece | Shortcut you choose |
 | Undo after a clear | Top bar | The clear's message | Right where the clear happened, for a few seconds |
-| Hold | Keys bar | Dock, desk Hold piece | Shortcuts you choose |
+| Hold | Keys bar (Play tab, and over the Synth tab's keys) | Dock, desk Hold piece | Shortcuts you choose; the Synth tab's keys need it where they are |
 | Repeat and its rate | Dock | Desk Repeat piece | Shortcut you choose |
 | Filter and resonance | Dock | Desk pad filter piece, XY targets | Shortcut; XY moves it as one of its targets |
 | Root, scale, chords | Keys bar | Roll, desk Scale piece | Roll places and folds notes by the scale; desk is a shortcut |
@@ -205,6 +236,8 @@ so they never count as a second home. `design/exceptions.txt` holds the same rea
 | Resample the loop | Steps | Workbench (Sounds) | Flagged for Tyler |
 | Record a sound | Empty pads, pad menu | Sounds mic | Sounds records into the Workbench, not onto a pad |
 | Mute, solo | Pad menu | none | |
+| The pad menu | Hold a pad, then lift | Menu, by the bank numbers | A pad that sounds while held gets no menu from a hold, so the button is how its menu opens |
+| MIDI map | ☰ menu | none | |
 | Doctor | Pad menu | Sounds row menu | From a pad or from the library: different starting points |
 | Hear it | Pad menu | Sounds, Doctor | Each hears the thing on that screen |
 | Share a sound | Pad menu | Sounds, Doctor (as WAV) | Same: each shares what is on that screen |

@@ -71,6 +71,22 @@ val FX_NAMES = listOf(
     "ring" to "Ring mod", "oct" to "Octave down", "rev" to "Reverse",
 )
 
+/**
+ * What a key or knob on a MIDI controller is mapped to (the MIDI map). kind "pad": a is the pad's place in the bank
+ * on screen, 0 to 15. kind "key": a is the pad, b the pitch of one Padiano key. kind "knob": a is the pad, id the
+ * synth knob.
+ */
+data class MidiTarget(val kind: String, val a: Int, val b: Int = 0, val id: String = "") {
+    fun code() = "$kind,$a,$b,$id"
+    companion object {
+        fun parse(s: String): MidiTarget? {
+            val p = s.split(",")
+            if (p.size < 4) return null
+            return MidiTarget(p[0], p[1].toIntOrNull() ?: return null, p[2].toIntOrNull() ?: return null, p[3])
+        }
+    }
+}
+
 sealed class Overlay {
     data class Picker(val pad: Int) : Overlay()
     data class Doctor(val key: String) : Overlay()
@@ -739,6 +755,7 @@ class AppState(private val app: Context) {
     }
 
     fun padDown(d: Int) {
+        if (midiMapOn) midiAim(MidiTarget("pad", d))
         if (keysMode) {
             val pad = project.sel
             if (project.kit[pad].isEmpty()) { say("Pick a pad with a sound first. The keys play whichever pad you picked last."); return }
@@ -785,7 +802,11 @@ class AppState(private val app: Context) {
 
     // ---- MIDI in (MM-12): notes 36 to 51 are pads 1 to 16 of this bank, the rest play the selected pad as keys ----
     private val midiHeld = HashMap<Int, Int>()
+    private val midiHeldT = HashMap<Int, MidiTarget>()
     fun midiDown(note: Int) {
+        if (midiMapOn) { midiLearnNote(note); return }
+        val t = midiNotes[note]
+        if (t != null) { midiPlay(note, t); return }
         if (note in 36..51) { padDown(note - 36); return }
         val pad = project.sel
         if (project.kit[pad].isEmpty()) { say("MIDI: pick a pad with a sound first; keys play the selected pad."); return }
@@ -795,8 +816,153 @@ class AppState(private val app: Context) {
         melodicDown(kid, pad, intArrayOf(p))
     }
     fun midiUp(note: Int) {
-        if (note in 36..51) { padUp(note - 36); return }
-        midiHeld.remove(note)?.let { melodicUp(it) }
+        val t = midiHeldT.remove(note)
+        if (t != null) { if (t.kind == "pad") padUp(t.a) else if (t.kind == "key") pianoUp(t.a, t.b); return }
+        val kid = midiHeld.remove(note)
+        if (kid != null) { melodicUp(kid); return }
+        if (midiMapOn || midiNotes.containsKey(note)) return
+        if (note in 36..51) padUp(note - 36)
+    }
+
+    /** A mapped key plays what it was taught: a pad like a finger on it, or one Padiano key (chords and Hold included). */
+    private fun midiPlay(note: Int, t: MidiTarget) {
+        when (t.kind) {
+            "pad" -> { midiHeldT[note] = t; padDown(t.a) }
+            "key" -> if (project.kit.getOrNull(t.a).orEmpty().isNotEmpty()) { midiHeldT[note] = t; pianoDown(t.a, t.b) }
+        }
+    }
+
+    /* ---------------- MIDI map: teach a controller which pad, key or knob each of its keys and knobs plays ---------------- */
+
+    /** Controller key (MIDI note number) to a pad or a Padiano key. */
+    val midiNotes = mutableStateMapOf<Int, MidiTarget>()
+    /** Controller knob or slider (MIDI CC number) to a synth knob. */
+    val midiKnobs = mutableStateMapOf<Int, MidiTarget>()
+    /** The MIDI map panel is up: what you touch on screen is aimed at, and the next key or knob on the controller lands there. */
+    var midiMapOn by mutableStateOf(false)
+        private set
+    /** Where the next key or knob from the controller lands; null when there is nowhere left to go. */
+    var midiCursor by mutableStateOf<MidiTarget?>(null)
+        private set
+    /** The panel's last line: what was just mapped, or what to do. */
+    var midiLast by mutableStateOf("")
+        private set
+    private var midiLastCc = -1
+
+    init {
+        for (part in (prefs.getString("midiNotes", "") ?: "").split(";")) {
+            val kv = part.split("=")
+            if (kv.size == 2) { val n = kv[0].toIntOrNull(); val t = MidiTarget.parse(kv[1]); if (n != null && t != null) midiNotes[n] = t }
+        }
+        for (part in (prefs.getString("midiKnobs", "") ?: "").split(";")) {
+            val kv = part.split("=")
+            if (kv.size == 2) { val n = kv[0].toIntOrNull(); val t = MidiTarget.parse(kv[1]); if (n != null && t != null) midiKnobs[n] = t }
+        }
+    }
+
+    private fun saveMidiMap() {
+        prefs.edit()
+            .putString("midiNotes", midiNotes.entries.joinToString(";") { "${it.key}=${it.value.code()}" })
+            .putString("midiKnobs", midiKnobs.entries.joinToString(";") { "${it.key}=${it.value.code()}" })
+            .apply()
+    }
+
+    fun switchMidiMap(v: Boolean = !midiMapOn) {
+        midiMapOn = v
+        midiLastCc = -1
+        notes.trail("midi map ${if (v) "on" else "off"}")
+        if (v) {
+            // starts on the first pad, so sixteen keys in a row map the whole bank; touch anything else to start there
+            midiCursor = MidiTarget("pad", 0)
+            midiLast = "Each key lands on the next pad: right, then down. Touch anything to start there."
+        } else midiCursor = null
+    }
+
+    /** Touching a pad, a Padiano key or a synth knob while the map is up: the next key or knob lands here. */
+    fun midiAim(t: MidiTarget) {
+        if (!midiMapOn) return
+        midiCursor = t
+        midiLastCc = -1
+    }
+
+    /** What a target is called on the panel. */
+    fun midiLabel(t: MidiTarget): String = when (t.kind) {
+        "pad" -> "Pad ${bank * Project.BANK + t.a + 1}"
+        "key" -> "Pad ${t.a + 1}, key ${Theory.noteName(t.b)}"
+        else -> "Pad ${t.a + 1}, ${synthOn(t.a)?.kind?.params?.firstOrNull { it.id == t.id }?.name ?: t.id} knob"
+    }
+
+    /** The controller key or knob mapped to a target, as text ("C5", "CC 74"), or "" when nothing is. */
+    fun midiMappedTo(t: MidiTarget): String =
+        if (t.kind == "knob") midiKnobs.entries.firstOrNull { it.value == t }?.let { "CC ${it.key}" }.orEmpty()
+        else midiNotes.entries.firstOrNull { it.value == t }?.let { Theory.noteName(it.key - 60) }.orEmpty()
+
+    /** The synth knobs of a pad in the order the Synth tab shows them (Simple shows fewer). */
+    private fun midiKnobOrder(pad: Int): List<String> {
+        val sp = synthOn(pad) ?: return emptyList()
+        val all = sp.kind.params.filter { it.id != "mode" && it.id != "model" }
+        if (synthView != "full") return all.filter { it.simple }.map { it.id }
+        return all.map { it.group }.distinct().flatMap { g -> all.filter { it.group == g } }.map { it.id }
+    }
+
+    /** One step on: the pad to the right (then the next row down), the next key up, the next knob. */
+    private fun midiNext(c: MidiTarget): MidiTarget? = when (c.kind) {
+        "pad" -> if (c.a < Project.BANK - 1) c.copy(a = c.a + 1) else null
+        "key" -> {
+            var p = c.b + 1
+            if (inKeyOnly && project.scale != "Chromatic") while (p <= 48 && !Theory.inScale(p, project.scale, project.root)) p++
+            if (p > 48) null else c.copy(b = p)
+        }
+        else -> { val o = midiKnobOrder(c.a); val i = o.indexOf(c.id); if (i < 0 || i + 1 >= o.size) null else c.copy(id = o[i + 1]) }
+    }
+
+    fun midiSkip() { midiCursor = midiCursor?.let { midiNext(it) }; midiLastCc = -1 }
+
+    private fun midiLearnNote(note: Int) {
+        val c = midiCursor
+        if (c == null) { midiLast = "Tap a pad, a Padiano key or a synth knob first."; return }
+        if (c.kind == "knob") { midiLast = "A knob wants a knob or slider. For keys, tap a pad or a Padiano key."; return }
+        // one job per controller key: the newest wins
+        midiNotes[note] = c
+        saveMidiMap()
+        midiLast = "${Theory.noteName(note - 60)} now plays ${midiLabel(c).replaceFirstChar { it.lowercase() }}."
+        notes.trail("midi map note $note to ${c.code()}")
+        // hear what it landed on (an empty pad would open the jars, so that one stays quiet)
+        val sounds = if (c.kind == "pad") keysMode || project.kit[bank * Project.BANK + c.a].isNotEmpty() else true
+        if (sounds) midiPlay(note, c)
+        midiCursor = midiNext(c)
+        if (midiCursor == null) midiLast += " That was the last one: tap somewhere else to go on."
+    }
+
+    /** A knob or slider on the controller moved (MIDI control change). */
+    fun midiCc(cc: Int, value: Int) {
+        if (midiMapOn) {
+            // the knob just mapped keeps sending as it turns: that moves its synth knob, it does not map the next one
+            if (cc == midiLastCc) { midiKnobs[cc]?.let { midiTurn(it, value) }; return }
+            val c = midiCursor
+            if (c == null || c.kind != "knob") { midiLast = "To map a knob or slider, tap a synth knob on the Synth tab first."; return }
+            midiKnobs[cc] = c
+            saveMidiMap()
+            midiLastCc = cc
+            midiLast = "CC $cc now turns ${midiLabel(c).replaceFirstChar { it.lowercase() }}."
+            notes.trail("midi map cc $cc to ${c.code()}")
+            midiTurn(c, value)
+            midiCursor = midiNext(c)
+            return
+        }
+        midiKnobs[cc]?.let { midiTurn(it, value) }
+    }
+
+    private fun midiTurn(t: MidiTarget, value: Int) {
+        val sp = synthOn(t.a) ?: return
+        val pm = sp.kind.params.firstOrNull { it.id == t.id } ?: return
+        setSynth(t.a, t.id, pm.fromKnob(value.coerceIn(0, 127) / 127.0), false)
+    }
+
+    fun midiClearAll() {
+        midiNotes.clear(); midiKnobs.clear(); saveMidiMap()
+        midiLastCc = -1
+        midiLast = "Cleared. Back to the usual: notes 36 to 51 hit the pads, the rest play the picked pad."
     }
 
     fun pickChordMode(m: String) {
@@ -1320,15 +1486,36 @@ class AppState(private val app: Context) {
 
     /** One piano per row of pads: it drops right under the row its pad sits in. */
     fun toggleKeyboard(pad: Int) {
-        if (pad in keyboards) { keyboards.remove(pad); return }
+        if (pad in keyboards) { keyboards.remove(pad); if (keyboards.isEmpty()) keysBarOpen = false; return }
         if (project.kit[pad].isEmpty()) { say("Put a sound on pad ${pad + 1} first."); return }
         val b = pad / Project.BANK
         val row = (pad % Project.BANK) / 4
         keyboards.removeAll { it / Project.BANK == b && (it % Project.BANK) / 4 == row }
         keyboards.add(pad)
+        // a Padiano brings the key, chords and Hold bar open with it; the mini bar opens and shuts it any other time
+        keysBarOpen = true
         if (bank != b) bank = b
         notes.trail("piano pad ${pad + 1}")
     }
+
+    /**
+     * The key, chords and Hold bar on the Play tab and the Synth tab: shut, it is one slim row (Hold, and what is set);
+     * open, it has everything. Keys mode always shows it open.
+     */
+    var keysBarOpen by mutableStateOf(false)
+        private set
+    fun switchKeysBar(v: Boolean = !keysBarOpen) { keysBarOpen = v; notes.trail("keys bar ${if (v) "open" else "shut"}") }
+
+    private var heldHintSaid = false
+    /** A hold on a pad that sounds while held opens no menu: say where its menu is, once. */
+    fun heldPadHint(pad: Int) {
+        if (heldHintSaid) return
+        heldHintSaid = true
+        say("Pad ${pad + 1} plays for as long as you hold it, so a hold opens no menu. Tap Menu, by the bank numbers.")
+    }
+
+    /** Pads with a synth on them, for the Synth tab's pad picker (note #12). */
+    fun synthPads(): List<Int> = project.kit.indices.filter { Project.isSynth(project.kit[it]) }
 
     /** From the Synth tab: this pad's Padiano opens under its row on the pad grid, and the grid shows (note #11). */
     fun padianoOnGrid(pad: Int) {
@@ -1569,6 +1756,7 @@ class AppState(private val app: Context) {
 
     fun pianoDown(pad: Int, p: Int) {
         if (project.kit[pad].isEmpty()) return
+        if (midiMapOn) midiAim(MidiTarget("key", pad, p))
         val ps = chordFor(p)
         val idx = Theory.stripNotes(project.scale, project.root).indexOf(Theory.foldP(p)).coerceAtLeast(0)
         lastChord = if (ps.size > 1) Theory.chordLabel(p, idx, chordMode, project.scale, project.root) + " · " + Theory.chordNotes(ps) +

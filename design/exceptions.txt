@@ -14,3 +14,4 @@ label: DONE | Closes the sheet it sits on; every sheet needs its own
 screen: Sample: tools | 13 | Three tools share the tab (fit to tempo, chop to pads, keep it); a fourth tab level would be deeper, not simpler
 label: ○ HOLD | Hold's settings sit by the keys on the Play tab and on the Synth tab (note #11): Hold plays the same on both
 label: LET GO | Lets go of what Hold keeps, next to Hold's settings on the Play tab and the Synth tab (note #11)
+label: [picker: keysbar-open] | The slim keys bar (what key and chords are set; tap to open) sits by the keys on the Play tab and on the Synth tab, so it opens the same way on both (Tyler, 2026-11-14)
