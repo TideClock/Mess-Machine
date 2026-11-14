@@ -309,7 +309,10 @@ fun PadianoSettings(state: AppState) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 8.dp)) {
             T("SIZE", size = 11.sp, color = C.Dim, spacing = .1.em)
             for ((z, n) in listOf("S", "M", "L", "XL").withIndex()) Btn(n, { state.changePadianoSize(z) }, on = state.padianoSize == z, small = true, tag = "pset-size-$z")
-            T("ROWS", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(start = 8.dp))
+        }
+        // its own line: beside Size the third button ran off the edge on a phone
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 8.dp)) {
+            T("ROWS", size = 11.sp, color = C.Dim, spacing = .1.em)
             for (r in 1..3) Btn("$r", { state.changePadianoRows(r) }, on = state.padianoRows == r, small = true, tag = "pset-rows-$r")
         }
         Help("Fewer notes make bigger squares. XL is tall, with wider squares (they wrap sooner). Each extra row is the same notes an octave up.", modifier = Modifier.padding(top = 6.dp))

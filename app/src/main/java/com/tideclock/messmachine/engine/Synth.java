@@ -208,7 +208,7 @@ public final class Synth {
         p("mode", "Mode", "Voice", CHOICE, 0, 1, 0, "", true, "Poly", "Mono"),
         p("table", "Table", "Oscillator", CHOICE, 0, 5, 0, "", true, "Basic", "Pulse", "Sweep", "Vowels", "Hollow", "Grit"),
         p("pos", "Position", "Oscillator", LIN, 0, 1, .3, "%", true),
-        p("penv", "Env to position", "Oscillator", LIN, -1, 1, 0, "", true),
+        p("penv", "Env to pos", "Oscillator", LIN, -1, 1, 0, "", true),
         p("plfo", "LFO to position", "Oscillator", LIN, 0, 1, 0, "%", false),
         p("warp", "Warp", "Oscillator", LIN, 0, 1, 0, "%", false),
         p("uni", "Unison", "Oscillator", INT, 1, 5, 1, "", false),

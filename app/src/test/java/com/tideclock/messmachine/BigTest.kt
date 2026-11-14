@@ -1370,6 +1370,13 @@ class BigTest {
         rule.onNodeWithTag("hold-up").assertExists()
         at("keysbar-shut").performClick(); settle()
         assertTrue(!state.keysBarOpen)
+        // build 80's bug: with the dock open, Sample and Menu squeezed the bank numbers down to dots. Now the two pad
+        // buttons take their own row when it is narrow, and every bank number keeps its room
+        state.switchDockOpen(true); settle()
+        val bankDp = rule.onNodeWithTag("bank-0").fetchSemanticsNode().size.width / rule.density.density
+        assertTrue("bank buttons keep their numbers with the dock open ($bankDp dp wide)", bankDp >= 34f)
+        shot("59-bank-row-dock-open")
+        state.switchDockOpen(false); settle()
         // Menu by the banks opens the picked pad's menu, whatever kind of pad it is
         tapPad(1)
         rule.mainClock.advanceTimeBy(300); settle()
@@ -1411,6 +1418,9 @@ class BigTest {
         // an unmapped note still does what it always did
         state.midiDown(36); state.midiUp(36)
         assertEquals(0, state.project.sel)
+        // a controller key on an empty pad does nothing: it never opens the jars like a finger would
+        state.midiDown(36 + 12); state.midiUp(36 + 12); settle()
+        assertEquals("a MIDI key on empty pad 13 opens no sheet", null, state.overlay)
 
         // a synth knob: touch it, turn a controller knob, and that knob turns it from then on
         tab("Synth")

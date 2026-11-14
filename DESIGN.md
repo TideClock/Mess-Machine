@@ -4,7 +4,8 @@
 
 Rewritten at the end of every session and at each step of a long job (BT-2). Read this first.
 
-- **Live:** build 80 (when its run is green): the slim keys bar (Hold, key and chords, always there, on the Play tab
+- **Live:** build 81 (when its run is green; 80 passed the big test but was replaced before it published, because
+  its new Menu button squeezed the bank numbers to dots with the dock open): the slim keys bar (Hold, key and chords, always there, on the Play tab
   and the Synth tab), Menu by the bank numbers for every pad, the Synth tab's pad picker (note #12), and the MIDI
   map (see the 2026-11-14 decisions).
 - **Before that:** build 79: note #11 (Hold bar on the Synth tab, the synth's Padiano on the grid), Padiano XL and rows,
@@ -215,6 +216,13 @@ Sound engine plan v2 (doc https://claude.ai/artifact/Vsr6HBLcVa8wehHaNbqSD9), bu
   buttons (Play, Rec, the dock), velocity, a controller knob on pad filters or XY, and a map per controller.
   The MIDI reader also skips program change and channel pressure bytes now (one data byte each; they used to
   shift every pair after them). No hardware here: the tests feed notes and control changes in software.
+- 2026-11-14 Full test pass (Tyler: "a full bug test and usability test as well as design test"): every test screen
+  read by eye, plus a new `AuditTest` that walks every page, sheet and menu at 360, 411 and 673 dp and lists small
+  buttons (under 32 dp), cut-off text, text under 10 sp and controls off the right edge, to
+  `usability-<width>.md` in the test screens. Fixed from it: the bank row goes to two rows under 352 dp; the Sample
+  sheet's tabs are sized by their words and Effects is FX there; Favorites is Starred; Octave down a size smaller;
+  the Padiano's Rows on its own line; "Env to pos"; the keys bar's ▴ is 44 dp wide. A MIDI key on an empty pad
+  does nothing (a finger there opens the jars; a stray controller key should not).
 
 ## Control map
 

@@ -6,7 +6,8 @@
     "Key, chords and Hold are always on the Play tab now, as one slim row: the Hold switch, and a button that reads what is set (like D minor, chords off). Tap that button to open root, scale, chords, Hold's count and Let go. The ▴ shuts it again. A Padiano still opens it by itself.",
     "The same bar sits over the keys on the Synth tab, in Simple, Full and Synthipad. Chords work there now too.",
     "Synth tab: the pad name at the top is a picker, so you can jump between your synths without leaving the tab (your note). With no synth on the picked pad, the page lists the synths you have.",
-    "MIDI map (☰ menu): a small panel floats under the top bar. Tap a pad, then press keys on your keyboard: each key lands on the next pad, to the right and then down. Tap a Padiano key and the keys go up the Padiano from there. Tap a synth knob on the Synth tab and turn a knob or slider on your controller: it turns that knob from then on. Skip passes one, Clear empties the map, Done closes it."
+    "MIDI map (☰ menu): a small panel floats under the top bar. Tap a pad, then press keys on your keyboard: each key lands on the next pad, to the right and then down. Tap a Padiano key and the keys go up the Padiano from there. Tap a synth knob on the Synth tab and turn a knob or slider on your controller: it turns that knob from then on. Skip passes one, Clear empties the map, Done closes it.",
+    "From a full test pass over every screen: labels that were cut off now fit. The Sample sheet's tabs (Effects is FX there), Starred on the Sounds tab (it was Favorites), Octave down, the Padiano's Rows buttons, and the wavetable knob Env to pos. With the dock open, Sample and Menu drop to their own row so the bank numbers keep their room. A key on your MIDI controller no longer opens the jars when its pad is empty."
   ],
   "watch": [
     "MIDI map with your real keyboard: I could only test it with notes sent in software. Does each key land where the panel says, and do your controller's knobs move the synth knobs smoothly?",
@@ -16,6 +17,7 @@
   "limits": [
     "A hold on a synth pad still opens no menu, on purpose: use Menu. The app says so once when you try.",
     "MIDI map covers pads, Padiano keys and synth knobs. Buttons like Play and Rec, velocity, and the pad filter are not mappable yet.",
-    "Pads map by their place on screen, so a mapped key hits whichever bank is showing. The map is kept on the phone, not in the mess."
+    "Pads map by their place on screen, so a mapped key hits whichever bank is showing. The map is kept on the phone, not in the mess.",
+    "Still cut short on a phone: long sound names in the Steps list and on a Padiano's title. A fix for those needs a layout decision, so they are in the test report, not changed."
   ]
 }

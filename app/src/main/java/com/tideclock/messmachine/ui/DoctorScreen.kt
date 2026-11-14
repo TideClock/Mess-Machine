@@ -154,8 +154,9 @@ fun DoctorScreen(state: AppState, key: String) {
             }, on = looping, onColor = C.Pink, small = true)
         }
         Row(Modifier.fillMaxWidth().padding(bottom = 10.dp, end = 4.dp).tagged("dtab-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            for ((t, n) in listOf("play" to "Play", "trim" to "Trim", "shape" to "Shape", "fx" to "Effects", "tools" to "Tools")) {
-                Btn(n, { dtab = t }, on = dtab == t, onColor = C.Yellow, small = true, tag = "dtab-$t", modifier = Modifier.weight(1f))
+            // each tab as wide as its word needs (equal widths cut Shape and Effects short on a phone); Effects is FX here so all five fit
+            for ((t, n) in listOf("play" to "Play", "trim" to "Trim", "shape" to "Shape", "fx" to "FX", "tools" to "Tools")) {
+                Btn(n, { dtab = t }, on = dtab == t, onColor = C.Yellow, small = true, tag = "dtab-$t", modifier = Modifier.weight(n.length + 2.5f))
             }
         }
         if (dtab == "play") {

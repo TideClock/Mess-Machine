@@ -218,10 +218,10 @@ object Tutorials {
             TutStep("Press Play and listen for the slides.", t("play")) { s, _ -> s.playing },
             TutStep("Press Stop.", t("stop")) { s, _ -> !s.playing },
         )),
-        Tutorial("favorites", "Sounds", "Favorites", "Star the sounds you love and find them in one place.", listOf(
+        Tutorial("favorites", "Sounds", "Starred sounds", "Star the sounds you love and find them in one place.", listOf(
             TutStep("Press and hold a pad, then tap Star.", t("pad-0")) { s, c -> s.favs.size > c.fav0 },
             TutStep("Tap SOUNDS.", t("tab-Sounds")) { s, _ -> s.tab == Tab.Sounds },
-            TutStep("Tap Favorites: your starred sounds. (Unstar from the same pad menu if you like; stars aren't part of the practice mess.)", t("mode-fav")) { s, _ -> s.soundsMode == "fav" },
+            TutStep("Tap Starred: your starred sounds. (Unstar from the same pad menu if you like; stars aren't part of the practice mess.)", t("mode-fav")) { s, _ -> s.soundsMode == "fav" },
         )),
         Tutorial("latency", "Help", "Latency and notes", "See what the phone adds to each tap, and send Claude a note.", listOf(
             TutStep("Open the menu (☰) and pick Notes for Claude.", t("menu")) { s, _ -> s.overlay == Overlay.Notes },

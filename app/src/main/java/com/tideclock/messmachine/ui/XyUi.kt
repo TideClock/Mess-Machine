@@ -87,7 +87,8 @@ fun FxButton(state: AppState, id: String, label: String, modifier: Modifier, col
         contentAlignment = Alignment.Center,
     ) {
         Box(Modifier.align(Alignment.BottomStart).fillMaxWidth(amt.coerceIn(0.02f, 1f)).height(4.dp).background(if (lit) C.Ink.copy(alpha = .5f) else color.copy(alpha = .8f)))
-        T(label.uppercase(), size = 12.sp, color = if (lit) ink(color) else C.Cream, lines = 1, spacing = .06.em)
+        // a long name (Octave down) a size smaller, so it is not cut off in a three-across row
+        T(label.uppercase(), size = if (label.length > 10) 10.5.sp else 12.sp, color = if (lit) ink(color) else C.Cream, lines = 1, spacing = .06.em)
         if (s.target >= 0 || s.behave != "held") {
             T((if (s.target >= 0) state.fxTargetName(s.target).replace("Pad ", "P").replace("Bus ", "B") else "") + (if (s.behave == "stays") " ●" else if (s.behave == "slider") " ═" else ""),
                 size = 9.sp, color = if (lit) C.Ink else C.Yellow, family = Mono, modifier = Modifier.align(Alignment.BottomEnd).padding(end = 4.dp, bottom = 6.dp))

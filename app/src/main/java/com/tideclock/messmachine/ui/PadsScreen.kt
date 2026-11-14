@@ -11,6 +11,8 @@ import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
@@ -56,31 +58,18 @@ fun PadsScreen(state: AppState) {
     val P = state.project
     ScrollPane {
         PlayViews(state)
-        Row(Modifier.fillMaxWidth().padding(bottom = 12.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-            T("BANK", size = 11.sp, color = C.Dim, spacing = .1.em)
-            for (b in 0 until 4) {
-                val n = (0 until Project.BANK).count { P.kit[b * Project.BANK + it].isNotEmpty() }
-                Btn("${b + 1}", modifier = Modifier.weight(1f), onClick = { state.bank = b }, on = state.bank == b && !state.keysMode, small = true, enabled = !state.keysMode, tag = "bank-$b")
+        // the bank numbers and the picked pad's two buttons. On one row when there is room; with the dock open or on a
+        // small phone the pad buttons take their own row (build 80 squeezed the bank numbers down to dots there)
+        BoxWithConstraints(Modifier.fillMaxWidth().padding(bottom = 12.dp, end = 4.dp)) {
+            if (maxWidth >= 352.dp) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    BankButtons(state)
+                    PadButtons(state, wide = false)
+                }
+            } else Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) { BankButtons(state) }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) { PadButtons(state, wide = true) }
             }
-            // the picked pad's sound, one tap away: the Sample sheet, or the Synth tab for a synth.
-            // Reading selV and version keeps the label on the pad picked last: a tap on a pad only bumps selV,
-            // and this row used to keep the pad from before (the button then opened the wrong pad's sheet)
-            @Suppress("UNUSED_VARIABLE") val sv = state.selV
-            @Suppress("UNUSED_VARIABLE") val vv = state.version
-            val selKey = P.kit.getOrNull(P.sel).orEmpty()
-            Btn(if (Project.isSynth(selKey)) "Synth" else "Sample", {
-                val pad = state.project.sel
-                val k = state.project.kit.getOrNull(pad).orEmpty()
-                if (Project.isSynth(k)) state.tab = com.tideclock.messmachine.Tab.Synth
-                else if (k.isNotEmpty()) state.overlay = Overlay.Doctor(k)
-            }, small = true, enabled = selKey.isNotEmpty(), tag = "open-sample")
-            // the picked pad's menu, always here: a hold opens it too, except on a pad that sounds while it is held
-            // (a synth, Sustain, gate), where a hold is playing. This button works for every pad.
-            Btn("Menu", {
-                val pad = state.project.sel
-                state.bank = pad / Project.BANK
-                state.padMenu = pad
-            }, small = true, enabled = !state.keysMode, tag = "open-padmenu")
         }
         KeysBar(state)
         // zoomed out, the pad grid shrinks with everything else so more of the machine fits
@@ -108,6 +97,40 @@ fun PadsScreen(state: AppState) {
     }
 }
 
+/** BANK and the four bank numbers, sharing whatever width the row has left. */
+@Composable
+private fun RowScope.BankButtons(state: AppState) {
+    T("BANK", size = 11.sp, color = C.Dim, spacing = .1.em)
+    for (b in 0 until 4) {
+        Btn("${b + 1}", modifier = Modifier.weight(1f), onClick = { state.bank = b }, on = state.bank == b && !state.keysMode, small = true, enabled = !state.keysMode, tag = "bank-$b")
+    }
+}
+
+/** The picked pad's two buttons: its sound (the Sample sheet, or the Synth tab for a synth) and its menu. */
+@Composable
+private fun RowScope.PadButtons(state: AppState, wide: Boolean) {
+    val P = state.project
+    // Reading selV and version keeps the label on the pad picked last: a tap on a pad only bumps selV,
+    // and this row used to keep the pad from before (the button then opened the wrong pad's sheet)
+    @Suppress("UNUSED_VARIABLE") val sv = state.selV
+    @Suppress("UNUSED_VARIABLE") val vv = state.version
+    val selKey = P.kit.getOrNull(P.sel).orEmpty()
+    val m = if (wide) Modifier.weight(1f) else Modifier
+    Btn(if (Project.isSynth(selKey)) "Synth" else "Sample", {
+        val pad = state.project.sel
+        val k = state.project.kit.getOrNull(pad).orEmpty()
+        if (Project.isSynth(k)) state.tab = com.tideclock.messmachine.Tab.Synth
+        else if (k.isNotEmpty()) state.overlay = Overlay.Doctor(k)
+    }, small = true, enabled = selKey.isNotEmpty(), tag = "open-sample", modifier = m)
+    // the picked pad's menu, always here: a hold opens it too, except on a pad that sounds while it is held
+    // (a synth, Sustain, gate), where a hold is playing. This button works for every pad.
+    Btn("Menu", {
+        val pad = state.project.sel
+        state.bank = pad / Project.BANK
+        state.padMenu = pad
+    }, small = true, enabled = !state.keysMode, tag = "open-padmenu", modifier = m)
+}
+
 /**
  * Key, chords and Hold. Shut, it is one slim row: Hold (one tap), and a button that says what key and chords are
  * set and opens the rest. A Padiano opens it by itself; Keys mode always shows it open.
@@ -127,7 +150,7 @@ fun KeysBar(state: AppState, modifier: Modifier = Modifier) {
     }
     Column(modifier.padding(bottom = 12.dp)) {
         Wrap(Modifier.padding(bottom = 4.dp)) {
-            if (!state.keysMode) Btn("▴", { state.switchKeysBar(false) }, small = true, tier = Tier.Quiet, tag = "keysbar-shut")
+            if (!state.keysMode) Btn("▴", { state.switchKeysBar(false) }, small = true, tag = "keysbar-shut", modifier = Modifier.widthIn(min = 44.dp))
             Select(Theory.NN[P.root], Theory.NN.mapIndexed { i, n -> i to n }, { state.setRoot(it) }, tag = "pick-root")
             Select(P.scale, Theory.SCALES.keys.map { it to it }, { state.setScale(it) }, tag = "pick-scale")
             Select(chordName(state.chordMode), chordOptions(P.scale, P.root), { state.pickChordMode(it) }, tag = "pick-chord")

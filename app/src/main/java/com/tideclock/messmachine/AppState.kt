@@ -807,7 +807,7 @@ class AppState(private val app: Context) {
         if (midiMapOn) { midiLearnNote(note); return }
         val t = midiNotes[note]
         if (t != null) { midiPlay(note, t); return }
-        if (note in 36..51) { padDown(note - 36); return }
+        if (note in 36..51) { if (midiPadSounds(note - 36)) padDown(note - 36); return }
         val pad = project.sel
         if (project.kit[pad].isEmpty()) { say("MIDI: pick a pad with a sound first; keys play the selected pad."); return }
         val p = (note - 60).coerceIn(-36, 36)
@@ -824,10 +824,16 @@ class AppState(private val app: Context) {
         if (note in 36..51) padUp(note - 36)
     }
 
+    /**
+     * A controller key only plays pads that have a sound: a finger on an empty pad opens the jars (or starts the
+     * mic), and a stray key on the controller should never pop a sheet open in the middle of playing.
+     */
+    private fun midiPadSounds(d: Int): Boolean = keysMode || project.kit[bank * Project.BANK + d].isNotEmpty()
+
     /** A mapped key plays what it was taught: a pad like a finger on it, or one Padiano key (chords and Hold included). */
     private fun midiPlay(note: Int, t: MidiTarget) {
         when (t.kind) {
-            "pad" -> { midiHeldT[note] = t; padDown(t.a) }
+            "pad" -> if (midiPadSounds(t.a)) { midiHeldT[note] = t; padDown(t.a) }
             "key" -> if (project.kit.getOrNull(t.a).orEmpty().isNotEmpty()) { midiHeldT[note] = t; pianoDown(t.a, t.b) }
         }
     }
@@ -928,8 +934,7 @@ class AppState(private val app: Context) {
         midiLast = "${Theory.noteName(note - 60)} now plays ${midiLabel(c).replaceFirstChar { it.lowercase() }}."
         notes.trail("midi map note $note to ${c.code()}")
         // hear what it landed on (an empty pad would open the jars, so that one stays quiet)
-        val sounds = if (c.kind == "pad") keysMode || project.kit[bank * Project.BANK + c.a].isNotEmpty() else true
-        if (sounds) midiPlay(note, c)
+        midiPlay(note, c)
         midiCursor = midiNext(c)
         if (midiCursor == null) midiLast += " That was the last one: tap somewhere else to go on."
     }
