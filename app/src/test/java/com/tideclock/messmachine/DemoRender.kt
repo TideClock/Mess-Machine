@@ -1151,9 +1151,10 @@ class DemoRender {
     @Test fun v1() = shoot("v1") {
         beat(null, 120)
         state.setRoot(2); state.setScale("Minor")
+        // one Padiano fits under each row: the bass under row 1, the melody under row 2, both in full view
+        state.newSynth(3, analog("Acid line"))
         state.newSynth(4, Synth.PLUCK.presets.first { it.name == "Nylon" })
-        state.newSynth(8, analog("Acid line"))
-        state.toggleKeyboard(4); state.toggleKeyboard(8)
+        state.toggleKeyboard(3); state.toggleKeyboard(4)
         state.selectPad(4, false)
         settle(); action(); secs(.3); dumpTags("two")
         tap("play"); untilStep(12)
@@ -1162,7 +1163,7 @@ class DemoRender {
         mark("bass")
         repeat(2) {
             untilStep(15)
-            for (st in 0..15) { val n = bass[st] ?: continue; untilStep(st); tap("piano-keys-8", pk(8, n), .5f, hold = 2, note = "bass") }
+            for (st in 0..15) { val n = bass[st] ?: continue; untilStep(st); tap("piano-keys-3", pk(3, n), .5f, hold = 2, note = "bass") }
         }
         mark("both")
         repeat(4) {
@@ -1171,10 +1172,10 @@ class DemoRender {
                 val b = bass[st]; val m = mel[st]
                 if (b == null && m == null) continue
                 untilStep(st)
-                if (b != null) fingerDown(0, "piano-keys-8", pk(8, b), .5f, "bass")
+                if (b != null) fingerDown(0, "piano-keys-3", pk(3, b), .5f, "bass")
                 if (m != null) fingerDown(1, "piano-keys-4", pk(4, m), .5f, "melody")
                 frames(2)
-                if (b != null) fingerUp(0, "piano-keys-8", "bass")
+                if (b != null) fingerUp(0, "piano-keys-3", "bass")
                 if (m != null) fingerUp(1, "piano-keys-4", "melody")
                 frame()
             }
