@@ -221,7 +221,7 @@ fun Transport(state: AppState) {
         Btn(if (state.playing) "❚❚" else "▶ Play", { state.togglePlay() }, color = C.Teal, on = state.playing, onColor = C.Yellow, small = true, tag = "play", tier = Tier.Primary, tight = true, modifier = Modifier.weight(1.25f))
         Btn("■", { state.stop() }, small = true, tag = "stop", tight = true, modifier = Modifier.weight(.55f))
         RecBtn(state, Modifier.weight(1.05f))
-        Btn("↶", { state.undo() }, enabled = state.canUndo && free, small = true, tag = "undo", tight = true, modifier = Modifier.weight(.5f))
+        Btn("↶", { state.undo() }, enabled = state.canUndo && free, small = true, tag = "undo", tight = true, modifier = Modifier.weight(.55f))
         // tempo and where the music is, in one button: tap for tempo, swing and click
         Box(
             Modifier.weight(1.15f).height(36.dp).sticker(C.Black, shadow = 2.dp, border = 2.dp)
@@ -233,8 +233,8 @@ fun Transport(state: AppState) {
                 T(position(state), size = 10.sp, color = C.Yellow, lines = 1, family = Mono, weight = FontWeight.Bold, modifier = Modifier.tagged("position"))
             }
         }
-        Btn("?", { state.switchHelp() }, small = true, on = state.helpOn, onColor = C.Teal, tag = "help-toggle", tier = Tier.Quiet, tight = true, modifier = Modifier.weight(.45f))
-        TopMenu(state, Modifier.weight(.5f))
+        Btn("?", { state.switchHelp() }, small = true, on = state.helpOn, onColor = C.Teal, tag = "help-toggle", tier = Tier.Quiet, tight = true, modifier = Modifier.weight(.55f))
+        TopMenu(state, Modifier.weight(.55f))
     }
 }
 

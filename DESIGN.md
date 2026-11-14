@@ -4,7 +4,7 @@
 
 Rewritten at the end of every session and at each step of a long job (BT-2). Read this first.
 
-- **Live:** build 82 (when its run is green): the second test pass (narrow screens, small targets; see the
+- **Live:** build 83 (when its run is green; 82 passed the big test and was replaced by the third pass): the second and third test passes (narrow screens, small targets; see the
   2026-11-14 decisions).
 - **Before that:** build 81 (80 passed the big test but was replaced before it published, because
   its new Menu button squeezed the bank numbers to dots with the dock open): the slim keys bar (Hold, key and chords, always there, on the Play tab
@@ -234,7 +234,13 @@ Sound engine plan v2 (doc https://claude.ai/artifact/Vsr6HBLcVa8wehHaNbqSD9), bu
   pad's measured width (words broke mid-word at 360; bigger names on an opened Fold); the words under dock
   buttons are `DockWord` buttons 32 dp tall and the dock's width (they were about 24 by 13 dp); one-letter
   buttons are at least 40 dp wide. Notes now report the screen's dp size, view size and dock state. Left on
-  purpose: the effect buttons' 24 dp pencil corner (bigger would take playing surface) and the ? in the top bar.
+  purpose: the effect buttons' 24 dp pencil corner (bigger would take playing surface).
+- 2026-11-14 Third pass, from the corrected audit at 369 dp: Synth view chips sized by their words; "Oct down"
+  (was Octave down) and effect names of 10 letters or more a size smaller; "Hear steps on tap"; the slices
+  buttons wrap; the keys bar's button is tight; the synth "On pad n" button says what it replaces in a line
+  under it; ↶, ? and ☰ are weight .55 in the top bar (32 dp at 369). Still open, needing Tyler's call: sound
+  names in the Steps list are cut at every width (the name column is fixed), a Padiano's title is cut when its
+  sound's name is long, and pad names go down to about 8 sp for long words on a Fold's cover screen.
 
 ## Control map
 

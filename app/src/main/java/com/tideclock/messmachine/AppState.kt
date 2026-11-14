@@ -68,7 +68,7 @@ val CONSOLE_TYPES = listOf(
 val FX_NAMES = listOf(
     "stutter" to "Stutter", "echo" to "Echo throw", "crush" to "Crush",
     "tape" to "Tape stop", "gate" to "Gate", "dirty" to "Dirty",
-    "ring" to "Ring mod", "oct" to "Octave down", "rev" to "Reverse",
+    "ring" to "Ring mod", "oct" to "Oct down", "rev" to "Reverse",
 )
 
 /**

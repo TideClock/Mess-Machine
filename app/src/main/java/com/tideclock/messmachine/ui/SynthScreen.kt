@@ -77,7 +77,7 @@ fun SynthScreen(state: AppState) {
             for (k in Synth.KINDS) Btn(k.name, { if (sp.kind != k) state.loadSynthPreset(pad, k.presets.first()) }, on = sp.kind == k, onColor = C.Yellow, small = true, tag = "synthkind-${k.id}")
         }
         Row(Modifier.fillMaxWidth().padding(bottom = 12.dp, end = 4.dp).tagged("synthview-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            for ((id, n) in listOf("simple" to "Simple", "full" to "Full", "pad" to "Synthipad")) Btn(n, { state.synthView = id }, on = state.synthView == id, onColor = C.Teal, small = true, tag = "synthview-$id", modifier = Modifier.weight(1f))
+            for ((id, n) in listOf("simple" to "Simple", "full" to "Full", "pad" to "Synthipad")) Btn(n, { state.synthView = id }, on = state.synthView == id, onColor = C.Teal, small = true, tight = true, tag = "synthview-$id", modifier = Modifier.weight(n.length + 3f))
         }
         // SE-15: a granular synth reads one of the mess's sounds
         if (sp.kind == Synth.GRAIN) {
@@ -136,7 +136,9 @@ private fun NoSynth(state: AppState, pad: Int) {
     if (empty >= 0) Btn("On empty pad ${empty + 1}", { state.newSynth(empty, preset) }, on = true, onColor = C.Teal, tag = "synth-new-empty")
     Spacer(Modifier.height(8.dp))
     val k = P.kit.getOrNull(pad).orEmpty()
-    Btn(if (k.isEmpty()) "On pad ${pad + 1}" else "On pad ${pad + 1}, instead of ${state.lib.titleOf(k)}", { state.newSynth(pad, preset) }, tag = "synth-new-here")
+    Btn("On pad ${pad + 1}", { state.newSynth(pad, preset) }, tag = "synth-new-here")
+    // said under the button: as part of its label it ran off the edge on a phone
+    if (k.isNotEmpty()) Note("That takes the place of ${state.lib.titleOf(k)} on pad ${pad + 1}. Undo brings it back.", modifier = Modifier.padding(top = 6.dp))
 }
 
 /** Mode (Poly, Mono, Acid) and, for drums, the model: choices you pick, not knobs you turn. */

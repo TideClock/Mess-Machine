@@ -144,7 +144,7 @@ fun KeysBar(state: AppState, modifier: Modifier = Modifier) {
         Row(modifier.fillMaxWidth().padding(bottom = 12.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             HoldToggle(state, tag = "hold-toggle")
             Btn("${Theory.NN[P.root]} ${P.scale.lowercase()} · ${chordName(state.chordMode).lowercase()} ▾", { state.switchKeysBar(true) },
-                small = true, tier = Tier.Quiet, tag = "keysbar-open", modifier = Modifier.weight(1f))
+                small = true, tight = true, tier = Tier.Quiet, tag = "keysbar-open", modifier = Modifier.weight(1f))
         }
         return
     }

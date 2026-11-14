@@ -273,7 +273,8 @@ fun DoctorScreen(state: AppState, key: String) {
             }
         }
         when (chopMode) {
-            "equal" -> Row(Modifier.padding(top = 8.dp).tagged("slice-chips"), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // wraps: on a narrow phone the fourth one (16 slices) was squeezed to a sliver
+            "equal" -> Wrap(Modifier.padding(top = 8.dp).tagged("slice-chips"), gap = 8.dp) {
                 for (n in listOf(2, 4, 8, 16)) Btn("$n slices", { chopN = n; cuts = equalCuts(n) }, on = chopN == n, small = true)
             }
             "auto" -> SliderRow("Sensitivity", sens, 0f..1f, { "${(it * 100).roundToInt()}" }, { sens = it }, { refreshCuts() }, accent = C.Teal)
