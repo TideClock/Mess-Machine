@@ -1304,14 +1304,16 @@ class DemoRender {
     @Test fun v4() = shoot("v4") {
         state.newMess(); state.setBpm(120)
         state.setRoot(2); state.setScale("Minor")
-        state.putOnPad(3, throne); load(throne)
-        state.newSynth(6, analog("Acid line"))
-        state.newSynth(7, Synth.PLUCK.presets.first { it.name == "Nylon" })
-        state.toggleKeyboard(6); state.toggleKeyboard(7)
-        state.selectPad(3, false)
+        // one Padiano fits under each row: the bass on row 1, the melody on row 2, small so the chops' row stays on screen
+        state.putOnPad(4, throne); load(throne)
+        state.newSynth(3, analog("Acid line"))
+        state.newSynth(5, Synth.PLUCK.presets.first { it.name == "Nylon" })
+        state.changePadianoSize(0)
+        state.toggleKeyboard(3); state.toggleKeyboard(5)
+        state.selectPad(4, false)
         settle(); action(); secs(.3)
         mark("loop")
-        tap("pad-3", hold = 4); secs(2.2)
+        tap("pad-4", hold = 4); secs(2.2)
         mark("chop")
         tap("open-sample"); secs(.5)
         tap("dtab-tools"); secs(.4)
@@ -1334,19 +1336,19 @@ class DemoRender {
         bar(2 to { tap("pad-2", hold = 2, note = "hat") }, 4 to { tap("pad-1", hold = 2, note = "clap") }, 6 to { tap("pad-2", hold = 2, note = "hat") },
             10 to { tap("pad-2", hold = 2, note = "hat") }, 12 to { tap("pad-1", hold = 2, note = "clap") }, 14 to { tap("pad-2", hold = 2, note = "hat") })
         untilStep(15); mark("layer4")
-        bar(0 to { key(6, 2, hold = 2) }, 3 to { key(6, 2, hold = 2) }, 6 to { key(6, 5, hold = 2) }, 8 to { key(6, 2, hold = 2) }, 11 to { key(6, 9, hold = 2) }, 14 to { key(6, 12, hold = 2) })
+        bar(0 to { key(3, 2, hold = 2) }, 3 to { key(3, 2, hold = 2) }, 6 to { key(3, 5, hold = 2) }, 8 to { key(3, 2, hold = 2) }, 11 to { key(3, 9, hold = 2) }, 14 to { key(3, 12, hold = 2) })
         untilStep(15); mark("layer5")
-        bar(0 to { key(7, 9, hold = 2) }, 2 to { key(7, 12, hold = 2) }, 4 to { key(7, 9, hold = 2) }, 6 to { key(7, 5, hold = 2) }, 10 to { key(7, 7, hold = 2) }, 12 to { key(7, 10, hold = 2) })
-        tap("piano-xy-6"); frames(3)
+        bar(0 to { key(5, 9, hold = 2) }, 2 to { key(5, 12, hold = 2) }, 4 to { key(5, 9, hold = 2) }, 6 to { key(5, 5, hold = 2) }, 10 to { key(5, 7, hold = 2) }, 12 to { key(5, 10, hold = 2) })
+        tap("piano-xy-3"); frames(3)
         untilStep(15); mark("layer6")
         untilStep(0)
-        fingerDown(1, "xyp-6", .1f, .8f, "xy"); frame()
+        fingerDown(1, "xyp-3", .1f, .8f, "xy"); frame()
         var f = 0
         while (state.heardStep != 15 && f < 200) {
             val t = Math.abs(((f % 30) / 15f) - 1f)
-            fingerMove(1, "xyp-6", .1f + .75f * t, .8f - .5f * t, "xy"); frame(); f++
+            fingerMove(1, "xyp-3", .1f + .75f * t, .8f - .5f * t, "xy"); frame(); f++
         }
-        fingerUp(1, "xyp-6", "xy"); frame()
+        fingerUp(1, "xyp-3", "xy"); frame()
         untilStep(0)
         tap("rec"); frames(3)
         mark("all")
