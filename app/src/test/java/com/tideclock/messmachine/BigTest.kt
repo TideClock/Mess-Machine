@@ -507,7 +507,7 @@ class BigTest {
             rule.mainClock.advanceTimeBy(600); settle()
             val t0 = state.engine.triggers
             rule.onNodeWithTag("pad-2").performTouchInput { down(center) }
-            rule.mainClock.advanceTimeBy(ms); settle()
+            rule.mainClock.advanceTimeBy(ms); settle(); state.engine.render(FloatArray(512), 256)
             rule.onNodeWithTag("pad-2").performTouchInput { up() }
             settle()
             assertEquals("a $ms ms hold opens no menu", -1, state.padMenu)
@@ -527,8 +527,8 @@ class BigTest {
         state.padMenu = -1
         settle()
         // the bottom dock stays put while the page scrolls: scroll to the bottom and Menu is still on screen
-        state.toggleKeyboard(12); settle()
-        rule.onNodeWithTag("piano-12").performScrollTo(); rule.mainClock.advanceTimeBy(600); settle()
+        state.toggleKeyboard(5); settle()
+        rule.onNodeWithTag("pad-15").performScrollTo(); rule.mainClock.advanceTimeBy(600); settle()
         val root = rule.onRoot().fetchSemanticsNode().boundsInRoot
         val menu = rule.onNodeWithTag("open-padmenu").fetchSemanticsNode().boundsInRoot
         assertTrue("Menu is on screen after scrolling down ($menu in $root)", menu.top >= root.top && menu.bottom <= root.bottom)
@@ -584,19 +584,25 @@ class BigTest {
         state.switchPadianoKeys(false)
     }
 
-    @Test fun emptyPadsRecordWhenSwitchedOn() {
+    /** Note #14: an empty pad's slash. The top left corner records onto it, the rest (and the middle) opens the jars. */
+    @Test fun emptyPadSlashRecordsOrPicks() {
         shadowOf(ApplicationProvider.getApplicationContext<android.app.Application>()).grantPermissions(android.Manifest.permission.RECORD_AUDIO)
-        state.switchEmptyRecord(true)
+        at("pad-12").performTouchInput { down(Offset(width * .18f, height * .18f)) }
         settle()
-        tapPad(12)
+        rule.onNodeWithTag("pad-12").performTouchInput { up() }
+        settle()
         println("EMPTYREC mic=${state.micOn} pad=${state.micPad} overlay=${state.overlay}")
-        assertEquals("an empty pad no longer opens the jars", null, state.overlay)
-        assertTrue("tapping an empty pad starts recording onto it", state.micPad == 12 || state.toast?.contains("mic") == true)
+        assertEquals("the top corner does not open the jars", null, state.overlay)
+        assertTrue("the top corner starts recording onto the pad", state.micPad == 12 || state.toast?.contains("mic") == true)
         if (state.micOn) tapPad(12)
         waitFor("the mic to stop") { !state.micOn }
-        state.switchEmptyRecord(false)
         tapPad(12)
-        assertEquals("switched off, empty pads open the jars again", Overlay.Picker(12), state.overlay)
+        assertEquals("the middle opens the jars", Overlay.Picker(12), state.overlay)
+        state.overlay = null; settle()
+        at("pad-12").performTouchInput { down(Offset(width * .85f, height * .85f)); up() }
+        settle()
+        assertEquals("the bottom corner opens the jars", Overlay.Picker(12), state.overlay)
+        state.overlay = null; settle()
     }
 
     /* ---------- build B: glide, the dock, Lock ---------- */
@@ -1278,6 +1284,7 @@ class BigTest {
         state.setLive { nr = false }; state.switchHold(false)
 
         // note #18: chords keep the root on the bottom (G4 was D4 G4 B4), and a set never drifts across octaves
+        state.setScale("Major"); settle()
         assertEquals(listOf(7, 11, 14), state.chordFor(7).toList())
         state.pickChordMode("set:Sunday Pop"); settle()
         assertEquals("the low C plays C", listOf(0, 4, 7), state.chordFor(0).toList())

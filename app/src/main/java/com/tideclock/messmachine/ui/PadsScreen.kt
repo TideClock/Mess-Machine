@@ -258,8 +258,9 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
                     down.consume()
                     pressed = true
                     state.noteTouch(down.uptimeMillis)
-                    // on an empty pad, which side of the slash: above it records, below it picks a sound (note #14)
-                    state.padDown(d, emptyTop = down.position.y < size.height * (1f - down.position.x / size.width.coerceAtLeast(1)))
+                    // on an empty pad, which side of the slash: clearly above it records, the rest picks a sound (note #14).
+                    // A touch on the slash itself picks: a stray tap should never start the mic
+                    state.padDown(d, emptyTop = down.position.y < size.height * (.92f - down.position.x / size.width.coerceAtLeast(1)))
                     if (state.buzz && state.project.kit[state.bank * Project.BANK + d].isNotEmpty()) view.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
                     val pi = state.bank * Project.BANK + d
                     val det = CircleDetector(40.dp.toPx())

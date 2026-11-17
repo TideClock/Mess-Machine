@@ -238,6 +238,6 @@ class AuditTest {
     @Config(qualifiers = "w707dp-h822dp-xhdpi")
     @Test fun auditTylerOpen70() { mustFit = false; walk("w707-view70", .7f) }
 
-    @Config(qualifiers = "w822dp-h707dp-xhdpi-land")
+    @Config(qualifiers = "w822dp-h707dp-land-xhdpi")
     @Test fun auditTylerLandscape70() { mustFit = false; walk("w822-land-view70", .7f) }
 }
