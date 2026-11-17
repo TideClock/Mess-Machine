@@ -4,7 +4,7 @@
 #   screen: <screen name as in design-check.md> | <most controls allowed> | <reason>
 #   menu: <menu name> | <most items allowed> | <reason>
 tabs: 6 | Synths get their own tab (Tyler, 2026-11-10): a synth is different enough from a sample to need a big screen
-menu: Pad menu | 14 | The pad's one home for everything a pad does, now that the pad card is gone; split into Play, Sound and Clear groups
+menu: Pad menu | 15 | The pad's one home for everything a pad does, now that the pad card is gone; split into Play, Sound and Clear groups. 15 since build 84: Move took over from hold-and-slide, which went with the hold menu
 label: Done | Closes the sheet it sits on; every sheet needs one
 label: Hear it | Each one plays the sound on its own screen (the pad, the library row, the Sample sheet)
 label: [picker: pick-root] | Roll places notes by the root; the bottom dock's key panel is the home
