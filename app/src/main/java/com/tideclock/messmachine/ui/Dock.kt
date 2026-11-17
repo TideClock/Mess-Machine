@@ -143,7 +143,7 @@ private fun DockItem(state: AppState, t: String) {
             DockBtn("RPT", { state.setLive { nr = !nr } }, tag = "dock-repeat", on = state.live.nr, onColor = C.Pink)
             Box {
                 DockWord(
-                    (when (state.live.nrRate) { 2.0 -> "1/8"; 0.5 -> "1/32"; else -> "1/16" }) + (if (state.live.arp != "rep") " " + arpShort(state.live.arp) else "") + styleShort(state.live.nrStyle) + (if (state.live.nrPat.isNotEmpty()) " P" else ""),
+                    rateName(state.live.nrRate) + (if (state.live.arp != "rep") " " + arpShort(state.live.arp) else "") + styleShort(state.live.nrStyle) + (if (state.live.nrPat.isNotEmpty()) " P" else ""),
                     if (state.live.nr) C.Pink else C.Dim, "dock-rate",
                 ) { rates = true }
                 RepeatMenu(state, rates) { rates = false }
@@ -264,7 +264,7 @@ private fun RepeatMenu(state: AppState, open: Boolean, onClose: () -> Unit) {
             T("REPEAT", size = 12.sp, color = C.Yellow, lines = 1, spacing = .06.em, modifier = Modifier.padding(bottom = 8.dp))
             T("EVERY", size = 10.sp, color = C.Dim, spacing = .12.em, modifier = Modifier.padding(bottom = 4.dp))
             Wrap(Modifier.padding(bottom = 10.dp).testTag("rate-chips"), gap = 6.dp) {
-                for ((r, n, tag) in listOf(Triple(2.0, "1/8", "rate-r2"), Triple(1.0, "1/16", "rate-r1"), Triple(.5, "1/32", "rate-r.5"))) {
+                for ((r, n, tag) in listOf(Triple(4.0, "1/4", "rate-r4"), Triple(2.0, "1/8", "rate-r2"), Triple(1.0, "1/16", "rate-r1"), Triple(.5, "1/32", "rate-r.5"))) {
                     Btn(n, { onClose(); state.setLive { nrRate = r } }, on = state.live.nrRate == r, onColor = C.Pink, small = true, tag = tag)
                 }
             }

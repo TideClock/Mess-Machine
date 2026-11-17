@@ -100,14 +100,17 @@ for t in tab-Pads view-desk tab-Synth tab-Steps tab-Roll tab-Song tab-Sounds; do
   infront "$t"
 done
 
-# a long press on a pad opens its menu on lift; then a circle on a pad opens the sphere
+# a long press on a pad plays it (build 84: no hold menu); Menu on the bottom dock opens its menu; then a circle on a
+# pad opens the sphere
 close_sheets
 adb shell input tap $(centre tab-Pads); sleep 2
 adb shell input tap $(centre mode-pads); sleep 2
 xy=$(centre pad-6)
 if [ -z "$xy" ]; then note "pad 6: NOT FOUND"; fail=1; else
   set -- $xy
-  adb shell input swipe $1 $2 $1 $2 900; sleep 1; shot 05-long-press
+  adb shell input swipe $1 $2 $1 $2 900; sleep 1
+  mxy=$(centre open-padmenu)
+  [ -n "$mxy" ] && adb shell input tap $mxy; sleep 1; shot 05-pad-menu
   # menus open in their own popup window, which carries no test names: look for the menu's words
   centre padmenu >/dev/null
   grep -q -e "✂ SAMPLE" -e "&#9986; SAMPLE" $OUT/ui-now.xml && note "pad menu: opened" || { note "pad menu: DID NOT OPEN"; fail=1; }

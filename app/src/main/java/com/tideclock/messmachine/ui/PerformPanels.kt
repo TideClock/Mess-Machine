@@ -246,6 +246,8 @@ fun PianoKeyboard(state: AppState, pad: Int, keysHeight: Dp = 132.dp, filter: Bo
     var showSet by remember(pad) { mutableStateOf(false) }
     var showXy by remember(pad) { mutableStateOf(false) }
     val squares = !state.padianoKeys || state.inKeyOnly
+    // a chord set on: the Padiano shows the set's chords as named slots, Maschine style (build 84, note #18)
+    val slots = state.chordMode.startsWith("set:")
     val base = state.padianoBase[pad] ?: 0
     Column(Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 6.dp).tagged("piano-$pad")) {
         // one thin header so the keys get the room: name, octave, Glide, XY, settings, close.
@@ -253,9 +255,9 @@ fun PianoKeyboard(state: AppState, pad: Int, keysHeight: Dp = 132.dp, filter: Bo
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(bottom = 4.dp)) {
             Swatch(col)
             T(" ${pad + 1} ${state.lib.titleOf(k).uppercase()}", size = 11.sp, color = C.Yellow, lines = 1, spacing = .04.em, modifier = Modifier.weight(1f))
-            if (squares) {
-                Btn("◀", { state.shiftPadiano(pad, -12) }, small = true, enabled = base > -36, tag = "piano-down-$pad")
-                Btn("▶", { state.shiftPadiano(pad, 12) }, small = true, enabled = base < 24, tag = "piano-up-$pad")
+            if (squares || slots) {
+                Btn("Oct−", { state.shiftPadiano(pad, -12) }, small = true, tight = true, enabled = base > -36, tag = "piano-down-$pad")
+                Btn("Oct+", { state.shiftPadiano(pad, 12) }, small = true, tight = true, enabled = base < 24, tag = "piano-up-$pad")
             }
             PadianoExtras(state, pad)
             // a synth's Padiano on the grid: one tap to its knobs
@@ -266,7 +268,8 @@ fun PianoKeyboard(state: AppState, pad: Int, keysHeight: Dp = 132.dp, filter: Bo
         }
         GlideRow(state, pad)
         if (showSet) PadianoSettings(state)
-        if (squares) PadianoSquares(state, pad, col, base)
+        if (slots) ChordSlots(state, pad, col, Math.floorDiv(base, 12))
+        else if (squares) PadianoSquares(state, pad, col, base)
         else PadianoKeys(state, pad, col, if (keysHeight != 132.dp) keysHeight else listOf(96.dp, 132.dp, 176.dp, 236.dp)[state.padianoSize])
         if (showXy) PadXy(state, pad, Modifier.padding(top = 8.dp))
         if (filter) PadFilterStrip(state, pad, Modifier.padding(top = 8.dp))
@@ -318,6 +321,77 @@ fun PadianoSettings(state: AppState) {
         }
         Help("Fewer notes make bigger squares. XL is tall, with wider squares (they wrap sooner). Each extra row is the same notes an octave up.", modifier = Modifier.padding(top = 6.dp))
     }
+}
+
+/**
+ * A chord set's slots: one box per chord, named, always in the same order (slot 3 of Sunday Pop is always Am). The
+ * octave buttons move the whole set. Several fingers play several slots; a finger sliding across changes chord.
+ */
+@Composable
+fun ChordSlots(state: AppState, pad: Int, col: Color, oct: Int) {
+    val P = state.project
+    val n = Theory.setSize(state.chordMode)
+    if (n == 0) return
+    var fingers by remember(pad) { mutableStateOf(setOf<Int>()) }
+    val held = state.heldPitches(pad).filter { it >= com.tideclock.messmachine.SLOT_P }.map { it - com.tideclock.messmachine.SLOT_P }.toSet()
+    val tm = rememberTextMeasurer()
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        // two rows of four on a phone, one row of eight when there is room for 56 dp boxes
+        val perRow = if (maxWidth >= 56.dp * n) n else (n + 1) / 2
+        val rows = (n + perRow - 1) / perRow
+        val rowH = listOf(52.dp, 68.dp, 88.dp, 120.dp)[state.padianoSize]
+        Canvas(
+            Modifier
+                .fillMaxWidth()
+                .padding(end = 6.dp, bottom = 6.dp)
+                .height(rowH * rows)
+                .sticker(C.Ink, shadow = 5.dp, shadowColor = col)
+                .tagged("chord-slots-$pad")
+                .pointerInput(pad, n, oct, perRow) {
+                    fun at(o: Offset): Int? {
+                        if (o.x < 0 || o.y < 0 || o.x > size.width || o.y > size.height) return null
+                        val r = (o.y / (size.height / rows.toFloat())).toInt().coerceIn(0, rows - 1)
+                        val c = (o.x / (size.width / perRow.toFloat())).toInt().coerceIn(0, perRow - 1)
+                        val j = r * perRow + c
+                        return if (j < n) j else null
+                    }
+                    awaitEachGesture {
+                        val active = HashMap<PointerId, Int>()
+                        do {
+                            val ev = awaitPointerEvent()
+                            for (c in ev.changes) {
+                                val cur = active[c.id]
+                                val j = if (c.pressed) at(c.position) else null
+                                if (j != cur) {
+                                    if (cur != null) state.slotUp(pad, cur)
+                                    if (j != null) { state.slotDown(pad, j, oct); active[c.id] = j } else active.remove(c.id)
+                                }
+                                c.consume()
+                            }
+                            fingers = active.values.toSet()
+                        } while (ev.changes.any { it.pressed })
+                        for (j in active.values) state.slotUp(pad, j)
+                        fingers = emptySet()
+                    }
+                },
+        ) {
+            val w = size.width / perRow
+            val h = size.height / rows
+            for (j in 0 until n) {
+                val x = (j % perRow) * w
+                val y = (j / perRow) * h
+                val down = j in fingers || j in held
+                drawRect(if (down) col else lerp(C.Card2, col, .22f), topLeft = Offset(x + 3f, y + 3f), size = Size(w - 6f, h - 6f))
+                if (j in held) drawRect(C.Yellow, topLeft = Offset(x + 5f, y + 5f), size = Size(w - 10f, 8f))
+                drawRect(C.Black, topLeft = Offset(x + 2f, y + 2f), size = Size(w - 4f, h - 4f), style = Stroke(width = 3f))
+                drawText(tm, Theory.slotName(state.chordMode, j, P.root), topLeft = Offset(x + 8f, y + h * .28f),
+                    style = TextStyle(color = if (down) ink(col) else C.Cream, fontSize = 15.sp, fontWeight = FontWeight.Black))
+                drawText(tm, "${j + 1}", topLeft = Offset(x + 8f, y + 6f), style = TextStyle(color = C.Dim, fontSize = 9.sp, fontFamily = Mono))
+            }
+        }
+    }
+    Note("${state.chordMode.substring(4)} in ${Theory.NN[P.root]}" + (if (oct != 0) ", ${if (oct > 0) "+" else ""}$oct octave" else "") + " · each box is always the same chord" +
+        if (!state.chordPlay) " · showing" else "", modifier = Modifier.padding(top = 4.dp))
 }
 
 /** Squares: one row of small squares; light for white-key notes, dark for black-key ones. */
@@ -421,8 +495,10 @@ fun PadianoKeys(state: AppState, pad: Int, col: Color, keysHeight: Dp) {
         val shown0 = whites.subList(first, first + visible)
         Column {
             Row(Modifier.padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Btn("Oct−", { start = (first - 7).coerceAtLeast(0) }, small = true, tight = true, enabled = first > 0, tag = "pkeys-octdown-$pad")
                 Btn("◀", { start = (first - 3).coerceAtLeast(0) }, small = true, enabled = first > 0)
                 Btn("▶", { start = (first + 3).coerceAtMost(maxStart) }, small = true, enabled = first < maxStart)
+                Btn("Oct+", { start = (first + 7).coerceAtMost(maxStart) }, small = true, tight = true, enabled = first < maxStart, tag = "pkeys-octup-$pad")
             }
             for (o in octs - 1 downTo 0) {
                 val shown = shown0.map { it + 12 * o }

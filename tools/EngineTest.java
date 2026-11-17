@@ -40,6 +40,26 @@ public class EngineTest {
     check(Theory.chordLabel(0, 0, "triad", "Major", 0).equals("C") && Theory.chordLabel(2, 1, "triad", "Major", 0).equals("Dm"), "triad labels");
     check(Theory.chordLabel(0, 2, "set:Sunday Pop", "Major", 0).equals("Am"), "chord set label");
     check(Arrays.equals(Theory.chordOf(0, 0, "seventh", "Major", 0), new int[]{0, 4, 7, 11}), "seventh chord notes");
+    // build 84 (note #18): chords keep the root on the bottom, and chord sets are fixed slots that never drift
+    check(Arrays.equals(Theory.chordOf(7, 0, "triad", "Major", 0), new int[]{7, 11, 14}), "G4 triad is G B D, root on the bottom (was D4 G4 B4)");
+    check(Arrays.equals(Theory.chordOf(11, 0, "seventh", "Major", 0), new int[]{11, 14, 17, 21}), "B4 seventh keeps B lowest");
+    check(Arrays.equals(Theory.chordOf(24, 0, "triad", "Major", 0), new int[]{12, 16, 19}), "a chord past the top moves down whole");
+    check(Arrays.equals(Theory.chordOf(0, 0, "sus", "Major", 0), new int[]{0, 5, 7}) && Theory.chordLabel(0, 0, "sus", "Major", 0).equals("Csus4"), "1-4-5 is the sus sound");
+    check(Arrays.equals(Theory.chordOf(0, 0, "octave", "Major", 0), new int[]{0, 12}), "octave type");
+    {
+        String sp = "set:Sunday Pop";
+        int c4 = Theory.setIndexOfKey(0, sp, "Major", 0), c5 = Theory.setIndexOfKey(12, sp, "Major", 0), c3 = Theory.setIndexOfKey(-12, sp, "Major", 0);
+        check(Arrays.equals(Theory.chordOf(0, c4, sp, "Major", 0), new int[]{0, 4, 7}), "set: low C plays C");
+        check(Arrays.equals(Theory.chordOf(12, c5, sp, "Major", 0), new int[]{12, 16, 19}) && Theory.chordLabel(12, c5, sp, "Major", 0).equals("C"), "set: the next C up plays C again, an octave up (was G7)");
+        check(Arrays.equals(Theory.chordOf(-12, c3, sp, "Major", 0), new int[]{-12, -8, -5}), "set: C3 plays C an octave down");
+        check(Theory.setIndexOfKey(1, sp, "Major", 0) == Integer.MIN_VALUE, "set: an out-of-key key plays no slot");
+        check(Theory.slotName(sp, 7, 0).equals("G7") && Theory.slotName(sp, 1, 0).equals("G") && Theory.setSize(sp) == 8, "set slot names");
+        for (int k = -36; k <= 12; k++) {
+            int ka = Theory.setIndexOfKey(k, sp, "Major", 0), kb = Theory.setIndexOfKey(k + 12, sp, "Major", 0);
+            if (ka == Integer.MIN_VALUE) continue;
+            if (!Theory.chordLabel(k, ka, sp, "Major", 0).equals(Theory.chordLabel(k + 12, kb, sp, "Major", 0))) { check(false, "set: key " + k + " and an octave up play different chords"); break; }
+        }
+    }
     // bounce the demo loop twice and check where the kicks land
     int rate = 48000;
     for (String k : L.project.kit) if (!k.isEmpty()) lib.load(k);

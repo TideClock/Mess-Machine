@@ -126,6 +126,8 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
                     }
                 }
                 }
+                // Menu, Hold and chords stay under whatever page you play on (build 84)
+                if (state.tab == Tab.Pads || state.tab == Tab.Console || state.tab == Tab.Synth) BottomDock(state)
                 Tabs(state)
             }
             // sheets slide up a little and fade, instead of snapping in
@@ -238,7 +240,7 @@ fun Transport(state: AppState) {
     }
 }
 
-/** ☰: messes, settings, redo and notes for Claude (the bug button), so the top bar stays one row. */
+/** ☰: messes, settings, lessons and redo, so the top bar stays one row. Notes for Claude is the bug by the tabs. */
 @Composable
 fun TopMenu(state: AppState, modifier: Modifier = Modifier) {
     var open by remember { mutableStateOf(false) }
@@ -253,7 +255,6 @@ fun TopMenu(state: AppState, modifier: Modifier = Modifier) {
                 Triple("👄  Mouth control: wub with your voice", "mouth") { state.overlay = Overlay.Mouth },
                 Triple("🎛  MIDI map: teach your keyboard", "midimap-open") { state.switchMidiMap(true) },
                 Triple("↷  Redo", "redo") { state.redo() },
-                Triple("🐞  Notes for Claude" + if (state.crash != null) " (a crash to send)" else "", "notes") { state.overlay = Overlay.Notes },
             )) {
                 androidx.compose.material3.DropdownMenuItem(
                     text = { T(label, size = 15.sp, weight = FontWeight.Medium) },
@@ -276,8 +277,8 @@ fun styleShort(s: String): String = when (s) { "ring" -> " RNG"; "flow" -> " FLO
 fun RepeatControls(state: AppState, tag: String = "repeat") {
     Btn("Repeat", { state.setLive { nr = !nr } }, on = state.live.nr, onColor = C.Pink, small = true, tag = tag)
     Select(
-        (when (state.live.nrRate) { 2.0 -> "1/8"; 0.5 -> "1/32"; else -> "1/16" }) + (if (state.live.arp != "rep") " " + arpShort(state.live.arp) else "") + styleShort(state.live.nrStyle),
-        listOf("r2" to "Every 1/8", "r1" to "Every 1/16", "r.5" to "Every 1/32") + listOf("rep", "up", "down", "updown", "rand").map { "a$it" to arpName(it) } +
+        rateName(state.live.nrRate) + (if (state.live.arp != "rep") " " + arpShort(state.live.arp) else "") + styleShort(state.live.nrStyle),
+        listOf("r4" to "Every 1/4", "r2" to "Every 1/8", "r1" to "Every 1/16", "r.5" to "Every 1/32") + listOf("rep", "up", "down", "updown", "rand").map { "a$it" to arpName(it) } +
             REPEAT_STYLES.map { (s, n) -> "s$s" to (if (state.live.nrStyle == s) "✓ " else "") + n },
         { v ->
             if (v.startsWith("s")) state.setLive { nrStyle = v.substring(1) }
@@ -330,6 +331,9 @@ fun PulseBackdrop(state: AppState) {
         drawRect(Brush.radialGradient(listOf(c.copy(alpha = strength * v), Color.Transparent), center = center, radius = size.maxDimension * .7f))
     })
 }
+
+/** Repeat's rate as a note length: steps between repeats (4 is a quarter note, note #18). */
+fun rateName(r: Double): String = when (r) { 4.0 -> "1/4"; 2.0 -> "1/8"; 0.5 -> "1/32"; else -> "1/16" }
 
 fun arpShort(a: String) = when (a) { "up" -> "UP"; "down" -> "DN"; "updown" -> "UD"; "rand" -> "RND"; else -> "" }
 
@@ -414,6 +418,12 @@ fun Tabs(state: AppState) {
     Row(Modifier.fillMaxWidth().background(C.Ink).drawBehind {
         drawLine(C.Pink, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 3.dp.toPx())
     }.padding(horizontal = 4.dp, vertical = 7.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+        // the bug button (notes for Claude) in the bottom left corner of every page (note #16); red when a crash waits
+        Box(
+            Modifier.width(34.dp).height(34.dp).background(if (state.crash != null) C.Riot else C.Ink).border(2.dp, if (state.crash != null) C.Cream else C.Card2)
+                .clickable(enabled = !state.locked) { state.overlay = Overlay.Notes }.tagged("notes"),
+            contentAlignment = Alignment.Center,
+        ) { T("🐞", size = 16.sp) }
         // Pads and Desk share one Play tab: its views (Pads, Keys, My Desk) switch at the top of the page
         for (t in Tab.entries.filter { it != Tab.Console }) {
             val play = t == Tab.Pads

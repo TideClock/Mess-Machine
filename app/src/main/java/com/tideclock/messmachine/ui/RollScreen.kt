@@ -61,6 +61,9 @@ fun RollScreen(state: AppState) {
         Wrap(Modifier.padding(bottom = 10.dp)) {
             Select(chordName(state.chordMode), chordOptions(P.scale, P.root), { state.pickChordMode(it) }, tag = "pick-chord")
             Btn(if (P.fold) "Unfold" else "Fold to scale", { state.edit { fold = !fold } }, on = P.fold, small = true)
+            // two octaves on screen at a time, anywhere from C1 to C6 (build 84: chords no longer fold into C3 to C5)
+            Btn("Oct▲", { state.rollLo = (state.rollLo + 12).coerceAtMost(Theory.ROLL_HI - 24) }, small = true, tight = true, enabled = state.rollLo + 24 < Theory.ROLL_HI, tag = "roll-octup")
+            Btn("Oct▼", { state.rollLo = (state.rollLo - 12).coerceAtLeast(Theory.ROLL_LO) }, small = true, tight = true, enabled = state.rollLo > Theory.ROLL_LO, tag = "roll-octdown")
             Btn("Clear this sound's notes", { state.clearNotes() }, small = true, tier = Tier.Danger, enabled = k.isNotEmpty() && pat.notes(k).isNotEmpty(), tag = "roll-clear")
         }
         Wrap(Modifier.padding(bottom = 12.dp).tagged("notelen-chips")) {
@@ -73,6 +76,11 @@ fun RollScreen(state: AppState) {
             Note("Pick a pad with a sound on it. Its own pitch sits on C4, the bright row.", color = C.Yellow)
         } else {
             Roll(state)
+            val lo = state.rollLo
+            val above = pat.notes(k).count { it.p > lo + 24 }
+            val below = pat.notes(k).count { it.p < lo }
+            Note("${Theory.noteName(lo)} to ${Theory.noteName(lo + 24)}" + (if (above > 0) " · $above notes higher up (Oct▲)" else "") + if (below > 0) " · $below notes lower down (Oct▼)" else "",
+                color = if (above + below > 0) C.Yellow else C.Dim, modifier = Modifier.padding(top = 6.dp).tagged("roll-range"))
             Help(
                 "Tap a square to drop a note, tap it again to pull it. With chords on, one tap drops the whole chord. Tap a note name to hear it.",
                 modifier = Modifier.padding(top = 10.dp),
@@ -86,7 +94,8 @@ fun Roll(state: AppState) {
     val P = state.project
     val pat = P.pat()
     val k = state.selKey()
-    val rows = (Theory.ROLL_HI downTo Theory.ROLL_LO).filter { !P.fold || Theory.inScale(it, P.scale, P.root) }
+    val lo = state.rollLo.coerceIn(Theory.ROLL_LO, Theory.ROLL_HI - 24)
+    val rows = (lo + 24 downTo lo).filter { !P.fold || Theory.inScale(it, P.scale, P.root) }
     val off = state.page.coerceIn(0, pat.len / 16 - 1) * 16
     val notes = pat.notes(k).map { Triple(it.s, it.p, it.l) }
     val tm = rememberTextMeasurer()
@@ -124,7 +133,7 @@ fun Roll(state: AppState) {
             }
             drawRect(bg, topLeft = Offset(kw, y), size = Size(size.width - kw, rh))
             drawRect(if (black) C.Ink else lerp(C.Cream, pcColor(p - P.root), .25f), topLeft = Offset(0f, y), size = Size(kw - 2, rh - 1))
-            if (Theory.pcOf(p) == 0 || p == Theory.ROLL_HI || P.fold) {
+            if (Theory.pcOf(p) == 0 || p == lo + 24 || P.fold) {
                 drawText(tm, Theory.noteName(p), topLeft = Offset(5f, y + rh * .22f),
                     style = TextStyle(color = if (black) C.Cream else C.Ink, fontSize = 11.sp, fontFamily = Archivo, fontWeight = FontWeight.ExtraBold))
             }

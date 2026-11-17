@@ -43,7 +43,7 @@ object Tutorials {
             TutStep("Tap a few pads.", t("pad-0")) { s, c -> played(s, c, 3) },
             TutStep("Tap 2 under BANK: a second set of 16 pads.", t("bank-1")) { s, _ -> s.bank == 1 },
             TutStep("Back to bank 1.", t("bank-0")) { s, _ -> s.bank == 0 },
-            TutStep("Press and hold a pad: its menu opens (sounds, keys, Sample, clear).", t("pad-1")) { s, _ -> s.padMenu >= 0 },
+            TutStep("Tap Menu on the bar at the bottom: the picked pad's menu opens (sounds, keys, Sample, clear).", t("open-padmenu")) { s, _ -> s.padMenu >= 0 },
             TutStep("Close the menu by tapping outside it.") { s, _ -> s.padMenu < 0 },
         )),
         Tutorial("hold", "Playing", "Hold", "Latch pads so they keep playing while your hands do something else.", listOf(
@@ -70,7 +70,7 @@ object Tutorials {
             TutStep("Tap the rate, pick Cut each repeat, then turn RPT off.", t("dock-rate")) { s, _ -> s.live.nrStyle == "cut" && !s.live.nr },
         )),
         Tutorial("padiano", "Playing", "Padiano", "Any pad's sound as a keyboard, dropped right under its row.", listOf(
-            TutStep("Press and hold the first pad, then tap Padiano under this row.", t("pad-0")) { s, _ -> s.keyboards.isNotEmpty() },
+            TutStep("Tap the first pad, then Menu at the bottom, then Padiano under this row.", { s -> if (s.project.sel == 0) "open-padmenu" else "pad-0" }) { s, _ -> s.keyboards.isNotEmpty() },
             TutStep("Play some keys. In key only keeps every key in the mess's key.", { s -> s.keyboards.firstOrNull()?.let { "piano-keys-$it" } }) { s, c -> played(s, c, 4) },
             TutStep("Close it with the x on its bar.", { s -> s.keyboards.firstOrNull()?.let { "piano-close-$it" } }) { s, _ -> s.keyboards.isEmpty() },
         )),
@@ -154,9 +154,9 @@ object Tutorials {
         )),
         Tutorial("chords", "Playing", "Chords and key", "Pick the mess's key and scale, and play chords from one finger.", listOf(
             TutStep("Tap Keys at the top.", t("mode-keys")) { s, _ -> s.keysMode },
-            TutStep("Pick a different scale.", t("pick-scale")) { s, _ -> s.project.scale != "Minor" },
-            TutStep("Pick a different root note.", t("pick-root")) { s, _ -> s.project.root != 0 },
-            TutStep("Pick a chord type: each key now plays a chord in the key.", t("pick-chord")) { s, _ -> s.chordMode != "off" },
+            TutStep("Tap the key button on the bar at the bottom, then pick a different scale.", { s -> if (s.keysBarOpen) "pick-scale" else "keysbar-open" }) { s, _ -> s.project.scale != "Minor" },
+            TutStep("Pick a different root note.", { s -> if (s.keysBarOpen) "pick-root" else "keysbar-open" }) { s, _ -> s.project.root != 0 },
+            TutStep("Tap Chords on the bottom bar: each key now plays a chord in the key. The key button picks which chords.", t("chords-toggle")) { s, _ -> s.chordMode != "off" },
             TutStep("Play a few keys.", t("pad-4")) { s, c -> played(s, c, 3) },
             TutStep("Back to Pads.", t("mode-pads")) { s, _ -> !s.keysMode },
         )),
@@ -181,7 +181,7 @@ object Tutorials {
         )),
         Tutorial("mic", "Sounds", "Record onto a pad", "Any empty pad is a record button: catch a sound with the mic.", listOf(
             TutStep("Tap 2 under BANK: these pads are empty.", t("bank-1")) { s, _ -> s.bank == 1 },
-            TutStep("Tap an empty pad to start recording (or hold it and tap Record onto this pad). The first time, allow the mic.", t("pad-0")) { s, _ -> s.micOn },
+            TutStep("Tap the top corner of an empty pad, above the slash, to start recording. The first time, allow the mic.", t("pad-0")) { s, _ -> s.micOn },
             TutStep("Make a sound, then tap the pad again to stop.", t("pad-0")) { s, c -> !s.micOn && s.project.kit.count { it.isNotEmpty() } > c.kit0 },
             TutStep("Play your new sound.", t("pad-0")) { s, c -> played(s, c, 1) },
         )),
@@ -193,7 +193,7 @@ object Tutorials {
             closeSheet,
         )),
         Tutorial("xy", "Playing", "XY setup", "Choose what a pad's XY sphere does when you push it around.", listOf(
-            TutStep("Press and hold the first pad, then tap XY setup.", t("pad-0")) { s, c -> (s.overlay is Overlay.Xy).also { if (it) c.xy0 = s.xyOf(s.project.sel).name } },
+            TutStep("Tap the first pad, then Menu at the bottom, then XY setup.", { s -> if (s.project.sel == 0) "open-padmenu" else "pad-0" }) { s, c -> (s.overlay is Overlay.Xy).also { if (it) c.xy0 = s.xyOf(s.project.sel).name } },
             TutStep("Pick a different preset.", t("xy-editor")) { s, c -> s.xyOf(s.project.sel).name != c.xy0 },
             closeSheet,
             TutStep("Draw a circle on that pad and push the ball around: hear the new setup.", t("pad-0")) { s, c -> if (s.sphere != null) c.seen.add("sphere"); "sphere" in c.seen && s.sphere == null },
@@ -219,7 +219,7 @@ object Tutorials {
             TutStep("Press Stop.", t("stop")) { s, _ -> !s.playing },
         )),
         Tutorial("favorites", "Sounds", "Starred sounds", "Star the sounds you love and find them in one place.", listOf(
-            TutStep("Press and hold a pad, then tap Star.", t("pad-0")) { s, c -> s.favs.size > c.fav0 },
+            TutStep("Tap Menu at the bottom, then Star.", t("open-padmenu")) { s, c -> s.favs.size > c.fav0 },
             TutStep("Tap SOUNDS.", t("tab-Sounds")) { s, _ -> s.tab == Tab.Sounds },
             TutStep("Tap Starred: your starred sounds. (Unstar from the same pad menu if you like; stars aren't part of the practice mess.)", t("mode-fav")) { s, _ -> s.soundsMode == "fav" },
         )),

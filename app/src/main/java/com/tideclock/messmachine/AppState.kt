@@ -50,6 +50,9 @@ data class Module(
     }
 }
 
+/** A chord-set slot's place in the note ids (pianoId): above every real note (the highest is about 84). */
+const val SLOT_P = 92
+
 /** What can sit on the side dock. */
 val DOCK_TYPES = listOf(
     "lock" to "Lock", "hold" to "Hold", "filter" to "Filter + resonance", "repeat" to "Repeat",
@@ -270,6 +273,11 @@ class AppState(private val app: Context) {
         private set
     private var tutBackup: String? = null
     private var tutBackupFile: String? = null
+    /** Repeat and chords from before the lesson: lessons start with them off and put them back at the end. */
+    private var tutLive: Engine.Live? = null
+    private var tutChord: String? = null
+    /** After Back, the step waits for you to do it again, even if what it asks for is already so (note #19). */
+    private var tutWaitFresh = false
     private val tutFile get() = File(app.filesDir, "before-lesson.json")
 
     /** Start a lesson on a practice mess. Your mess is kept in a file until the lesson ends (even if the app is closed). */
@@ -282,8 +290,16 @@ class AppState(private val app: Context) {
         }
         if (playing) togglePlay()
         if (holdOn) switchHold()
+        // every lesson starts from the same place: Repeat, Rec and chords off (note #19: the Repeat lesson skipped its
+        // first step, "Tap RPT", because Repeat was already on)
+        if (tut == null) { tutLive = live.copy(); tutChord = chordMode }
+        setLive { nr = false; rec = false; arp = "rep"; nrStyle = "cut"; nrPat = "" }
+        if (chordMode != "off") { chordMode = "off"; version++ }
         keyboards.clear()
         keysMode = false
+        keysBarOpen = false
+        swapFrom = -1
+        rollLo = -12
         overlay = null
         padMenu = -1
         tab = Tab.Pads
@@ -294,6 +310,7 @@ class AppState(private val app: Context) {
         t.setup(this)
         tut = t
         tutStep = 0
+        tutWaitFresh = false
         markStep()
         notes.trail("lesson ${t.id}")
     }
@@ -302,24 +319,31 @@ class AppState(private val app: Context) {
     fun tutTick() {
         val t = tut ?: return
         val s = t.steps.getOrNull(tutStep) ?: return
-        if (try { s.done(this, tutCtx) } catch (_: Exception) { false }) {
+        val done = try { s.done(this, tutCtx) } catch (_: Exception) { false }
+        if (tutWaitFresh) { if (!done) tutWaitFresh = false; return }
+        if (done) {
             if (tutStep + 1 >= t.steps.size) endTutorial(true) else { tutStep++; markStep() }
         }
     }
 
-    fun tutBack() { if (tutStep > 0) { tutStep--; markStep() } }
-    fun tutSkip() { val t = tut ?: return; if (tutStep + 1 >= t.steps.size) endTutorial(true) else { tutStep++; markStep() } }
+    /** Back to the step before. It waits for you to do it again (or Skip step), instead of bouncing forward. */
+    fun tutBack() { if (tutStep > 0) { tutStep--; markStep(); tutWaitFresh = true } }
+    fun tutSkip() { val t = tut ?: return; tutWaitFresh = false; if (tutStep + 1 >= t.steps.size) endTutorial(true) else { tutStep++; markStep() } }
 
     /** End the lesson and put your own mess back exactly as it was. */
     fun endTutorial(finished: Boolean) {
         val t = tut ?: return
         tut = null
+        tutWaitFresh = false
         if (playing) togglePlay()
         if (holdOn) switchHold()
         keyboards.clear()
         keysMode = false
         overlay = null
         restoreAfterLesson()
+        tutLive?.let { b -> setLive { nr = b.nr; rec = b.rec; arp = b.arp; nrStyle = b.nrStyle; nrPat = b.nrPat; nrRate = b.nrRate } }
+        tutChord?.let { if (it != chordMode) { chordMode = it; version++ } }
+        tutLive = null; tutChord = null
         if (finished) {
             tutsDone = tutsDone + t.id
             prefs.edit().putStringSet("tutsDone", tutsDone).apply()
@@ -754,14 +778,34 @@ class AppState(private val app: Context) {
         return Project.isSynth(k) || project.edit(k).holds()
     }
 
-    fun padDown(d: Int) {
+    /**
+     * Menu's Move: the next pad you tap takes this pad's sound (a pad with a sound trades places). It replaced
+     * hold-and-slide, which went with the hold menu (build 84).
+     */
+    var swapFrom by mutableIntStateOf(-1)
+
+    fun armSwap(pad: Int) {
+        swapFrom = pad
+        say("Tap the pad to move it to. A pad with a sound trades places with it.")
+    }
+
+    /** emptyTop: on an empty pad, whether the touch was above the slash (record) or below it (pick a sound). */
+    fun padDown(d: Int, emptyTop: Boolean? = null) {
         if (midiMapOn) midiAim(MidiTarget("pad", d))
+        if (swapFrom >= 0 && !keysMode) {
+            val from = swapFrom
+            val to = bank * Project.BANK + d
+            swapFrom = -1
+            if (from != to) swapPads(from, to) else say("Move cancelled.")
+            downIds[d] = -1
+            return
+        }
         if (keysMode) {
             val pad = project.sel
             if (project.kit[pad].isEmpty()) { say("Pick a pad with a sound first. The keys play whichever pad you picked last."); return }
             val p = Theory.keyNote(d, project.scale, project.root)
-            val ps = Theory.chordOf(p, d, chordMode, project.scale, project.root)
-            lastChord = if (ps.size > 1) Theory.chordLabel(p, d, chordMode, project.scale, project.root) + " · " + Theory.chordNotes(ps) else Theory.noteName(p)
+            val ps = Theory.chordOf(p, keyIdx(d), chordMode, project.scale, project.root)
+            lastChord = if (ps.size > 1) Theory.chordLabel(p, keyIdx(d), chordMode, project.scale, project.root) + " · " + Theory.chordNotes(ps) else Theory.noteName(p)
             val kid = 2000 + pad * 32 + (p + 12)
             downIds[d] = kid
             notes.trail("key ${Theory.noteName(p)}")
@@ -771,8 +815,9 @@ class AppState(private val app: Context) {
         val i = bank * Project.BANK + d
         if (project.sel != i) { project.sel = i; selV++; scheduleSave() }
         if (project.kit[i].isEmpty()) {
-            if (emptyRecord) {
-                // an empty pad is a record button: tap to start, tap to stop (or hold to record)
+            // note #14: the slash. Above it records (tap again to stop, or hold to record); below it picks a sound.
+            // A pad recording right now stops from either side
+            if ((micOn && micPad == i) || emptyTop == true) {
                 if (!micOn || micPad == i) { askRecord(i); holdRecPad = if (recordHold && micOn) i else -1 }
                 return
             }
@@ -795,8 +840,14 @@ class AppState(private val app: Context) {
 
     fun keyLabel(d: Int): String {
         val p = Theory.keyNote(d, project.scale, project.root)
-        return Theory.chordLabel(p, d, chordMode, project.scale, project.root)
+        return Theory.chordLabel(p, keyIdx(d), chordMode, project.scale, project.root)
     }
+
+    /**
+     * A Keys-mode pad's place counted from the bottom left (the lowest note), the way the notes run. With a chord
+     * set on, pads 1 to 8 are its slots and the top two rows the same slots an octave up (build 84, note #18).
+     */
+    fun keyIdx(d: Int): Int = (3 - d / 4) * 4 + d % 4
 
     fun keyOffset(d: Int): Int = Theory.keyNote(d, project.scale, project.root)
 
@@ -854,6 +905,31 @@ class AppState(private val app: Context) {
     var midiLast by mutableStateOf("")
         private set
     private var midiLastCc = -1
+    /**
+     * Run: a key lands and the place moves on by itself (the first way). One at a time: a key lands and the map waits
+     * for you to tap the next target (note #19).
+     */
+    var midiRun by mutableStateOf(prefs.getBoolean("midiRun", true))
+        private set
+
+    fun switchMidiRun(v: Boolean) { midiRun = v; prefs.edit().putBoolean("midiRun", v).apply() }
+
+    /** Take one key or knob off the map (the MIDI map list, note #19). */
+    fun midiForget(note: Int?, cc: Int?) {
+        if (note != null) midiNotes.remove(note)
+        if (cc != null) midiKnobs.remove(cc)
+        saveMidiMap()
+        midiLast = if (note != null) "${Theory.noteName(note - 60)} is off the map." else "CC $cc is off the map."
+    }
+
+    /** Teach one target again: it comes off the map and the next key or knob lands on it. */
+    fun midiReteach(note: Int?, cc: Int?) {
+        val t = (if (note != null) midiNotes[note] else null) ?: (if (cc != null) midiKnobs[cc] else null) ?: return
+        midiForget(note, cc)
+        midiCursor = t
+        midiLastCc = -1
+        midiLast = if (t.kind == "knob") "Turn the knob for ${midiLabel(t).replaceFirstChar { it.lowercase() }}." else "Press the key for ${midiLabel(t).replaceFirstChar { it.lowercase() }}."
+    }
 
     init {
         for (part in (prefs.getString("midiNotes", "") ?: "").split(";")) {
@@ -935,8 +1011,9 @@ class AppState(private val app: Context) {
         notes.trail("midi map note $note to ${c.code()}")
         // hear what it landed on (an empty pad would open the jars, so that one stays quiet)
         midiPlay(note, c)
-        midiCursor = midiNext(c)
-        if (midiCursor == null) midiLast += " That was the last one: tap somewhere else to go on."
+        midiCursor = if (midiRun) midiNext(c) else null
+        if (!midiRun) midiLast += " Tap the next one."
+        else if (midiCursor == null) midiLast += " That was the last one: tap somewhere else to go on."
     }
 
     /** A knob or slider on the controller moved (MIDI control change). */
@@ -952,7 +1029,7 @@ class AppState(private val app: Context) {
             midiLast = "CC $cc now turns ${midiLabel(c).replaceFirstChar { it.lowercase() }}."
             notes.trail("midi map cc $cc to ${c.code()}")
             midiTurn(c, value)
-            midiCursor = midiNext(c)
+            midiCursor = if (midiRun) midiNext(c) else null
             return
         }
         midiKnobs[cc]?.let { midiTurn(it, value) }
@@ -1040,6 +1117,17 @@ class AppState(private val app: Context) {
         if (on && playOnTap && !playing) preview(key)
     }
 
+    /**
+     * Drag to paint (note #16): a finger sliding along a row of steps gives every step it crosses the state the first
+     * step took. commit is false while the finger moves and true once it lifts, so the whole drag is one undo.
+     */
+    fun paintStep(key: String, j: Int, on: Boolean, commit: Boolean) {
+        val P = project.pat()
+        if (j < 0 || j >= P.len) return
+        if (P.step(key, j) == on && !(!on && P.hasNoteAt(key, j))) { if (commit) edit { } ; return }
+        edit(commit) { if (!on) P.notes(key).removeAll { it.s == j }; P.setStep(key, j, on) }
+    }
+
     /** Every pitch and roll note in the current loop, for every sound (plain hits stay). */
     fun clearAllNotes() {
         notes.trail("clear all notes")
@@ -1085,9 +1173,7 @@ class AppState(private val app: Context) {
         val notes = P.notes(k)
         val hit = notes.firstOrNull { it.p == p && st >= it.s && st < it.s + it.l }
         if (hit != null) { edit { notes.remove(hit) }; return }
-        val strip = Theory.stripNotes(project.scale, project.root)
-        val idx = strip.indexOf(p).coerceAtLeast(0)
-        val ps = Theory.chordOf(p, idx, chordMode, project.scale, project.root)
+        val ps = chordFor(p)
         val l = noteLen.coerceAtMost(P.len - st).coerceAtLeast(1)
         edit {
             for (q in ps) {
@@ -1474,10 +1560,22 @@ class AppState(private val app: Context) {
         crash = null
         notes.add(n)
         notes.trail("note ${catLabel(c)}")
-        if (send) notes.send(n, noteDetails(n.cat, n.extra.isNotEmpty())) else say("Saved on the phone. Send it when you are ready.")
+        noteCat = c
+        prefs.edit().putString("noteCat", c).apply()
+        if (send) notes.send(n, noteDetails(n.cat, n.extra.isNotEmpty())) { say(it) } else say("Saved on the phone. Send it when you are ready.")
     }
 
-    fun sendNote(n: MNote) = notes.send(n, noteDetails(n.cat, n.extra.isNotEmpty()))
+    fun sendNote(n: MNote) = notes.send(n, noteDetails(n.cat, n.extra.isNotEmpty())) { say(it) }
+
+    /** Check for Claude's replies, and send any note that waited for a connection. */
+    fun checkNotes() {
+        notes.sendWaiting({ noteDetails(it.cat, it.extra.isNotEmpty()) }) { say(it) }
+        notes.checkReplies { say(it) }
+    }
+
+    /** The note box opens on the kind of note you sent last (note #16: everything arrived as Bug). */
+    var noteCat by mutableStateOf(prefs.getString("noteCat", "bug") ?: "bug")
+        private set
 
     /* ---------------- favorites ---------------- */
 
@@ -1493,14 +1591,13 @@ class AppState(private val app: Context) {
 
     /** One piano per row of pads: it drops right under the row its pad sits in. */
     fun toggleKeyboard(pad: Int) {
-        if (pad in keyboards) { keyboards.remove(pad); if (keyboards.isEmpty()) keysBarOpen = false; return }
+        if (pad in keyboards) { keyboards.remove(pad); return }
         if (project.kit[pad].isEmpty()) { say("Put a sound on pad ${pad + 1} first."); return }
         val b = pad / Project.BANK
         val row = (pad % Project.BANK) / 4
         keyboards.removeAll { it / Project.BANK == b && (it % Project.BANK) / 4 == row }
         keyboards.add(pad)
-        // a Padiano brings the key, chords and Hold bar open with it; the mini bar opens and shuts it any other time
-        keysBarOpen = true
+        // Hold and Chords are on the bottom dock with every Padiano (build 84); the key panel opens from its button
         if (bank != b) bank = b
         notes.trail("piano pad ${pad + 1}")
     }
@@ -1509,6 +1606,9 @@ class AppState(private val app: Context) {
      * The key, chords and Hold bar on the Play tab and the Synth tab: shut, it is one slim row (Hold, and what is set);
      * open, it has everything. Keys mode always shows it open.
      */
+    /** The lowest note the Roll shows; it shows two octaves up from here (C3 to C5 to start). */
+    var rollLo by mutableIntStateOf(-12)
+
     var keysBarOpen by mutableStateOf(false)
         private set
     fun switchKeysBar(v: Boolean = !keysBarOpen) { keysBarOpen = v; notes.trail("keys bar ${if (v) "open" else "shut"}") }
@@ -1573,15 +1673,42 @@ class AppState(private val app: Context) {
 
     fun switchChordPlay(v: Boolean) { chordPlay = v; prefs.edit().putBoolean("chordPlay", v).apply() }
 
-    /** The notes the chord mode builds on a key, folded into the piano's two octaves. */
+    /**
+     * The notes the chord mode builds on a key: root on the bottom, never folded note by note (build 84, note #18).
+     * With a chord set, the key's place in the scale picks the slot, the same in every octave.
+     */
     fun chordFor(p: Int): IntArray {
-        // notes past the roll's two octaves take the chord of the same note folded in, moved by octaves
-        val f = Theory.foldP(p)
-        if (f != p) return chordFor(f).map { it + (p - f) }.toIntArray()
-        val strip = Theory.stripNotes(project.scale, project.root)
-        val idx = strip.indexOf(p)
-        return if (chordMode.startsWith("set:") && idx < 0) intArrayOf(p) else Theory.chordOf(p, idx.coerceAtLeast(0), chordMode, project.scale, project.root)
+        if (chordMode == "off") return intArrayOf(p)
+        val idx = chordIdx(p)
+        return if (idx == Int.MIN_VALUE) intArrayOf(p) else Theory.chordOf(p, idx, chordMode, project.scale, project.root)
     }
+
+    /** The chord-set slot (plus octaves) a key plays, or 0 for the other chord types; MIN_VALUE when it plays a single note. */
+    fun chordIdx(p: Int): Int = if (chordMode.startsWith("set:")) Theory.setIndexOfKey(p, chordMode, project.scale, project.root) else 0
+
+    /** The chord mode to come back to when Chords is switched on again from the bottom bar. */
+    var lastChordMode by mutableStateOf(prefs.getString("chordLast", "triad") ?: "triad")
+        private set
+
+    /** One tap between chords and single notes (Tyler, Nov 17): Off remembers what was on. */
+    fun toggleChords() {
+        if (chordMode != "off") { lastChordMode = chordMode; prefs.edit().putString("chordLast", chordMode).apply(); pickChordMode("off") }
+        else pickChordMode(lastChordMode)
+    }
+
+    /** A chord set's slot played from the Padiano's slot row. j is the slot, oct whole octaves from the Padiano. */
+    fun slotDown(pad: Int, j: Int, oct: Int) {
+        if (project.kit[pad].isEmpty()) return
+        val n = Theory.setSize(chordMode)
+        if (n == 0 || j !in 0 until n) return
+        val idx = j + n * oct
+        val ps = Theory.chordOf(0, idx, chordMode, project.scale, project.root)
+        lastChord = Theory.slotName(chordMode, j, project.root) + " · " + Theory.chordNotes(ps) + (if (!chordPlay) " (showing)" else "")
+        notes.trail("slot ${pad + 1} ${j + 1}")
+        melodicDown(pianoId(pad, SLOT_P + j), pad, if (chordPlay) ps else intArrayOf(ps.first()))
+    }
+
+    fun slotUp(pad: Int, j: Int) = melodicUp(pianoId(pad, SLOT_P + j))
 
     /* ---------------- mouth control: the mic as a hands-free XY ---------------- */
 
@@ -1765,7 +1892,7 @@ class AppState(private val app: Context) {
         if (project.kit[pad].isEmpty()) return
         if (midiMapOn) midiAim(MidiTarget("key", pad, p))
         val ps = chordFor(p)
-        val idx = Theory.stripNotes(project.scale, project.root).indexOf(Theory.foldP(p)).coerceAtLeast(0)
+        val idx = chordIdx(p)
         lastChord = if (ps.size > 1) Theory.chordLabel(p, idx, chordMode, project.scale, project.root) + " · " + Theory.chordNotes(ps) +
             (if (!chordPlay) " (showing)" else "") else Theory.noteName(p)
         notes.trail("piano ${pad + 1} ${Theory.noteName(p)}")

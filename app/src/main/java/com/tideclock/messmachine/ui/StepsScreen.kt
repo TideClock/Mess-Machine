@@ -7,6 +7,10 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.em
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -131,7 +135,7 @@ fun StepsScreen(state: AppState) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     // tap the name for its pitch strip; hold still and lift for the pad's menu
                     Row(
-                        Modifier.width(76.dp).height(30.dp).alpha(if (audible) 1f else .45f)
+                        Modifier.width(84.dp).heightIn(min = 34.dp).alpha(if (audible) 1f else .45f)
                             .tapOrHold(i, { state.openStepStrip(i) }, { if (!state.locked) state.padMenu = i }).tagged("steps-name-$i"),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -141,7 +145,8 @@ fun StepsScreen(state: AppState) {
                                 (if (muted) "M " else "") + (if (solo) "S " else "") + "${i + 1}" + if (state.stepStrip == i) " ▾" else "",
                                 size = 9.sp, color = if (muted) C.Riot else if (solo) C.Yellow else C.Dim, family = Mono, weight = FontWeight.Bold, lines = 1,
                             )
-                            T(state.lib.titleOf(k).uppercase(), size = 9.sp, lines = 1, spacing = .02.em, color = if (i == P.sel) C.Yellow else C.Cream)
+                            // two lines, so a name like KICK BASEMENT reads whole instead of KICK BASE… (Nov 14 test pass)
+                            T(state.lib.titleOf(k).uppercase(), size = 9.sp, lines = 2, spacing = .02.em, color = if (i == P.sel) C.Yellow else C.Cream)
                         }
                         Box { PadMenu(state, i) }
                     }
@@ -150,7 +155,7 @@ fun StepsScreen(state: AppState) {
                 if (state.stepStrip == i) StepPitchStrip(state, i, k, col)
             }
         }
-        Help("Tap a sound's name to give its steps pitches. Hold its name, then lift, for its menu: mute, solo, the doctor and more. A red M or yellow S by the number shows a muted or soloed sound. A dot means a step has a pitch or roll notes; tap it to clear it, or Clear notes for the whole loop.", modifier = Modifier.padding(top = 4.dp))
+        Help("Tap a step to flip it, or slide along a row to paint it. Tap a sound's name to give its steps pitches. Hold its name, then lift, for its menu: mute, solo, the doctor and more. A red M or yellow S by the number shows a muted or soloed sound. A dot means a step has a pitch or roll notes; tap it to clear it, or Clear notes for the whole loop.", modifier = Modifier.padding(top = 4.dp))
     }
 }
 
@@ -166,11 +171,49 @@ fun StepRow(state: AppState, k: String, col: Color, off: Int, ver: Int) {
             .fillMaxWidth()
             .height(30.dp)
             .pointerInput(k, off, P.cur, ver) {
-                detectTapGestures { o ->
-                    val j = (o.x / (size.width / 16f)).toInt().coerceIn(0, 15)
+                // a tap flips a step; a finger sliding sideways paints every step it crosses the way the first one went
+                // (note #16). A finger moving up or down is left to scroll the page
+                awaitEachGesture {
+                    val d = awaitFirstDown(requireUnconsumed = false)
+                    fun cell(x: Float) = (x / (size.width / 16f)).toInt().coerceIn(0, 15)
+                    val j0 = cell(d.position.x)
                     // with this row's pitch strip open, a tap picks the step to set instead
-                    if (state.stepStrip >= 0 && state.project.kit[state.stepStrip] == k) state.stepPick = off + j
-                    else state.toggleStep(k, off + j)
+                    if (state.stepStrip >= 0 && state.project.kit[state.stepStrip] == k) {
+                        if (waitForUpOrCancellation() != null) state.stepPick = off + j0
+                        return@awaitEachGesture
+                    }
+                    val slop = viewConfiguration.touchSlop
+                    var painting = false
+                    var paintOn = false
+                    var last = -1
+                    var tap = true
+                    while (true) {
+                        val e = awaitPointerEvent()
+                        val c = e.changes.firstOrNull { it.id == d.id } ?: break
+                        if (!c.pressed) break
+                        val dx = c.position.x - d.position.x
+                        val dy = c.position.y - d.position.y
+                        if (!painting) {
+                            if (kotlin.math.abs(dy) > slop && kotlin.math.abs(dy) > kotlin.math.abs(dx)) { tap = false; break }
+                            if (kotlin.math.abs(dx) > slop) {
+                                painting = true; tap = false
+                                paintOn = !state.project.pat().step(k, off + j0)
+                                state.paintStep(k, off + j0, paintOn, false)
+                                last = j0
+                            }
+                        }
+                        if (painting) {
+                            val j = cell(c.position.x)
+                            if (j != last) {
+                                val a = minOf(j, last); val b = maxOf(j, last)
+                                for (x in a..b) state.paintStep(k, off + x, paintOn, false)
+                                last = j
+                            }
+                            c.consume()
+                        }
+                    }
+                    if (painting) state.paintStep(k, off + last, paintOn, true)
+                    else if (tap) state.toggleStep(k, off + j0)
                 }
             },
     ) {

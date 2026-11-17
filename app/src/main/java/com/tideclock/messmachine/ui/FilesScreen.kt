@@ -154,8 +154,7 @@ fun SettingsScreen(state: AppState) {
         Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
             Column {
                 T("PLAYING", size = 12.sp, color = C.Yellow, spacing = .1.em)
-                Note("Empty pads record: an empty pad becomes a record button for the mic.", modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
-                Btn(if (state.emptyRecord) "Empty pads record: on" else "Empty pads record: off", { state.switchEmptyRecord(!state.emptyRecord) }, on = state.emptyRecord, onColor = C.Riot, small = true, tag = "set-emptyrec")
+                Note("An empty pad's top corner records onto it with the mic: tap to start and stop, or hold while you make the sound.", modifier = Modifier.padding(top = 2.dp, bottom = 2.dp))
                 Wrap(Modifier.padding(top = 6.dp).tagged("recmode-chips")) {
                     Btn("Tap start, tap stop", { state.switchRecordHold(false) }, on = !state.recordHold, onColor = C.Teal, small = true, tag = "set-rectap")
                     Btn("Hold to record", { state.switchRecordHold(true) }, on = state.recordHold, onColor = C.Teal, small = true, tag = "set-rechold")

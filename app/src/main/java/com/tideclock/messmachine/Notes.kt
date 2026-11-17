@@ -116,30 +116,98 @@ class NotesBook(private val app: Context) {
         return Triple(cat, topic, t)
     }
 
-    /** Open GitHub's new-issue page, filled in. You tap Submit there; nothing is sent without you. */
-    fun send(n: MNote, details: String) {
-        val title = (if (n.cat == "discuss") "[Discuss: ${n.topic.ifEmpty { "general" }}] " else "[${catLabel(n.cat)}] ") +
-            n.text.lineSequence().firstOrNull().orEmpty().take(70).ifEmpty { "(no text)" }
-        fun body(trailLines: Int, extraChars: Int): String = buildString {
-            append(n.text.ifEmpty { "(no text)" })
-            append("\n\n---\n")
-            append("**Category:** ${catLabel(n.cat)}")
-            if (n.cat == "discuss") append(" · **Topic:** ${n.topic.ifEmpty { "general" }}")
-            append("\n**Screen:** ${n.screen} · **Build:** ${n.build}\n")
-            append(details)
-            if (n.extra.isNotEmpty() && extraChars > 0) {
-                append("\n<details><summary>Crash</summary>\n\n```\n")
-                append(n.extra.take(extraChars))
-                append("\n```\n</details>\n")
-            }
-            val tl = trailText().lines().takeLast(trailLines)
-            if (tl.isNotEmpty() && trailLines > 0) {
-                append("\n<details><summary>Last ${tl.size} actions</summary>\n\n```\n")
-                append(tl.joinToString("\n"))
-                append("\n```\n</details>\n")
-            }
-            append("\n<!-- mm-note:${n.id} -->\n")
+    private val keyPrefs = app.getSharedPreferences("notes-key", Context.MODE_PRIVATE)
+
+    /**
+     * Option A (note #16, Tyler's pick Nov 16): a GitHub key that can only write issues on this one repo, pasted in
+     * once. With it, Send posts the note from inside the app; without it, Send opens the filled-in GitHub page.
+     */
+    var hasKey by mutableStateOf(keyPrefs.getString("key", "").orEmpty().isNotEmpty())
+        private set
+
+    fun saveKey(k: String) { keyPrefs.edit().putString("key", k.trim()).apply(); hasKey = k.isNotBlank() }
+
+    fun forgetKey() { keyPrefs.edit().remove("key").apply(); hasKey = false }
+
+    /** Send: post it with the key when there is one, else open GitHub's new-issue page (you tap Submit there). */
+    fun send(n: MNote, details: String, done: (String) -> Unit = {}) {
+        val key = keyPrefs.getString("key", "").orEmpty()
+        if (key.isNotEmpty()) { post(n, details, key, done); return }
+        openPage(n, details)
+    }
+
+    private fun titleOf(n: MNote) = (if (n.cat == "discuss") "[Discuss: ${n.topic.ifEmpty { "general" }}] " else "[${catLabel(n.cat)}] ") +
+        n.text.lineSequence().firstOrNull().orEmpty().take(70).ifEmpty { "(no text)" }
+
+    private fun bodyOf(n: MNote, details: String, trailLines: Int, extraChars: Int): String = buildString {
+        append(n.text.ifEmpty { "(no text)" })
+        append("\n\n---\n")
+        append("**Category:** ${catLabel(n.cat)}")
+        if (n.cat == "discuss") append(" · **Topic:** ${n.topic.ifEmpty { "general" }}")
+        append("\n**Screen:** ${n.screen} · **Build:** ${n.build}\n")
+        append(details)
+        if (n.extra.isNotEmpty() && extraChars > 0) {
+            append("\n<details><summary>Crash</summary>\n\n```\n")
+            append(n.extra.take(extraChars))
+            append("\n```\n</details>\n")
         }
+        val tl = trailText().lines().takeLast(trailLines)
+        if (tl.isNotEmpty() && trailLines > 0) {
+            append("\n<details><summary>Last ${tl.size} actions</summary>\n\n```\n")
+            append(tl.joinToString("\n"))
+            append("\n```\n</details>\n")
+        }
+        append("\n<!-- mm-note:${n.id} -->\n")
+    }
+
+    /** Post the note as an issue with the key. Offline, it waits and goes with the next Send or reply check. */
+    private fun post(n: MNote, details: String, key: String, done: (String) -> Unit) {
+        val title = titleOf(n)
+        val body = bodyOf(n, details, 60, 8000)
+        replace(n.copy(status = "sending"))
+        io.execute {
+            val msg = try {
+                val c = URL("https://api.github.com/repos/$REPO/issues").openConnection() as HttpURLConnection
+                c.requestMethod = "POST"
+                c.doOutput = true
+                c.setRequestProperty("Accept", "application/vnd.github+json")
+                c.setRequestProperty("Authorization", "Bearer $key")
+                c.setRequestProperty("User-Agent", "MessMachine-Android")
+                c.setRequestProperty("Content-Type", "application/json")
+                c.connectTimeout = 10000
+                c.readTimeout = 20000
+                try {
+                    c.outputStream.use { it.write(Json.write(mapOf("title" to title, "body" to body, "labels" to listOf("from-app", n.cat))).toByteArray()) }
+                    val code = c.responseCode
+                    if (code in 200..299) {
+                        val num = Json.num(Json.map(Json.parse(c.inputStream.use { String(it.readBytes()) }))["number"], 0.0).toInt()
+                        main.post { replace(n.copy(sent = true, issue = num, status = "open")) }
+                        "Sent to Claude as note #$num."
+                    } else {
+                        main.post { replace(n.copy(sent = false, status = "")) }
+                        if (code == 401 || code == 403) "GitHub refused the key (it may have run out). Paste a new one under Send without the browser, or send this one with the page."
+                        else "GitHub said $code. The note is kept; tap Send to try again."
+                    }
+                } finally { c.disconnect() }
+            } catch (e: Exception) {
+                main.post { replace(n.copy(sent = false, status = "waiting to send")) }
+                "No connection. The note waits and goes out with the next Send or reply check."
+            }
+            main.post { done(msg) }
+        }
+    }
+
+    /** Notes that waited for a connection go out now (with the key only). */
+    fun sendWaiting(details: (MNote) -> String, done: (String) -> Unit) {
+        val key = keyPrefs.getString("key", "").orEmpty()
+        if (key.isEmpty()) return
+        for (n in notes.filter { it.status == "waiting to send" && it.issue == 0 }) post(n, details(n), key, done)
+    }
+
+    /** Open GitHub's new-issue page, filled in. You tap Submit there; nothing is sent without you. */
+    private fun openPage(n: MNote, details: String) {
+        val title = titleOf(n)
+        fun body(trailLines: Int, extraChars: Int): String = bodyOf(n, details, trailLines, extraChars)
         fun url(b: String) = "https://github.com/$REPO/issues/new?title=" + enc(title) + "&labels=" + enc("from-app,${n.cat}") + "&body=" + enc(b)
         var lines = 40
         var extra = 3000

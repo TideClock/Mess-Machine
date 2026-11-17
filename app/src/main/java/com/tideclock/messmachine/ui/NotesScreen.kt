@@ -26,6 +26,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -43,7 +44,7 @@ private val catColor = mapOf("bug" to C.Riot, "tuning" to C.Yellow, "feature" to
 
 @Composable
 fun NotesScreen(state: AppState) {
-    var cat by remember { mutableStateOf(if (state.crash != null) "bug" else "bug") }
+    var cat by remember { mutableStateOf(if (state.crash != null) "bug" else state.noteCat) }
     var topic by remember { mutableStateOf("") }
     var text by remember { mutableStateOf(if (state.crash != null) "The app crashed. I was " else "") }
     var sureDel by remember { mutableStateOf<String?>(null) }
@@ -65,8 +66,11 @@ fun NotesScreen(state: AppState) {
         Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
             Column {
                 T("New note for Claude", size = 15.sp)
-                Wrap(Modifier.padding(vertical = 8.dp).tagged("category-chips"), gap = 6.dp) {
-                    for ((c, label) in NOTE_CATS) Btn(label, { cat = c }, on = cat == c, onColor = catColor[c] ?: C.Yellow, small = true)
+                // big buttons, three to a row: the kind of note is the first thing to pick (it opens on your last one)
+                Column(Modifier.padding(vertical = 8.dp).tagged("category-chips"), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    for (row in NOTE_CATS.chunked(3)) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        for ((c, label) in row) Btn(label, { cat = c }, on = cat == c, onColor = catColor[c] ?: C.Yellow, tight = true, tag = "notecat-$c", modifier = Modifier.weight(1f))
+                    }
                 }
                 T(
                     when (cat) {
@@ -104,15 +108,17 @@ fun NotesScreen(state: AppState) {
                     Btn("Keep on phone", { state.saveNote(cat, topic, text, false); text = ""; topic = "" }, small = true)
                 }
                 T(
-                    "Send opens GitHub with the note filled in, plus the build, your phone, the audio buffer and your last few taps. " +
-                        "Tap Submit there while signed in as TideClock. The repo is public, so anyone can read these notes.",
+                    (if (state.notes.hasKey) "Send posts the note straight to GitHub with your key"
+                    else "Send opens GitHub with the note filled in; tap Submit there while signed in as TideClock") +
+                        ". It carries the build, your phone, the audio buffer and your last few taps. The repo is public, so anyone can read these notes.",
                     size = 11.sp, color = C.Dim, weight = FontWeight.Medium, modifier = Modifier.padding(top = 8.dp),
                 )
             }
         }
+        NoteKeyCard(state)
         Row(Modifier.padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             T("Your notes", size = 16.sp, modifier = Modifier.weight(1f))
-            Btn(if (state.notes.checking) "Checking…" else "Check for replies", { state.notes.checkReplies { state.say(it) } }, small = true, color = C.Teal, enabled = !state.notes.checking)
+            Btn(if (state.notes.checking) "Checking…" else "Check for replies", { state.checkNotes() }, small = true, color = C.Teal, enabled = !state.notes.checking)
         }
         if (state.notes.lastCheck.isNotEmpty()) Note(state.notes.lastCheck, modifier = Modifier.padding(bottom = 8.dp))
         if (state.notes.notes.isEmpty()) T("No notes yet.", size = 13.sp, color = C.Dim, weight = FontWeight.Medium)
@@ -186,6 +192,44 @@ fun SpeedCard(state: AppState) {
             T(text, size = 13.sp, weight = FontWeight.Medium, modifier = Modifier.padding(top = 4.dp))
             // the Audio check's one home (MM-1): the start guide points here
             Btn("Latency", { state.overlay = com.tideclock.messmachine.Overlay.AudioCheck }, small = true, tag = "audio-check", modifier = Modifier.padding(top = 10.dp))
+        }
+    }
+}
+
+/**
+ * Send without the browser (option A): paste a GitHub key that can only write issues on the Mess Machine repo. It
+ * stays on this phone. Nothing here can make the key: you make it on GitHub.
+ */
+@Composable
+fun NoteKeyCard(state: AppState) {
+    var open by remember { mutableStateOf(false) }
+    var key by remember { mutableStateOf("") }
+    Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                T("Send without the browser", size = 15.sp, modifier = Modifier.weight(1f))
+                Btn(if (open) "Hide" else if (state.notes.hasKey) "Key in ✓" else "Set up", { open = !open }, on = state.notes.hasKey, onColor = C.Teal, small = true, tag = "notekey-open")
+            }
+            if (open) {
+                T(
+                    "On GitHub, signed in as TideClock: Settings, Developer settings, Personal access tokens, Fine-grained tokens, Generate new token. " +
+                        "Repository access: only TideClock/Mess-Machine. Permissions: Issues, read and write. Nothing else. Copy the token and paste it here.",
+                    size = 12.sp, color = C.Dim, weight = FontWeight.Medium, modifier = Modifier.padding(top = 6.dp),
+                )
+                OutlinedTextField(
+                    value = key, onValueChange = { key = it.trim() }, singleLine = true,
+                    placeholder = { T("github_pat_…", color = C.Dim, weight = FontWeight.Medium) },
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    textStyle = TextStyle(color = C.Cream, fontFamily = Archivo, fontSize = 15.sp),
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = C.Teal, unfocusedBorderColor = C.Card2, cursorColor = C.Teal),
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp).tagged("notekey-field"),
+                )
+                Wrap(Modifier.padding(top = 8.dp)) {
+                    Btn("Save key", { state.notes.saveKey(key); key = ""; state.say("Key saved. Send now posts notes from inside the app.") }, small = true, color = C.Teal, enabled = key.length > 20, tag = "notekey-save")
+                    if (state.notes.hasKey) Btn("Remove key", { state.notes.forgetKey(); state.say("Key removed. Send opens GitHub again.") }, small = true, tier = Tier.Danger, tag = "notekey-forget")
+                }
+                T("The key stays on this phone and can only file issues on that one repo. When it runs out, Send says so.", size = 11.sp, color = C.Dim, weight = FontWeight.Medium, modifier = Modifier.padding(top = 6.dp))
+            }
         }
     }
 }

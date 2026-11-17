@@ -58,20 +58,12 @@ fun PadsScreen(state: AppState) {
     val P = state.project
     ScrollPane {
         PlayViews(state)
-        // the bank numbers and the picked pad's two buttons. On one row when there is room; with the dock open or on a
-        // small phone the pad buttons take their own row (build 80 squeezed the bank numbers down to dots there)
-        BoxWithConstraints(Modifier.fillMaxWidth().padding(bottom = 12.dp, end = 4.dp)) {
-            if (maxWidth >= 352.dp) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    BankButtons(state)
-                    PadButtons(state, wide = false)
-                }
-            } else Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) { BankButtons(state) }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) { PadButtons(state, wide = true) }
-            }
+        // the bank numbers and the picked pad's sound. Its menu, Hold and chords are on the bottom dock, which stays on
+        // screen however far down the page you are (build 84, Tyler's Nov 17 note)
+        Row(Modifier.fillMaxWidth().padding(bottom = 12.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            BankButtons(state)
+            SoundButton(state)
         }
-        KeysBar(state)
         // zoomed out, the pad grid shrinks with everything else so more of the machine fits
         Box(Modifier.fillMaxWidth(minOf(1f, state.uiScale)).widthIn(max = 560.dp).align(Alignment.CenterHorizontally)) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -89,7 +81,7 @@ fun PadsScreen(state: AppState) {
         if (state.showFx) FxPanel(state)
         if (!state.keysMode && state.keyboards.isEmpty()) {
             Help(
-                "Tap a pad to play it. Empty pads open the jars. Hold a pad still, then lift, for its menu (or tap Menu, by the bank numbers: that works on synths too, where a hold is playing): Padiano drops a keyboard right under that pad's row, one per row. " +
+                "Tap a pad to play it. On an empty pad, the top corner records and the bottom corner picks a sound. Menu, on the bar at the bottom, is the picked pad's menu: Padiano drops a keyboard right under that pad's row, one per row. " +
                     "Keys turns the grid into a scale. Repeat on the dock rolls whatever you hold, and with Rec on while playing, every hit lands in the loop.",
                 modifier = Modifier.padding(top = 14.dp),
             )
@@ -106,51 +98,60 @@ private fun RowScope.BankButtons(state: AppState) {
     }
 }
 
-/** The picked pad's two buttons: its sound (the Sample sheet, or the Synth tab for a synth) and its menu. */
+/** The picked pad's sound: the Sample sheet, or the Synth tab for a synth. */
 @Composable
-private fun RowScope.PadButtons(state: AppState, wide: Boolean) {
+private fun SoundButton(state: AppState) {
     val P = state.project
-    // Reading selV and version keeps the label on the pad picked last: a tap on a pad only bumps selV,
-    // and this row used to keep the pad from before (the button then opened the wrong pad's sheet)
+    // Reading selV and version keeps the label on the pad picked last (a tap on a pad only bumps selV)
     @Suppress("UNUSED_VARIABLE") val sv = state.selV
     @Suppress("UNUSED_VARIABLE") val vv = state.version
     val selKey = P.kit.getOrNull(P.sel).orEmpty()
-    val m = if (wide) Modifier.weight(1f) else Modifier
     Btn(if (Project.isSynth(selKey)) "Synth" else "Sample", {
         val pad = state.project.sel
         val k = state.project.kit.getOrNull(pad).orEmpty()
         if (Project.isSynth(k)) state.tab = com.tideclock.messmachine.Tab.Synth
         else if (k.isNotEmpty()) state.overlay = Overlay.Doctor(k)
-    }, small = true, enabled = selKey.isNotEmpty(), tag = "open-sample", modifier = m)
-    // the picked pad's menu, always here: a hold opens it too, except on a pad that sounds while it is held
-    // (a synth, Sustain, gate), where a hold is playing. This button works for every pad.
-    Btn("Menu", {
-        val pad = state.project.sel
-        state.bank = pad / Project.BANK
-        state.padMenu = pad
-    }, small = true, enabled = !state.keysMode, tag = "open-padmenu", modifier = m)
+    }, small = true, enabled = selKey.isNotEmpty(), tag = "open-sample")
 }
 
 /**
- * Key, chords and Hold. Shut, it is one slim row: Hold (one tap), and a button that says what key and chords are
- * set and opens the rest. A Padiano opens it by itself; Keys mode always shows it open.
+ * The bottom dock (build 84, Tyler's Nov 17 note): Menu for the picked pad, Hold, Chords on or off and the key,
+ * on a bar that stays put under the page while it scrolls. Shown on Play, My Desk and Synth. The key button opens
+ * the key, chord and Hold settings just above it, so they never sit at the top of a page you have scrolled down.
  */
 @Composable
-fun KeysBar(state: AppState, modifier: Modifier = Modifier) {
+fun BottomDock(state: AppState) {
     @Suppress("UNUSED_VARIABLE") val sv = state.selV
     @Suppress("UNUSED_VARIABLE") val vv = state.version
     val P = state.project
-    if (!state.keysBarOpen && !state.keysMode) {
-        Row(modifier.fillMaxWidth().padding(bottom = 12.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            HoldToggle(state, tag = "hold-toggle")
-            Btn("${Theory.NN[P.root]} ${P.scale.lowercase()} · ${chordName(state.chordMode).lowercase()} ▾", { state.switchKeysBar(true) },
-                small = true, tight = true, tier = Tier.Quiet, tag = "keysbar-open", modifier = Modifier.weight(1f))
+    Column(Modifier.fillMaxWidth().background(C.Ink).drawBehind {
+        drawLine(C.Teal, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 2.dp.toPx())
+    }.tagged("bottomdock")) {
+        if (state.keysBarOpen) KeysPanel(state)
+        Row(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            Box {
+                Btn("Menu", {
+                    val pad = state.project.sel
+                    state.bank = pad / Project.BANK
+                    state.padMenu = pad
+                }, small = true, tight = true, enabled = !state.locked, tag = "open-padmenu")
+                if (state.padMenu >= 0) PadMenu(state, state.padMenu)
+            }
+            Btn(if (!state.holdOn) "○ Hold" else if (state.holdCount == 0) "● Last" else "● ${state.latched.size}/${state.holdCount}", { state.switchHold() },
+                on = state.holdOn, onColor = C.Yellow, small = true, tight = true, tag = "hold-toggle")
+            Btn(if (state.chordMode == "off") "○ Chords" else "● Chords", { state.toggleChords() }, on = state.chordMode != "off", onColor = C.Teal, small = true, tight = true, tag = "chords-toggle")
+            Btn("${Theory.NN[P.root]} ${P.scale.lowercase()} · ${chordName(if (state.chordMode == "off") state.lastChordMode else state.chordMode).lowercase()} " + if (state.keysBarOpen) "▾" else "▴",
+                { state.switchKeysBar() }, small = true, tight = true, tier = Tier.Quiet, tag = "keysbar-open", modifier = Modifier.weight(1f))
         }
-        return
     }
-    Column(modifier.padding(bottom = 12.dp)) {
+}
+
+/** Key, scale, chord type, play or show, and Hold's count: opened from the bottom dock's key button. */
+@Composable
+fun KeysPanel(state: AppState) {
+    val P = state.project
+    Column(Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 8.dp).tagged("keys-panel")) {
         Wrap(Modifier.padding(bottom = 4.dp)) {
-            if (!state.keysMode) Btn("▴", { state.switchKeysBar(false) }, small = true, tag = "keysbar-shut", modifier = Modifier.widthIn(min = 44.dp))
             Select(Theory.NN[P.root], Theory.NN.mapIndexed { i, n -> i to n }, { state.setRoot(it) }, tag = "pick-root")
             Select(P.scale, Theory.SCALES.keys.map { it to it }, { state.setScale(it) }, tag = "pick-scale")
             Select(chordName(state.chordMode), chordOptions(P.scale, P.root), { state.pickChordMode(it) }, tag = "pick-chord")
@@ -172,13 +173,15 @@ fun chordName(m: String) = when {
     m == "off" -> "Chords off"
     m == "triad" -> "Triads"
     m == "seventh" -> "7ths"
+    m == "sus" -> "1-4-5"
+    m == "octave" -> "Octaves"
     m == "power" -> "Power"
     m.startsWith("set:") -> m.substring(4)
     else -> m
 }
 
 fun chordOptions(scale: String, root: Int): List<Pair<String, String>> {
-    val out = mutableListOf("off" to "Off", "triad" to "Triads from the scale", "seventh" to "7ths from the scale", "power" to "Power chords")
+    val out = mutableListOf("off" to "Off", "triad" to "Triads from the scale", "seventh" to "7ths from the scale", "sus" to "1-4-5 from the scale (sus)", "power" to "Power chords", "octave" to "Octaves")
     for ((name, set) in Theory.CHORDSETS) {
         out += ("set:$name") to (name + if (Theory.setFits(set, scale)) "" else " (moves the scale)")
     }
@@ -190,7 +193,6 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
     @Suppress("UNUSED_VARIABLE") val sv = state.selV
     val P = state.project
     var pressed by remember { mutableStateOf(false) }
-    var armed by remember { mutableStateOf(false) }
     val origin = remember { Origin() }
     val view = androidx.compose.ui.platform.LocalView.current
     // the pad's own width in dp once it is laid out, so its name is sized to fit this pad on this screen
@@ -210,8 +212,8 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
         top = if (off == 0) "ROOT" else (if (off > 0) "+$off" else "$off")
         main = state.keyLabel(d)
     } else {
-        top = "${i + 1}"
-        main = if (empty) "EMPTY" else state.lib.titleOf(key).uppercase()
+        top = if (empty) "${i + 1} ●" else "${i + 1}"
+        main = if (empty) "+" else state.lib.titleOf(key).uppercase()
     }
     val fill = if (pressed) lerp(base, C.Cream, .55f) else base
     Box(
@@ -225,13 +227,19 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
                     drawRoundRect(C.Riot, cornerRadius = r)
                 } else if (empty) {
                     drawRoundRect(C.Empty, cornerRadius = r, style = Stroke(width = 2.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 8f))))
+                    // note #14: a slash splits an empty pad. Top left records onto it, bottom right picks a sound
+                    if (!keys) {
+                        if (pressed) drawRoundRect(C.Empty.copy(alpha = .25f), cornerRadius = r)
+                        drawLine(C.Empty, Offset(size.width * .08f, size.height * .92f), Offset(size.width * .92f, size.height * .08f), strokeWidth = 2.dp.toPx())
+                    }
                 } else {
                     val sh = if (pressed) 0f else 4.dp.toPx()
                     drawRoundRect(if (sel) C.Pink else C.Black, topLeft = Offset(sh, sh), size = size, cornerRadius = r)
                     drawRoundRect(Brush.verticalGradient(listOf(lerp(fill, C.Cream, .12f), lerp(fill, C.Ink, .18f))), cornerRadius = r)
                     // a hard highlight along the top, the "oomph"
                     drawRoundRect(Color.White.copy(alpha = .16f), topLeft = Offset(5.dp.toPx(), 4.dp.toPx()), size = androidx.compose.ui.geometry.Size(size.width - 10.dp.toPx(), 4.dp.toPx()), cornerRadius = CornerRadius(2.dp.toPx()))
-                    if (pressed) drawRoundRect(if (armed) C.Yellow else C.Pink, cornerRadius = r, style = Stroke(width = 6.dp.toPx()))
+                    if (pressed) drawRoundRect(C.Pink, cornerRadius = r, style = Stroke(width = 6.dp.toPx()))
+                    if (state.swapFrom == i) drawRoundRect(C.Yellow, cornerRadius = r, style = Stroke(width = 5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 8f))))
                     if (hasKeys) {
                         // the pad lights along its bottom edge: its piano is open below this row
                         val h = 7.dp.toPx()
@@ -249,68 +257,35 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
                     // a pad you play never scrolls the page: its touches are used up here
                     down.consume()
                     pressed = true
-                    armed = false
                     state.noteTouch(down.uptimeMillis)
-                    state.padDown(d)
+                    // on an empty pad, which side of the slash: above it records, below it picks a sound (note #14)
+                    state.padDown(d, emptyTop = down.position.y < size.height * (1f - down.position.x / size.width.coerceAtLeast(1)))
                     if (state.buzz && state.project.kit[state.bank * Project.BANK + d].isNotEmpty()) view.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
-                    // a held finger rolls a little: 14 dp of it still counts as holding still (10 lost menus on big thumbs)
-                    val slop = 14.dp.toPx()
-                    var moved = false
-                    var playsHeld = false
                     val pi = state.bank * Project.BANK + d
                     val det = CircleDetector(40.dp.toPx())
                     var sph: AppState.Sphere? = null
                     var lastXy = 0f to 0f
-                    // hold still until the outline turns yellow, then slide: you're carrying the sound to another pad
-                    var carry = false
-                    var lastPos = down.position
-                    // follows this finger until it lifts; any slide past the slop cancels the menu,
-                    // and a circle opens the pad's XY as a sphere over it until the finger lifts
-                    suspend fun androidx.compose.ui.input.pointer.AwaitPointerEventScope.follow() {
-                        while (true) {
-                            val e = awaitPointerEvent()
-                            val c = e.changes.firstOrNull { it.id == down.id } ?: return
-                            if (!c.pressed) { c.consume(); return }
-                            lastPos = c.position
-                            if ((c.position - down.position).getDistance() > slop) {
-                                if (armed && !carry && state.project.kit[pi].isNotEmpty()) { carry = true; state.say("Drop it on another pad to swap their sounds.") }
-                                moved = true; armed = false
-                            }
-                            val s0 = sph
-                            if (s0 != null) {
-                                lastXy = sphereXy(s0, state.xyOf(pi).four, origin.at + c.position)
-                                state.xyMove(pi, lastXy.first, lastXy.second, true)
-                            } else if (!carry && !state.keysMode && state.project.kit[pi].isNotEmpty() && det.add(c.position)) {
-                                val cc = origin.at + det.center()
-                                val s1 = AppState.Sphere(pi, Int.MIN_VALUE, cc.x, cc.y, xyDp(state.xyOf(pi).size).toPx() * .5f)
-                                sph = s1
-                                state.sphere = s1
-                            }
-                            c.consume()
+                    // a hold is always playing now (build 84): the pad's menu is Menu on the bottom dock. A circle
+                    // still opens the pad's XY as a sphere over it until the finger lifts
+                    while (true) {
+                        val e = awaitPointerEvent()
+                        val c = e.changes.firstOrNull { it.id == down.id } ?: break
+                        if (!c.pressed) { c.consume(); break }
+                        val s0 = sph
+                        if (s0 != null) {
+                            lastXy = sphereXy(s0, state.xyOf(pi).four, origin.at + c.position)
+                            state.xyMove(pi, lastXy.first, lastXy.second, true)
+                        } else if (!state.keysMode && state.project.kit[pi].isNotEmpty() && det.add(c.position)) {
+                            val cc = origin.at + det.center()
+                            val s1 = AppState.Sphere(pi, Int.MIN_VALUE, cc.x, cc.y, xyDp(state.xyOf(pi).size).toPx() * .5f)
+                            sph = s1
+                            state.sphere = s1
                         }
-                    }
-                    val early = withTimeoutOrNull(450) { follow(); true }
-                    if (early == null) {
-                        // held still long enough: lift now for the pad's menu (like a right click). Not on a pad that
-                        // sounds for as long as it is held (a synth, Sustain, gate): there a long press is playing
-                        if (!moved && !state.keysMode && !state.locked) { if (state.soundsWhileHeld(pi)) playsHeld = true else armed = true }
-                        // the offer lasts until about 1.3 s after the touch; hold on longer and you are playing the
-                        // pad, so the yellow outline goes and lifting opens nothing (and a drifting finger carries nothing)
-                        val soon = withTimeoutOrNull(850) { follow(); true }
-                        if (soon == null) { armed = false; playsHeld = false; follow() }
+                        c.consume()
                     }
                     pressed = false
                     state.padUp(d)
                     sph?.let { s0 -> state.xyMove(pi, lastXy.first, lastXy.second, false); if (state.sphere == s0) state.sphere = null }
-                    if (armed && !moved) state.padMenu = pi
-                    // held and lifted like asking for the menu, on a pad where a hold is playing: say where its menu is (once)
-                    if (playsHeld && !moved) state.heldPadHint(pi)
-                    if (carry) {
-                        val at = origin.at + lastPos
-                        val to = state.padRects.entries.firstOrNull { it.key != d && it.value.contains(at) }?.key
-                        if (to != null) state.swapPads(pi, state.bank * Project.BANK + to)
-                    }
-                    armed = false
                 }
             }
             .padding(8.dp),
@@ -325,8 +300,8 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
         if (!keys && !empty && P.opt(i).route > 0) T("B${P.opt(i).route}", size = 10.sp, color = ink(fill), family = Mono, modifier = Modifier.align(Alignment.TopCenter))
         // held by Hold: an H in the corner, so you can see what is still playing on its own
         if (!keys && (1000 + i) in state.latched) T("H", size = 12.sp, color = ink(fill), family = Mono, weight = FontWeight.Black, modifier = Modifier.align(Alignment.BottomEnd))
-        if (!keys) PadMenu(state, i)
-        T(main, size = if (keys) 18.sp else padFont(main, state.dockOpen, padDp), color = if (empty) C.Empty else ink(fill), weight = FontWeight.Black, lines = 3, modifier = Modifier.align(Alignment.BottomStart))
+        if (empty && !keys) T("+", size = 22.sp, color = C.Empty, weight = FontWeight.Black, modifier = Modifier.align(Alignment.BottomEnd).tagged("pad-pick-$d"))
+        else T(main, size = if (keys) 18.sp else padFont(main, state.dockOpen, padDp), color = if (empty) C.Empty else ink(fill), weight = FontWeight.Black, lines = 3, modifier = Modifier.align(Alignment.BottomStart))
     }
 }
 
@@ -350,7 +325,7 @@ fun PlayViews(state: AppState) {
 @Composable
 fun HoldBar(state: AppState, modifier: Modifier = Modifier) {
     Wrap(modifier.padding(top = 8.dp), gap = 6.dp) {
-        HoldToggle(state, tag = "hold-toggle")
+        T("HOLD", size = 11.sp, color = if (state.holdOn) C.Yellow else C.Dim, spacing = .1.em)
         Btn("−", { state.changeHoldCount(state.holdCount - 1) }, small = true, enabled = state.holdCount > 0, tag = "hold-down", modifier = Modifier.widthIn(min = 40.dp))
         Box(Modifier.size(width = 54.dp, height = 34.dp).background(C.Black).border(2.dp, if (state.holdOn) C.Yellow else C.Cream), contentAlignment = Alignment.Center) {
             val n = if (state.holdCount == 0) "LAST" else "${state.holdCount}"
@@ -405,6 +380,7 @@ fun PadMenu(state: AppState, i: Int) {
             if (com.tideclock.messmachine.engine.Project.isSynth(k)) item("◎ Synth", "menu-synth") { state.selectPad(i, false); state.padMenu = -1; state.tab = com.tideclock.messmachine.Tab.Synth }
             else item("✂ Sample", "menu-doctor") { state.selectPad(i, false); state.overlay = Overlay.Doctor(k) }
             item("Swap sound", "menu-swap") { state.selectPad(i, false); state.overlay = Overlay.Picker(i) }
+            item("Move to another pad", "menu-move") { state.armSwap(i) }
             item(if (k in state.favs) "★ Unstar" else "☆ Star", "menu-star") { state.toggleFav(k) }
             item("Keep in Your Workbench", "menu-keep") { state.keepInBench(i) }
             item("Share this sound", "menu-share") { state.shareSoundWav(k) }

@@ -6,6 +6,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -37,5 +45,31 @@ fun MidiMapPanel(state: AppState, modifier: Modifier = Modifier) {
         )
         T(state.midiLast.ifEmpty { "${state.midiNotes.size} keys and ${state.midiKnobs.size} knobs mapped." }, size = 11.sp, color = C.Dim, lines = 2,
             weight = androidx.compose.ui.text.font.FontWeight.Normal, family = Mono, modifier = Modifier.padding(top = 2.dp))
+        var list by remember { mutableStateOf(false) }
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            // note #19: Run moves on by itself after each key; One at a time waits for the next tap
+            Btn("Run", { state.switchMidiRun(true) }, on = state.midiRun, onColor = C.Teal, small = true, tight = true, tag = "midimap-run")
+            Btn("One at a time", { state.switchMidiRun(false) }, on = !state.midiRun, onColor = C.Teal, small = true, tight = true, tag = "midimap-one")
+            Btn(if (list) "List ▴" else "List ▾", { list = !list }, on = list, small = true, tight = true, enabled = state.midiNotes.isNotEmpty() || state.midiKnobs.isNotEmpty(), tag = "midimap-list")
+        }
+        if (list) MidiMapList(state)
+    }
+}
+
+/** Every key and knob on the map as a row: what it plays, teach it again, or take it off. */
+@Composable
+private fun MidiMapList(state: AppState) {
+    val rows = state.midiNotes.entries.sortedBy { it.key }.map { Triple(it.key as Int?, null as Int?, it.value) } +
+        state.midiKnobs.entries.sortedBy { it.key }.map { Triple(null as Int?, it.key as Int?, it.value) }
+    Column(Modifier.fillMaxWidth().heightIn(max = 240.dp).verticalScroll(rememberScrollState()).padding(top = 6.dp).tagged("midimap-rows")) {
+        for ((note, cc, t) in rows) {
+            val code = note?.let { "n$it" } ?: "c$cc"
+            Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                T(note?.let { com.tideclock.messmachine.engine.Theory.noteName(it - 60) } ?: "CC $cc", size = 12.sp, color = C.Yellow, family = Mono, lines = 1, modifier = Modifier.width(54.dp))
+                T(state.midiLabel(t), size = 12.sp, color = C.Cream, lines = 1, modifier = Modifier.weight(1f))
+                Btn("Teach", { state.midiReteach(note, cc) }, small = true, tight = true, tag = "midimap-teach-$code")
+                Btn("✕", { state.midiForget(note, cc) }, small = true, tight = true, tier = Tier.Danger, tag = "midimap-x-$code")
+            }
+        }
     }
 }

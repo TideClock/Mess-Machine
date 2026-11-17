@@ -1,25 +1,27 @@
 {
-  "title": "Find things faster: Menu for every pad, the slim keys bar, MIDI map",
+  "title": "The bottom dock, chords that stay put, and notes without the browser",
   "thisBuild": [
-    "Why holding a pad sometimes gave no menu: a pad that sounds while you hold it (any synth, or a sample set to Sustain or gate) never opens its menu from a hold, because there a hold is playing. So there is now a Menu button by the bank numbers. Tap a pad, tap Menu: it opens that pad's menu for every pad. That is also how a synth gets a Padiano: Menu, then Padiano under this row.",
-    "Next to Menu, Sample opens the picked pad's Sample sheet. On a synth pad it says Synth and goes straight to the knobs.",
-    "Key, chords and Hold are always on the Play tab now, as one slim row: the Hold switch, and a button that reads what is set (like D minor, chords off). Tap that button to open root, scale, chords, Hold's count and Let go. The ▴ shuts it again. A Padiano still opens it by itself.",
-    "The same bar sits over the keys on the Synth tab, in Simple, Full and Synthipad. Chords work there now too.",
-    "Synth tab: the pad name at the top is a picker, so you can jump between your synths without leaving the tab (your note). With no synth on the picked pad, the page lists the synths you have.",
-    "MIDI map (☰ menu): a small panel floats under the top bar. Tap a pad, then press keys on your keyboard: each key lands on the next pad, to the right and then down. Tap a Padiano key and the keys go up the Padiano from there. Tap a synth knob on the Synth tab and turn a knob or slider on your controller: it turns that knob from then on. Skip passes one, Clear empties the map, Done closes it.",
-    "From a full test pass over every screen: labels that were cut off now fit. The Sample sheet's tabs (Effects is FX there), Starred on the Sounds tab (it was Favorites), Octave down, the Padiano's Rows buttons, and the wavetable knob Env to pos. With the dock open, Sample and Menu drop to their own row so the bank numbers keep their room. A key on your MIDI controller no longer opens the jars when its pad is empty.",
-    "Second test pass, measured at four screen widths (a Fold's cover screen and a Fold opened among them): on a narrow screen the top bar's Play and Rec, the Play tab's Pads, Keys and My Desk, and the Sounds tab's views were cut down to a few letters, and pad names broke in the middle of a word. They fit now, and pad names are sized from the pad itself, so they are bigger on an opened Fold. Small targets are bigger: the words under the dock's buttons (Repeat's rate, Hold's count, the filter's target) are full-width buttons, and the one-letter buttons (Hold's − and +, the Padiano's size and rows, choke groups) are 40 wide. A third pass with the corrected measure fixed what was left on a Fold's cover screen: Synthipad, Echo throw and Oct down (it was Octave down) fit, the Tempo sheet's button reads Hear steps on tap, the 16 slices button wraps, and the top bar's ↶, ? and ☰ are wider."
+    "A bar along the bottom of the Play, My Desk and Synth tabs stays on screen however far down you scroll: Menu for the picked pad, Hold, Chords on or off, and the key button. The key button opens root, scale, chord type, Hold's count and Let go just above the bar.",
+    "Menu is the one way to a pad's menu now. A hold on a pad always plays, on every kind of pad. Moving a pad's sound is in the menu: Move to another pad, then tap where it goes.",
+    "Chords: Chords on the bottom bar flips between chords and single notes and remembers which chords you had. Chords keep their root on the bottom, so G is G B D on every key. The Padiano and the Roll reach from C1 to C6 (Oct buttons), so chords play and record as written.",
+    "Chord sets work the Maschine way: with a set on, the Padiano shows the set's chords as named boxes, always in the same order, so box 3 of Sunday Pop is always Am. Oct moves the whole set. On the Keys grid, the bottom two rows are the set and the top two the same set an octave up. Two new chord types: 1-4-5 (the sus sound) and Octaves.",
+    "Empty pads have a slash: tap above it to record onto the pad, below it to pick a sound. The Settings switch for this is gone.",
+    "Steps: slide along a row to paint it (start on an empty step to fill, on a full one to erase). Names in the Steps list get two lines.",
+    "Repeat has 1/4. Triplets and dotted come with the LFO build, because they need a new clock in the engine.",
+    "The Repeat lesson starts on its first step, and Back waits for you instead of jumping forward. Every lesson starts with Repeat and chords off and puts them back after.",
+    "MIDI map: One at a time waits for you to tap the next target after each key (Run is the old way). List shows every key and knob on the map, with Teach to redo one and an x to take one off.",
+    "The bug button sits in the bottom left corner of every page. The note box opens on the kind of note you sent last, with big buttons. Send without the browser: paste a GitHub key once (steps are in the note box) and Send posts the note from inside the app. Notes written offline wait and go out later."
   ],
   "watch": [
-    "MIDI map with your real keyboard: I could only test it with notes sent in software. Does each key land where the panel says, and do your controller's knobs move the synth knobs smoothly?",
-    "Hold a normal sample pad for its menu ten times. I gave a still finger a little more room to roll (it was strict). Send a note if it still misses, with which pad.",
-    "The slim keys bar: is one row the right size, and is it clear that the button opens the rest?",
-    "Notes you send now carry the screen's size, view size and whether the dock was open, so a layout problem can be matched to your exact screen. If anything is still cut off or cramped on the cover screen or opened, one note from that screen is enough."
+    "The bottom dock on the cover screen at your view size: does it fit, and is Menu where your thumb wants it?",
+    "Chord sets on the Padiano and the Keys grid, by ear: do the boxes feel like Maschine's chord sets, and are the chords voiced well?",
+    "Paint a row of steps with one slide, then scroll the Steps page: does a slide up or down still scroll, and a slide sideways still paint?",
+    "Make the GitHub key and send one note with it. If GitHub refuses the key, the app says so."
   ],
   "limits": [
-    "A hold on a synth pad still opens no menu, on purpose: use Menu. The app says so once when you try.",
-    "MIDI map covers pads, Padiano keys and synth knobs. Buttons like Play and Rec, velocity, and the pad filter are not mappable yet.",
-    "Pads map by their place on screen, so a mapped key hits whichever bank is showing. The map is kept on the phone, not in the mess.",
-    "Still cut short on a phone: long sound names in the Steps list and on a Padiano's title. A fix for those needs a layout decision, so they are in the test report, not changed."
+    "A MIDI key plays chord set slots 1 to 7 by its place in the scale; the 8th chord is on the Padiano's boxes only. MIDI round two adds slots to the map.",
+    "The hold menus on a sound's name in Steps and Roll are still there; the pads have none.",
+    "Triplet and dotted Repeat, the FannyPack, the FX and LFO strips, the pitch wheel, Steps row tools and Step mode, MIDI round two, the speed guide, What the FAQ and the automation view come in the next builds.",
+    "I cannot hear the app: chord voicings and the slot sound are for your ears."
   ]
 }

@@ -4,6 +4,12 @@
 
 Rewritten at the end of every session and at each step of a long job (BT-2). Read this first.
 
+- **In progress (2026-11-17):** Tyler approved the redraft (proposal doc https://claude.ai/artifact/Gj4cgJ4vm92N5Tpch5FT1n)
+  and builds 84 to 95, condensed where quality allows into six: 84 (bottom dock, Menu only, chords fix and chord-set
+  slots, five octaves, lesson bug, quarter note, empty pad slash, Steps drag paint, MIDI one at a time and list,
+  notes key and categories, audit at his real screens), 85 (FannyPack, FX strip, Steps row tools, pitch wheel), 86
+  (LFO strip with Hi/Band filters, triplet and dotted repeat clock), 87 (MIDI round two, Step mode), 88 (speed
+  guide, What the FAQ, automation view). Report the real cost of each build to Tyler (usage is tight).
 - **Live:** build 83 (green, published 2026-11-14; note #12 closed): the full test pass. 59 tests pass (51 big test
   flows, the monkey test, 4 audit widths, 3 chord tests); the emulator phone test is clean (no crash, two monkey
   runs clean). Audit at 369 dp: 8 cut-off labels left (all sound names, plus the keys bar's button with the dock
@@ -48,6 +54,20 @@ Rewritten at the end of every session and at each step of a long job (BT-2). Rea
 ## Decisions
 
 One line each, dated, with the reason and who decided (BT-2). Older decisions live in the plan sections below.
+
+- 2026-11-17 Menu is the one way to a pad's menu (Tyler): a hold always plays; carry and swap became Menu's Move.
+  Menu, Hold, Chords on/off and the key button sit on a bottom dock that stays on screen on Play, My Desk and Synth
+  (Tyler: "it can't be stuck to the top"). The key panel opens above the dock; a Padiano no longer opens it.
+- 2026-11-17 Chords never wander (Tyler): no per-note folding (root always lowest, a chord past the range moves by
+  whole octaves); the Roll and the Padiano's keys reach C1 to C6 (ROLL_LO -36, ROLL_HI 24, two octaves on screen);
+  chord sets are fixed slots, Maschine style: slot N is always the same chord, a key's slot is its place in the
+  scale, the same in every octave; the Padiano shows a set as named boxes; Keys grid: pads 1 to 8 the set, 9 to 16 an
+  octave up. New types 1-4-5 (sus) and Octaves. Chords on the dock flips to single notes and remembers the type.
+- 2026-11-17 Notes: option A (Tyler, after the correction that B needed his setup too): a fine-grained GitHub key
+  pasted once in the note box; Send posts with it, offline notes wait; without a key Send opens the page as before.
+- 2026-11-17 Controller-agnostic MIDI (Tyler): nothing is built for one controller. The map works on his hardware.
+- 2026-11-17 Steps names: two lines, 84 dp column (Claude, Tyler left it to me).
+- 2026-11-17 "What the FAQ" is the helper's name (Tyler). FannyPack holds only the strips you add (Tyler).
 
 - 2026-11-10 Review go-ahead (Tyler): build MM-1 to MM-14 and more; skip MM-5 (Oboe) until the Audio check shows
   what the lag is; MM-11 (Play Store) after everything else; skip MM-15 (Fold layouts) with a big note; MM-22
@@ -259,10 +279,10 @@ so they never count as a second home. `design/exceptions.txt` holds the same rea
 |---|---|---|---|
 | Play, Stop, Rec, Undo, tempo | Top bar | Desk transport piece | Shortcut you choose |
 | Undo after a clear | Top bar | The clear's message | Right where the clear happened, for a few seconds |
-| Hold | Keys bar (Play tab, and over the Synth tab's keys) | Dock, desk Hold piece | Shortcuts you choose; the Synth tab's keys need it where they are |
+| Hold | Bottom dock (Play, My Desk, Synth) | Side dock, desk Hold piece | Shortcuts you choose |
 | Repeat and its rate | Dock | Desk Repeat piece | Shortcut you choose |
 | Filter and resonance | Dock | Desk pad filter piece, XY targets | Shortcut; XY moves it as one of its targets |
-| Root, scale, chords | Keys bar | Roll, desk Scale piece | Roll places and folds notes by the scale; desk is a shortcut |
+| Root, scale, chords | Bottom dock's key panel (Chords on/off on the dock itself) | Roll, desk Scale piece | Roll places and folds notes by the scale; desk is a shortcut |
 | In key only | Padiano settings | none | |
 | Bank 1 to 4 | Play tab (Pads) | Steps | Each page shows that bank's pads; switching tabs to change it would break the flow |
 | Loop letters A to H | Steps | Roll, Song, Song palette | Roll edits one loop and Song plays one: both need to pick it. The palette paints the song |
@@ -270,13 +290,14 @@ so they never count as a second home. `design/exceptions.txt` holds the same rea
 | Resample the loop | Steps | Workbench (Sounds) | Flagged for Tyler |
 | Record a sound | Empty pads, pad menu | Sounds mic | Sounds records into the Workbench, not onto a pad |
 | Mute, solo | Pad menu | none | |
-| The pad menu | Hold a pad, then lift | Menu, by the bank numbers | A pad that sounds while held gets no menu from a hold, so the button is how its menu opens |
+| The pad menu | Menu on the bottom dock | Hold a sound's name in Steps or Roll | Those name rows are not playing surfaces; the pads have no hold menu since build 84 |
 | MIDI map | ☰ menu | none | |
 | Doctor | Pad menu | Sounds row menu | From a pad or from the library: different starting points |
 | Hear it | Pad menu | Sounds, Doctor | Each hears the thing on that screen |
 | Share a sound | Pad menu | Sounds, Doctor (as WAV) | Same: each shares what is on that screen |
 | Click | Tempo sheet | none | |
-| Messes, Settings, Redo, Notes for Claude | ☰ menu | none | |
+| Messes, Settings, Redo, Learn, MIDI map | ☰ menu | none | |
+| Notes for Claude (the bug button) | Bottom left corner, by the tabs, on every page | none | |
 | How-to text | ? in the top bar | First visit to each page | Shown once, then hidden |
 
 ## The idea
@@ -374,6 +395,14 @@ The site's source is kept in `site/` (build with `python3 build.py` next to the 
 ## Wishlist
 
 Ideas Tyler tags "wishlist" go here, not into the build.
+
+- 2026-11-17 (build 83) A Compact layout: tighter gaps with finger-sized buttons, in place of shrinking everything
+  with view size (Tyler plays at 70 to 80 percent, so every button is 20 to 30 percent smaller in real size).
+- 2026-11-17 (build 83) A finer time grid than 16th steps, so triplet repeats record as plain hits and fast wubs in
+  the automation view are exact. A deep engine change; it sits behind several notes.
+- 2026-11-17 (build 83) Chord sets of 12 slots and sets you build yourself (Maschine's User Chords).
+- 2026-11-17 (build 83) An effects chain per sound you can reorder and add to (if "online FX" ever means more than
+  the inline FX strip).
 
 - 2026-11-03 (site) Mess Machine as a standalone Android app: done, this repo (builds 1 to 56).
 - 2026-11-10 (build 68) Jam station brain: Mess Machine as the hub of a jam setup (Tyler's jam idea). Many MIDI

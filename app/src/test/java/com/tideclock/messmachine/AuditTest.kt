@@ -144,16 +144,19 @@ class AuditTest {
     }
 
     private fun go(tag: String) {
-        rule.onNodeWithTag(tag).performScrollTo()
+        // the bottom dock does not scroll: only scroll to what sits in a scrolling page
+        try { rule.onNodeWithTag(tag).performScrollTo() } catch (_: AssertionError) {}
         step()
         rule.onNodeWithTag(tag).performClick()
         settle()
     }
 
-    private fun walk(width: String) {
+    private fun walk(width: String, view: Float = 1f) {
+        // the view size first (Tyler plays at 70 to 80 percent): sizes below are then real sizes on his screen
+        if (view != 1f) { state.setViewSize(view); settle() }
         // the Play tab
         audit(width, "Play pads")
-        go("keysbar-open"); audit(width, "Play keys bar open"); go("keysbar-shut")
+        go("keysbar-open"); audit(width, "Play keys bar open"); go("keysbar-open")
         state.toggleKeyboard(0); settle(); audit(width, "Play Padiano")
         go("piano-set-0"); audit(width, "Play Padiano settings"); go("piano-set-0")
         state.toggleKeyboard(0); settle()
@@ -168,7 +171,7 @@ class AuditTest {
         go("synth-new-empty")
         for (v in listOf("simple", "full", "pad")) { state.synthView = v; settle(); audit(width, "Synth $v") }
         state.synthView = "simple"
-        go("keysbar-open"); audit(width, "Synth keys bar open"); go("keysbar-shut")
+        go("keysbar-open"); audit(width, "Synth keys bar open"); go("keysbar-open")
         // the MIDI map over the Synth tab and the Play tab
         state.switchMidiMap(true); settle(); audit(width, "MIDI map on Synth"); audit(width, "MIDI map panel", "midimap")
         state.tab = Tab.Pads; settle(); audit(width, "MIDI map on Play")
@@ -202,7 +205,7 @@ class AuditTest {
         assertTrue("the audit walked the whole app (${pages.size} pages)", pages.size >= 35)
         // the words a player steers by must never be cut off, at any width a phone in use has (344 is reported only:
         // narrower than any phone these builds have run on)
-        if (mustFit) for (m in listOf("▶ PLAY", "● REC", "PADS", "KEYS", "MY DESK", "SAMPLE", "MENU", "PLAY", "SYNTH", "STEPS", "ROLL", "SONG", "SOUNDS", "TRIM", "SHAPE", "TOOLS", "BY TYPE", "BY JAR", "★ STARRED", "PACKS")) {
+        if (mustFit) for (m in listOf("▶ PLAY", "● REC", "PADS", "KEYS", "MY DESK", "SAMPLE", "MENU", "○ HOLD", "○ CHORDS", "PLAY", "SYNTH", "STEPS", "ROLL", "SONG", "SOUNDS", "TRIM", "SHAPE", "TOOLS", "BY TYPE", "BY JAR", "★ STARRED", "PACKS")) {
             val where = found["cut off text | \"$m\""]
             assertTrue("\"$m\" is cut off at $width on ${where?.joinToString(", ")}", where == null)
         }
@@ -223,4 +226,18 @@ class AuditTest {
     /** About a Galaxy Z Fold opened. */
     @Config(qualifiers = "w707dp-h822dp-xhdpi")
     @Test fun auditFoldOpen() = walk("w707")
+
+    /**
+     * Tyler's real setups, from his notes (build 84): the Fold's cover and opened screens at the app's 70 percent
+     * view size, and opened in landscape. Reported, not enforced: at 70 percent every button is 30 percent smaller in
+     * real size, so these tables count what his thumb actually meets.
+     */
+    @Config(qualifiers = "w368dp-h905dp-xhdpi")
+    @Test fun auditTylerCover70() { mustFit = false; walk("w368-view70", .7f) }
+
+    @Config(qualifiers = "w707dp-h822dp-xhdpi")
+    @Test fun auditTylerOpen70() { mustFit = false; walk("w707-view70", .7f) }
+
+    @Config(qualifiers = "w822dp-h707dp-xhdpi-land")
+    @Test fun auditTylerLandscape70() { mustFit = false; walk("w822-land-view70", .7f) }
 }

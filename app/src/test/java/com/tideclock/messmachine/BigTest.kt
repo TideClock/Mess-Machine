@@ -15,6 +15,7 @@ import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -117,20 +118,21 @@ class BigTest {
     }
 
     /**
-     * Open a pad's menu the way a player would: hold and lift. A pad that sounds for as long as it is held (a synth,
-     * Sustain, gate) never offers its menu from a hold, so there: tap the pad, then Menu by the bank numbers.
+     * Open a pad's menu the way a player does since build 84: tap the pad, then Menu on the bottom dock. An empty pad
+     * is picked through the menu's target instead (a tap on it would record or open the jars).
      */
     private fun padMenuOf(d: Int) {
-        if (state.soundsWhileHeld(state.bank * 16 + d)) {
-            tapPad(d)
-            rule.mainClock.advanceTimeBy(300); settle()
-            at("open-padmenu").performClick()
-            settle()
-        } else longPress("pad-$d")
+        if (state.project.kit[state.bank * 16 + d].isEmpty()) { state.selectPad(state.bank * 16 + d, false); settle() }
+        else { tapPad(d); rule.mainClock.advanceTimeBy(300); settle() }
+        at("open-padmenu").performClick()
+        settle()
     }
 
-    /** Scroll a node into view and let the page stop moving, so the next touch lands on it. */
-    private fun at(tag: String) = rule.onNodeWithTag(tag).also { it.performScrollTo(); rule.mainClock.advanceTimeBy(600); settle() }
+    /**
+     * Scroll a node into view and let the page stop moving, so the next touch lands on it. The bottom dock does not
+     * scroll, so for what is on it there is nothing to scroll.
+     */
+    private fun at(tag: String) = rule.onNodeWithTag(tag).also { try { it.performScrollTo() } catch (_: AssertionError) {}; rule.mainClock.advanceTimeBy(600); settle() }
 
     /** Pads and Desk share the Play tab now: "Console" means the Play tab's My Desk view. */
     private fun tab(label: String) {
@@ -157,18 +159,18 @@ class BigTest {
         settle()
         assertTrue("tapping pad 1 makes sound (peak $hit)", hit > .02f)
 
-        // hold a pad: its menu opens; Piano drops a keyboard right under that pad's row
+        // a pad's menu (Menu on the bottom dock): Padiano drops a keyboard right under that pad's row
         state.putOnPad(8, "samples/glass-harp.wav")
         state.putOnPad(13, "samples/wheezy-organ.wav")
         waitFor("the new pads to load") { state.lib.loaded("samples/glass-harp.wav") && state.lib.loaded("samples/wheezy-organ.wav") }
         for (d in listOf(1, 5, 8, 13)) {
-            longPress("pad-$d")
+            padMenuOf(d)
             if (state.padMenu != d) {
                 val b = rule.onNodeWithTag("pad-$d").fetchSemanticsNode().boundsInRoot
                 println("DEBUG pad $d menu=${state.padMenu} toast=${state.toast} overlay=${state.overlay} bounds=$b keyboards=${state.keyboards.toList()} sel=${state.project.sel}")
                 shot("debug-menu-$d")
             }
-            assertEquals("holding pad ${d + 1} opens its menu", d, state.padMenu)
+            assertEquals("Menu opens pad ${d + 1}'s menu", d, state.padMenu)
             if (d == 1) shot("02-pad-menu")
             rule.onNodeWithTag("menu-piano").performClick()
             // let the menu finish closing before the next press
@@ -225,7 +227,7 @@ class BigTest {
         shot("03b-pianos-under-rows-bottom")
 
         // one piano per row: opening pad 1's piano swaps out pad 2's in the same row
-        longPress("pad-0")
+        padMenuOf(0)
         rule.onNodeWithTag("menu-piano").performClick()
         settle()
         assertTrue(0 in state.keyboards && 1 !in state.keyboards)
@@ -268,8 +270,10 @@ class BigTest {
     @Test fun holdKeepsTheFirstNotes() {
         state.toggleKeyboard(7)
         settle()
+        // Hold's count and Let go are in the key panel over the bottom dock
+        at("keysbar-open").performClick(); settle()
         // one tap turns Hold on, three notes by default
-        rule.onNodeWithTag("hold-toggle").performScrollTo().performClick()
+        at("hold-toggle").performClick()
         settle()
         assertTrue(state.holdOn)
         assertEquals(3, state.holdCount)
@@ -287,13 +291,13 @@ class BigTest {
         assertEquals(setOf(4), state.heldPitches(7))
         for (p in listOf(9, 11)) { state.pianoDown(7, p); state.pianoUp(7, p) }
         assertEquals(setOf(4, 9, 11), state.heldPitches(7))
-        rule.onNodeWithTag("hold-release").performScrollTo().performClick()
+        at("hold-release").performClick()
         settle()
         assertTrue(state.latched.isEmpty())
         // the Hold switch on the piano itself: turning it off lets every held note go
         for (p in listOf(0, 4)) { state.pianoDown(7, p); state.pianoUp(7, p) }
         assertEquals(2, state.latched.size)
-        rule.onNodeWithTag("hold-toggle").performScrollTo().performClick()
+        at("hold-toggle").performClick()
         settle()
         assertFalse(state.holdOn)
         assertTrue(state.latched.isEmpty())
@@ -335,7 +339,7 @@ class BigTest {
     @Test fun recordOntoAPadAndKeepSounds() {
         shadowOf(ApplicationProvider.getApplicationContext<android.app.Application>()).grantPermissions(android.Manifest.permission.RECORD_AUDIO)
         // hold pad 4: Record onto this pad
-        longPress("pad-3")
+        padMenuOf(3)
         rule.onNodeWithTag("menu-record").performClick()
         settle()
         val started = state.micOn
@@ -355,7 +359,7 @@ class BigTest {
         waitFor("the take to land on pad 4") { state.busy == null && state.lib.sound(state.project.kit[3])?.cab == "mine" }
         val n = state.bench.items.size
         // keep a pad's sound in Your Workbench from its menu
-        longPress("pad-0")
+        padMenuOf(0)
         rule.onNodeWithTag("menu-keep").performClick()
         waitFor("the kick to be kept") { state.busy == null && state.bench.items.size == n + 1 }
         rule.onNodeWithTag("pad-3").performScrollTo()
@@ -493,53 +497,42 @@ class BigTest {
         rule.onNodeWithText(state.lib.titleOf(key).uppercase(), useUnmergedTree = true).assertExists()
     }
 
-    /** A long hold is playing, not asking: the menu offer ends about 1.3 s after the touch, and a pad that sounds while held never makes it. */
-    @Test fun longHoldsDoNotOpenThePadMenu() {
-        rule.onNodeWithTag("pad-2").performScrollTo()
-        rule.mainClock.advanceTimeBy(600); settle()
-        rule.onNodeWithTag("pad-2").performTouchInput { down(center) }
-        rule.mainClock.advanceTimeBy(1600); settle()
-        rule.onNodeWithTag("pad-2").performTouchInput { up() }
-        settle()
-        assertEquals("held past the offer: no menu", -1, state.padMenu)
-        // Sustain: the pad sounds for as long as it is held, so holding it never opens the menu; the bank row button does
+    /**
+     * Build 84 (Tyler, Nov 16): Menu is the one way to a pad's menu, so a hold is always playing. No hold, short or
+     * long, on any kind of pad opens it; Menu on the bottom dock opens the picked pad's menu every time.
+     */
+    @Test fun holdsAlwaysPlayAndMenuOpensTheMenu() {
+        for (ms in listOf(500L, 900L, 1600L)) {
+            rule.onNodeWithTag("pad-2").performScrollTo()
+            rule.mainClock.advanceTimeBy(600); settle()
+            val t0 = state.engine.triggers
+            rule.onNodeWithTag("pad-2").performTouchInput { down(center) }
+            rule.mainClock.advanceTimeBy(ms); settle()
+            rule.onNodeWithTag("pad-2").performTouchInput { up() }
+            settle()
+            assertEquals("a $ms ms hold opens no menu", -1, state.padMenu)
+            assertTrue("and it played", state.engine.triggers > t0)
+        }
         val k = state.project.kit[2]
         state.setEdit(k, state.project.edit(k).copy().also { it.held = "sustain" }, true)
         settle()
-        assertTrue(state.soundsWhileHeld(2))
-        rule.mainClock.advanceTimeBy(600); settle()
         rule.onNodeWithTag("pad-2").performTouchInput { down(center) }
         rule.mainClock.advanceTimeBy(800); settle()
         rule.onNodeWithTag("pad-2").performTouchInput { up() }
         settle()
-        assertEquals("a sustaining pad's hold is playing: no menu", -1, state.padMenu)
-        assertTrue("and it says where that pad's menu is (${state.toast})", state.toast.orEmpty().contains("Menu"))
+        assertEquals("a sustaining pad's hold is playing", -1, state.padMenu)
         rule.onNodeWithTag("open-padmenu").performClick()
         settle()
-        assertEquals("its menu opens from the Menu button by the banks", 2, state.padMenu)
+        assertEquals("Menu on the bottom dock opens it", 2, state.padMenu)
         state.padMenu = -1
         settle()
-    }
-
-    @Test fun menusOpenOnLiftNotOnDrag() {
-        // held still: nothing until the finger lifts, then the menu
-        rule.onNodeWithTag("pad-2").performScrollTo()
-        rule.mainClock.advanceTimeBy(600); settle()
-        rule.onNodeWithTag("pad-2").performTouchInput { down(center) }
-        rule.mainClock.advanceTimeBy(800); settle()
-        assertEquals("no menu while the finger is still down", -1, state.padMenu)
-        rule.onNodeWithTag("pad-2").performTouchInput { up() }
-        settle()
-        assertEquals("the menu opens on lift", 2, state.padMenu)
-        state.padMenu = -1
-        rule.mainClock.advanceTimeBy(1000); settle()
-        // a drag never opens it, however long it lasts
-        rule.onNodeWithTag("pad-3").performTouchInput { down(center) }
-        rule.onNodeWithTag("pad-3").performTouchInput { moveBy(Offset(0f, 60f)) }
-        rule.mainClock.advanceTimeBy(800); settle()
-        rule.onNodeWithTag("pad-3").performTouchInput { up() }
-        settle()
-        assertEquals("a drag never opens the menu", -1, state.padMenu)
+        // the bottom dock stays put while the page scrolls: scroll to the bottom and Menu is still on screen
+        state.toggleKeyboard(12); settle()
+        rule.onNodeWithTag("piano-12").performScrollTo(); rule.mainClock.advanceTimeBy(600); settle()
+        val root = rule.onRoot().fetchSemanticsNode().boundsInRoot
+        val menu = rule.onNodeWithTag("open-padmenu").fetchSemanticsNode().boundsInRoot
+        assertTrue("Menu is on screen after scrolling down ($menu in $root)", menu.top >= root.top && menu.bottom <= root.bottom)
+        shot("60-bottom-dock-scrolled")
     }
 
     @Test fun holdLastAndInKeyOnly() {
@@ -547,8 +540,8 @@ class BigTest {
         settle()
         // Hold Last: only the newest note holds
         state.switchHold(true)
-        rule.onNodeWithTag("hold-down").performScrollTo()
-        repeat(3) { rule.onNodeWithTag("hold-down").performClick() }
+        state.switchKeysBar(true); settle()
+        repeat(3) { at("hold-down").performClick() }
         settle()
         assertEquals(0, state.holdCount)
         state.pianoDown(7, 0); state.pianoUp(7, 0)
@@ -846,9 +839,8 @@ class BigTest {
         val pad = state.project.sel
         // Hold on the Synth tab, one slot: the first note holds, the next ones play and stop
         at("hold-toggle").performClick(); settle()
-        // the keys bar starts as its slim row (Hold, and what key and chords are set); its button opens the rest
-        assertTrue("the slim bar is what shows first", !state.keysBarOpen)
-        at("keysbar-open").performClick(); settle()
+        // Hold and the key button sit on the bottom dock under the Synth tab too; the key button opens Hold's count
+        if (!state.keysBarOpen) { at("keysbar-open").performClick(); settle() }
         while (state.holdCount > 1) { at("hold-down").performClick(); settle() }
         assertTrue("Hold is on with one slot (${state.holdCount})", state.holdOn && state.holdCount == 1)
         shot("53-synth-hold")
@@ -1217,7 +1209,7 @@ class BigTest {
         for (d in listOf("play", "trim", "shape", "fx", "tools")) { at("dtab-$d").performClick(); sheet("Sample: $d") }
         state.overlay = null; settle()
         // the pad menu
-        longPress("pad-1")
+        padMenuOf(1)
         val menu = rule.onAllNodes(androidx.compose.ui.test.hasTestTag("padmenu")).fetchSemanticsNodes().let { it.size }
         val menuItems = rule.onAllNodes(androidx.compose.ui.test.hasClickAction()).fetchSemanticsNodes()
             .count { n -> n.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.TestTag)?.startsWith("menu-") == true }
@@ -1263,22 +1255,117 @@ class BigTest {
         if (System.getenv("DESIGN_CHECK") != "report") assertTrue("Design check:\n" + problems.joinToString("\n"), problems.isEmpty())
     }
 
-    @Test fun carryAPadOntoAnotherToSwap() {
+    /**
+     * Build 84 (notes 14, 16, 18, 19 and Tyler's Nov 16 to 17 answers): the lesson that skipped its first step, chord
+     * sets as fixed slots and chords that keep their root, the quarter note, Steps drag to paint, the empty pad's
+     * slash, the MIDI map's one-at-a-time and list, and the note box's categories and key.
+     */
+    @Test fun build84Pack() {
+        // note #19: with Repeat already on, the Repeat lesson starts on step 1, and Back waits instead of bouncing
+        state.setLive { nr = true }; state.switchHold(true); state.pickChordMode("triad"); settle()
+        val rpt = com.tideclock.messmachine.Tutorials.all.first { it.id == "repeat" }
+        state.startTutorial(rpt); settle(); state.tutTick()
+        assertEquals("the lesson starts on its first step", 0, state.tutStep)
+        assertFalse("Repeat is off for the lesson", state.live.nr)
+        state.setLive { nr = true }; state.tutTick()
+        assertEquals(1, state.tutStep)
+        state.tutBack(); state.tutTick(); state.tutTick()
+        assertEquals("Back stays on step 1 until you do it again", 0, state.tutStep)
+        state.setLive { nr = false }; state.tutTick(); state.setLive { nr = true }; state.tutTick()
+        assertEquals(1, state.tutStep)
+        state.endTutorial(false); settle()
+        assertTrue("Repeat and chords come back after the lesson", state.live.nr && state.chordMode == "triad")
+        state.setLive { nr = false }; state.switchHold(false)
+
+        // note #18: chords keep the root on the bottom (G4 was D4 G4 B4), and a set never drifts across octaves
+        assertEquals(listOf(7, 11, 14), state.chordFor(7).toList())
+        state.pickChordMode("set:Sunday Pop"); settle()
+        assertEquals("the low C plays C", listOf(0, 4, 7), state.chordFor(0).toList())
+        assertEquals("the next C up plays C again (was G7)", listOf(12, 16, 19), state.chordFor(12).toList())
+        state.toggleKeyboard(0); settle()
+        at("chord-slots-0").assertExists()
+        shot("61-chord-set-slots")
+        val t0 = state.engine.triggers
+        at("chord-slots-0").performTouchInput { down(Offset(width * .3f, height * .25f)); up() }
+        settle(); state.engine.render(FloatArray(512), 256)
+        assertTrue("a slot plays its chord (${state.lastChord})", state.engine.triggers > t0 && state.lastChord.contains(" · "))
+        at("piano-up-0").performClick(); settle()
+        state.slotDown(0, 0, 1); state.slotUp(0, 0)
+        assertTrue("an octave up, slot 1 is C an octave up (${state.lastChord})", state.lastChord.startsWith("C ·") && state.lastChord.contains("C5"))
+        state.toggleKeyboard(0); state.pickChordMode("off"); settle()
+        // the Roll reaches C1 to C6, two octaves at a time
+        tab("Roll")
+        at("roll-octup").performClick(); settle()
+        assertEquals(0, state.rollLo)
+        at("roll-range").assertExists()
+        shot("62-roll-octave-up")
+        state.rollLo = -12
+        tab("Pads")
+
+        // note #18: Repeat has a quarter note
+        state.setLive { nrRate = 4.0 }; settle()
+        assertEquals("1/4", com.tideclock.messmachine.ui.rateName(state.live.nrRate))
+        state.setLive { nrRate = 1.0 }
+
+        // note #14: the empty pad's slash. Below it opens the jars, above it records
+        state.clearPad(15); settle()
+        at("pad-15").performTouchInput { down(Offset(width * .8f, height * .8f)); up() }
+        settle()
+        assertTrue("below the slash picks a sound", state.overlay is Overlay.Picker)
+        shot("63-empty-pad-picker")
+        state.overlay = null; settle()
+
+        // note #16: drag along a row of steps to paint it, one undo for the whole drag
+        tab("Steps")
+        val k = state.project.kit[0]
+        for (j in 0 until 16) if (state.project.pat().step(k, j)) state.paintStep(k, j, false, true)
+        settle()
+        at("steps-0").performTouchInput { down(Offset(width * .02f, height * .5f)); moveTo(Offset(width * .3f, height * .5f)); moveTo(Offset(width * .55f, height * .5f)); up() }
+        settle()
+        val painted = (0 until 16).count { state.project.pat().step(k, it) }
+        assertTrue("a drag paints the steps it crosses ($painted)", painted >= 8)
+        shot("64-steps-painted")
+        state.undo(); settle()
+        assertEquals("one undo takes the whole drag back", 0, (0 until 16).count { state.project.pat().step(k, it) })
+        tab("Pads")
+
+        // note #19: the MIDI map one at a time, and the list
+        state.switchMidiMap(true); settle()
+        at("midimap-one").performClick(); settle()
+        tapPad(0)
+        state.midiDown(80); state.midiUp(80); settle()
+        assertTrue("one at a time: the map waits for the next tap", state.midiCursor == null)
+        at("midimap-list").performClick(); settle()
+        at("midimap-x-n80").assertExists()
+        shot("65-midi-map-list")
+        at("midimap-x-n80").performClick(); settle()
+        assertFalse(state.midiNotes.containsKey(80))
+        at("midimap-run").performClick(); state.switchMidiMap(false); settle()
+
+        // note #16: the note box opens on the last kind sent, with big buttons, and the key card
+        rule.onNodeWithTag("notes").performClick(); settle()
+        at("notecat-feature").performClick(); settle()
+        at("notekey-open").performClick(); settle()
+        at("notekey-field").assertExists()
+        shot("66-notes-categories-and-key")
+        state.saveNote("feature", "", "Build 84 test note", false); settle()
+        assertEquals("feature", state.noteCat)
+        state.overlay = null; settle()
+    }
+
+    /** Menu's Move took over from hold-and-slide (build 84): Move, then tap the pad it goes to. */
+    @Test fun moveAPadOntoAnotherToSwap() {
         val a = state.project.kit[4]
         val b = state.project.kit[5]
         assertTrue(a.isNotEmpty() && b.isNotEmpty())
-        // hold pad 5 still until it arms, then slide onto pad 6 and lift
-        at("pad-4").performTouchInput { down(center) }
-        rule.mainClock.advanceTimeBy(800)
-        settle()
-        val to = rule.onNodeWithTag("pad-5").fetchSemanticsNode().let { it.positionInRoot + androidx.compose.ui.geometry.Offset(it.size.width / 2f, it.size.height / 2f) }
-        rule.onNodeWithTag("pad-4").performTouchInput { moveTo(to - rule.onNodeWithTag("pad-4").fetchSemanticsNode().positionInRoot); up() }
-        settle()
+        padMenuOf(4)
+        rule.onNodeWithTag("menu-move").performClick(); settle()
+        assertEquals(4, state.swapFrom)
+        tapPad(5)
         assertEquals("pad 5 now has pad 6's sound", b, state.project.kit[4])
         assertEquals("and pad 6 has pad 5's", a, state.project.kit[5])
-        assertEquals("no menu opened", -1, state.padMenu)
-        rule.onNodeWithTag("toast-undo").performClick()
-        settle()
+        assertEquals("the move is done", -1, state.swapFrom)
+        state.undo(); settle()
         assertEquals("Undo swaps them back", a, state.project.kit[4])
     }
 
@@ -1363,21 +1450,28 @@ class BigTest {
      * keys bar opens and shuts from its slim row, and the Synth tab picks which pad's synth it shows (note #12).
      */
     @Test fun midiMapMenuButtonAndKeysBar() {
-        // the slim keys bar is always on the Play tab; its button opens key, chords and Hold's settings
-        assertTrue("no Padiano yet: the bar is slim", !state.keysBarOpen)
+        // the bottom dock is always under the Play tab; its key button opens key, chords and Hold's settings
+        assertTrue("no Padiano yet: the panel is shut", !state.keysBarOpen)
         at("keysbar-open").performClick(); settle()
         rule.onNodeWithTag("pick-chord").assertExists()
         rule.onNodeWithTag("hold-up").assertExists()
-        at("keysbar-shut").performClick(); settle()
+        at("keysbar-open").performClick(); settle()
         assertTrue(!state.keysBarOpen)
-        // build 80's bug: with the dock open, Sample and Menu squeezed the bank numbers down to dots. Now the two pad
-        // buttons take their own row when it is narrow, and every bank number keeps its room
+        // Chords on the dock: one tap between chords and single notes, and it remembers which chords
+        state.pickChordMode("seventh"); settle()
+        at("chords-toggle").performClick(); settle()
+        assertEquals("off", state.chordMode)
+        at("chords-toggle").performClick(); settle()
+        assertEquals("back to 7ths", "seventh", state.chordMode)
+        state.pickChordMode("off"); settle()
+        // build 80's bug: with the dock open, Sample and Menu squeezed the bank numbers down to dots. Menu is on the
+        // bottom dock now, and every bank number keeps its room
         state.switchDockOpen(true); settle()
         val bankDp = rule.onNodeWithTag("bank-0").fetchSemanticsNode().size.width / rule.density.density
         assertTrue("bank buttons keep their numbers with the dock open ($bankDp dp wide)", bankDp >= 34f)
         shot("59-bank-row-dock-open")
         state.switchDockOpen(false); settle()
-        // Menu by the banks opens the picked pad's menu, whatever kind of pad it is
+        // Menu on the bottom dock opens the picked pad's menu, whatever kind of pad it is
         tapPad(1)
         rule.mainClock.advanceTimeBy(300); settle()
         at("open-padmenu").performClick(); settle()
@@ -1734,8 +1828,7 @@ class BigTest {
         waitFor("the save") { state.files.any { it.name == "Test mess" } }
         rule.onNodeWithTag("done").performClick()
         settle()
-        rule.onNodeWithTag("menu").performClick()
-        settle()
+        // the bug button sits by the tabs now, on every page (note #16)
         rule.onNodeWithTag("notes").performClick()
         settle()
         shot("16-notes")

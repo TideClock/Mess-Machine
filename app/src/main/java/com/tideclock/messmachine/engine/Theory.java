@@ -11,7 +11,8 @@ import java.util.TreeSet;
 public final class Theory {
     private Theory() {}
 
-    public static final int ROLL_HI = 12, ROLL_LO = -12;
+    /** The roll and the Padiano's keys: C1 to C6 (0 is C4). Build 84 widened it from C3 to C5 (note #18). */
+    public static final int ROLL_HI = 24, ROLL_LO = -36;
     public static final String[] NN = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
 
     public static final Map<String, int[]> SCALES = new LinkedHashMap<>();
@@ -42,7 +43,7 @@ public final class Theory {
     static {
         IVSUF.put("0,4,7", ""); IVSUF.put("0,3,7", "m"); IVSUF.put("0,3,6", "°"); IVSUF.put("0,4,8", "+"); IVSUF.put("0,7,12", "5");
         IVSUF.put("0,4,7,11", "maj7"); IVSUF.put("0,4,7,10", "7"); IVSUF.put("0,3,7,10", "m7"); IVSUF.put("0,3,6,10", "m7♭5");
-        IVSUF.put("0,3,7,11", "m(maj7)"); IVSUF.put("0,3,6,9", "°7"); IVSUF.put("0,4,8,11", "+maj7"); IVSUF.put("0,2,7", "sus2"); IVSUF.put("0,5,7", "sus4");
+        IVSUF.put("0,3,7,11", "m(maj7)"); IVSUF.put("0,3,6,9", "°7"); IVSUF.put("0,4,8,11", "+maj7"); IVSUF.put("0,2,7", "sus2"); IVSUF.put("0,5,7", "sus4"); IVSUF.put("0,12", " oct"); IVSUF.put("0,6,7", "sus♯4");
     }
 
     /** A chord set: eight chords, roots in semitones above the scale root, written in a home scale. */
@@ -96,7 +97,7 @@ public final class Theory {
 
     static int[] stripScale(String scale) { return scale.equals("Chromatic") ? SCALES.get("Major") : scale(scale); }
 
-    /** The keys strip: every in-scale note of the roll's two octaves. */
+    /** The keys strip: every in-scale note of the roll's range. */
     public static int[] stripNotes(String scale, int root) {
         int[] sc = stripScale(scale);
         List<Integer> out = new ArrayList<>();
@@ -118,26 +119,30 @@ public final class Theory {
     /** The chord a key plays before folding into the roll. mode: off, triad, seventh, power, or set:Name */
     static int[] chordRaw(int p, int idx, String mode, String scale, int root) {
         if (mode.equals("power")) return new int[]{p, p + 7, p + 12};
+        if (mode.equals("octave")) return new int[]{p, p + 12};
         if (mode.startsWith("set:")) {
+            // a fixed slot: idx = slot + set size * octave. Slot N is always the same chord, moved only by the
+            // mess's root and whole octaves, so a set never drifts across the keys (note #18)
             ChordSet set = CHORDSETS.get(mode.substring(4));
             if (set == null) return new int[]{p};
-            int j = ((idx % 8) + 8) % 8;
-            int base = (root > 5 ? root - 12 : root) + set.roots[j] + (idx >= 8 ? 12 : 0);
+            int n = set.roots.length, j = Math.floorMod(idx, n), o = Math.floorDiv(idx, n);
+            int base = rootBase(root) + set.roots[j] + 12 * o;
             int[] iv = QUAL.get(set.quals[j]), out = new int[iv.length];
             for (int k = 0; k < iv.length; k++) out[k] = base + iv[k];
             return out;
         }
-        if (mode.equals("triad") || mode.equals("seventh")) {
+        if (mode.equals("triad") || mode.equals("seventh") || mode.equals("sus")) {
+            // harmonizing the scale: scale notes n, n+2, n+4 (n+6 for a seventh; n+3, n+4 for 1-4-5, the sus sound)
             int[] sc = harmScale(scale);
             int n = sc.length, rel = pcOf(p - root), deg = -1;
             for (int k = 0; k < n; k++) if (sc[k] == rel) deg = k;
-            boolean sev = mode.equals("seventh");
+            boolean sev = mode.equals("seventh"), sus = mode.equals("sus");
             if (deg < 0) {
-                int[] iv = sev ? new int[]{0, 4, 7, 10} : new int[]{0, 4, 7}, out = new int[iv.length];
+                int[] iv = sev ? new int[]{0, 4, 7, 10} : sus ? new int[]{0, 5, 7} : new int[]{0, 4, 7}, out = new int[iv.length];
                 for (int k = 0; k < iv.length; k++) out[k] = p + iv[k];
                 return out;
             }
-            int[] stack = sev ? new int[]{0, 2, 4, 6} : new int[]{0, 2, 4}, out = new int[stack.length];
+            int[] stack = sev ? new int[]{0, 2, 4, 6} : sus ? new int[]{0, 3, 4} : new int[]{0, 2, 4}, out = new int[stack.length];
             int base = p - rel;
             for (int k = 0; k < stack.length; k++) { int j = deg + stack[k]; out[k] = base + sc[j % n] + 12 * (j / n); }
             return out;
@@ -145,23 +150,60 @@ public final class Theory {
         return new int[]{p};
     }
 
+    /**
+     * The chord a key plays: root on the bottom, never folded note by note (build 84, note #18). A chord that runs
+     * past the top or bottom of the range moves by whole octaves, so it keeps its shape.
+     */
     public static int[] chordOf(int p, int idx, String mode, String scale, int root) {
         if (mode.equals("off")) return new int[]{p};
         TreeSet<Integer> set = new TreeSet<>();
-        for (int x : chordRaw(p, idx, mode, scale, root)) set.add(foldP(x));
+        for (int x : chordRaw(p, idx, mode, scale, root)) set.add(x);
+        int shift = 0;
+        while (set.last() + shift > ROLL_HI && set.first() + shift - 12 >= ROLL_LO) shift -= 12;
+        while (set.first() + shift < ROLL_LO && set.last() + shift + 12 <= ROLL_HI) shift += 12;
         int[] r = new int[set.size()];
         int k = 0;
-        for (int x : set) r[k++] = x;
+        for (int x : set) r[k++] = x + shift;
         return r;
+    }
+
+    /** Where the mess's root sits for chord sets: C to F on C4 and up, F# to B just under it. */
+    public static int rootBase(int root) { return root > 5 ? root - 12 : root; }
+
+    /** How many chords a set mode has (0 when it is not a set). */
+    public static int setSize(String mode) {
+        if (!mode.startsWith("set:")) return 0;
+        ChordSet set = CHORDSETS.get(mode.substring(4));
+        return set == null ? 0 : set.roots.length;
+    }
+
+    /**
+     * A piano key's slot in a chord set: its place in the scale (first note of the scale is slot 1) plus whole
+     * sets per octave. The same key in every octave plays the same chord, an octave apart. Integer.MIN_VALUE for
+     * a key outside the scale or past the set's last chord.
+     */
+    public static int setIndexOfKey(int p, String mode, String scale, int root) {
+        int n = setSize(mode);
+        if (n == 0) return Integer.MIN_VALUE;
+        int[] sc = stripScale(scale);
+        int rel = pcOf(p - root), deg = -1;
+        for (int k = 0; k < sc.length; k++) if (sc[k] == rel) deg = k;
+        if (deg < 0 || deg >= n) return Integer.MIN_VALUE;
+        return deg + n * Math.floorDiv(p - rootBase(root), 12);
+    }
+
+    /** The name of slot j of a set, in the mess's root. */
+    public static String slotName(String mode, int j, int root) {
+        ChordSet set = CHORDSETS.get(mode.startsWith("set:") ? mode.substring(4) : mode);
+        if (set == null) return "";
+        int i = Math.floorMod(j, set.roots.length);
+        return NN[pcOf(root + set.roots[i])] + QSUF.get(set.quals[i]);
     }
 
     public static String chordLabel(int p, int idx, String mode, String scale, int root) {
         if (mode.equals("off")) return noteName(p);
         if (mode.startsWith("set:")) {
-            ChordSet set = CHORDSETS.get(mode.substring(4));
-            if (set == null) return noteName(p);
-            int j = ((idx % 8) + 8) % 8;
-            return NN[pcOf(root + set.roots[j])] + QSUF.get(set.quals[j]);
+            return CHORDSETS.get(mode.substring(4)) == null ? noteName(p) : slotName(mode, idx, root);
         }
         int[] t = chordRaw(p, idx, mode, scale, root);
         StringBuilder iv = new StringBuilder();
