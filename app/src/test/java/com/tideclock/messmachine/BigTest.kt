@@ -1383,7 +1383,7 @@ class BigTest {
         rule.mainClock.advanceTimeBy(600); settle()
         assertEquals(listOf("keys", "fx", "lfo"), state.packOf(1))
         at("lfo-wave-4-1").performClick(); settle()
-        at("lfo-rate-1").performTouchInput { down(Offset(width * (4.5f / 7f), height / 2)); up() }; settle()
+        at("lfo-rate-1").performTouchInput { down(Offset(width * (4.5f / 7f), height / 2f)); up() }; settle()
         at("lfo-trip-1").performClick(); settle()
         at("lfo-type-2-1").performClick(); settle()
         val lo = state.project.opt(1)
