@@ -254,8 +254,8 @@ private fun PitchWheel(state: AppState) {
 private fun DockFilter(state: AppState) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            UpSlider(state.dockCut, C.Teal, "dock-cut") { v, on -> if (v != null) state.dockCut = v; state.dockFilter(on) }
-            UpSlider(state.dockRes, C.Pink, "dock-res") { v, on -> if (v != null) state.dockRes = v; state.dockFilter(on) }
+            UpSlider(state.dockCut, C.Teal, "dock-cut") { v, on -> if (on) state.midiAim(com.tideclock.messmachine.MidiTarget("dock", 0, 0, "cut")); if (v != null) state.dockCut = v; state.dockFilter(on) }
+            UpSlider(state.dockRes, C.Pink, "dock-res") { v, on -> if (on) state.midiAim(com.tideclock.messmachine.MidiTarget("dock", 0, 0, "res")); if (v != null) state.dockRes = v; state.dockFilter(on) }
         }
         Row(Modifier.padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             T("C", size = 9.sp, color = C.Teal, family = Mono)

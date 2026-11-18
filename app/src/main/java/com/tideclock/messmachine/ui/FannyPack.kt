@@ -197,7 +197,10 @@ fun LfoStrip(state: AppState, pad: Int, col: Color) {
             }
         }
         // the rate strip: drag along it and it snaps at each mark; T and dot change the stop's feel
-        RateStrip(base, col, "lfo-rate-$pad") { b, done -> set(done) { lfoRate = b * feel; lfoOn = true } }
+        RateStrip(base, col, "lfo-rate-$pad") { b, done ->
+            state.midiAim(com.tideclock.messmachine.MidiTarget("lfo", pad, 0, "rate"))
+            set(done) { lfoRate = b * feel; lfoOn = true }
+        }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
             Btn("Straight", { set { lfoRate = base } }, on = feel == 1.0, onColor = C.Yellow, small = true, tight = true, tag = "lfo-straight-$pad")
             Btn("T", { set { lfoRate = base * 2 / 3 } }, on = feel < 1.0, onColor = C.Yellow, small = true, tag = "lfo-trip-$pad")
@@ -205,7 +208,7 @@ fun LfoStrip(state: AppState, pad: Int, col: Color) {
             androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
             Select("Moves: " + (LFO_TARGETS.firstOrNull { it.first == o.lfoTarget }?.second ?: "Filter"), LFO_TARGETS, { t -> set { lfoTarget = t; lfoOn = true } }, tag = "lfo-target-$pad")
         }
-        SliderRow("Depth", o.lfoDepth.toFloat(), 0f..1f, { "${(it * 100).toInt()}%" }, { v -> set(false) { lfoDepth = v.toDouble() } }, { set { } }, accent = col)
+        SliderRow("Depth", o.lfoDepth.toFloat(), 0f..1f, { "${(it * 100).toInt()}%" }, { v -> state.midiAim(com.tideclock.messmachine.MidiTarget("lfo", pad, 0, "depth")); set(false) { lfoDepth = v.toDouble() } }, { set { } }, accent = col)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp).tagged("lfotype-chips")) {
             T("FILTER", size = 11.sp, color = C.Dim, spacing = .1.em)
             for ((ty, n) in listOf(0 to "Off", 1 to "Lo", 2 to "Hi", 3 to "Band")) Btn(n, { set { lfoType = ty } }, on = o.lfoType == ty, onColor = C.Pink, small = true, tight = true, tag = "lfo-type-$ty-$pad")

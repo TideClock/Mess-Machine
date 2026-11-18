@@ -38,9 +38,9 @@ fun MidiMapPanel(state: AppState, modifier: Modifier = Modifier) {
             Btn("Done", { state.switchMidiMap(false) }, small = true, on = true, onColor = C.Teal, tag = "midimap-done")
         }
         T(
-            if (c == null) "Tap a pad, a Padiano key or a synth knob."
-            else if (c.kind == "knob") "Next: ${state.midiLabel(c)}. Turn a knob."
-            else "Next: ${state.midiLabel(c)}. Press a key.",
+            if (c == null) "Tap a pad, a Padiano key or chord box, or touch a knob, fader, the pitch wheel or the tempo. Buttons maps Play, Rec and more."
+            else if (c.kind in listOf("knob", "fx", "wheel", "dock", "lfo", "tempo")) "Next: ${state.midiLabel(c)}. Turn a knob or slider."
+            else "Next: ${state.midiLabel(c)}. Press a key or button.",
             size = 13.sp, color = C.Cream, lines = 2, modifier = Modifier.padding(top = 4.dp),
         )
         T(state.midiLast.ifEmpty { "${state.midiNotes.size} keys and ${state.midiKnobs.size} knobs mapped." }, size = 11.sp, color = C.Dim, lines = 2,
@@ -51,6 +51,14 @@ fun MidiMapPanel(state: AppState, modifier: Modifier = Modifier) {
             Btn("Run", { state.switchMidiRun(true) }, on = state.midiRun, onColor = C.Teal, small = true, tight = true, tag = "midimap-run")
             Btn("One at a time", { state.switchMidiRun(false) }, on = !state.midiRun, onColor = C.Teal, small = true, tight = true, tag = "midimap-one")
             Btn(if (list) "List ▴" else "List ▾", { list = !list }, on = list, small = true, tight = true, enabled = state.midiNotes.isNotEmpty() || state.midiKnobs.isNotEmpty(), tag = "midimap-list")
+        }
+        // round two: pages A to D (the same controller does other things on each), Shift's layer, and buttons
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            T("PAGE", size = 11.sp, color = C.Dim, spacing = .1.em)
+            for (p in 0 until 4) Btn("ABCD"[p].toString(), { state.midiPageTo(p) }, on = state.midiPage == p, onColor = C.Yellow, small = true, tag = "midimap-page-$p")
+            if (state.midiShift) T("⇧ SHIFT", size = 11.sp, color = C.Pink, family = Mono)
+            androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
+            Select("Buttons ▾", state.midiActs, { state.midiAimAct(it) }, tag = "midimap-acts")
         }
         if (list) MidiMapList(state)
     }
@@ -65,7 +73,7 @@ private fun MidiMapList(state: AppState) {
         for ((note, cc, t) in rows) {
             val code = note?.let { "n$it" } ?: "c$cc"
             Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                T(note?.let { com.tideclock.messmachine.engine.Theory.noteName(it - 60) } ?: "CC $cc", size = 12.sp, color = C.Yellow, family = Mono, lines = 1, modifier = Modifier.width(54.dp))
+                T(note?.let { state.midiKeyName(it, false) } ?: state.midiKeyName(cc ?: 0, true), size = 12.sp, color = C.Yellow, family = Mono, lines = 1, modifier = Modifier.width(70.dp))
                 T(state.midiLabel(t), size = 12.sp, color = C.Cream, lines = 1, modifier = Modifier.weight(1f))
                 Btn("Teach", { state.midiReteach(note, cc) }, small = true, tight = true, tag = "midimap-teach-$code")
                 Btn("✕", { state.midiForget(note, cc) }, small = true, tight = true, tier = Tier.Danger, tag = "midimap-x-$code")

@@ -190,6 +190,11 @@ class AppState(private val app: Context) {
     fun openPlay() { tab = if (playDesk) Tab.Console else Tab.Pads }
     var bank by mutableIntStateOf(project.sel / Project.BANK)
     var keysMode by mutableStateOf(false)
+    /**
+     * Step mode (Maschine and the drum machines): the 16 pads are the picked sound's 16 steps of the bar on screen.
+     * The bank numbers become bar numbers. Lit pads are steps that play.
+     */
+    var stepMode by mutableStateOf(false)
     var chordMode by mutableStateOf(prefs.getString("chord", "off") ?: "off")
     var noteLen by mutableIntStateOf(2)
     var page by mutableIntStateOf(0)
@@ -306,6 +311,7 @@ class AppState(private val app: Context) {
         if (chordMode != "off") { chordMode = "off"; version++ }
         keyboards.clear()
         keysMode = false
+        stepMode = false
         keysBarOpen = false
         swapFrom = -1
         rollLo = -12
@@ -798,6 +804,13 @@ class AppState(private val app: Context) {
         say("Tap the pad to move it to. A pad with a sound trades places with it.")
     }
 
+    /** Step mode: a pad flips its step of the bar on screen, for the picked sound. */
+    fun stepPadTap(d: Int) {
+        val k = selKey()
+        if (k.isEmpty()) { say("Pick a pad with a sound first (Pads), then Step."); return }
+        toggleStep(k, page * 16 + d)
+    }
+
     /** emptyTop: on an empty pad, whether the touch was above the slash (record) or below it (pick a sound). */
     fun padDown(d: Int, emptyTop: Boolean? = null) {
         if (midiMapOn) midiAim(MidiTarget("pad", d))
@@ -821,6 +834,7 @@ class AppState(private val app: Context) {
             melodicDown(kid, pad, ps)
             return
         }
+        if (stepMode) { stepPadTap(d); downIds[d] = -1; return }
         val i = bank * Project.BANK + d
         if (project.sel != i) { project.sel = i; selV++; scheduleSave() }
         if (project.kit[i].isEmpty()) {
@@ -864,9 +878,15 @@ class AppState(private val app: Context) {
     private val midiHeld = HashMap<Int, Int>()
     private val midiHeldT = HashMap<Int, MidiTarget>()
     fun midiDown(note: Int) {
-        if (midiMapOn) { midiLearnNote(note); return }
-        val t = midiNotes[note]
+        if (midiMapOn) {
+            // a key already taught Shift still works as Shift while mapping, so second jobs can be taught with it held
+            val ex = midiNotes[pageKey(note)]
+            if (ex != null && ex.kind == "act" && ex.id == "shift" && midiCursor?.kind != "act") { midiShift = true; midiHeldT[note] = ex; return }
+            midiLearnNote(note); return
+        }
+        val t = midiNotes[layerKey(note)] ?: midiNotes[pageKey(note)]
         if (t != null) { midiPlay(note, t); return }
+        if (midiPage != 0) return
         if (note in 36..51) { if (midiPadSounds(note - 36)) padDown(note - 36); return }
         val pad = project.sel
         if (project.kit[pad].isEmpty()) { say("MIDI: pick a pad with a sound first; keys play the selected pad."); return }
@@ -877,10 +897,13 @@ class AppState(private val app: Context) {
     }
     fun midiUp(note: Int) {
         val t = midiHeldT.remove(note)
-        if (t != null) { if (t.kind == "pad") padUp(t.a) else if (t.kind == "key") pianoUp(t.a, t.b); return }
+        if (t != null) {
+            when (t.kind) { "pad" -> padUp(t.a); "key" -> pianoUp(t.a, t.b); "slot" -> slotUp(t.a, t.b); "act" -> if (t.id == "shift") midiShift = false }
+            return
+        }
         val kid = midiHeld.remove(note)
         if (kid != null) { melodicUp(kid); return }
-        if (midiMapOn || midiNotes.containsKey(note)) return
+        if (midiMapOn || midiNotes.containsKey(layerKey(note)) || midiNotes.containsKey(pageKey(note)) || midiPage != 0) return
         if (note in 36..51) padUp(note - 36)
     }
 
@@ -895,8 +918,69 @@ class AppState(private val app: Context) {
         when (t.kind) {
             "pad" -> if (midiPadSounds(t.a)) { midiHeldT[note] = t; padDown(t.a) }
             "key" -> if (project.kit.getOrNull(t.a).orEmpty().isNotEmpty()) { midiHeldT[note] = t; pianoDown(t.a, t.b) }
+            "slot" -> if (project.kit.getOrNull(t.a).orEmpty().isNotEmpty()) { midiHeldT[note] = t; slotDown(t.a, t.b, Math.floorDiv(padianoBase[t.a] ?: 0, 12)) }
+            "act" -> { midiHeldT[note] = t; midiAct(t.id) }
         }
     }
+
+    /* ---------------- MIDI round two: buttons, pages, Shift, and knobs for more than synths ---------------- */
+
+    /** MIDI map pages A to D (Tyler's banks): the same controller keys and knobs do other things on each page. */
+    var midiPage by mutableIntStateOf(0)
+        private set
+    /** A controller button taught Shift is down: keys and knobs play their second job (or their first, if none). */
+    var midiShift by mutableStateOf(false)
+        private set
+    private fun pageKey(n: Int) = midiPage * 2 * 128 + n
+    private fun layerKey(n: Int) = (midiPage * 2 + (if (midiShift) 1 else 0)) * 128 + n
+
+    fun midiPageTo(p: Int) { midiPage = p.coerceIn(0, 3); midiLast = "Page ${"ABCD"[midiPage]}."; if (!midiMapOn) say("MIDI page ${"ABCD"[midiPage]}") }
+
+    /** What a key's or knob's place on the map reads as: "C5", "B·C5" on page B, "C5 ⇧" with Shift. */
+    fun midiKeyName(k: Int, cc: Boolean): String {
+        val layer = k / 128
+        val n = k % 128
+        return (if (layer / 2 > 0) "${"ABCD"[layer / 2]}·" else "") + (if (cc) "CC $n" else Theory.noteName(n - 60)) + if (layer % 2 == 1) " ⇧" else ""
+    }
+
+    /** The buttons a controller key or button can press. */
+    val midiActs = listOf(
+        "play" to "Play / pause", "stop" to "Stop", "rec" to "Rec", "undo" to "Undo", "hold" to "Hold", "repeat" to "Repeat",
+        "chords" to "Chords on or off", "pack" to "Pack (the picked pad)", "bank0" to "Bank 1", "bank1" to "Bank 2", "bank2" to "Bank 3",
+        "bank3" to "Bank 4", "nextloop" to "Next loop", "pageA" to "Map page A", "pageB" to "Map page B", "pageC" to "Map page C",
+        "pageD" to "Map page D", "shift" to "Shift (held)", "octup" to "Padiano octave up", "octdown" to "Padiano octave down",
+    )
+
+    /** A mapped button pressed. */
+    fun midiAct(id: String) {
+        notes.trail("midi act $id")
+        when (id) {
+            "play" -> togglePlay()
+            "stop" -> stop()
+            "rec" -> setLive { rec = !rec }
+            "undo" -> undo()
+            "hold" -> switchHold()
+            "repeat" -> setLive { nr = !nr }
+            "chords" -> toggleChords()
+            "pack" -> togglePack(project.sel)
+            "nextloop" -> selectSlot((project.cur + 1) % Project.LETTERS.length)
+            "shift" -> midiShift = true
+            "octup" -> shiftPadiano(project.sel, 12)
+            "octdown" -> shiftPadiano(project.sel, -12)
+            else -> when {
+                id.startsWith("bank") -> id.removePrefix("bank").toIntOrNull()?.let { bank = it.coerceIn(0, 3) }
+                id.startsWith("page") -> midiPageTo("ABCD".indexOf(id.removePrefix("page")))
+            }
+        }
+    }
+
+    /** The map's Buttons picker: the next controller key or button presses this. */
+    fun midiAimAct(id: String) { if (midiMapOn) { midiCursor = MidiTarget("act", 0, 0, id); midiLastCc = -1 } }
+
+    /** Pitch bend from the controller's wheel moves the dock's pitch wheel (no mapping needed). */
+    fun midiBend(v: Float) = pitchWheel(v, kotlin.math.abs(v) > .01f)
+
+    private val midiCcLast = HashMap<Int, Int>()
 
     /* ---------------- MIDI map: teach a controller which pad, key or knob each of its keys and knobs plays ---------------- */
 
@@ -928,7 +1012,7 @@ class AppState(private val app: Context) {
         if (note != null) midiNotes.remove(note)
         if (cc != null) midiKnobs.remove(cc)
         saveMidiMap()
-        midiLast = if (note != null) "${Theory.noteName(note - 60)} is off the map." else "CC $cc is off the map."
+        midiLast = if (note != null) "${midiKeyName(note, false)} is off the map." else "${midiKeyName(cc ?: 0, true)} is off the map."
     }
 
     /** Teach one target again: it comes off the map and the next key or knob lands on it. */
@@ -937,7 +1021,7 @@ class AppState(private val app: Context) {
         midiForget(note, cc)
         midiCursor = t
         midiLastCc = -1
-        midiLast = if (t.kind == "knob") "Turn the knob for ${midiLabel(t).replaceFirstChar { it.lowercase() }}." else "Press the key for ${midiLabel(t).replaceFirstChar { it.lowercase() }}."
+        midiLast = if (cc != null) "Turn the knob for ${midiLabel(t).replaceFirstChar { it.lowercase() }}." else "Press the key for ${midiLabel(t).replaceFirstChar { it.lowercase() }}."
     }
 
     init {
@@ -980,13 +1064,20 @@ class AppState(private val app: Context) {
     fun midiLabel(t: MidiTarget): String = when (t.kind) {
         "pad" -> "Pad ${bank * Project.BANK + t.a + 1}"
         "key" -> "Pad ${t.a + 1}, key ${Theory.noteName(t.b)}"
+        "slot" -> "Pad ${t.a + 1}, chord ${t.b + 1}"
+        "act" -> midiActs.firstOrNull { it.first == t.id }?.second ?: t.id
+        "fx" -> "Pad ${t.a + 1}, ${FX_STRIP.firstOrNull { it.first == t.b }?.second ?: "FX"} fader"
+        "wheel" -> "the pitch wheel"
+        "dock" -> "the dock's " + (if (t.id == "res") "resonance" else "filter")
+        "lfo" -> "Pad ${t.a + 1}, LFO " + (if (t.id == "rate") "rate" else "depth")
+        "tempo" -> "the tempo"
         else -> "Pad ${t.a + 1}, ${synthOn(t.a)?.kind?.params?.firstOrNull { it.id == t.id }?.name ?: t.id} knob"
     }
 
     /** The controller key or knob mapped to a target, as text ("C5", "CC 74"), or "" when nothing is. */
     fun midiMappedTo(t: MidiTarget): String =
-        if (t.kind == "knob") midiKnobs.entries.firstOrNull { it.value == t }?.let { "CC ${it.key}" }.orEmpty()
-        else midiNotes.entries.firstOrNull { it.value == t }?.let { Theory.noteName(it.key - 60) }.orEmpty()
+        midiNotes.entries.firstOrNull { it.value == t }?.let { midiKeyName(it.key, false) }
+            ?: midiKnobs.entries.firstOrNull { it.value == t }?.let { midiKeyName(it.key, true) } ?: ""
 
     /** The synth knobs of a pad in the order the Synth tab shows them (Simple shows fewer). */
     private fun midiKnobOrder(pad: Int): List<String> {
@@ -998,6 +1089,8 @@ class AppState(private val app: Context) {
 
     /** One step on: the pad to the right (then the next row down), the next key up, the next knob. */
     private fun midiNext(c: MidiTarget): MidiTarget? = when (c.kind) {
+        "act", "fx", "wheel", "dock", "lfo", "tempo" -> null
+        "slot" -> if (c.b + 1 < Theory.setSize(chordMode)) c.copy(b = c.b + 1) else null
         "pad" -> if (c.a < Project.BANK - 1) c.copy(a = c.a + 1) else null
         "key" -> {
             var p = c.b + 1
@@ -1013,13 +1106,14 @@ class AppState(private val app: Context) {
         val c = midiCursor
         if (c == null) { midiLast = "Tap a pad, a Padiano key or a synth knob first."; return }
         if (c.kind == "knob") { midiLast = "A knob wants a knob or slider. For keys, tap a pad or a Padiano key."; return }
-        // one job per controller key: the newest wins
-        midiNotes[note] = c
+        if (c.kind != "pad" && c.kind != "key" && c.kind != "slot" && c.kind != "act") { midiLast = "That one wants a knob or slider. For keys, tap a pad, a Padiano key or a chord box."; return }
+        // one job per controller key (per page, and per Shift): the newest wins
+        midiNotes[layerKey(note)] = c
         saveMidiMap()
         midiLast = "${Theory.noteName(note - 60)} now plays ${midiLabel(c).replaceFirstChar { it.lowercase() }}."
         notes.trail("midi map note $note to ${c.code()}")
-        // hear what it landed on (an empty pad would open the jars, so that one stays quiet)
-        midiPlay(note, c)
+        // hear what it landed on (an empty pad would open the jars, so that one stays quiet; a button is not pressed)
+        if (c.kind != "act") midiPlay(note, c)
         midiCursor = if (midiRun) midiNext(c) else null
         if (!midiRun) midiLast += " Tap the next one."
         else if (midiCursor == null) midiLast += " That was the last one: tap somewhere else to go on."
@@ -1029,25 +1123,47 @@ class AppState(private val app: Context) {
     fun midiCc(cc: Int, value: Int) {
         if (midiMapOn) {
             // the knob just mapped keeps sending as it turns: that moves its synth knob, it does not map the next one
-            if (cc == midiLastCc) { midiKnobs[cc]?.let { midiTurn(it, value) }; return }
+            if (cc == midiLastCc) { midiKnobs[layerKey(cc)]?.let { midiTurn(it, value, cc) }; return }
             val c = midiCursor
-            if (c == null || c.kind != "knob") { midiLast = "To map a knob or slider, tap a synth knob on the Synth tab first."; return }
-            midiKnobs[cc] = c
+            if (c == null || c.kind == "pad" || c.kind == "key" || c.kind == "slot") { midiLast = "To map a knob or slider, touch what it should turn first: a synth knob, an FX fader, the pitch wheel, the dock's filter, the LFO's rate or depth, or the tempo."; return }
+            midiKnobs[layerKey(cc)] = c
             saveMidiMap()
             midiLastCc = cc
             midiLast = "CC $cc now turns ${midiLabel(c).replaceFirstChar { it.lowercase() }}."
             notes.trail("midi map cc $cc to ${c.code()}")
-            midiTurn(c, value)
+            midiTurn(c, value, cc)
             midiCursor = if (midiRun) midiNext(c) else null
             return
         }
-        midiKnobs[cc]?.let { midiTurn(it, value) }
+        (midiKnobs[layerKey(cc)] ?: midiKnobs[pageKey(cc)])?.let { midiTurn(it, value, cc) }
     }
 
-    private fun midiTurn(t: MidiTarget, value: Int) {
-        val sp = synthOn(t.a) ?: return
-        val pm = sp.kind.params.firstOrNull { it.id == t.id } ?: return
-        setSynth(t.a, t.id, pm.fromKnob(value.coerceIn(0, 127) / 127.0), false)
+    /** A mapped knob or slider moved: what it turns (CC roll out, note #19 and Tyler's Nov 16 answer). */
+    private fun midiTurn(t: MidiTarget, value: Int, cc: Int = -1) {
+        val v = value.coerceIn(0, 127) / 127f
+        when (t.kind) {
+            "fx" -> { fxSend["${t.a}:${t.b}"] = v; engine.mod(t.a, t.b, v) }
+            "wheel" -> pitchWheel((value - 64) / 63f, value != 64)
+            "dock" -> { if (t.id == "res") dockRes = v else dockCut = v; dockFilter(true) }
+            "lfo" -> if (t.id == "rate") {
+                val stops = com.tideclock.messmachine.ui.LFO_STOPS
+                val st = stops[(v * stops.size).toInt().coerceIn(0, stops.size - 1)].first
+                val feel = com.tideclock.messmachine.ui.lfoParts(project.opt(t.a).lfoRate).second
+                setPadOpt(t.a, false) { lfoRate = st * feel; lfoOn = true }
+            } else setPadOpt(t.a, false) { lfoDepth = v.toDouble() }
+            "tempo" -> edit(false) { bpm = 60 + Math.round(v * 120) }
+            "act" -> {
+                val last = midiCcLast[cc] ?: 0
+                midiCcLast[cc] = value
+                if (t.id == "shift") midiShift = value >= 64
+                else if (value >= 64 && last < 64) midiAct(t.id)
+            }
+            else -> {
+                val sp = synthOn(t.a) ?: return
+                val pm = sp.kind.params.firstOrNull { it.id == t.id } ?: return
+                setSynth(t.a, t.id, pm.fromKnob(v.toDouble()), false)
+            }
+        }
     }
 
     fun midiClearAll() {
@@ -1710,6 +1826,7 @@ class AppState(private val app: Context) {
     /** A chord set's slot played from the Padiano's slot row. j is the slot, oct whole octaves from the Padiano. */
     fun slotDown(pad: Int, j: Int, oct: Int) {
         if (project.kit[pad].isEmpty()) return
+        if (midiMapOn) midiAim(MidiTarget("slot", pad, j))
         val n = Theory.setSize(chordMode)
         if (n == 0 || j !in 0 until n) return
         val idx = j + n * oct
@@ -2461,6 +2578,7 @@ class AppState(private val app: Context) {
     val fxSend = mutableStateMapOf<String, Float>()
 
     fun fxSendTo(pad: Int, t: Int, v: Float, on: Boolean) {
+        if (midiMapOn && on) midiAim(MidiTarget("fx", pad, t))
         val x = v.coerceIn(0f, 1f)
         fxSend["$pad:$t"] = x
         engine.mod(pad, t, x)
@@ -2522,6 +2640,7 @@ class AppState(private val app: Context) {
 
     /** Bend with the wheel: v -1..1 while the finger is on it; on lift it springs back to 0. Recorded like XY pitch. */
     fun pitchWheel(v: Float, on: Boolean) {
+        if (midiMapOn && on) midiAim(MidiTarget("wheel", 0))
         wheelAt = if (on) v.coerceIn(-1f, 1f) else 0f
         val semis = wheelAt * wheelRange
         val pads = if (wheelAll) (0 until Project.NPADS).filter { project.kit[it].isNotEmpty() } else listOf(project.sel)
