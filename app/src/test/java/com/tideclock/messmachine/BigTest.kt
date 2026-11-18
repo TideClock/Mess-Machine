@@ -1360,6 +1360,91 @@ class BigTest {
         state.overlay = null; settle()
     }
 
+    /** The FannyPack, the FX strip, Steps row tools and the pitch wheel (the build after 84). */
+    @Test fun fannyPackFxStripRowToolsAndWheel() {
+        val T_RVB = com.tideclock.messmachine.engine.Engine.T_RVB
+        // Pack on the bottom dock opens the picked pad's FannyPack under its row, with Keys in it
+        tapPad(1); rule.mainClock.advanceTimeBy(300); settle()
+        at("pack-toggle").performClick(); settle()
+        assertTrue("the pack is open", 1 in state.keyboards)
+        assertEquals(listOf("keys"), state.packOf(1))
+        at("piano-keys-1").assertExists()
+        // + packs the FX strip; a fader sets the pad's reverb send and it stays there
+        at("pack-add-1").performClick(); settle()
+        rule.onNodeWithTag("pack-pick-fx").performClick(); settle()
+        rule.mainClock.advanceTimeBy(600); settle()
+        assertEquals(listOf("keys", "fx"), state.packOf(1))
+        at("fx-$T_RVB-1").performTouchInput { down(Offset(width / 2f, height * .2f)); up() }
+        settle()
+        assertTrue("the reverb send stays up (${state.fxSend["1:$T_RVB"]})", (state.fxSend["1:$T_RVB"] ?: 0f) > .6f)
+        // the LFO strip: a square wave at 1/8 triplet through a high pass
+        at("pack-add-1").performClick(); settle()
+        rule.onNodeWithTag("pack-pick-lfo").performClick(); settle()
+        rule.mainClock.advanceTimeBy(600); settle()
+        assertEquals(listOf("keys", "fx", "lfo"), state.packOf(1))
+        at("lfo-wave-4-1").performClick(); settle()
+        at("lfo-rate-1").performTouchInput { down(Offset(width * (4.5f / 7f), height / 2)); up() }; settle()
+        at("lfo-trip-1").performClick(); settle()
+        at("lfo-type-2-1").performClick(); settle()
+        val lo = state.project.opt(1)
+        assertTrue("the LFO is on, square, 1/8 triplet, high pass (${lo.lfoCode()})", lo.lfoOn && lo.lfoWave == 4 && kotlin.math.abs(lo.lfoRate - 4.0 / 3) < 1e-6 && lo.lfoType == 2)
+        state.engine.play(); for (i in 0 until 40) state.engine.render(FloatArray(512), 256)
+        assertTrue("the square wave is moving (${state.engine.lfoValue(1)})", kotlin.math.abs(state.engine.lfoValue(1)) > .99)
+        state.engine.stop(); state.engine.render(FloatArray(512), 256)
+        at("lfostrip-1").assertExists()
+        shot("67b-lfo-strip")
+        // tap Keys on the zipper: that strip hides, the FX strip stays
+        at("pack-show-keys-1").performClick(); settle()
+        rule.onNodeWithTag("piano-keys-1").assertDoesNotExist()
+        at("fxstrip-1").assertExists()
+        shot("67-fannypack-fx-strip")
+        // the pull zips it shut; the pad keeps what is packed for next time
+        at("pack-pull-1").performClick(); settle()
+        assertFalse(1 in state.keyboards)
+        assertEquals(listOf("keys", "fx", "lfo"), state.packOf(1))
+        state.fxSendsOff(1)
+        state.setPadOpt(1) { lfoOn = false }
+        // Repeat's feel: the same note, triplet
+        state.switchDockOpen(true); settle()
+        at("dock-rate").performClick(); settle()
+        rule.onNodeWithTag("feel-trip").performClick(); settle()
+        assertEquals("1/16T", com.tideclock.messmachine.ui.rateName(state.live.nrRate))
+        state.setLive { nrRate = 1.0 }
+        state.switchDockOpen(false); settle()
+
+        // Steps row tools: every 4, nudge, copy and paste, spread
+        tab("Steps")
+        val k0 = state.project.kit[0]
+        state.openStepStrip(0); settle()
+        at("row-every4").performClick(); settle()
+        assertEquals(listOf(0, 4, 8, 12), (0 until 16).filter { state.project.pat().step(k0, it) })
+        at("row-right").performClick(); settle()
+        assertEquals(listOf(1, 5, 9, 13), (0 until 16).filter { state.project.pat().step(k0, it) })
+        at("row-copy").performClick(); settle()
+        shot("68-steps-row-tools")
+        val k1 = state.project.kit[1]
+        state.openStepStrip(1); settle()
+        at("row-paste").performClick(); settle()
+        assertEquals(listOf(1, 5, 9, 13), (0 until 16).filter { state.project.pat().step(k1, it) })
+        at("row-spread").performClick(); settle()
+        assertEquals("3 hits spread over the bar", 3, (0 until 16).count { state.project.pat().step(k1, it) })
+        state.openStepStrip(1); settle()
+        tab("Pads")
+
+        // the pitch wheel on the dock: bends the picked pad while held, springs back on lift
+        state.switchDockOpen(true); settle()
+        assertTrue("the wheel joined the dock", "pitch" in state.dockItems)
+        at("dock-pitch").performTouchInput { down(Offset(width / 2f, height * .05f)) }
+        settle(); state.engine.render(FloatArray(512), 256)
+        assertTrue("held near the top it bends up (${state.wheelAt})", state.wheelAt > .8f)
+        assertTrue("the picked pad plays higher (${state.engine.padRate(state.project.sel)})", state.engine.padRate(state.project.sel) > 1.05)
+        shot("69-pitch-wheel")
+        rule.onNodeWithTag("dock-pitch").performTouchInput { up() }
+        settle(); state.engine.render(FloatArray(512), 256)
+        assertEquals("it springs back", 0f, state.wheelAt)
+        state.switchDockOpen(false); settle()
+    }
+
     /** Menu's Move took over from hold-and-slide (build 84): Move, then tap the pad it goes to. */
     @Test fun moveAPadOntoAnotherToSwap() {
         val a = state.project.kit[4]

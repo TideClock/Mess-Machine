@@ -50,8 +50,8 @@ data class Module(
     }
 }
 
-/** What a FannyPack can hold, in the order the strips stack (build 85). LFO comes with build 86. */
-val PACK_STRIPS = listOf("keys" to "Keys", "fx" to "FX", "xy" to "XY")
+/** What a FannyPack can hold, in the order the strips stack. */
+val PACK_STRIPS = listOf("keys" to "Keys", "fx" to "FX", "lfo" to "LFO", "xy" to "XY")
 
 /** The FX strip's faders: live sends on the pad, the same targets XY and recorded moves use. */
 val FX_STRIP = listOf(

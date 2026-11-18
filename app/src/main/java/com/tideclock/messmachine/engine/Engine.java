@@ -24,7 +24,7 @@ public final class Engine {
     /** Toggles that live on the transport, not in the saved mess. */
     public static final class Live {
         public boolean click, rec, nr;
-        public double nrRate = 1;      // steps between repeats: 2 = 1/8, 1 = 1/16, 0.5 = 1/32
+        public double nrRate = 1;      // steps between repeats: 4 = 1/4, 2 = 1/8, 1 = 1/16, 0.5 = 1/32; x 2/3 triplet, x 1.5 dotted
         public String arp = "rep";     // rep, up, down, updown, rand
         /** SE-6: how repeat plays each hit. "cut" stops it before the next, "ring" lets it play out, "flow" plays it once and pulses its volume. */
         public String nrStyle = "cut";
@@ -381,6 +381,7 @@ public final class Engine {
         if (rvbIn.length < frames * 2) { rvbIn = new float[frames * 2]; echoIn = new float[frames * 2]; }
         java.util.Arrays.fill(rvbIn, 0, frames * 2, 0f);
         java.util.Arrays.fill(echoIn, 0, frames * 2, 0f);
+        lfoBlock(S);
         padFilters(frames);
         padBlock(S, frames);
         int done = 0;
@@ -412,16 +413,77 @@ public final class Engine {
 
     private void padFilters(int frames) {
         for (int p = 0; p < 64; p++) {
-            if (!pfOn[p] && pfTarget[p] >= 19999 && pfQT[p] <= .71) continue;
+            if (!lfoFilt[p] && !pfOn[p] && pfTarget[p] >= 19999 && pfQT[p] <= .71) continue;
             double g = 1 - Math.exp(-frames / ((pfSlow[p] ? .12 : .025) * rate));
             pfFreq[p] += (pfTarget[p] - pfFreq[p]) * g;
             pfQ[p] += (pfQT[p] - pfQ[p]) * g;
-            if (pfFreq[p] >= 19900 && pfTarget[p] >= 19999) { pfFreq[p] = 20000; pfQ[p] = .7; pfOn[p] = false; continue; }
+            if (!lfoFilt[p] && pfFreq[p] >= 19900 && pfTarget[p] >= 19999) { pfFreq[p] = 20000; pfQ[p] = .7; pfOn[p] = false; continue; }
             double f = Math.min(pfFreq[p], rate * .45), w = 2 * Math.PI * f / rate, cs = Math.cos(w), al = Math.sin(w) / (2 * pfQ[p]), a0 = 1 + al;
             float[] c = pfC[p];
-            c[0] = (float) ((1 - cs) / 2 / a0); c[1] = (float) ((1 - cs) / a0); c[2] = c[0];
+            int ty = lfoFilt[p] ? pfType[p] : 1;
+            if (ty == 2) { c[0] = (float) ((1 + cs) / 2 / a0); c[1] = (float) (-(1 + cs) / a0); c[2] = c[0]; }
+            else if (ty == 3) { c[0] = (float) (al / a0); c[1] = 0f; c[2] = -c[0]; }
+            else { c[0] = (float) ((1 - cs) / 2 / a0); c[1] = (float) ((1 - cs) / a0); c[2] = c[0]; }
             c[3] = (float) (-2 * cs / a0); c[4] = (float) ((1 - al) / a0);
             pfOn[p] = true;
+        }
+    }
+
+    /* ---------- the LFO strip: one slow wave per pad (the build after 84) ---------- */
+
+    private final double[] lfoV = new double[64], lfoRandV = new double[64];
+    private final long[] lfoRandCyc = new long[64], padLast = new long[64];
+    private final boolean[] lfoFilt = new boolean[64];
+    private final int[] pfType = new int[64];
+
+    /** The LFO's wave right now on a pad, -1..1 (0 when it is off), for tests and the strip's light. */
+    public double lfoValue(int pad) { return pad >= 0 && pad < 64 ? lfoV[pad] : 0; }
+    /** The pad's filter cutoff in Hz right now (20000 when open), for tests. */
+    public double padCutoff(int pad) { return pad >= 0 && pad < 64 && (pfOn[pad] || lfoFilt[pad]) ? pfFreq[pad] : 20000; }
+
+    /** One wave value: ph 0..1 through the cycle. */
+    static double lfoWave(int wave, double ph, long cyc, int pad) {
+        switch (wave) {
+            case 1: return 1 - 4 * Math.abs(ph - .5);
+            case 2: return 2 * ph - 1;
+            case 3: return 1 - 2 * ph;
+            case 4: return ph < .5 ? 1 : -1;
+            case 5: { long h = cyc * 0x9E3779B97F4A7C15L ^ (pad * 0xBF58476D1CE4E5B9L); h ^= h >>> 31; h *= 0x94D049BB133111EBL; h ^= h >>> 29; return (h & 0xFFFF) / 32767.5 - 1; }
+            default: return Math.sin(2 * Math.PI * ph);
+        }
+    }
+
+    /**
+     * Each block: every pad with its LFO on gets its wave value, and the strip's filter (low, high or band pass) is set
+     * straight from it, with no glide, so a 1/32 wub stays sharp. The wave runs with the loop (it counts from the top of
+     * the loop while playing, from the clock while stopped), or restarts on every hit.
+     */
+    private void lfoBlock(Snapshot S) {
+        if (S == null) return;
+        double spbF = spbNow > 0 ? spbNow : spb(S);
+        double pos = playing ? step - (nextStepAt - frame) / spbF : frame / spbF;
+        for (int p = 0; p < 64; p++) {
+            PadSlot ps = S.pads[p];
+            PadOpts o = ps != null ? ps.opts : null;
+            if (o == null || !o.lfoOn) {
+                lfoV[p] = 0;
+                if (lfoFilt[p]) { lfoFilt[p] = false; pfType[p] = 1; pfTarget[p] = 20000; pfQT[p] = .7; pfSlow[p] = true; }
+                continue;
+            }
+            double per = Math.max(.125, o.lfoRate);
+            double x = (o.lfoRetrig ? (frame - padLast[p]) / spbF : pos) / per;
+            long cyc = (long) Math.floor(x);
+            double v = lfoWave(o.lfoWave, x - cyc, cyc, p);
+            lfoV[p] = v;
+            if (o.lfoType > 0) {
+                double c = o.lfoCut, r = o.lfoRes;
+                if (o.lfoTarget == T_FILTER) c += o.lfoDepth * .5 * v;
+                if (o.lfoTarget == T_RES) r += o.lfoDepth * .5 * (v + 1);
+                c = Math.max(0, Math.min(1, c)); r = Math.max(0, Math.min(1, r));
+                double f = 40 * Math.pow(18000.0 / 40, c);
+                pfType[p] = o.lfoType; pfTarget[p] = f; pfFreq[p] = f; pfQT[p] = .7 + r * 12; pfQ[p] = pfQT[p]; pfSlow[p] = false;
+                lfoFilt[p] = true;
+            } else if (lfoFilt[p]) { lfoFilt[p] = false; pfType[p] = 1; pfTarget[p] = 20000; pfQT[p] = .7; pfSlow[p] = true; }
         }
     }
 
@@ -586,7 +648,7 @@ public final class Engine {
             for (int p : pitches) {
                 Voice v = trigger(ps, oct() * Math.pow(2, p / 12.0), 0, false, g, 0, h.holdV);
                 if (v == null) continue;
-                if (h.flow) { v.flow = true; v.pulseAt = frame; v.pulseLen = Math.round(Math.max(.5, L.nrRate) * spb(S)); }
+                if (h.flow) { v.flow = true; v.pulseAt = frame; v.pulseLen = Math.round(Math.max(.25, L.nrRate) * spb(S)); }
                 // Hold keeps a one-shot going: loop its trim, or freeze its tail
                 if (!Double.isNaN(from)) glide(v, from + (p - pitches[0]) - p, gT);
                 String hm = ps.edit.held;
@@ -601,7 +663,7 @@ public final class Engine {
         if (h.beat && !playing && !beatOn) { beatOn = true; beatNextAt = frame + 4 * spb(S); }
         if (L.nr && !playing && !freeOn) {
             freeOn = true;
-            freeNextAt = frame + Math.max(.5, L.nrRate) * spb(S);
+            freeNextAt = frame + Math.max(.25, L.nrRate) * spb(S);
             // the press itself was repeat 0 (an arpeggio plays its first note now, as repeat 0)
             nrFreeI = arpLive ? 0 : 1;
             if (arpLive) nrFree(S);
@@ -649,11 +711,11 @@ public final class Engine {
     private void fireFree(Snapshot S) {
         if (!S.live.nr || held.isEmpty()) { freeOn = false; return; }
         nrFree(S);
-        freeNextAt += Math.max(.5, S.live.nrRate) * spb(S);
+        freeNextAt += Math.max(.25, S.live.nrRate) * spb(S);
     }
 
     private void nrFree(Snapshot S) {
-        double dur = Math.max(.5, S.live.nrRate) * spb(S) / rate * .9;
+        double dur = Math.max(.25, S.live.nrRate) * spb(S) / rate * .9;
         // the pattern's rests: nothing new starts (cut notes have already stopped, ring and flow notes play on)
         if (!S.live.patOn(nrFreeI++)) return;
         if (!"rep".equals(S.live.arp)) {
@@ -662,7 +724,7 @@ public final class Engine {
         }
         boolean ring = "ring".equals(S.live.nrStyle);
         for (Held h : held.values()) {
-            if (h.flow) { pulse(h, 0, Math.round(Math.max(.5, S.live.nrRate) * spb(S))); continue; }
+            if (h.flow) { pulse(h, 0, Math.round(Math.max(.25, S.live.nrRate) * spb(S))); continue; }
             float g = Theory.chordGain(h.pitches.length);
             for (int p : h.pitches) trigger(h.pad, oct() * Math.pow(2, p / 12.0), ring ? 0 : dur, !ring && (h.mel || p != 0), g, 0, false);
         }
@@ -747,10 +809,13 @@ public final class Engine {
         Live L = S.live;
         if (L.click && s % 4 == 0) { Voice cv = trigger(s == 0 ? clickHiSlot : clickLoSlot, 1, 0, false, 1f, delay, false, false); if (cv != null) cv.dry = true; }
         if (L.nr && !held.isEmpty()) {
-            double every = L.nrRate;
-            if (every >= 1 ? s % (int) every == 0 : true) {
-                nrTick(S, delay, s, pi, false, every, spb);
-                if (every < 1) nrTick(S, delay + Math.round(spb / 2), s, pi, true, every, spb);
+            // any rate, straight, triplet or dotted: repeat m falls at m x rate steps from the top of the loop, so a
+            // triplet lands between the sixteenths at its exact time (note #18). Straight rates fire as before.
+            double every = Math.max(.25, L.nrRate);
+            long m0 = (long) Math.ceil(s / every - 1e-9);
+            for (long m = m0; m * every < s + 1 - 1e-9; m++) {
+                double off = m * every - s;
+                nrTick(S, delay + Math.round(off * spb), s, pi, off > 1e-6, every, spb, m);
             }
         }
         int h = hHead + 1;
@@ -786,13 +851,12 @@ public final class Engine {
         beatNextAt += 4 * spb(S);
     }
 
-    private void nrTick(Snapshot S, long delay, int s, int pi, boolean half, double every, double spb) {
+    private void nrTick(Snapshot S, long delay, int s, int pi, boolean half, double every, double spb, long idx) {
         // while playing the pattern counts from the start of the loop, so it sits on the beat the same way each time
-        long idx = every >= 1 ? s / (int) every : s * 2L + (half ? 1 : 0);
         if (!S.live.patOn(idx)) return;
         if ("rep".equals(S.live.arp)) {
             for (Held h : held.values()) {
-                if (h.flow) { pulse(h, delay, Math.round(spb * (every < 1 ? .5 : every))); continue; }
+                if (h.flow) { pulse(h, delay, Math.round(spb * every)); continue; }
                 float g = Theory.chordGain(h.pitches.length);
                 for (int p : h.pitches) nrOne(S, h, p, delay, s, pi, half, g, every, spb);
             }
@@ -803,7 +867,7 @@ public final class Engine {
 
     private void nrOne(Snapshot S, Held h, int p, long delay, int s, int pi, boolean half, float g, double every, double spb) {
         boolean ring = "ring".equals(S.live.nrStyle);
-        trigger(h.pad, oct() * Math.pow(2, p / 12.0), ring ? 0 : spb * .9 * Math.max(1, every >= 1 ? every : 1) / rate, !ring && (h.mel || p != 0), g, delay, false);
+        trigger(h.pad, oct() * Math.pow(2, p / 12.0), ring ? 0 : spb * .9 * (every == .5 ? 1 : every) / rate, !ring && (h.mel || p != 0), g, delay, false);
         if (S.live.rec && pi >= 0 && !half) {
             if (h.mel) recs.add(new RecEvent(RecEvent.NOTES, pi, h.pad.key, s, new int[]{p}, every >= 2 ? 2 : 1));
             else recs.add(new RecEvent(RecEvent.STEP, pi, h.pad.key, s, null, 1));
@@ -1369,6 +1433,22 @@ public final class Engine {
             padRateTo[p] = Math.pow(2, m[T_PITCH] / 12.0) * (oct ? .5 : 1) * (1 - .82 * tape);
             padVol[p] = Math.max(0, 1 + m[T_VOL]) * (tape >= .97f ? 0 : 1);
             padPan[p] = Math.max(-1, Math.min(1, m[T_PAN]));
+            // the LFO strip moves one of these by its wave (filter and resonance are set in lfoBlock)
+            if (ps != null && ps.opts.lfoOn) {
+                double lv = lfoV[p], dp = ps.opts.lfoDepth;
+                float up = (float) (dp * (lv + 1) / 2);
+                switch (ps.opts.lfoTarget) {
+                    case T_PITCH: padRateTo[p] *= Math.pow(2, dp * 12 * lv / 12.0); break;
+                    case T_VOL: padVol[p] *= (float) Math.max(0, 1 - dp * (1 - lv) / 2); break;
+                    case T_PAN: padPan[p] = (float) Math.max(-1, Math.min(1, padPan[p] + dp * lv)); break;
+                    case T_RVB: padRvb[p] += up; break;
+                    case T_ECHO: padEcho[p] += up; break;
+                    case T_DIRT: padDirt[p] += up; break;
+                    case T_CRUSH: padCrush[p] += up; break;
+                    case T_CHORUS: padChorus[p] += up; break;
+                    default: break;
+                }
+            }
             // roll: this pad's held notes retrigger, from every 2 steps up to every quarter step
             float roll = m[T_ROLL];
             if (roll > .05f && ps != null) {

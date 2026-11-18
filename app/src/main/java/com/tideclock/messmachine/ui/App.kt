@@ -278,7 +278,7 @@ fun RepeatControls(state: AppState, tag: String = "repeat") {
     Btn("Repeat", { state.setLive { nr = !nr } }, on = state.live.nr, onColor = C.Pink, small = true, tag = tag)
     Select(
         rateName(state.live.nrRate) + (if (state.live.arp != "rep") " " + arpShort(state.live.arp) else "") + styleShort(state.live.nrStyle),
-        listOf("r4" to "Every 1/4", "r2" to "Every 1/8", "r1" to "Every 1/16", "r.5" to "Every 1/32") + listOf("rep", "up", "down", "updown", "rand").map { "a$it" to arpName(it) } +
+        listOf(4.0, 2.0, 1.0, .5).flatMap { b -> listOf(1.0, 2.0 / 3, 1.5).map { m -> "r${b * m}" to "Every " + rateName(b * m) } } + listOf("rep", "up", "down", "updown", "rand").map { "a$it" to arpName(it) } +
             REPEAT_STYLES.map { (s, n) -> "s$s" to (if (state.live.nrStyle == s) "✓ " else "") + n },
         { v ->
             if (v.startsWith("s")) state.setLive { nrStyle = v.substring(1) }
@@ -332,8 +332,17 @@ fun PulseBackdrop(state: AppState) {
     })
 }
 
-/** Repeat's rate as a note length: steps between repeats (4 is a quarter note, note #18). */
-fun rateName(r: Double): String = when (r) { 4.0 -> "1/4"; 2.0 -> "1/8"; 0.5 -> "1/32"; else -> "1/16" }
+/** Repeat's rate split into its note and its feel: 1 straight, 2/3 triplet, 1.5 dotted (note #18). */
+fun repeatParts(r: Double): Pair<Double, Double> {
+    for (b in listOf(4.0, 2.0, 1.0, .5)) for (m in listOf(1.0, 2.0 / 3, 1.5)) if (kotlin.math.abs(b * m - r) < 1e-6) return b to m
+    return 1.0 to 1.0
+}
+
+/** Repeat's rate as a note length: steps between repeats (4 is a quarter note); T is a triplet, a dot is dotted. */
+fun rateName(r: Double): String {
+    val (b, m) = repeatParts(r)
+    return (when (b) { 4.0 -> "1/4"; 2.0 -> "1/8"; 0.5 -> "1/32"; else -> "1/16" }) + (if (m < 1.0) "T" else if (m > 1.0) "." else "")
+}
 
 fun arpShort(a: String) = when (a) { "up" -> "UP"; "down" -> "DN"; "updown" -> "UD"; "rand" -> "RND"; else -> "" }
 
