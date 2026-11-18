@@ -70,9 +70,9 @@ object Tutorials {
             TutStep("Tap the rate, pick Cut each repeat, then turn RPT off.", t("dock-rate")) { s, _ -> s.live.nrStyle == "cut" && !s.live.nr },
         )),
         Tutorial("padiano", "Playing", "Padiano", "Any pad's sound as a keyboard, dropped right under its row.", listOf(
-            TutStep("Tap the first pad, then Menu at the bottom, then Padiano under this row.", { s -> if (s.project.sel == 0) "open-padmenu" else "pad-0" }) { s, _ -> s.keyboards.isNotEmpty() },
+            TutStep("Tap the first pad, then Pack on the bar at the bottom: its FannyPack opens with the Padiano in it.", { s -> if (s.project.sel == 0) "pack-toggle" else "pad-0" }) { s, _ -> s.keyboards.isNotEmpty() },
             TutStep("Play some keys. In key only keeps every key in the mess's key.", { s -> s.keyboards.firstOrNull()?.let { "piano-keys-$it" } }) { s, c -> played(s, c, 4) },
-            TutStep("Close it with the x on its bar.", { s -> s.keyboards.firstOrNull()?.let { "piano-close-$it" } }) { s, _ -> s.keyboards.isEmpty() },
+            TutStep("Zip the pack shut with the pull (▾) at the left of its zipper bar.", { s -> s.keyboards.firstOrNull()?.let { "pack-pull-$it" } }) { s, _ -> s.keyboards.isEmpty() },
         )),
         Tutorial("sphere", "Playing", "XY sphere", "Draw a circle on a pad and it becomes a ball you push around to bend the sound.", listOf(
             TutStep("Press a pad and, without lifting, draw a small circle on it.", t("pad-0")) { s, c -> if (s.sphere != null) c.seen.add("sphere"); "sphere" in c.seen },

@@ -53,6 +53,51 @@ public final class Project {
             return n;
         }
 
+        /* ---- row tools (Steps, note #16 and the redraft): one sound's row in this loop ---- */
+
+        /** A hit on every n-th step, nothing else (the row's pitches go). */
+        public void rowEvery(String k, int n) {
+            rowClear(k);
+            for (int j = 0; j < len; j += Math.max(1, n)) setStep(k, j, true);
+        }
+
+        /** The first n steps, with their pitches, copied across the whole row. */
+        public void rowRepeat(String k, int n) {
+            if (n <= 0 || n >= len) return;
+            for (int j = n; j < len; j++) setStep(k, j, step(k, j % n));
+            List<Note> ns = notes(k);
+            List<Note> first = new ArrayList<>();
+            for (Note x : ns) if (x.s < n) first.add(x.copy());
+            ns.clear();
+            for (int m = 0; m * n < len; m++) for (Note x : first) {
+                int s = x.s + m * n;
+                if (s < len) ns.add(new Note(s, x.p, Math.max(1, Math.min(x.l, len - s))));
+            }
+        }
+
+        /** The whole row moved by steps (wrapping round the loop), pitches too. */
+        public void rowNudge(String k, int by) {
+            boolean[] a = new boolean[len];
+            for (int j = 0; j < len; j++) a[Math.floorMod(j + by, len)] = step(k, j);
+            for (int j = 0; j < len; j++) setStep(k, j, a[j]);
+            for (Note x : notes(k)) { x.s = Math.floorMod(x.s + by, len); x.l = Math.max(1, Math.min(x.l, len - x.s)); }
+        }
+
+        /** hits spread as evenly as the loop allows (Euclid): 3 over 8 is the tresillo. */
+        public void rowSpread(String k, int hits) {
+            rowClear(k);
+            hits = Math.max(0, Math.min(len, hits));
+            for (int j = 0; j < len; j++) if ((j * hits) % len < hits) setStep(k, j, true);
+        }
+
+        /** Every step and pitch of the row off. */
+        public void rowClear(String k) {
+            boolean[] a = steps.get(k);
+            if (a != null) Arrays.fill(a, false);
+            List<Note> n = notes.get(k);
+            if (n != null) n.clear();
+        }
+
         public boolean hasNoteAt(String k, int s) {
             List<Note> n = notes.get(k);
             if (n != null) for (Note x : n) if (x.s == s) return true;

@@ -152,10 +152,10 @@ fun StepsScreen(state: AppState) {
                     }
                     Box(Modifier.weight(1f).alpha(if (audible) 1f else .45f).tagged("steps-$i")) { StepRow(state, k, col, off, state.version) }
                 }
-                if (state.stepStrip == i) StepPitchStrip(state, i, k, col)
+                if (state.stepStrip == i) { RowTools(state, i); StepPitchStrip(state, i, k, col) }
             }
         }
-        Help("Tap a step to flip it, or slide along a row to paint it. Tap a sound's name to give its steps pitches. Hold its name, then lift, for its menu: mute, solo, the doctor and more. A red M or yellow S by the number shows a muted or soloed sound. A dot means a step has a pitch or roll notes; tap it to clear it, or Clear notes for the whole loop.", modifier = Modifier.padding(top = 4.dp))
+        Help("Tap a step to flip it, or slide along a row to paint it. Tap a sound's name for its row tools (every 2, 4 or 8, repeat across, nudge, copy, spread) and to give its steps pitches. Hold its name, then lift, for its menu: mute, solo, the doctor and more. A red M or yellow S by the number shows a muted or soloed sound. A dot means a step has a pitch or roll notes; tap it to clear it, or Clear notes for the whole loop.", modifier = Modifier.padding(top = 4.dp))
     }
 }
 
@@ -230,6 +230,37 @@ fun StepRow(state: AppState, k: String, col: Color, off: Int, ver: Int) {
             drawRoundRect(if (hot) C.Yellow else if (on[c]) C.Cream else C.Empty, tl, sz, r, style = Stroke(width = if (hot) 3.dp.toPx() else 1.5.dp.toPx()))
             if (dot[c]) drawCircle(if (on[c]) C.Ink else C.Cream, radius = 3.dp.toPx(), center = Offset(tl.x + sz.width / 2, sz.height / 2))
             if (state.stepStrip >= 0 && state.project.kit[state.stepStrip] == k && state.stepPick == off + c) drawRoundRect(C.Yellow, Offset(tl.x - 2, tl.y - 2), Size(sz.width + 4, sz.height + 4), r, style = Stroke(width = 4.dp.toPx()))
+        }
+    }
+}
+
+/**
+ * Row tools for one sound's steps (build 85): fill every 2, 4 or 8; repeat the first 4, 8 or the first bar across;
+ * nudge left or right; copy and paste a row; spread a number of hits evenly; clear. Each is one undo.
+ */
+@Composable
+fun RowTools(state: AppState, pad: Int) {
+    var spread by remember(pad) { mutableIntStateOf(3) }
+    Column(Modifier.fillMaxWidth().padding(top = 8.dp).tagged("rowtools-$pad")) {
+        Wrap(Modifier.padding(bottom = 6.dp).tagged("rowtools-chips"), gap = 6.dp) {
+            Btn("Every 2", { state.rowTool(pad, "every2") }, small = true, tight = true, tag = "row-every2")
+            Btn("Every 4", { state.rowTool(pad, "every4") }, small = true, tight = true, tag = "row-every4")
+            Btn("Every 8", { state.rowTool(pad, "every8") }, small = true, tight = true, tag = "row-every8")
+            Btn("Repeat 4", { state.rowTool(pad, "rep4") }, small = true, tight = true, tag = "row-rep4")
+            Btn("Repeat 8", { state.rowTool(pad, "rep8") }, small = true, tight = true, tag = "row-rep8")
+            if (state.project.pat().len > 16) Btn("Repeat bar", { state.rowTool(pad, "repbar") }, small = true, tight = true, tag = "row-repbar")
+            Btn("◀", { state.rowTool(pad, "left") }, small = true, tag = "row-left")
+            Btn("▶", { state.rowTool(pad, "right") }, small = true, tag = "row-right")
+            Btn("Copy", { state.rowTool(pad, "copy") }, small = true, tight = true, tag = "row-copy")
+            Btn("Paste", { state.rowTool(pad, "paste") }, small = true, tight = true, enabled = state.rowClip != null, tag = "row-paste")
+            Btn("Clear", { state.rowTool(pad, "clear") }, small = true, tight = true, tier = Tier.Danger, tag = "row-clear")
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            T("SPREAD", size = 11.sp, color = C.Dim, spacing = .1.em)
+            Btn("−", { spread = (spread - 1).coerceAtLeast(1) }, small = true, tag = "row-spread-down")
+            T("$spread", size = 14.sp, color = C.Yellow, family = Mono)
+            Btn("+", { spread = (spread + 1).coerceAtMost(16) }, small = true, tag = "row-spread-up")
+            Btn("Spread $spread hits", { state.rowTool(pad, "spread$spread") }, small = true, tight = true, onColor = C.Teal, tag = "row-spread")
         }
     }
 }
