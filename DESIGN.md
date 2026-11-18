@@ -4,6 +4,9 @@
 
 Rewritten at the end of every session and at each step of a long job (BT-2). Read this first.
 
+- **Condensed (2026-11-17):** 84 went out as runs 85 to 88 (test fixes). Everything after 84 went into one build
+  (pack, FX and LFO strips, triplet repeat, wheel, row tools, MIDI round two, Step mode, What the FAQ, speed guide,
+  Moves), built in the worktree branch b85 while 84's runs went.
 - **In progress (2026-11-17):** Tyler approved the redraft (proposal doc https://claude.ai/artifact/Gj4cgJ4vm92N5Tpch5FT1n)
   and builds 84 to 95, condensed where quality allows into six: 84 (bottom dock, Menu only, chords fix and chord-set
   slots, five octaves, lesson bug, quarter note, empty pad slash, Steps drag paint, MIDI one at a time and list,
@@ -74,6 +77,12 @@ One line each, dated, with the reason and who decided (BT-2). Older decisions li
   Off, recorded as moves. LFO in PadOpts (lfo* fields, saved as one "lfo" string); engine lfoBlock sets the pad filter
   (Lo/Hi/Band, no glide) and moves one target per block. Wobble kept as is (Claude: folding it in would change old
   messes). Repeat: any rate, straight x1, triplet x2/3, dotted x1.5; off-grid repeats are not recorded.
+- 2026-11-17 MIDI round two (Claude, Tyler: any controller): map keys are layered, key = (page * 2 + shift) * 128 +
+  note (old maps are page A); "act" targets for buttons (note or CC, CC fires on a rise past 64); knobs reach fx, wheel,
+  dock cut/res, lfo rate/depth and tempo by touching them while the map is up; pitch bend drives the dock wheel.
+  Step mode is a Play view (Pads, Keys, Step); pads read left to right, top to bottom. What the FAQ replaced the ?
+  (page help moved to its card and Settings); Faq.kt has a line per tag pattern and the big test fails on a tappable
+  control without one. Moves is a panel on Steps (lane tools in Project.Pattern: lane, laneSmooth, laneStamp).
 
 - 2026-11-10 Review go-ahead (Tyler): build MM-1 to MM-14 and more; skip MM-5 (Oboe) until the Audio check shows
   what the lag is; MM-11 (Play Store) after everything else; skip MM-15 (Fold layouts) with a big note; MM-22
