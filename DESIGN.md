@@ -4,9 +4,12 @@
 
 Rewritten at the end of every session and at each step of a long job (BT-2). Read this first.
 
-- **Next (2026-11-17):** proposal doc for notes 20 to 22 and the plan's leftovers:
-  https://claude.ai/artifact/8FmzH6E44h2Ug8odWgVtXE . Builds 95 to 98 wait for Tyler's go and his answers there.
-- **Live:** build 92 (green, published 2026-11-17). The whole approved proposal (84 to 95) shipped in two builds:
+- **Live:** build 104 (green, 2026-11-18). The final plan (builds 96 to 101) shipped as runs 97, 98, 101, 102, 103 and 104
+  (runs 96, 99 and 100 failed on tests or a compile error and were fixed; run 98's phone test was rerun after an
+  emulator download broke). Notes 20, 21, 22 closed. Plan doc: https://claude.ai/artifact/SMmt7Jz3BfDsP7xUqLLEqq .
+  Not heard by ear yet: Pump, Tape, Phaser, Freeze, the voice limit's feel. The first in-app update Tyler can try is
+  any build after the one he installs.
+- **Earlier live:** build 92 (green, published 2026-11-17). The whole approved proposal (84 to 95) shipped in two builds:
   88 (bottom dock, Menu only, chord slots and octaves, lesson bug, quarter note, slash, drag paint, MIDI one at a
   time and list, notes key) and 92 (FannyPack, FX and LFO strips, triplet and dotted repeat, pitch wheel, row
   tools, MIDI round two, Step mode, What the FAQ, speed guide, Moves). Runs 85 to 87 and 89 to 91 were test fixes.
