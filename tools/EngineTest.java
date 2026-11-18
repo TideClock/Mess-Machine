@@ -56,6 +56,21 @@ public class EngineTest {
         rp.len = 8; rp.rowSpread("k", 3);
         check(rp.step("k", 0) && rp.step("k", 3) && rp.step("k", 6) && !rp.step("k", 1), "row tools: 3 over 8 is the tresillo");
     }
+    {
+        // the automation view: stamp a ramp over each beat, smooth it, clear it
+        Project.Pattern mp = new Project.Pattern();
+        mp.len = 16;
+        mp.laneStamp("0:1", 1, 4, 0f, 1f, 1f);
+        float[] ln = mp.lane("0:1");
+        check(ln[0] == 0f && Math.abs(ln[3] - 1f) < 1e-6 && ln[4] == 0f, "moves: a ramp stamped every beat goes 0 to 1 and starts again");
+        float jump = Math.abs(ln[4] - ln[3]);
+        mp.laneSmooth("0:1", 1f);
+        check(Math.abs(mp.lane("0:1")[4] - mp.lane("0:1")[3]) < jump, "moves: smoothing narrows the jump at the top of each beat");
+        mp.laneStamp("0:1", 6, 8, 0f, 1f, .5f);
+        check(mp.lane("0:1")[0] > .4f && mp.lane("0:1")[0] < 1f, "moves: half strength blends the square with what was there");
+        mp.laneClear("0:1");
+        check(!mp.hasMotion(), "moves: clear takes the lane away");
+    }
     // build 84 (note #18): chords keep the root on the bottom, and chord sets are fixed slots that never drift
     check(Arrays.equals(Theory.chordOf(7, 0, "triad", "Major", 0), new int[]{7, 11, 14}), "G4 triad is G B D, root on the bottom (was D4 G4 B4)");
     check(Arrays.equals(Theory.chordOf(11, 0, "seventh", "Major", 0), new int[]{11, 14, 17, 21}), "B4 seventh keeps B lowest");

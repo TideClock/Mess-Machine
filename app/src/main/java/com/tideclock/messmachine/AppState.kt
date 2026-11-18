@@ -168,6 +168,19 @@ class AppState(private val app: Context) {
     var helpOn by mutableStateOf(prefs.getBoolean("helpOn", false))
         private set
     val helpSeen = mutableStateListOf<String>().also { it.addAll((prefs.getString("helpSeen", "") ?: "").split(",").filter { x -> x.isNotEmpty() }) }
+    /** What the FAQ is on: the next tap on a control explains it instead of pressing it. */
+    var faqOn by mutableStateOf(false)
+    /** The control What the FAQ is explaining, by its tag. */
+    var faqTag by mutableStateOf<String?>(null)
+
+    fun switchFaq(v: Boolean = !faqOn) { faqOn = v; faqTag = null; notes.trail("faq ${if (v) "on" else "off"}") }
+
+    /** The speed guide: which stop it is on, or -1 when it is not running. */
+    var speedStop by mutableIntStateOf(-1)
+    var speedPaused by mutableStateOf(false)
+
+    fun startSpeedGuide() { overlay = null; tab = Tab.Pads; keysMode = false; stepMode = false; speedPaused = false; speedStop = 0; notes.trail("speed guide") }
+
     fun switchHelp(v: Boolean = !helpOn) { helpOn = v; prefs.edit().putBoolean("helpOn", v).apply() }
     /** Is the how-to text showing on this page or sheet right now. */
     fun helpShows(page: String): Boolean = helpOn || page !in helpSeen
@@ -1252,6 +1265,42 @@ class AppState(private val app: Context) {
         if (P.step(key, j) == on && !(!on && P.hasNoteAt(key, j))) { if (commit) edit { } ; return }
         edit(commit) { if (!on) P.notes(key).removeAll { it.s == j }; P.setStep(key, j, on) }
     }
+
+    /* ---------------- the automation view (note #17) ---------------- */
+
+    /** The Moves panel on the Steps page is open, and which lane ("pad:target") it shows. */
+    var movesOpen by mutableStateOf(false)
+    var moveLane by mutableStateOf("")
+
+    fun moveLanes(): List<String> = project.pat().motion.keys.sortedBy { it.substringBefore(":").toIntOrNull() ?: 0 }
+
+    fun laneLabel(key: String): String {
+        val pad = key.substringBefore(":").toIntOrNull() ?: 0
+        val t = key.substringAfter(":").toIntOrNull() ?: -1
+        return "Pad ${pad + 1} · ${xyTarget(t).name}"
+    }
+
+    private fun laneRange(key: String): Pair<Float, Float> {
+        val t = xyTarget(key.substringAfter(":").toIntOrNull() ?: -1)
+        return t.lo to t.hi
+    }
+
+    fun newLane(pad: Int, target: Int) { moveLane = "$pad:$target"; edit { pat().lane(moveLane) } }
+
+    /** Draw on a lane: norm 0..1 is bottom to top of its range, or null to erase the step. commit when the finger lifts. */
+    fun drawLane(key: String, step: Int, norm: Float?, commit: Boolean) {
+        val (lo, hi) = laneRange(key)
+        edit(commit) { val a = pat().lane(key); if (step in a.indices) a[step] = if (norm == null) Float.NaN else lo + (hi - lo) * norm.coerceIn(0f, 1f) }
+    }
+
+    fun smoothLane(key: String) = edit { pat().laneSmooth(key, .6f) }
+
+    fun stampLane(key: String, shape: Int, span: Int, strength: Float) {
+        val (lo, hi) = laneRange(key)
+        edit { pat().laneStamp(key, shape, span, lo, hi, strength) }
+    }
+
+    fun clearLane(key: String) { edit { pat().laneClear(key) }; moveLane = ""; sayUndo("That lane is cleared.") }
 
     /** Every pitch and roll note in the current loop, for every sound (plain hits stay). */
     fun clearAllNotes() {

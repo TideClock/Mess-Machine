@@ -97,6 +97,7 @@ fun SlotBar(state: AppState, tools: Boolean = false) {
             Btn(if (bars == 1) "1 bar" else "$bars bars", { state.toggleLen() }, small = true, tag = "looplen")
             Select("Copy to", (0 until Project.NSLOTS).filter { it != P.cur }.map { it to "Loop ${Project.LETTERS[it]}" }, { state.copySlotTo(it) })
             Btn("Clear loop", { state.clearSlot() }, small = true, enabled = P.pat().used(), tier = Tier.Danger)
+            Btn("Moves", { state.movesOpen = !state.movesOpen }, on = state.movesOpen, onColor = C.Teal, small = true, tag = "moves-open")
             if (P.pat().hasMotion()) Btn("Clear moves", { state.clearMoves() }, small = true, tag = "clear-moves")
             Btn("Bottle it", { state.bottleIt() }, small = true, color = C.Pink, enabled = P.pat().used() || P.songLen() > 0, tag = "bottle")
         }
@@ -111,6 +112,7 @@ fun StepsScreen(state: AppState) {
     val off = state.page.coerceIn(0, pat.len / 16 - 1) * 16
     ScrollPane {
         SlotBar(state, tools = true)
+        if (state.movesOpen) MovesPanel(state)
         Row(Modifier.fillMaxWidth().padding(bottom = 12.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
             T("BANK", size = 11.sp, color = C.Dim, spacing = .1.em)
             for (b in 0 until 4) {
