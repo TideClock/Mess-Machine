@@ -693,7 +693,7 @@ class BigTest {
     /* ---------- build C: effects, routing, XY ---------- */
 
     @Test fun effectsYouCanEdit() {
-        rule.onNodeWithTag("fx-toggle").performScrollTo().performClick()
+        at("fx-toggle").performClick()
         settle()
         rule.onNodeWithTag("fxedit-crush").performScrollTo().performClick()
         settle()
@@ -884,7 +884,8 @@ class BigTest {
         val bottom = state.lastChord
         rule.onNodeWithTag("piano-keys-$pad").performTouchInput { up() }
         settle()
-        assertTrue("the top row is an octave above the bottom one ($top over $bottom)", top.isNotEmpty() && top != bottom && top.filter { it.isLetter() || it == '#' } == bottom.filter { it.isLetter() || it == '#' })
+        // Nov 18 (note #20): rows run straight up, so the top row starts past the bottom row's last key, not an octave up
+        assertTrue("the top row starts higher than the bottom one ($top over $bottom)", top.isNotEmpty() && top != bottom)
         // XL: much taller (the node's own size: boundsInRoot is clipped to what the page shows)
         at("pset-size-3").performClick(); settle()
         val h1 = rule.onNodeWithTag("piano-keys-$pad").fetchSemanticsNode().size.height.toFloat()
@@ -1402,7 +1403,7 @@ class BigTest {
         at("midimap-run").performClick(); state.switchMidiMap(false); settle()
 
         // note #16: the note box opens on the last kind sent, with big buttons, and the key card
-        rule.onNodeWithTag("notes").performClick(); settle()
+        rule.onNodeWithTag("menu").performClick(); settle(); rule.onNodeWithTag("notes-open").performClick(); settle()
         at("notecat-feature").performClick(); settle()
         at("notekey-open").performClick(); settle()
         at("notekey-field").assertExists()
@@ -2135,7 +2136,7 @@ class BigTest {
         rule.onNodeWithTag("done").performClick()
         settle()
         // the bug button sits by the tabs now, on every page (note #16)
-        rule.onNodeWithTag("notes").performClick()
+        rule.onNodeWithTag("menu").performClick(); settle(); rule.onNodeWithTag("notes-open").performClick()
         settle()
         shot("16-notes")
         state.saveNote("bug", "", "The test suite says hi", false)
