@@ -136,7 +136,7 @@ private fun NoSynth(state: AppState, pad: Int) {
     val k = P.kit.getOrNull(pad).orEmpty()
     Btn("On pad ${pad + 1}", { state.newSynth(pad, preset) }, tag = "synth-new-here")
     // said under the button: as part of its label it ran off the edge on a phone
-    if (k.isNotEmpty()) Note("That takes the place of ${state.lib.titleOf(k)} on pad ${pad + 1}. Undo brings it back.", modifier = Modifier.padding(top = 6.dp))
+    if (k.isNotEmpty()) Note("Replaces ${state.lib.titleOf(k)} on pad ${pad + 1} (Undo brings it back)", modifier = Modifier.padding(top = 6.dp))
 }
 
 /** Mode (Poly, Mono, Acid) and, for drums, the model: choices you pick, not knobs you turn. */
