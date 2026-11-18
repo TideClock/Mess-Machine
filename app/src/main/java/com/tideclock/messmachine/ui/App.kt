@@ -160,7 +160,9 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
             // What the FAQ goes over everything: while it is on, a tap explains instead of pressing
             FaqOverlay(state)
             state.toast?.let { msg ->
-                Box(Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = 84.dp)) {
+                // above the tabs, and above the bottom dock where it shows, so a message never covers Menu or the dock's Fold
+                val dockUp = state.tab == Tab.Pads || state.tab == Tab.Console || state.tab == Tab.Synth
+                Box(Modifier.align(Alignment.BottomCenter).padding(start = 76.dp, end = 16.dp, bottom = if (dockUp) 136.dp else 84.dp)) {
                     Row(Modifier.sticker(C.Yellow, shadow = 5.dp).clickable { state.toast = null }.tagged("toast").padding(start = 14.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         T(msg, color = C.Ink, size = 14.sp, modifier = Modifier.weight(1f, fill = false).padding(vertical = 3.dp))
