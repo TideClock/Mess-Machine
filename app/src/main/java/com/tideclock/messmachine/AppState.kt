@@ -56,7 +56,7 @@ val PACK_STRIPS = listOf("keys" to "Keys", "fx" to "FX", "lfo" to "LFO", "xy" to
 /** The FX strip's faders: live sends on the pad, the same targets XY and recorded moves use. */
 val FX_STRIP = listOf(
     Engine.T_RVB to "Verb", Engine.T_ECHO to "Echo", Engine.T_DIRT to "Dirt", Engine.T_CRUSH to "Crush",
-    Engine.T_CHORUS to "Chor",
+    Engine.T_CHORUS to "Chor", Engine.T_PUMP to "Pump", Engine.T_WARM to "Tape", Engine.T_PHASER to "Phase", Engine.T_FREEZE to "Freeze",
 )
 
 /** Every fader the FX strip can show; you pick which (Nov 18). Wobble moved into the LFO strip as a preset. */
@@ -2896,7 +2896,7 @@ class AppState(private val app: Context) {
 
     fun cycleWheelRange() { wheelRange = when (wheelRange) { 2 -> 7; 7 -> 12; else -> 2 }; prefs.edit().putInt("wheelRange", wheelRange).apply() }
     /** Which faders the FX strip shows, for every pad. */
-    var fxShown by mutableStateOf(prefs.getStringSet("fxShown", null)?.toSet() ?: FX_FADERS.toSet())
+    var fxShown by mutableStateOf(prefs.getStringSet("fxShown", null)?.toSet() ?: (FX_FADERS.toSet() - setOf("Tape", "Phase", "Freeze")))
         private set
 
     fun toggleFxShown(name: String) {

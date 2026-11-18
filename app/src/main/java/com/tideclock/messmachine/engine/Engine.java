@@ -174,6 +174,8 @@ public final class Engine {
     static final class Voice {
         boolean active, preview, hold, releasing, choked, dry;
         float[] d;
+        /** Phaser: four all-pass stages; Freeze: the window it rocks in (-1 when free) and which way it is going. */
+        float ap1, ap2, ap3, ap4; double phPh, frzA = -1; int frzDir = 1;
         int a, zEnd, choke, pad;
         double pos, len, inc, loopFrom, glideMul;
         long glideLeft;
@@ -1157,6 +1159,16 @@ public final class Engine {
                 gr = (float) Math.min(1, Math.sqrt(2) * Math.sin(x * Math.PI / 2));
             }
             if (dirt > 1) dirt = 1; if (crush > 1) crush = 1; if (chorus > 1) chorus = 1; if (wob > 1) wob = 1;
+            float pump = p >= 0 ? padPump[p] : 0, warm = p >= 0 ? padWarm[p] : 0, phaser = p >= 0 ? padPhaser[p] : 0;
+            boolean freeze = p >= 0 && padFreeze[p] > .5f;
+            if (!freeze) v.frzA = -1;
+            // where we are in the beat, for Pump: steps since the loop's top, a beat is four steps
+            double spbV = spbNow > 0 ? spbNow : rate * 60.0 / 120 / 4;
+            final int k0 = k;
+            // the phaser's sweep moves slowly, so once a block is enough
+            float phC = 0;
+            if (phaser > 0) { phC = (float) (.55 + .4 * Math.sin(v.phPh)); v.phPh += 2 * Math.PI * .35 * (n - k) / rate; }
+            double beat0 = playing ? (step - (nextStepAt - (frame + k)) / spbV) : (frame + k) / spbV;
             float drive = 1 + dirt * 9, driveN = (float) (1 / Math.tanh(drive));
             int hold = 1 + (int) (crush * 11);
             float step = crush > 0 ? (float) Math.pow(2, -(15 - crush * 12)) : 0;
@@ -1237,6 +1249,27 @@ public final class Engine {
                 }
                 if (ring > 0) smp = smp * (1 - ring) + smp * (float) Math.sin(2 * Math.PI * ringHz * (frame + k) / rate) * ring;
                 if (gate > 0 && ((frame + k) % (long) gateDiv) >= gateDiv / 2) smp *= 1 - gate;
+                if (warm > 0) {
+                    // a cheap tanh (x(27 + x^2) / (27 + 9x^2)) for the warmth
+                    float xw = smp * (1 + 2 * warm), x2 = xw * xw;
+                    float sat = Math.abs(xw) > 3 ? Math.signum(xw) : xw * (27 + x2) / (27 + 9 * x2);
+                    smp = smp * (1 - warm * .4f) + sat * warm * .55f;
+                }
+                if (phaser > 0) {
+                    // four first-order all-passes swept by a slow sine (set once a block), mixed with the dry sound
+                    float c = phC, x0 = smp;
+                    float y1 = -c * x0 + v.ap1; v.ap1 = x0 + c * y1;
+                    float y2 = -c * y1 + v.ap2; v.ap2 = y1 + c * y2;
+                    float y3 = -c * y2 + v.ap3; v.ap3 = y2 + c * y3;
+                    float y4 = -c * y3 + v.ap4; v.ap4 = y3 + c * y4;
+                    smp = x0 * (1 - .5f * phaser) + y4 * .5f * phaser;
+                }
+                if (pump > 0) {
+                    // a duck on every beat that comes back up before the next: the sidechain sound
+                    double bp = ((((beat0 + (k - k0) / spbV) % 4) + 4) % 4) / 4.0;
+                    float xr = (float) (1 - bp);
+                    smp *= 1 - pump * xr * xr * xr;
+                }
                 smp *= env * vol;
                 float sl = smp, sr = smp;
                 if (chorus > 0) {
@@ -1259,20 +1292,31 @@ public final class Engine {
                 double rm = v.bendMul;
                 if (p >= 0) rm *= padRateFrom[p] + (padRateTo[p] - padRateFrom[p]) * ((frame + k - blockStart) / (double) Math.max(1, blockLen));
                 if (wob > 0) { rm *= 1 + wob * .025 * Math.sin(v.wobPh); v.wobPh += wobInc; }
+                if (warm > 0) { rm *= 1 + warm * .004 * Math.sin(v.wobPh * .15); if (wob <= 0) v.wobPh += wobInc; }
                 if (v.grain) {
                     double pi = v.inc * rm;
                     v.g0 += pi; v.g1 += pi;
                     v.gp0 += v.gStep; v.gp1 += v.gStep;
-                    if (!v.frozen) {
+                    if (!v.frozen && !freeze) {
                         v.tPos += v.tInc;
                         if (v.loop && v.tPos >= v.len) v.tPos -= Math.max(1, v.len - v.loopFrom);
                         if (v.sus >= 0 && !v.releasing && v.tPos >= v.sus) { v.frozen = true; v.tPos = v.sus; }
                     }
                     if (v.gp0 >= 1) { v.gp0 -= 1; v.g0 = grainStart(v, d, v.g1); }
                     if (v.gp1 >= 1) { v.gp1 -= 1; v.g1 = grainStart(v, d, v.g0); }
-                } else if (!v.syn) v.pos += v.inc * rm;
+                } else if (!v.syn) {
+                    if (freeze) {
+                        // Freeze: rock back and forth in a 60 ms window where the sound was, so it holds without clicks
+                        if (v.frzA < 0) v.frzA = v.pos;
+                        v.pos += v.inc * rm * v.frzDir;
+                        double win = .06 * (v.d != null ? rate : rate);
+                        if (v.pos > v.frzA + win) { v.pos = v.frzA + win; v.frzDir = -1; }
+                        else if (v.pos < v.frzA) { v.pos = v.frzA; v.frzDir = 1; }
+                    } else { v.frzDir = 1; v.pos += v.inc * rm; }
+                }
                 if (v.glideLeft > 0) { v.inc *= v.glideMul; v.glideLeft--; }
-                v.t++;
+                // a frozen note does not run out (its release still fades it)
+                if (!freeze || v.releasing) v.t++;
             }
         }
     }
@@ -1401,7 +1445,10 @@ public final class Engine {
     /** What an XY direction (or any live control) can move on one pad. */
     public static final int T_PITCH = 0, T_FILTER = 1, T_RES = 2, T_VOL = 3, T_PAN = 4, T_ATT = 5, T_REL = 6, T_START = 7,
         T_RVB = 8, T_ECHO = 9, T_DIRT = 10, T_CRUSH = 11, T_CHORUS = 12, T_WOB = 13, T_GLIDE = 14, T_ROLL = 15,
-        T_GATE = 16, T_RING = 17, T_STUT = 18, T_TAPE = 19, NT = 20;
+        T_GATE = 16, T_RING = 17, T_STUT = 18, T_TAPE = 19,
+        // Nov 18: four more live effects for the FX strip (Pump ducks on the beat, Warm is tape wow and warmth,
+        // Phaser sweeps, Freeze holds the sound where it is)
+        T_PUMP = 20, T_WARM = 21, T_PHASER = 22, T_FREEZE = 23, NT = 24;
     /** The perform effects, in the order the buttons show them. */
     public static final String[] FXN = {"stutter", "echo", "crush", "tape", "gate", "dirty", "ring", "oct", "rev"};
     private static final float[] ZERO9 = new float[9];
@@ -1409,7 +1456,8 @@ public final class Engine {
     private final float[][] tFx = new float[69][9];
     private final float[] padDirt = new float[64], padCrush = new float[64], padChorus = new float[64], padWob = new float[64],
         padGate = new float[64], padRing = new float[64], padRvb = new float[64], padEcho = new float[64],
-        padVol = new float[64], padPan = new float[64], tapeF = new float[64];
+        padVol = new float[64], padPan = new float[64], tapeF = new float[64],
+        padPump = new float[64], padWarm = new float[64], padPhaser = new float[64], padFreeze = new float[64];
     private final double[] padRateFrom = new double[64], padRateTo = new double[64];
     private final boolean[] padStut = new boolean[64], padRev = new boolean[64];
     private final int[] pStutA = new int[64], pStutB = new int[64];
@@ -1468,6 +1516,7 @@ public final class Engine {
             padRvb[p] = m[T_RVB];
             padChorus[p] = m[T_CHORUS];
             padWob[p] = m[T_WOB];
+            padPump[p] = Math.min(1, m[T_PUMP]); padWarm[p] = Math.min(1, m[T_WARM]); padPhaser[p] = Math.min(1, m[T_PHASER]); padFreeze[p] = Math.min(1, m[T_FREEZE]);
             boolean stut = (Math.max(a[0], b[0]) > 0 || m[T_STUT] > .5f) && playing;
             if (stut && !padStut[p]) { pStutA[p] = lastStep - (lastStep % 2); pStutB[p] = step; }
             padStut[p] = stut;
@@ -1493,6 +1542,9 @@ public final class Engine {
                     case T_DIRT: padDirt[p] += up; break;
                     case T_CRUSH: padCrush[p] += up; break;
                     case T_CHORUS: padChorus[p] += up; break;
+                    case T_PUMP: padPump[p] = Math.min(1, padPump[p] + up); break;
+                    case T_WARM: padWarm[p] = Math.min(1, padWarm[p] + up); break;
+                    case T_PHASER: padPhaser[p] = Math.min(1, padPhaser[p] + up); break;
                     default: break;
                 }
             }

@@ -751,6 +751,33 @@ public class EngineTest {
         }
         check(onset[0] >= 0 && Math.abs(onset[1] - onset[0] - spbP / 3) < 64, String.format("finer grid: the stored triplet sounds a third of a step late (%d frames after the on-step hit, %.0f wanted)", onset[1] - onset[0], spbP / 3));
       }
+      // the new effects (Nov 18): Pump ducks the start of each beat, Freeze holds a note past its end
+      {
+        Project fp2 = new Project(); fp2.bpm = 120; fp2.kit[0] = "long0";
+        float[] lt = new float[44100 * 4]; for (int i = 0; i < lt.length; i++) lt[i] = (float) (.3 * Math.sin(2 * Math.PI * 220 * i / 44100.0));
+        float[] st = new float[4410]; for (int i = 0; i < st.length; i++) st[i] = (float) (.3 * Math.sin(2 * Math.PI * 220 * i / 44100.0));
+        Engine.SampleSource src2 = k -> new Sample(k, k.equals("long0") ? lt : st, 44100);
+        Engine pu = new Engine(rate); pu.setSnapshot(Engine.Snapshot.build(fp2, src2, new Engine.Live())); pu.play();
+        pu.mod(0, Engine.T_PUMP, 1f);
+        pu.down(7000, 0, new int[]{0}, false, true);
+        double spbE = rate * 60.0 / 120 / 4; float[] ob2 = new float[512];
+        double early = 0, late = 0; int f2 = 0;
+        for (int i = 0; i < (int) (8 * spbE / 256); i++) {
+          pu.render(ob2, 256);
+          double pk = 0; for (int q = 0; q < 256; q++) pk = Math.max(pk, Math.abs(ob2[q * 2]));
+          double posBeat = ((f2 / spbE) % 4) / 4.0;
+          if (f2 > 4 * spbE) { if (posBeat > .03 && posBeat < .1) early = Math.max(early, pk); else if (posBeat > .7) late = Math.max(late, pk); }
+          f2 += 256;
+        }
+        check(late > 0 && early < late * .7, String.format("Pump: the start of the beat is ducked (%.3f) under the end of it (%.3f)", early, late));
+        Project fz = new Project(); fz.bpm = 120; fz.kit[0] = "short";
+        Engine fe2 = new Engine(rate); fe2.setSnapshot(Engine.Snapshot.build(fz, src2, new Engine.Live()));
+        fe2.mod(0, Engine.T_FREEZE, 1f);
+        fe2.down(7001, 0, new int[]{0}, false);
+        for (int i = 0; i < 40; i++) fe2.render(ob2, 256); // over 0.2 s: the 0.1 s sound would be over
+        double pz = 0; for (int q = 0; q < 256; q++) pz = Math.max(pz, Math.abs(ob2[q * 2]));
+        check(pz > .05, String.format("Freeze: a 0.1 s sound still sounds after 0.2 s (%.3f)", pz));
+      }
       // the lag creep (Nov 18): a pile-up of long notes stays under the soft voice limit, and a heavy scene renders in time
       {
         float[] longT = new float[44100 * 4]; for (int i = 0; i < longT.length; i++) longT[i] = (float) (.2 * Math.sin(2 * Math.PI * 220 * i / 44100.0));
@@ -763,6 +790,8 @@ public class EngineTest {
         }
         Engine he = new Engine(rate); he.setSnapshot(Engine.Snapshot.build(hp, lsrc, new Engine.Live()));
         he.play();
+        // and the four new effects on every pad (Nov 18): the full house has to stay in time with them too
+        for (int pd = 0; pd < 16; pd++) { he.mod(pd, Engine.T_PUMP, .6f); he.mod(pd, Engine.T_WARM, .5f); he.mod(pd, Engine.T_PHASER, .7f); if (pd % 4 == 0) he.mod(pd, Engine.T_FREEZE, 1f); }
         float[] hb = new float[192 * 2]; int most = 0; long worst = 0, total = 0; int blocks = 0;
         for (int i = 0; i < 120; i++) {
           he.down(5000 + i, i % 16, new int[]{(i * 5) % 24, (i * 5 + 4) % 24, (i * 5 + 7) % 24}, false);

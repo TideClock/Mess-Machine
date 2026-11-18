@@ -56,6 +56,16 @@ Rewritten at the end of every session and at each step of a long job (BT-2). Rea
 
 One line each, dated, with the reason and who decided (BT-2). Older decisions live in the plan sections below.
 
+- 2026-11-18 Builds 96 to 101 (Tyler, final plan https://claude.ai/artifact/SMmt7Jz3BfDsP7xUqLLEqq): soft voice limit 48
+  with the quietest fading first, delay given back after 10 clean seconds, growth logged with voices; loops from the
+  top bar (a pick waits for the bar line, or Now); the view row is gone (Step and Keys modes retired, Padiano Full
+  size, FX on the bottom bar, My Desk is a Play layout in Settings); Padiano rows run straight up; wheel Stay snaps to
+  the key; XY At the start and At the edge; FX fader picker; Wobble is an LFO preset; Moves is called Auto; Menu then
+  tap opens a control's settings in a tray, Menu twice the last thing touched, flick up behind a setting; the LFO
+  strip keeps rate, depth, cutoff and res; the text diet (playing pages explain only with Page help on); the pack's
+  + is four icon tiles; Looks: Classic, Pro dark, Pro light with 72 pixel icons (tools/icons) on printed rails and a
+  lag readout; the finer time grid (24 ticks a step) records triplet and dotted repeats, with Rec exact as a
+  setting; Auto shows the whole loop; Pump, Tape, Phaser and Freeze as live sends.
 - 2026-11-17 Update from inside the app (Tyler): the app reads the latest release, downloads the APK and installs it
   through PackageInstaller with USER_ACTION_NOT_REQUIRED (Android 12+, an app updating itself). The signing key stays
   in the public repo: Tyler does not care that it is public, do not raise it again.

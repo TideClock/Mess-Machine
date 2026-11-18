@@ -195,6 +195,7 @@ val LFO_TARGETS = listOf(
     com.tideclock.messmachine.engine.Engine.T_PITCH to "Pitch", com.tideclock.messmachine.engine.Engine.T_RVB to "Reverb",
     com.tideclock.messmachine.engine.Engine.T_ECHO to "Echo", com.tideclock.messmachine.engine.Engine.T_DIRT to "Dirty",
     com.tideclock.messmachine.engine.Engine.T_CRUSH to "Crush", com.tideclock.messmachine.engine.Engine.T_CHORUS to "Chorus",
+    com.tideclock.messmachine.engine.Engine.T_PUMP to "Pump", com.tideclock.messmachine.engine.Engine.T_WARM to "Tape", com.tideclock.messmachine.engine.Engine.T_PHASER to "Phaser",
 )
 
 /**
