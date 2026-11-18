@@ -1907,6 +1907,8 @@ class BigTest {
             assertTrue("tab ${t.label} shows its screen", ok)
         }
         tab("Pads")
+        // Play opens on the view used last (My Desk, after the loop above): back to the pads themselves
+        at("mode-pads").performClick(); settle()
         tapPad(12)
         assertEquals("tapping an empty pad opens the jars for it", Overlay.Picker(12), state.overlay)
         rule.onNodeWithTag("sheet", useUnmergedTree = true).assertExists()
