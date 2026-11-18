@@ -2,6 +2,7 @@ package com.tideclock.messmachine.ui
 
 import com.tideclock.messmachine.R
 import androidx.compose.foundation.background
+import androidx.compose.ui.res.imageResource
 import androidx.compose.foundation.layout.size
 
 /** The pixel icons (tools/icons, 32 x 32 art with an ink outline and a white glow). Written by tools/icons/export.py. */
@@ -102,7 +103,7 @@ fun PixIcon(name: String, size: androidx.compose.ui.unit.Dp, modifier: androidx.
         contentAlignment = androidx.compose.ui.Alignment.Center,
     ) {
         androidx.compose.foundation.Image(
-            androidx.compose.ui.res.painterResource(res), contentDescription = name,
+            androidx.compose.ui.graphics.ImageBitmap.imageResource(res), contentDescription = name,
             modifier = androidx.compose.ui.Modifier.size(size), filterQuality = androidx.compose.ui.graphics.FilterQuality.None,
             alpha = if (dim) .55f else 1f,
         )
