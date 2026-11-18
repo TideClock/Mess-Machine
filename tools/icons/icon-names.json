@@ -1,0 +1,290 @@
+{
+ "Play": [
+  "ic_play",
+  "transport"
+ ],
+ "Stop": [
+  "ic_stop",
+  "transport"
+ ],
+ "Rec": [
+  "ic_rec",
+  "transport"
+ ],
+ "Undo": [
+  "ic_undo",
+  "transport"
+ ],
+ "Redo": [
+  "ic_redo",
+  "transport"
+ ],
+ "Tempo": [
+  "ic_tempo",
+  "transport"
+ ],
+ "Play tab": [
+  "ic_play_tab",
+  "place"
+ ],
+ "Synth": [
+  "ic_synth",
+  "place"
+ ],
+ "Steps": [
+  "ic_steps",
+  "place"
+ ],
+ "Roll": [
+  "ic_roll",
+  "place"
+ ],
+ "Song": [
+  "ic_song",
+  "place"
+ ],
+ "Sounds": [
+  "ic_sounds",
+  "place"
+ ],
+ "Pads": [
+  "ic_pads",
+  "place"
+ ],
+ "Keys": [
+  "ic_keys",
+  "place"
+ ],
+ "Step mode": [
+  "ic_step_mode",
+  "place"
+ ],
+ "Desk": [
+  "ic_desk",
+  "place"
+ ],
+ "Learn": [
+  "ic_learn",
+  "place"
+ ],
+ "Messes": [
+  "ic_messes",
+  "place"
+ ],
+ "MIDI map": [
+  "ic_midi_map",
+  "place"
+ ],
+ "Notes (bug)": [
+  "ic_notes_bug",
+  "place"
+ ],
+ "Menu": [
+  "ic_menu",
+  "perform"
+ ],
+ "Pack": [
+  "ic_pack",
+  "perform"
+ ],
+ "Hold": [
+  "ic_hold",
+  "perform"
+ ],
+ "Chords": [
+  "ic_chords",
+  "perform"
+ ],
+ "Repeat": [
+  "ic_repeat",
+  "perform"
+ ],
+ "Glide": [
+  "ic_glide",
+  "perform"
+ ],
+ "Lock": [
+  "ic_lock",
+  "perform"
+ ],
+ "Pitch wheel": [
+  "ic_pitch_wheel",
+  "perform"
+ ],
+ "Mouth": [
+  "ic_mouth",
+  "perform"
+ ],
+ "Octave up": [
+  "ic_octave_up",
+  "perform"
+ ],
+ "Octave down": [
+  "ic_octave_down",
+  "perform"
+ ],
+ "Key and scale": [
+  "ic_key_and_scale",
+  "perform"
+ ],
+ "Record to pad": [
+  "ic_record_to_pad",
+  "perform"
+ ],
+ "FX": [
+  "ic_fx",
+  "sound"
+ ],
+ "LFO": [
+  "ic_lfo",
+  "sound"
+ ],
+ "Filter": [
+  "ic_filter",
+  "sound"
+ ],
+ "Resonance": [
+  "ic_resonance",
+  "sound"
+ ],
+ "XY square": [
+  "ic_xy_square",
+  "sound"
+ ],
+ "XY sphere": [
+  "ic_xy_sphere",
+  "sound"
+ ],
+ "Reverb": [
+  "ic_reverb",
+  "sound"
+ ],
+ "Echo": [
+  "ic_echo",
+  "sound"
+ ],
+ "Dirt": [
+  "ic_dirt",
+  "sound"
+ ],
+ "Crush": [
+  "ic_crush",
+  "sound"
+ ],
+ "Chorus": [
+  "ic_chorus",
+  "sound"
+ ],
+ "Pump": [
+  "ic_pump",
+  "sound"
+ ],
+ "Tape": [
+  "ic_tape",
+  "sound"
+ ],
+ "Phaser": [
+  "ic_phaser",
+  "sound"
+ ],
+ "Freeze": [
+  "ic_freeze",
+  "sound"
+ ],
+ "Sine": [
+  "ic_sine",
+  "sound"
+ ],
+ "Triangle": [
+  "ic_triangle",
+  "sound"
+ ],
+ "Saw up": [
+  "ic_saw_up",
+  "sound"
+ ],
+ "Saw down": [
+  "ic_saw_down",
+  "sound"
+ ],
+ "Square": [
+  "ic_square",
+  "sound"
+ ],
+ "Random steps": [
+  "ic_random_steps",
+  "sound"
+ ],
+ "Sample": [
+  "ic_sample",
+  "sound"
+ ],
+ "Settings": [
+  "ic_settings",
+  "tool"
+ ],
+ "Copy": [
+  "ic_copy",
+  "tool"
+ ],
+ "Paste": [
+  "ic_paste",
+  "tool"
+ ],
+ "Clear": [
+  "ic_clear",
+  "tool"
+ ],
+ "Share": [
+  "ic_share",
+  "tool"
+ ],
+ "Star": [
+  "ic_star",
+  "tool"
+ ],
+ "Move": [
+  "ic_move",
+  "tool"
+ ],
+ "Mute": [
+  "ic_mute",
+  "tool"
+ ],
+ "Solo": [
+  "ic_solo",
+  "tool"
+ ],
+ "Import": [
+  "ic_import",
+  "tool"
+ ],
+ "Update": [
+  "ic_update",
+  "tool"
+ ],
+ "What the FAQ": [
+  "ic_what_the_faq",
+  "tool"
+ ],
+ "Close": [
+  "ic_close",
+  "tool"
+ ],
+ "Bake": [
+  "ic_bake",
+  "tool"
+ ],
+ "Bottle it": [
+  "ic_bottle_it",
+  "tool"
+ ],
+ "Random": [
+  "ic_random",
+  "tool"
+ ],
+ "Auto": [
+  "ic_auto",
+  "tool"
+ ]
+}

@@ -334,7 +334,6 @@ private fun RepeatMenu(state: AppState, open: Boolean, onClose: () -> Unit) {
                     Btn(n, { onClose(); state.setLive { nrStyle = st } }, on = state.live.nrStyle == st, onColor = C.Yellow, small = true, tag = "rate-s$st")
                 }
             }
-            Note("Cut stops each repeat at the next. Ring lets them play out. Flow holds the note and pulses it.", modifier = Modifier.padding(bottom = 10.dp))
             RepeatPatternPicker(state)
         }
     }
@@ -388,7 +387,6 @@ fun RepeatPatternPicker(state: AppState) {
         T("${shown.length} STEPS", size = 10.sp, color = C.Dim, family = Mono)
         Btn("+", { state.editOwnPattern(shown + "x") }, small = true, enabled = shown.length < 16, tag = "pat-longer")
     }
-    Note("Each step is one repeat. With Hold on, held notes follow the pattern too.", modifier = Modifier.padding(bottom = 6.dp))
 }
 
 

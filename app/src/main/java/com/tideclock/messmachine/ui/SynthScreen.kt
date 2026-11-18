@@ -126,7 +126,7 @@ private fun NoSynth(state: AppState, pad: Int) {
             for (i in have) Btn("Pad ${i + 1} · ${state.lib.titleOf(P.kit[i])}", { state.selectPad(i, false) }, small = true, tag = "synth-go-$i")
         }
     }
-    Note("A synth plays on a pad like a sound: steps, Roll, keys, Hold and Repeat all work. Pick where to put one.", modifier = Modifier.padding(top = 10.dp, bottom = 12.dp))
+    Note("Pick where to put a synth.", modifier = Modifier.padding(top = 10.dp, bottom = 12.dp))
     T("START FROM", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(bottom = 4.dp))
     Select("${preset.kind.name}: ${preset.name}", all.map { it.first to it.first }, { n -> all.firstOrNull { it.first == n }?.let { preset = it.second } }, tag = "nosynth-preset")
     Spacer(Modifier.height(12.dp))

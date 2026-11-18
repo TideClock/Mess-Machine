@@ -38,7 +38,7 @@ fun SongScreen(state: AppState) {
         }
         Heading("Song", size = 18.sp)
         Note(
-            if (len == 0) "Empty. Pick a loop below and tap bars to paint it in, or Rough it in."
+            if (len == 0) "Empty: pick a loop, tap bars, or Rough it in."
             else "$len bars, about ${secs / 60}:${(secs % 60).toString().padStart(2, '0')} at ${P.bpm} BPM.",
             color = C.Yellow, modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
         )

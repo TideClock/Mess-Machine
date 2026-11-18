@@ -1,19 +1,15 @@
 {
-  "title": "Menu, then tap",
+  "title": "Fewer words, your first icons",
   "thisBuild": [
-    "Menu works on everything now: tap Menu (it lights up), then tap anything. Its settings open instead of it playing. Tap Menu twice for the settings of whatever you touched last.",
-    "Settings open in a tray just above the bottom bar, with Done to close it. The pad menu works the same way: Menu, then the pad.",
-    "Glide: a tap only turns it on or off. Its time and Legato are in its tray.",
-    "LFO strip: what you change live stays on it (on, rate, triplet or dotted, depth, cutoff, res). The button at the top right shows the wave and target; tap it for the wave, Wobble, filter type, target and restart.",
-    "FX faders: Menu, then a fader shows which faders show, and Auto lane buttons that open that fader's automation on Steps, ready to draw.",
-    "Settings, Playing: Flick up for settings. With it on, a quick flick up off a button opens its settings. Off until you try it."
+    "The text diet: the playing pages no longer explain themselves. What the FAQ (the ? in the top bar) says what anything is, and the lessons show how. Page help in What the FAQ brings the old explanations back if you want them.",
+    "The FannyPack's + is now four colored tiles with icons: Keys, FX, LFO and XY. Lit tiles are packed.",
+    "Shorter lines where a note had to stay (an empty pack, an empty bank, an empty song)."
   ],
   "watch": [
-    "Use Menu, then tap for a while: does it feel quicker than before, or does the extra tap on the pad menu bother you?",
-    "Try the flick setting: does it ever open settings when you meant to press?"
+    "Is anything now hard to figure out without its explanation? Send a note saying which, and I'll make its FAQ line clearer.",
+    "The pack tiles: do the icons read at a glance?"
   ],
   "limits": [
-    "XY settings open the XY setup sheet (with At the start and At the edge) rather than a tray.",
-    "Explanations still crowd some screens: the text diet comes next."
+    "Icons only on the pack tiles so far. The Pro looks, with icons on every bar, come next."
   ]
 }

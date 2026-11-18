@@ -5,6 +5,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -69,17 +71,27 @@ fun FannyPack(state: AppState, pad: Int) {
             var add by remember(pad) { mutableStateOf(false) }
             Box {
                 Btn("+", { add = true }, small = true, tight = true, tag = "pack-add-$pad")
+                // Nov 18 (note #22): four colored tiles, an icon and a word each, lit when packed; no descriptions
                 DropdownMenu(expanded = add, onDismissRequest = { add = false }, modifier = Modifier.background(C.Ink).tagged("pack-menu")) {
-                    T("IN THE FANNYPACK", size = 11.sp, color = C.Yellow, spacing = .08.em, modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp))
-                    for ((id, name) in PACK_STRIPS) DropdownMenuItem(
-                        text = { T((if (id in packed) "✓ " else "    ") + name + when (id) { "keys" -> ": Padiano"; "fx" -> ": live effect faders"; "lfo" -> ": a wave that moves the sound"; else -> ": the pad's XY" }, size = 14.sp, weight = FontWeight.Medium) },
-                        onClick = { state.togglePackStrip(pad, id); add = false },
-                        modifier = Modifier.tagged("pack-pick-$id"),
-                    )
+                    val tiles = listOf(Triple("keys", "Keys", C.Pink), Triple("fx", "FX", C.Teal), Triple("lfo", "LFO", C.Yellow), Triple("xy", "XY square", tileColor("place")))
+                    Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        for (row in tiles.chunked(2)) Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            for ((id, icon, col) in row) {
+                                val on = id in packed
+                                Column(
+                                    Modifier.width(84.dp).border(3.dp, if (on) C.Cream else C.Card2).clickable { state.togglePackStrip(pad, id); add = false }.padding(6.dp).tagged("pack-pick-$id"),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                ) {
+                                    PixIcon(icon, 56.dp, tile = col, dim = !on)
+                                    T(PACK_STRIPS.first { it.first == id }.second.uppercase(), size = 12.sp, color = if (on) C.Cream else C.Dim, modifier = Modifier.padding(top = 4.dp))
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
-        if (packed.isEmpty()) Note("Nothing packed yet. Tap + to put Keys, FX, LFO or XY in this pad's pack.", color = C.Yellow)
+        if (packed.isEmpty()) Note("Empty: tap +", color = C.Yellow)
         for (id in packed) if (id !in hidden) when (id) {
             "keys" -> PianoKeyboard(state, pad, close = false, synthBtn = true)
             "fx" -> FxStrip(state, pad, col)

@@ -59,7 +59,7 @@ fun MovesPanel(state: AppState) {
             Select("New lane… ▾", XY_TARGETS.filter { it.id >= 0 }.map { it.id to it.name }, { state.newLane(newPad, it) }, tag = "moves-newtarget")
         }
         if (lane.isEmpty()) {
-            Note("Record XY, FX faders or the pitch wheel with Rec on while the loop plays, or start a lane here.", modifier = Modifier.padding(top = 8.dp))
+            Note("Nothing recorded yet: Rec and move something, or start a lane.", modifier = Modifier.padding(top = 8.dp))
             return@Column
         }
         val off = state.page.coerceIn(0, P.pat().len / 16 - 1) * 16

@@ -125,7 +125,7 @@ fun StepsScreen(state: AppState) {
             Btn("Clear notes", { state.clearAllNotes() }, small = true, tier = Tier.Danger, enabled = pat.notes.values.any { it.isNotEmpty() }, tag = "clear-all-notes")
         }
         val rows = (0 until Project.BANK).map { state.bank * Project.BANK + it }.filter { P.kit[it].isNotEmpty() }
-        if (rows.isEmpty()) Note("Bank ${state.bank + 1} is empty. Put sounds on its pads from the Pads or Sounds tab.", color = C.Yellow)
+        if (rows.isEmpty()) Note("Bank ${state.bank + 1} is empty.", color = C.Yellow)
         for (i in rows) {
             val k = P.kit[i]
             val col = padColor(Color(state.lib.colorOf(k)))

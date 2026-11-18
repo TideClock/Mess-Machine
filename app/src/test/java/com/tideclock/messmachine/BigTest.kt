@@ -1926,11 +1926,16 @@ class BigTest {
     }
 
     @Test fun helpShowsOnceThenBehindTheQuestionMark() {
+        // the text diet (note #22): playing pages show no explanations unless Page help is on, and no sentence at all
+        for (t in listOf("Pads", "Steps", "Roll", "Song", "Synth")) {
+            tab(t)
+            assertTrue("no how-to on $t", rule.onAllNodesWithTag("help").fetchSemanticsNodes().isEmpty())
+            val texts = rule.onAllNodes(androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(androidx.compose.ui.semantics.SemanticsProperties.Text)).fetchSemanticsNodes()
+                .flatMap { n -> n.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.Text).orEmpty().map { it.text } }
+            val long = texts.filter { it.trim().endsWith(".") && it.trim().split(Regex("\\s+")).size > 12 }
+            assertTrue("no sentence over 12 words on $t: $long", long.isEmpty())
+        }
         tab("Steps")
-        assertTrue("first visit to Steps shows its how-to", rule.onAllNodesWithTag("help").fetchSemanticsNodes().isNotEmpty())
-        tab("Roll")
-        tab("Steps")
-        assertTrue("second visit hides it", rule.onAllNodesWithTag("help").fetchSemanticsNodes().isEmpty())
         // the ? is What the FAQ now; page help switches on from its card (and Settings)
         rule.onNodeWithTag("help-toggle").performClick(); settle()
         rule.onNodeWithTag("faq-help").performClick(); settle()
