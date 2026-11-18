@@ -470,8 +470,10 @@ fun Tabs(state: AppState) {
 @Composable
 fun QuickNoteBar(state: AppState, modifier: Modifier = Modifier) {
     val heard = state.quickText.orEmpty()
+    // above the bottom bar where it shows, so Menu, Hold and Chords stay in reach while you talk
+    val dockUp = state.tab == Tab.Pads || state.tab == Tab.Console || state.tab == Tab.Synth
     Row(
-        modifier.padding(start = 6.dp, end = 12.dp, bottom = 52.dp).sticker(C.Riot, shadow = 5.dp).tagged("quick-note").padding(start = 12.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+        modifier.padding(start = 6.dp, end = 12.dp, bottom = if (dockUp) 100.dp else 52.dp).sticker(C.Riot, shadow = 5.dp).tagged("quick-note").padding(start = 12.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         T(if (heard.isEmpty()) "● Listening. Talk, then tap the bug." else "● " + heard.takeLast(90), color = C.Cream, size = 13.sp, lines = 2, modifier = Modifier.weight(1f, fill = false))

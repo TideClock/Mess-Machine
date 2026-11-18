@@ -1,21 +1,16 @@
 {
-  "title": "Update from inside the app, and quick voice notes",
+  "title": "Your first in-app update",
   "thisBuild": [
-    "Update button: when a newer build is on GitHub, a teal bar under the top bar says so. Tap Update: the app downloads it, saves your mess and hands it to Android. No browser, no Downloads folder. Settings has Check for updates too.",
-    "The first Update sends you to Android's Allow from this source switch for Mess Machine. Turn it on once and come back. After that Android may install without asking at all; if it asks, it is one Install tap.",
-    "Android closes the app while it swaps in the new build. A notice then says it updated: tap it to open.",
-    "Quick notes (note #20): tap the bug, talk, tap the bug again. The note stays on the phone with what was on screen and your last taps from that moment. Keep and Drop sit on the red bar while it listens. Start with \"wishlist\" or \"feature\" to pick the kind.",
-    "Notes for Claude (to write, send and read replies) moved into the ☰ menu, which shows how many notes are waiting. Send all sends them in one go."
+    "If you are reading this, the Update bar worked. Tell me with a quick note: did Android ask you anything, and did the notice bring you back in?",
+    "The red quick-note bar now sits above the bottom bar, so Menu, Hold and Chords stay in reach while you talk.",
+    "From build 94: tap the bug, talk, tap it again, and the note waits on the phone. Notes for Claude and Send all are in the ☰ menu."
   ],
   "watch": [
-    "This build is the last one you install the old way. The next build should show the teal Update bar: tap it and tell me whether Android asked you anything.",
-    "Talk a long note with a few pauses: does it keep everything you said, or drop words at the pauses?",
-    "Music playing loud while you talk: does it still hear you?"
+    "A long quick note with pauses: does it keep everything you said?",
+    "The proposal for notes 20 to 22 is waiting for your answers before the next real build."
   ],
   "limits": [
-    "Android can keep listening only in short runs, so the app restarts it at each pause. Some phones beep at each restart.",
-    "The app cannot reopen itself after an update; the notice is one tap. Without notification permission there is no notice, so open it from the home screen.",
-    "Notes 21 and 22 (how controls turn on and open, and icons from your art) are proposals, not in this build.",
-    "I cannot hear the app or try Android's installer on your phone: the first real in-app update is the test."
+    "Nothing new to play in this build: it exists so you can try the Update bar.",
+    "The app cannot reopen itself after an update; the notice is one tap. Without notification permission, open it from the home screen."
   ]
 }

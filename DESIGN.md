@@ -4,6 +4,8 @@
 
 Rewritten at the end of every session and at each step of a long job (BT-2). Read this first.
 
+- **Next (2026-11-17):** proposal doc for notes 20 to 22 and the plan's leftovers:
+  https://claude.ai/artifact/8FmzH6E44h2Ug8odWgVtXE . Builds 95 to 98 wait for Tyler's go and his answers there.
 - **Live:** build 92 (green, published 2026-11-17). The whole approved proposal (84 to 95) shipped in two builds:
   88 (bottom dock, Menu only, chord slots and octaves, lesson bug, quarter note, slash, drag paint, MIDI one at a
   time and list, notes key) and 92 (FannyPack, FX and LFO strips, triplet and dotted repeat, pitch wheel, row
@@ -54,6 +56,11 @@ Rewritten at the end of every session and at each step of a long job (BT-2). Rea
 
 One line each, dated, with the reason and who decided (BT-2). Older decisions live in the plan sections below.
 
+- 2026-11-17 Update from inside the app (Tyler): the app reads the latest release, downloads the APK and installs it
+  through PackageInstaller with USER_ACTION_NOT_REQUIRED (Android 12+, an app updating itself). The signing key stays
+  in the public repo: Tyler does not care that it is public, do not raise it again.
+- 2026-11-17 Quick notes (note #20, Tyler): tap the bug, talk, tap again; the note keeps the state and taps from when it
+  was spoken and waits on the phone. The notes list lives in the menu with Send all.
 - 2026-11-17 Menu is the one way to a pad's menu (Tyler): a hold always plays; carry and swap became Menu's Move.
   Menu, Hold, Chords on/off and the key button sit on a bottom dock that stays on screen on Play, My Desk and Synth
   (Tyler: "it can't be stuck to the top"). The key panel opens above the dock; a Padiano no longer opens it.
