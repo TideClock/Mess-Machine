@@ -45,7 +45,7 @@ fun MouthScreen(state: AppState) {
             Btn("Spring back", { state.switchMouthStay(false) }, on = !state.mouthStay, onColor = C.Teal, small = true, tag = "mouth-letgo")
         }
         SliderRow("Sensitivity", -state.mouthGate, 20f..70f, { "quiet under -${it.toInt()} dB" }, { state.changeMouthGate(-it) }, {}, accent = C.Pink)
-        Help("Headphones work best: on the speaker the mic hears the music too, and the music would move things. Turn Sensitivity down if it moves while you're silent. With Rec on while the loop plays, what your mouth does lands in the loop as XY moves (Clear moves takes it out). Nothing you say is kept: only the two numbers.", modifier = Modifier.padding(top = 8.dp))
+        Help("Headphones work best: on the speaker the mic hears the music too, and the music would move things. Turn Sensitivity down if it moves while you're silent. With Rec on while the loop plays, what your mouth does lands in the loop as XY moves (Clear auto takes it out). Nothing you say is kept: only the two numbers.", modifier = Modifier.padding(top = 8.dp))
         T(" ", size = 30.sp)
     }
 }

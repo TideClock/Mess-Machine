@@ -1,16 +1,25 @@
 {
-  "title": "Your first in-app update",
+  "title": "Lag fix, loops everywhere, a cleaner Play screen",
   "thisBuild": [
-    "If you are reading this, the Update bar worked. Tell me with a quick note: did Android ask you anything, and did the notice bring you back in?",
-    "The red quick-note bar now sits above the bottom bar, so Menu, Hold and Chords stay in reach while you talk.",
-    "From build 94: tap the bug, talk, tap it again, and the note waits on the phone. Notes for Claude and Send all are in the ☰ menu."
+    "Lag: the app now fades out the quietest notes when more than 48 sound at once, instead of piling up to 96. After a hiccup it gives the delay back after 10 clean seconds, not a minute.",
+    "Loops from every page: the loop button sits next to the tempo in the top bar. Tap it for A to H. While playing, a pick waits for the bar line (Bar), or switch it to Now.",
+    "The Play screen lost its view row. FX is on the bottom bar. Step and Keys modes are gone: the Padiano has a Full size for big keys. My Desk is in Settings, under Play layout, next to View size.",
+    "Padiano rows run straight up: the row above starts where the row below ends, no repeated notes.",
+    "Pitch wheel: the word under it switches Spring and Stay. Stay keeps the bend where you let go, on the nearest note in the key.",
+    "XY setup: each direction has At the start and At the edge, so the whole square can cover just the range you perform with.",
+    "FX strip: Faders picks which faders show. Wobble moved into the LFO strip as a preset button.",
+    "MIDI map: knobs reach a pad's XY (touch the XY, turn one knob for across, the next for up) and Pad volume (on the map panel).",
+    "Moves is now called Auto.",
+    "Bug button: the app can now see the phone's speech service (Android was hiding it), and falls back to Android's on-device one. If neither works it opens the note box and says why."
   ],
   "watch": [
-    "A long quick note with pauses: does it keep everything you said?",
-    "The proposal for notes 20 to 22 is waiting for your answers before the next real build."
+    "Play hard for a few minutes, then send a quick note: it now says how many voices were sounding whenever the delay grew. Does the lag still creep?",
+    "Tap the bug and talk: does it listen now?",
+    "Switch loops while playing: does Bar land cleanly on the next bar?"
   ],
   "limits": [
-    "Nothing new to play in this build: it exists so you can try the Update bar.",
-    "The app cannot reopen itself after an update; the notice is one tap. Without notification permission, open it from the home screen."
+    "Lessons that used Keys mode now use the Padiano; tell me if one gets stuck.",
+    "Menu then tap, the settings tray and the new LFO strip come in the next build.",
+    "I cannot hear the app: whether 48 voices is enough for your playing is for your ears."
   ]
 }

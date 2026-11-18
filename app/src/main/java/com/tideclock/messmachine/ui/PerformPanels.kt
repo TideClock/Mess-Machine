@@ -270,7 +270,7 @@ fun PianoKeyboard(state: AppState, pad: Int, keysHeight: Dp = 132.dp, filter: Bo
         if (showSet) PadianoSettings(state)
         if (slots) ChordSlots(state, pad, col, Math.floorDiv(base, 12))
         else if (squares) PadianoSquares(state, pad, col, base)
-        else PadianoKeys(state, pad, col, if (keysHeight != 132.dp) keysHeight else listOf(96.dp, 132.dp, 176.dp, 236.dp)[state.padianoSize])
+        else PadianoKeys(state, pad, col, if (keysHeight != 132.dp) keysHeight else listOf(96.dp, 132.dp, 176.dp, 236.dp, 300.dp)[state.padianoSize])
         if (showXy) PadXy(state, pad, Modifier.padding(top = 8.dp))
         if (filter) PadFilterStrip(state, pad, Modifier.padding(top = 8.dp))
     }
@@ -312,7 +312,7 @@ fun PadianoSettings(state: AppState) {
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 8.dp)) {
             T("SIZE", size = 11.sp, color = C.Dim, spacing = .1.em)
-            for ((z, n) in listOf("S", "M", "L", "XL").withIndex()) Btn(n, { state.changePadianoSize(z) }, on = state.padianoSize == z, small = true, tag = "pset-size-$z", modifier = Modifier.widthIn(min = 40.dp))
+            for ((z, n) in listOf("S", "M", "L", "XL", "Full").withIndex()) Btn(n, { state.changePadianoSize(z) }, on = state.padianoSize == z, small = true, tag = "pset-size-$z", modifier = Modifier.widthIn(min = 40.dp))
         }
         // its own line: beside Size the third button ran off the edge on a phone
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 8.dp)) {
@@ -339,7 +339,7 @@ fun ChordSlots(state: AppState, pad: Int, col: Color, oct: Int) {
         // two rows of four on a phone, one row of eight when there is room for 56 dp boxes
         val perRow = if (maxWidth >= 56.dp * n) n else (n + 1) / 2
         val rows = (n + perRow - 1) / perRow
-        val rowH = listOf(52.dp, 68.dp, 88.dp, 120.dp)[state.padianoSize]
+        val rowH = listOf(52.dp, 68.dp, 88.dp, 120.dp, 150.dp)[state.padianoSize]
         Canvas(
             Modifier
                 .fillMaxWidth()
@@ -402,19 +402,27 @@ fun PadianoSquares(state: AppState, pad: Int, col: Color, base: Int) {
     val origin = remember { Origin() }
     val one = (base until base + state.padianoN).filter { !state.inKeyOnly || P.scale == "Chromatic" || Theory.inScale(it, P.scale, P.root) }
     if (one.isEmpty()) return
-    // extra rows: the same notes an octave up each, the highest on top (like a pad controller)
+    // extra rows carry on up from where the row below ends, the highest on top (note #20: no notes repeated across rows)
     val octs = state.padianoRows
-    val blocks = (octs - 1 downTo 0).map { o -> one.map { it + 12 * o } }
+    val run = run {
+        val want = one.size * octs
+        val out = ArrayList<Int>(want)
+        var n = one.first()
+        while (out.size < want && n <= Theory.ROLL_HI) { if (!state.inKeyOnly || P.scale == "Chromatic" || Theory.inScale(n, P.scale, P.root)) out.add(n); n++ }
+        out
+    }
+    val blocks = (octs - 1 downTo 0).map { o -> run.subList(minOf(o * one.size, run.size), minOf((o + 1) * one.size, run.size)) }.filter { it.isNotEmpty() }
     val notes = blocks.flatten()
     val tm = rememberTextMeasurer()
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val avail = maxWidth - 6.dp
         // as many squares in a row as fit at 22 dp or wider (XL: 30 dp); wrapped rows share the notes evenly
-        val fit = maxOf(1, floor(avail / (if (state.padianoSize == 3) 30.dp else 22.dp)).toInt())
+        val fit = maxOf(1, floor(avail / (if (state.padianoSize >= 3) 30.dp else 22.dp)).toInt())
         val sub = (one.size + fit - 1) / fit
         val perRow = (one.size + sub - 1) / sub
         val rows = sub * octs
-        val rowH = listOf(48.dp, 64.dp, 86.dp, 124.dp)[state.padianoSize]
+        // Full (Nov 18): Keys mode's big targets, now a Padiano size
+        val rowH = listOf(48.dp, 64.dp, 86.dp, 124.dp, 170.dp)[state.padianoSize]
         // the note at row r, column c: block r / sub, wrapped line r % sub of it
         fun noteAt(r: Int, c: Int): Int? {
             val b = blocks.getOrNull(r / sub) ?: return null
@@ -470,7 +478,7 @@ fun PadianoSquares(state: AppState, pad: Int, col: Color, base: Int) {
     }
     Note(
         "${Theory.NN[P.root]} ${P.scale.lowercase()} · " + (if (state.chordMode == "off") "single notes" else chordName(state.chordMode).lowercase() + if (state.chordPlay) ", playing" else ", showing") +
-            " · ${Theory.noteName(one.first())} to ${Theory.noteName(one.last() + 12 * (octs - 1))}" + (if (octs > 1) " · $octs rows" else "") + if (state.inKeyOnly) " · in key only" else "",
+            " · ${Theory.noteName(run.first())} to ${Theory.noteName(run.last())}" + (if (octs > 1) " · $octs rows" else "") + if (state.inKeyOnly) " · in key only" else "",
         modifier = Modifier.padding(top = 4.dp),
     )
 }
@@ -488,7 +496,7 @@ fun PadianoKeys(state: AppState, pad: Int, col: Color, keysHeight: Dp) {
     val tm = rememberTextMeasurer()
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val avail = maxWidth - 6.dp
-        val wk = maxOf(if (state.padianoSize == 3) 44.dp else 34.dp, avail / whites.size)
+        val wk = maxOf(if (state.padianoSize >= 3) 44.dp else 34.dp, avail / whites.size)
         val visible = floor(avail / wk).toInt().coerceIn(1, whites.size)
         val maxStart = whites.size - visible
         val first = if (start < 0) (whites.indexOf(0) - 2).coerceIn(0, maxStart) else start.coerceIn(0, maxStart)
@@ -501,7 +509,9 @@ fun PadianoKeys(state: AppState, pad: Int, col: Color, keysHeight: Dp) {
                 Btn("Oct+", { start = (first + 7).coerceAtMost(maxStart) }, small = true, tight = true, enabled = first < maxStart, tag = "pkeys-octup-$pad")
             }
             for (o in octs - 1 downTo 0) {
-                val shown = shown0.map { it + 12 * o }
+                // each row up starts on the white key after the row below ends (note #20)
+                val from = (first + o * visible).coerceAtMost(whites.size - 1)
+                val shown = whites.subList(from, minOf(from + visible, whites.size))
                 Canvas(
                     Modifier
                         .fillMaxWidth()
@@ -582,7 +592,7 @@ fun PadianoKeys(state: AppState, pad: Int, col: Color, keysHeight: Dp) {
             }
             Note(
                 "${Theory.NN[P.root]} ${P.scale.lowercase()} · " + (if (state.chordMode == "off") "single notes" else chordName(state.chordMode).lowercase() + if (state.chordPlay) ", playing" else ", showing") +
-                    " · ${Theory.noteName(shown0.first())} to ${Theory.noteName(shown0.last() + 12 * (octs - 1))}" + if (octs > 1) " · $octs rows" else "",
+                    " · ${Theory.noteName(shown0.first())} to ${Theory.noteName(whites[minOf(first + octs * visible, whites.size) - 1])}" + if (octs > 1) " · $octs rows" else "",
                 modifier = Modifier.padding(top = 4.dp),
             )
         }

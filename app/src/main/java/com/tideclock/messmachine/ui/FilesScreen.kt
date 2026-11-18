@@ -162,6 +162,17 @@ fun SettingsScreen(state: AppState) {
                 }
             }
         }
+        // My Desk is a way of seeing the machine, so it lives here (Tyler, Nov 18): the Play tab shows the pads or your desk
+        Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
+            Column {
+                T("PLAY LAYOUT", size = 12.sp, color = C.Yellow, spacing = .1.em)
+                Wrap(Modifier.padding(top = 6.dp).tagged("layout-chips")) {
+                    val desk = state.playView == com.tideclock.messmachine.Tab.Console
+                    Btn("Pads", { state.pickPlayLayout(false) }, on = !desk, small = true, tag = "layout-pads")
+                    Btn("My Desk", { state.pickPlayLayout(true) }, on = desk, onColor = C.Teal, small = true, tag = "layout-desk")
+                }
+            }
+        }
         Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
             Column {
                 T("PLAYING", size = 12.sp, color = C.Yellow, spacing = .1.em)

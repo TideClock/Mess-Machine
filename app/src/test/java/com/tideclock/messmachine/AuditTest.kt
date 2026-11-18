@@ -160,7 +160,7 @@ class AuditTest {
         state.toggleKeyboard(0); settle(); audit(width, "Play Padiano")
         go("piano-set-0"); audit(width, "Play Padiano settings"); go("piano-set-0")
         state.toggleKeyboard(0); settle()
-        state.keysMode = true; settle(); audit(width, "Play keys mode"); state.keysMode = false; settle()
+        state.loopStripOpen = true; settle(); audit(width, "Play loops"); state.loopStripOpen = false; settle()
         state.showFx = true; settle(); audit(width, "Play FX"); state.showFx = false; settle()
         state.switchDockOpen(true); settle(); audit(width, "Play dock open"); state.switchDockOpen(false); settle()
         state.padMenu = 0; settle(); audit(width, "Pad menu", "padmenu"); state.padMenu = -1; step()

@@ -88,8 +88,8 @@ close_sheets() {
     adb shell input tap $d; sleep 1
   done
 }
-# the Play tab holds the pads and My Desk (view-desk); the rest are tabs
-for t in tab-Pads view-desk tab-Synth tab-Steps tab-Roll tab-Song tab-Sounds; do
+# the Play tab, then the loop row under the top bar (Nov 18: loops from every page), then the other tabs
+for t in tab-Pads loop-open tab-Synth tab-Steps tab-Roll tab-Song tab-Sounds; do
   close_sheets
   xy=$(centre "$t")
   [ -z "$xy" ] && { note "$t: NOT FOUND"; fail=1; shot "04-$t"; continue; }
@@ -104,7 +104,6 @@ done
 # pad opens the sphere
 close_sheets
 adb shell input tap $(centre tab-Pads); sleep 2
-adb shell input tap $(centre mode-pads); sleep 2
 xy=$(centre pad-6)
 if [ -z "$xy" ]; then note "pad 6: NOT FOUND"; fail=1; else
   set -- $xy

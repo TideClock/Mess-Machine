@@ -23,11 +23,17 @@ class VoiceNote(private val app: Context, private val heard: (String) -> Unit, p
 
     val listening get() = on
 
-    fun available() = try { SpeechRecognizer.isRecognitionAvailable(app) } catch (_: Exception) { false }
+    private fun defaultOk() = try { SpeechRecognizer.isRecognitionAvailable(app) } catch (_: Exception) { false }
+    private fun onDeviceOk() = android.os.Build.VERSION.SDK_INT >= 33 && try { SpeechRecognizer.isOnDeviceRecognitionAvailable(app) } catch (_: Exception) { false }
+    /** The phone's own speech service, or Android 13's on-device one when that is all there is (or the first one fails). */
+    private var onDevice = false
+
+    fun available() = defaultOk() || onDeviceOk()
 
     fun start(): Boolean {
         if (!available()) return false
         said.clear(); partial = ""; on = true; finished = false
+        onDevice = !defaultOk()
         listen()
         return true
     }
@@ -53,7 +59,7 @@ class VoiceNote(private val app: Context, private val heard: (String) -> Unit, p
 
     private fun listen() {
         try { sr?.destroy() } catch (_: Exception) {}
-        val r = SpeechRecognizer.createSpeechRecognizer(app)
+        val r = if (onDevice && android.os.Build.VERSION.SDK_INT >= 33) SpeechRecognizer.createOnDeviceSpeechRecognizer(app) else SpeechRecognizer.createSpeechRecognizer(app)
         sr = r
         r.setRecognitionListener(object : RecognitionListener {
             override fun onResults(b: Bundle?) {
@@ -73,6 +79,8 @@ class VoiceNote(private val app: Context, private val heard: (String) -> Unit, p
                     e == SpeechRecognizer.ERROR_NO_MATCH || e == SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> listen()
                     e == SpeechRecognizer.ERROR_RECOGNIZER_BUSY || e == SpeechRecognizer.ERROR_CLIENT -> main.postDelayed({ if (on) listen() }, 250)
                     e == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> { on = false; finish("The mic needs permission.") }
+                    // the phone's service failed outright: try Android's on-device one once before giving up
+                    !onDevice && onDeviceOk() && e != SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> { onDevice = true; main.postDelayed({ if (on) listen() }, 150) }
                     e == SpeechRecognizer.ERROR_NETWORK || e == SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> { on = false; finish("Speech needs a connection on this phone.") }
                     else -> main.postDelayed({ if (on) listen() }, 250)
                 }

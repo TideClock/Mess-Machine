@@ -1045,7 +1045,29 @@ public final class Engine {
         v.filt = true;
     }
 
+    /**
+     * The soft voice limit (Tyler, Nov 18: the lag crept up in build 92 with all 96 voices sounding). Past it, the
+     * quietest fading voice is choked: it fades out over a few milliseconds instead of stopping with a click.
+     */
+    public static final int VOICE_CAP = 48;
+    public int stolen = 0;
+
+    private void shedVoice() {
+        int n = 0;
+        for (Voice v : pool) if (v.active && v.chokeAt == Long.MAX_VALUE) n++;
+        if (n < VOICE_CAP) return;
+        Voice q = null; float ql = Float.MAX_VALUE;
+        for (Voice v : pool) {
+            if (!v.active || v.preview || v.chokeAt != Long.MAX_VALUE || v.startAbs > frame) continue;
+            // fading voices go first, then the quietest of the rest
+            float l = Math.abs(v.lastEnv) * v.lvl * (v.releasing ? .25f : 1f) * (v.hold ? 4f : 1f);
+            if (l < ql) { ql = l; q = v; }
+        }
+        if (q != null) { q.chokeAt = frame; stolen++; }
+    }
+
     private Voice freeVoice() {
+        shedVoice();
         Voice best = null;
         for (Voice v : pool) if (!v.active) return v;
         for (Voice v : pool) if (!v.preview && (best == null || v.t > best.t)) best = v;

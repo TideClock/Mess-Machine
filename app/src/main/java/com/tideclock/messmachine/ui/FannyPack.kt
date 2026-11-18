@@ -97,12 +97,23 @@ fun FannyPack(state: AppState, pad: Int) {
 fun FxStrip(state: AppState, pad: Int, col: Color) {
     Column(Modifier.fillMaxWidth().padding(bottom = 6.dp).tagged("fxstrip-$pad")) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 4.dp)) {
-            T("FX", size = 12.sp, color = C.Yellow, spacing = .1.em)
-            Note("live sends on pad ${pad + 1}; they stay put", modifier = Modifier.weight(1f))
+            T("FX", size = 12.sp, color = C.Yellow, spacing = .1.em, modifier = Modifier.weight(1f))
+            // which faders show (Nov 18): the strip keeps only the ones you play
+            var pick by remember(pad) { mutableStateOf(false) }
+            Box {
+                Btn("Faders ▾", { pick = true }, small = true, tight = true, tag = "fxstrip-pick-$pad")
+                DropdownMenu(expanded = pick, onDismissRequest = { pick = false }, modifier = Modifier.background(C.Ink).tagged("fxstrip-pickmenu")) {
+                    for (name in com.tideclock.messmachine.FX_FADERS) DropdownMenuItem(
+                        text = { T((if (name in state.fxShown) "✓ " else "    ") + name, size = 14.sp, weight = FontWeight.Medium) },
+                        onClick = { state.toggleFxShown(name) },
+                        modifier = Modifier.tagged("fxshow-$name"),
+                    )
+                }
+            }
             Btn("Off", { state.fxSendsOff(pad); state.openPadFilter(pad) }, small = true, tight = true, tag = "fxstrip-off-$pad")
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            for ((t, name) in FX_STRIP) {
+            for ((t, name) in FX_STRIP) if (name in state.fxShown) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
                     Fader(state.fxSend["$pad:$t"] ?: 0f, col, "fx-$t-$pad") { v, on -> state.fxSendTo(pad, t, v, on) }
                     T(name.uppercase(), size = 10.sp, color = C.Dim, lines = 1, modifier = Modifier.padding(top = 3.dp))
@@ -110,11 +121,11 @@ fun FxStrip(state: AppState, pad: Int, col: Color) {
             }
             // the pad's own filter: cutoff (top is open) and resonance, kept where you leave them
             val f = state.padFilt[pad]
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+            if ("Cut" in state.fxShown) Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
                 Fader(f?.first ?: 1f, C.Teal, "fx-cut-$pad") { v, _ -> state.keepPadFilter(pad, v, state.padFilt[pad]?.second ?: 0f) }
                 T("CUT", size = 10.sp, color = C.Teal, lines = 1, modifier = Modifier.padding(top = 3.dp))
             }
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+            if ("Res" in state.fxShown) Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
                 Fader(f?.second ?: 0f, C.Pink, "fx-res-$pad") { v, _ -> state.keepPadFilter(pad, state.padFilt[pad]?.first ?: 1f, v) }
                 T("RES", size = 10.sp, color = C.Pink, lines = 1, modifier = Modifier.padding(top = 3.dp))
             }
@@ -195,6 +206,9 @@ fun LfoStrip(state: AppState, pad: Int, col: Color) {
             for ((w, n) in listOf(0 to "Sine", 1 to "Tri", 2 to "Saw ↑", 3 to "Saw ↓", 4 to "Square", 5 to "Random")) {
                 Btn(n, { set { lfoWave = w; lfoOn = true } }, on = o.lfoWave == w, onColor = C.Teal, small = true, tight = true, tag = "lfo-wave-$w-$pad")
             }
+            // the old Wobble effect, folded in as a preset (Nov 18): a gentle pitch sway on a quarter-note sine
+            Btn("Wobble", { set { lfoOn = true; lfoWave = 0; lfoRate = 4.0; lfoTarget = com.tideclock.messmachine.engine.Engine.T_PITCH; lfoDepth = .03; lfoType = 0; lfoRetrig = false } },
+                on = o.lfoOn && o.lfoTarget == com.tideclock.messmachine.engine.Engine.T_PITCH && o.lfoDepth <= .05, onColor = C.Pink, small = true, tight = true, tag = "lfo-wobble-$pad")
         }
         // the rate strip: drag along it and it snaps at each mark; T and dot change the stop's feel
         RateStrip(base, col, "lfo-rate-$pad") { b, done ->
@@ -206,7 +220,7 @@ fun LfoStrip(state: AppState, pad: Int, col: Color) {
             Btn("T", { set { lfoRate = base * 2 / 3 } }, on = feel < 1.0, onColor = C.Yellow, small = true, tag = "lfo-trip-$pad")
             Btn("Dot", { set { lfoRate = base * 1.5 } }, on = feel > 1.0, onColor = C.Yellow, small = true, tight = true, tag = "lfo-dot-$pad")
             androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
-            Select("Moves: " + (LFO_TARGETS.firstOrNull { it.first == o.lfoTarget }?.second ?: "Filter"), LFO_TARGETS, { t -> set { lfoTarget = t; lfoOn = true } }, tag = "lfo-target-$pad")
+            Select("Target: " + (LFO_TARGETS.firstOrNull { it.first == o.lfoTarget }?.second ?: "Filter"), LFO_TARGETS, { t -> set { lfoTarget = t; lfoOn = true } }, tag = "lfo-target-$pad")
         }
         SliderRow("Depth", o.lfoDepth.toFloat(), 0f..1f, { "${(it * 100).toInt()}%" }, { v -> state.midiAim(com.tideclock.messmachine.MidiTarget("lfo", pad, 0, "depth")); set(false) { lfoDepth = v.toDouble() } }, { set { } }, accent = col)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp).tagged("lfotype-chips")) {

@@ -56,8 +56,11 @@ val PACK_STRIPS = listOf("keys" to "Keys", "fx" to "FX", "lfo" to "LFO", "xy" to
 /** The FX strip's faders: live sends on the pad, the same targets XY and recorded moves use. */
 val FX_STRIP = listOf(
     Engine.T_RVB to "Verb", Engine.T_ECHO to "Echo", Engine.T_DIRT to "Dirt", Engine.T_CRUSH to "Crush",
-    Engine.T_CHORUS to "Chor", Engine.T_WOB to "Wob",
+    Engine.T_CHORUS to "Chor",
 )
+
+/** Every fader the FX strip can show; you pick which (Nov 18). Wobble moved into the LFO strip as a preset. */
+val FX_FADERS = FX_STRIP.map { it.second } + listOf("Cut", "Res")
 
 /** A chord-set slot's place in the note ids (pianoId): above every real note (the highest is about 84). */
 const val SLOT_P = 92
@@ -201,6 +204,13 @@ class AppState(private val app: Context) {
         }
     /** The Play tab in the tab bar: back to whichever view of it you had. */
     fun openPlay() { tab = if (playDesk) Tab.Console else Tab.Pads }
+    /** Settings, Play layout (Nov 18): the Play tab shows the pads or your desk. */
+    val playView get() = if (playDesk) Tab.Console else Tab.Pads
+    fun pickPlayLayout(desk: Boolean) {
+        playDesk = desk; prefs.edit().putBoolean("playDesk", desk).apply()
+        if (tab == Tab.Pads || tab == Tab.Console) tab = playView
+        notes.trail("play layout ${if (desk) "desk" else "pads"}")
+    }
     var bank by mutableIntStateOf(project.sel / Project.BANK)
     var keysMode by mutableStateOf(false)
     /**
@@ -739,6 +749,8 @@ class AppState(private val app: Context) {
         val st = if (p.playing) p.step else -1
         if (heardStep != st) { heardStep = st; if (recHold.isNotEmpty() && st != recStep) { writeMoves(); rebuild() } }
         if (heardPat != p.pat) heardPat = p.pat
+        // a loop picked while playing changes on the last step of the bar, so the next bar starts on it
+        if (pendingSlot >= 0 && (!p.playing || (st >= 0 && st % 16 == 15))) { val k = pendingSlot; pendingSlot = -1; selectSlot(k) }
         if (heardSong != p.songPos) heardSong = p.songPos
         if (p.playing && project.songMode && follow && p.pat >= 0 && p.pat != project.cur) {
             project.cur = p.pat
@@ -1086,6 +1098,8 @@ class AppState(private val app: Context) {
         "dock" -> "the dock's " + (if (t.id == "res") "resonance" else "filter")
         "lfo" -> "Pad ${t.a + 1}, LFO " + (if (t.id == "rate") "rate" else "depth")
         "tempo" -> "the tempo"
+        "xy" -> "Pad ${t.a + 1}, XY " + (if (t.id == "y") "up and down" else "across")
+        "vol" -> "Pad ${t.a + 1}, volume"
         else -> "Pad ${t.a + 1}, ${synthOn(t.a)?.kind?.params?.firstOrNull { it.id == t.id }?.name ?: t.id} knob"
     }
 
@@ -1104,7 +1118,9 @@ class AppState(private val app: Context) {
 
     /** One step on: the pad to the right (then the next row down), the next key up, the next knob. */
     private fun midiNext(c: MidiTarget): MidiTarget? = when (c.kind) {
-        "act", "fx", "wheel", "dock", "lfo", "tempo" -> null
+        "act", "fx", "wheel", "dock", "lfo", "tempo", "vol" -> null
+        // XY takes two knobs: across first, then up and down
+        "xy" -> if (c.id != "y") c.copy(id = "y") else null
         "slot" -> if (c.b + 1 < Theory.setSize(chordMode)) c.copy(b = c.b + 1) else null
         "pad" -> if (c.a < Project.BANK - 1) c.copy(a = c.a + 1) else null
         "key" -> {
@@ -1140,7 +1156,7 @@ class AppState(private val app: Context) {
             // the knob just mapped keeps sending as it turns: that moves its synth knob, it does not map the next one
             if (cc == midiLastCc) { midiKnobs[layerKey(cc)]?.let { midiTurn(it, value, cc) }; return }
             val c = midiCursor
-            if (c == null || c.kind == "pad" || c.kind == "key" || c.kind == "slot") { midiLast = "To map a knob or slider, touch what it should turn first: a synth knob, an FX fader, the pitch wheel, the dock's filter, the LFO's rate or depth, or the tempo."; return }
+            if (c == null || c.kind == "pad" || c.kind == "key" || c.kind == "slot") { midiLast = "To map a knob or slider, touch what it should turn first: a synth knob, an FX fader, an XY, the pitch wheel, the dock's filter, the LFO's rate or depth, the tempo, or Pad volume on this panel."; return }
             midiKnobs[layerKey(cc)] = c
             saveMidiMap()
             midiLastCc = cc
@@ -1154,6 +1170,9 @@ class AppState(private val app: Context) {
     }
 
     /** A mapped knob or slider moved: what it turns (CC roll out, note #19 and Tyler's Nov 16 answer). */
+    /** Where each pad's XY sits when knobs move it, across and up. */
+    private val midiXy = HashMap<Int, Pair<Float, Float>>()
+
     private fun midiTurn(t: MidiTarget, value: Int, cc: Int = -1) {
         val v = value.coerceIn(0, 127) / 127f
         when (t.kind) {
@@ -1167,6 +1186,16 @@ class AppState(private val app: Context) {
                 setPadOpt(t.a, false) { lfoRate = st * feel; lfoOn = true }
             } else setPadOpt(t.a, false) { lfoDepth = v.toDouble() }
             "tempo" -> edit(false) { bpm = 60 + Math.round(v * 120) }
+            "xy" -> {
+                val four = xyOf(t.a).four
+                val a = if (four) v * 2f - 1f else v
+                val cur = midiXy[t.a] ?: (if (four) 0f to 0f else 0f to 0f)
+                val n = if (t.id == "y") cur.first to a else a to cur.second
+                midiXy[t.a] = n
+                xyMove(t.a, n.first, n.second, true)
+            }
+            // pad volume: two thirds of the way up is the pad as it is, the top is half again louder
+            "vol" -> engine.mod(t.a, Engine.T_VOL, (v * 1.5f - 1f).coerceIn(-1f, .5f))
             "act" -> {
                 val last = midiCcLast[cc] ?: 0
                 midiCcLast[cc] = value
@@ -1364,6 +1393,21 @@ class AppState(private val app: Context) {
     fun setRoot(r: Int) = edit { root = r }
 
     /* ---------------- loops and the song ---------------- */
+
+    /** The loop row under the top bar (Nov 18: loops from every page). */
+    var loopStripOpen by mutableStateOf(false)
+    /** A loop waiting for the bar line, or -1. */
+    var pendingSlot by mutableIntStateOf(-1)
+    /** While playing, a picked loop waits for the bar line (Bar) or changes at once (Now). */
+    var loopAtBar by mutableStateOf(prefs.getBoolean("loopAtBar", true))
+        private set
+    fun switchLoopAtBar() { loopAtBar = !loopAtBar; prefs.edit().putBoolean("loopAtBar", loopAtBar).apply() }
+
+    fun pickLoop(i: Int) {
+        if (i == project.cur && pendingSlot < 0) return
+        if (playing && loopAtBar && i != project.cur) { pendingSlot = i; notes.trail("loop ${Project.LETTERS[i]} at the bar") }
+        else { pendingSlot = -1; selectSlot(i) }
+    }
 
     fun selectSlot(i: Int) {
         notes.trail("loop ${Project.LETTERS[i]}")
@@ -1681,7 +1725,7 @@ class AppState(private val app: Context) {
         val touch = touchMs().let { if (it >= 0) "$it ms (${minOf(touchN, 32)} taps)" else "no taps yet" }
         val spk = if (speakerMs >= 0) "%.0f ms".format(speakerMs) else "not run"
         val buf = "%.1f".format(audio.ms(audio.bufferFrames))
-        return "output $out by Android's clock, buffer $buf ms, last hit waited $wait for a block, touch to app $touch, speaker test $spk, buffer grown ${audio.grown} and given back ${audio.shrunk}, steady CPU ${audio.cpuHint}"
+        return "output $out by Android's clock, buffer $buf ms, last hit waited $wait for a block, touch to app $touch, speaker test $spk, buffer grown ${audio.grown} and given back ${audio.shrunk}" + (if (audio.grown > 0) " (up to ${audio.growVoices} voices sounding at a growth)" else "") + ", voices cut at the limit ${engine.stolen}, steady CPU ${audio.cpuHint}"
     }
 
     /** A short click for the tap pad and the speaker test: 3 ms of 2 kHz, loud enough for the mic. */
@@ -1771,7 +1815,7 @@ class AppState(private val app: Context) {
         if (quickText != null) { quickStop(); return }
         val fake = fakeVoice != null
         // no speech service on this phone: the note box, as before
-        if (!fake && !voice.available()) { overlay = Overlay.Notes; return }
+        if (!fake && !voice.available()) { overlay = Overlay.Notes; notes.trail("quick note: no speech service"); say("The phone's speech service is not reachable, so the note box opened. The keyboard's mic key works in it."); return }
         if (micOn || mouthOn) { say("The mic is busy. Stop the recording or mouth control first."); return }
         val ok = fake || androidx.core.content.ContextCompat.checkSelfPermission(app, android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED
         if (!ok) { askMicFor = MIC_FOR_NOTE; return }
@@ -1782,6 +1826,11 @@ class AppState(private val app: Context) {
         quickText = ""
         if (fake) quickText = fakeVoice else if (!voice.start()) { quickText = null; overlay = Overlay.Notes }
     }
+
+    /** Quick notes go to Claude as soon as you stop talking, when the key is in (Nov 18); otherwise they wait. */
+    var quickSendNow by mutableStateOf(prefs.getBoolean("quickSendNow", false))
+        private set
+    fun switchQuickSendNow() { quickSendNow = !quickSendNow; prefs.edit().putBoolean("quickSendNow", quickSendNow).apply() }
 
     fun quickStop() {
         if (quickText == null) return
@@ -1801,6 +1850,7 @@ class AppState(private val app: Context) {
         val (c, tp, tx) = notes.parsePrefix(t, noteCat, "")
         notes.add(MNote(NotesBook.newId(), c, tp.trim(), tx, System.currentTimeMillis(), buildName, quickScreen, ctx = quickCtx, ctxTrail = quickTrail))
         notes.trail("quick note ${catLabel(c)}")
+        if (quickSendNow && notes.hasKey) { notes.notes.firstOrNull()?.let { sendNote(it) }; return }
         say("${catLabel(c)} note kept (${waitingNotes.size} waiting). Send them from Notes in the ☰ menu." + (problem?.let { " $it" } ?: ""))
     }
 
@@ -1902,7 +1952,7 @@ class AppState(private val app: Context) {
     var padianoN by mutableIntStateOf(prefs.getInt("padN", 13).coerceIn(7, 36))
         private set
     /** Height: 0 small, 1 medium, 2 large, 3 extra large (taller, and the squares a bit wider). */
-    var padianoSize by mutableIntStateOf(prefs.getInt("padSize", 1).coerceIn(0, 3))
+    var padianoSize by mutableIntStateOf(prefs.getInt("padSize", 1).coerceIn(0, 4))
         private set
     /** Rows of notes on each Padiano, 1 to 3: each row up is the same notes an octave higher. */
     var padianoRows by mutableIntStateOf(prefs.getInt("padRows", 1).coerceIn(1, 3))
@@ -1912,7 +1962,7 @@ class AppState(private val app: Context) {
 
     fun switchPadianoKeys(v: Boolean) { padianoKeys = v; prefs.edit().putBoolean("padKeys", v).apply() }
     fun changePadianoN(n: Int) { padianoN = n.coerceIn(7, 36); prefs.edit().putInt("padN", padianoN).apply() }
-    fun changePadianoSize(n: Int) { padianoSize = n.coerceIn(0, 3); prefs.edit().putInt("padSize", padianoSize).apply() }
+    fun changePadianoSize(n: Int) { padianoSize = n.coerceIn(0, 4); prefs.edit().putInt("padSize", padianoSize).apply() }
     fun changePadianoRows(n: Int) { padianoRows = n.coerceIn(1, 3); prefs.edit().putInt("padRows", padianoRows).apply(); notes.trail("padiano rows $padianoRows") }
     fun shiftPadiano(pad: Int, by: Int) { padianoBase[pad] = ((padianoBase[pad] ?: 0) + by).coerceIn(-36, 24) }
 
@@ -2758,12 +2808,37 @@ class AppState(private val app: Context) {
         private set
 
     fun cycleWheelRange() { wheelRange = when (wheelRange) { 2 -> 7; 7 -> 12; else -> 2 }; prefs.edit().putInt("wheelRange", wheelRange).apply() }
+    /** Which faders the FX strip shows, for every pad. */
+    var fxShown by mutableStateOf(prefs.getStringSet("fxShown", null)?.toSet() ?: FX_FADERS.toSet())
+        private set
+
+    fun toggleFxShown(name: String) {
+        val n = if (name in fxShown) fxShown - name else fxShown + name
+        if (n.isEmpty()) return
+        fxShown = n
+        prefs.edit().putStringSet("fxShown", n).apply()
+    }
+
     fun switchWheelAll() { wheelAll = !wheelAll; prefs.edit().putBoolean("wheelAll", wheelAll).apply() }
 
     /** Bend with the wheel: v -1..1 while the finger is on it; on lift it springs back to 0. Recorded like XY pitch. */
+    /** Stay (Nov 18): the wheel stays where you let go, settled on the nearest note in the key. Spring goes back to 0. */
+    var wheelStay by mutableStateOf(prefs.getBoolean("wheelStay", false))
+        private set
+    fun switchWheelStay() { wheelStay = !wheelStay; prefs.edit().putBoolean("wheelStay", wheelStay).apply(); if (!wheelStay && wheelAt != 0f) pitchWheel(0f, false) }
+
+    /** The nearest bend, in whole semitones within the range, that lands on a note of the mess's key. */
+    fun wheelSnap(v: Float): Float {
+        val r = wheelRange
+        val semis = v * r
+        val inKey = (-r..r).filter { project.scale == "Chromatic" || Theory.inScale(project.root + it, project.scale, project.root) }
+        val n = inKey.minByOrNull { kotlin.math.abs(it - semis) } ?: 0
+        return n.toFloat() / r
+    }
+
     fun pitchWheel(v: Float, on: Boolean) {
         if (midiMapOn && on) midiAim(MidiTarget("wheel", 0))
-        wheelAt = if (on) v.coerceIn(-1f, 1f) else 0f
+        wheelAt = if (on) v.coerceIn(-1f, 1f) else if (wheelStay) wheelSnap(v.coerceIn(-1f, 1f)) else 0f
         val semis = wheelAt * wheelRange
         val pads = if (wheelAll) (0 until Project.NPADS).filter { project.kit[it].isNotEmpty() } else listOf(project.sel)
         for (pad in pads) {

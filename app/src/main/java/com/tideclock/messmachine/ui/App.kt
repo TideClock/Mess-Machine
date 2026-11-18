@@ -108,6 +108,7 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
             PulseBackdrop(state)
             Column(Modifier.fillMaxSize()) {
                 Transport(state)
+                if (state.loopStripOpen) LoopStrip(state)
                 if (state.micOn) RecordingBanner(state)
                 if (state.updater.ready && !state.updater.later || state.updater.busy) UpdateBar(state)
                 if (state.cpuAsk) CpuBanner(state)
@@ -232,16 +233,24 @@ fun Transport(state: AppState) {
         Btn("■", { state.stop() }, small = true, tag = "stop", tight = true, modifier = Modifier.weight(.55f))
         RecBtn(state, Modifier.weight(1.05f))
         Btn("↶", { state.undo() }, enabled = state.canUndo && free, small = true, tag = "undo", tight = true, modifier = Modifier.weight(.55f))
-        // tempo and where the music is, in one button: tap for tempo, swing and click
+        // tempo and where the music is; the loop letter is its own button now (Nov 18), for loops from every page
         Box(
-            Modifier.weight(1.15f).height(36.dp).sticker(C.Black, shadow = 2.dp, border = 2.dp)
+            Modifier.weight(.8f).height(36.dp).sticker(C.Black, shadow = 2.dp, border = 2.dp)
                 .clickable(enabled = free) { if (state.midiMapOn) state.midiAim(com.tideclock.messmachine.MidiTarget("tempo", 0)) else state.overlay = Overlay.Tempo }.tagged("bpm"),
             contentAlignment = Alignment.Center,
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                T("${P.bpm} BPM", size = 11.sp, color = C.Cream, lines = 1, family = Mono, weight = FontWeight.Bold)
-                T(position(state), size = 10.sp, color = C.Yellow, lines = 1, family = Mono, weight = FontWeight.Bold, modifier = Modifier.tagged("position"))
+                T("${P.bpm}", size = 12.sp, color = C.Cream, lines = 1, family = Mono, weight = FontWeight.Bold)
+                T("BPM", size = 9.sp, color = C.Dim, lines = 1, family = Mono, weight = FontWeight.Bold)
             }
+        }
+        // the loop: where the music is; tap for the row of loops A to H (a pick waits for the bar line while playing)
+        Box(
+            Modifier.weight(.9f).height(36.dp).sticker(if (state.loopStripOpen) C.Card2 else C.Black, shadow = 2.dp, border = 2.dp, borderColor = if (state.pendingSlot >= 0) C.Yellow else C.Cream)
+                .clickable(enabled = free) { state.loopStripOpen = !state.loopStripOpen }.tagged("loop-open"),
+            contentAlignment = Alignment.Center,
+        ) {
+            T(if (state.pendingSlot >= 0) "→ " + com.tideclock.messmachine.engine.Project.LETTERS[state.pendingSlot] else position(state), size = 10.sp, color = C.Yellow, lines = 1, family = Mono, weight = FontWeight.Bold, modifier = Modifier.tagged("position"))
         }
         // What the FAQ (Tyler's name): tap it, then tap anything to learn what it is. Page help moved onto its card
         Btn("?", { state.switchFaq() }, small = true, on = state.faqOn, onColor = C.Teal, tag = "help-toggle", tier = Tier.Quiet, tight = true, modifier = Modifier.weight(.55f))
@@ -492,5 +501,20 @@ fun UpdateBar(state: AppState) {
             Btn("Update", { state.installUpdate() }, small = true, color = C.Ink, tag = "update-go", modifier = Modifier.padding(start = 8.dp))
             Btn("Later", { u.later = true }, small = true, color = C.Teal, tier = Tier.Quiet, tag = "update-later", modifier = Modifier.padding(start = 4.dp))
         }
+    }
+}
+
+
+/** Loops A to H from any page (Nov 18). Lit letters have something in them; while playing a pick waits for the bar line. */
+@Composable
+fun LoopStrip(state: AppState) {
+    val P = state.project
+    Row(Modifier.fillMaxWidth().background(C.Ink).tagged("loopstrip").padding(horizontal = 8.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+        for (i in 0 until com.tideclock.messmachine.engine.Project.NSLOTS) {
+            val cur = P.cur == i; val used = P.pats[i].used(); val wait = state.pendingSlot == i
+            Btn(com.tideclock.messmachine.engine.Project.LETTERS[i].toString(), { state.pickLoop(i) }, on = cur || wait, onColor = if (wait) C.Pink else C.Yellow,
+                color = if (used) C.Card2 else C.Ink, small = true, tight = true, tag = "loop-$i", modifier = Modifier.weight(1f))
+        }
+        Btn(if (state.loopAtBar) "Bar" else "Now", { state.switchLoopAtBar() }, small = true, tight = true, tier = Tier.Quiet, tag = "loop-when")
     }
 }

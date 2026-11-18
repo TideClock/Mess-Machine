@@ -723,6 +723,31 @@ public class EngineTest {
         }
         check(peaks[1] < peaks[0] * .2 && peaks[2] < peaks[0] * .5, String.format("LFO filter types: a 110 Hz tone through low %.3f, high %.3f, band %.3f (cutoff about 2.7 kHz)", peaks[0], peaks[1], peaks[2]));
       }
+      // the lag creep (Nov 18): a pile-up of long notes stays under the soft voice limit, and a heavy scene renders in time
+      {
+        float[] longT = new float[44100 * 4]; for (int i = 0; i < longT.length; i++) longT[i] = (float) (.2 * Math.sin(2 * Math.PI * 220 * i / 44100.0));
+        Engine.SampleSource lsrc = k -> new Sample(k, longT, 44100);
+        Project hp = new Project(); hp.bpm = 120;
+        for (int pd = 0; pd < 16; pd++) {
+          hp.kit[pd] = "long" + pd;
+          PadOpts ho = new PadOpts(); ho.lfoOn = true; ho.lfoWave = pd % 6; ho.lfoRate = 2; ho.lfoTarget = Engine.T_FILTER; ho.lfoDepth = .8; ho.lfoType = 1 + pd % 3; ho.lfoCut = .6; ho.lfoRes = .3;
+          hp.setOpt(pd, ho);
+        }
+        Engine he = new Engine(rate); he.setSnapshot(Engine.Snapshot.build(hp, lsrc, new Engine.Live()));
+        he.play();
+        float[] hb = new float[192 * 2]; int most = 0; long worst = 0, total = 0; int blocks = 0;
+        for (int i = 0; i < 120; i++) {
+          he.down(5000 + i, i % 16, new int[]{(i * 5) % 24, (i * 5 + 4) % 24, (i * 5 + 7) % 24}, false);
+          for (int b = 0; b < 3; b++) {
+            long t0 = System.nanoTime(); he.render(hb, 192); long took = System.nanoTime() - t0;
+            if (i > 20) { worst = Math.max(worst, took); total += took; blocks++; }
+            most = Math.max(most, he.activeVoices());
+          }
+        }
+        double avgMs = total / 1e6 / blocks, budgetMs = 192 * 1000.0 / rate;
+        check(most <= Engine.VOICE_CAP + 24 && he.stolen > 0, String.format("voice limit: 360 long notes on 16 pads peak at %d voices (soft limit %d, %d faded out)", most, Engine.VOICE_CAP, he.stolen));
+        check(avgMs < budgetMs * .5, String.format("speed: a full house with 16 LFOs and filters renders a %.1f ms block in %.2f ms on average (worst %.2f ms)", budgetMs, avgMs, worst / 1e6));
+      }
       // Hold plus a pattern: a latched note keeps the pattern after the finger lifts
       Engine.Live hl = new Engine.Live(); hl.nr = true; hl.nrPat = "xx.";
       Engine he2 = new Engine(rate); he2.setSnapshot(Engine.Snapshot.build(rp, ts, hl));

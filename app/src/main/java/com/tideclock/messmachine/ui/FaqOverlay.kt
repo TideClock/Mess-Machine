@@ -91,13 +91,13 @@ fun BoxScope.FaqOverlay(state: AppState) {
 val SPEED_STOPS = listOf(
     "topbar" to "The top bar: Play, Stop, Rec, Undo, the tempo, What the FAQ (tap it, then tap anything) and the menu.",
     "tab-Pads" to "The tabs: Play, Synth, Steps, Roll, Song and Sounds.",
-    "mode-pads" to "Play's views: Pads, Keys (the pads as notes), Step (the pads as steps) and My Desk, your own layout.",
+    "loop-open" to "The loop: where the music is. Tap it for loops A to H from any page; while playing, a pick waits for the bar line.",
     "pad-0" to "Pads: tap to play, hold to keep playing, draw a circle for the pad's XY. Empty pads: top corner records, bottom corner picks a sound.",
-    "open-padmenu" to "The bottom bar stays under the page: Menu for the picked pad, Pack, Hold, Chords and the key.",
+    "open-padmenu" to "The bottom bar stays under the page: Menu for the picked pad, Pack, Hold, Chords, FX and the key.",
     "pack-toggle" to "Pack opens the picked pad's FannyPack under its row: the Padiano, live FX faders, an LFO and XY, whichever you packed.",
     "dock-open" to "The side dock: Lock, Hold, the pitch wheel, the filter, Repeat and whatever else you put on it.",
-    "tab-Steps" to "Steps: tap or slide to paint steps; tap a sound's name for row tools; Moves shows recorded moves as lanes.",
-    "notes" to "The bug: a note to Claude about anything. Replies show under each note.",
+    "tab-Steps" to "Steps: tap or slide to paint steps; tap a sound's name for row tools; Auto shows recorded moves as lanes you can draw.",
+    "notes" to "The bug: tap it, talk, tap it again, and a note for Claude waits on the phone. Notes and replies are in the menu.",
 )
 
 /**

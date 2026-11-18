@@ -37,6 +37,8 @@ class AudioOut(private val engine: Engine, private val rate: Int, framesPerBurst
         private set
     /** Buffer changes this session, for the notes: grown and given back. */
     @Volatile var grown = 0
+    /** The most voices sounding at any growth this session: says whether a pile-up caused it. */
+    @Volatile var growVoices = 0
         private set
     @Volatile var shrunk = 0
         private set
@@ -151,13 +153,13 @@ class AudioOut(private val engine: Engine, private val rate: Int, framesPerBurst
                     val now = System.nanoTime()
                     if (u > seen && size < track.bufferCapacityInFrames) {
                         val g = track.setBufferSizeInFrames(size + burst)
-                        if (g > 0) { size = g; grown++ }
+                        if (g > 0) { size = g; grown++; growVoices = maxOf(growVoices, engine.activeVoices()) }
                         bufferFrames = size
                         engine.setLatencyFrames(size + burst)
                     }
                     if (u > seen) lastClick = now
-                    else if (size > startSize && now - lastClick > 60_000_000_000L) {
-                        // a quiet minute: give one burst back, so one click does not cost lag for the whole session
+                    else if (size > startSize && now - lastClick > 10_000_000_000L) {
+                        // ten clean seconds: give one burst back, so a click does not cost lag for long (Nov 18: 60 s let it creep)
                         val s = track.setBufferSizeInFrames(size - burst)
                         if (s > 0) { size = s; shrunk++ }
                         bufferFrames = size

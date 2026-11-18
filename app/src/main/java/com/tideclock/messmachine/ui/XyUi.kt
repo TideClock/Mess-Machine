@@ -165,6 +165,7 @@ fun PadXy(state: AppState, pad: Int, modifier: Modifier = Modifier, tag: String 
                 .pointerInput(pad, x) {
                     awaitEachGesture {
                         val d = awaitFirstDown(requireUnconsumed = false)
+                        if (state.midiMapOn) state.midiAim(com.tideclock.messmachine.MidiTarget("xy", pad, 0, "x"))
                         fun map(p: Offset): Pair<Float, Float> {
                             val w = size.width.toFloat(); val h = size.height.toFloat()
                             return if (x.four) ((p.x - w / 2) / (w / 2)).coerceIn(-1f, 1f) to ((h / 2 - p.y) / (h / 2)).coerceIn(-1f, 1f)
@@ -245,6 +246,11 @@ fun XyEditor(state: AppState, pad: Int) {
                     state.setXy(pad, x.copy(dirs = nd, name = "Custom"))
                 }, modifier = Modifier.tagged("xy-dir-$i"))
             }
+            // min and max (Nov 18): squeeze the whole square into the part of the range you perform with
+            if (d.target >= 0) SliderRow("At the start", d.from, t.lo..t.hi, { v -> "%.2f ${t.unit}".format(v).trim() }, { v -> // format-ok: units are letters only (Xy.kt)
+                val nd = x.dirs.toMutableList(); nd[i] = d.copy(from = v)
+                state.setXy(pad, x.copy(dirs = nd, name = "Custom"))
+            }, {}, accent = C.Teal)
             if (d.target >= 0) SliderRow("At the edge", d.to, t.lo..t.hi, { v -> "%.2f ${t.unit}".format(v).trim() }, { v -> // format-ok: units are letters only (Xy.kt)
                 val nd = x.dirs.toMutableList(); nd[i] = d.copy(to = v)
                 state.setXy(pad, x.copy(dirs = nd, name = "Custom"))

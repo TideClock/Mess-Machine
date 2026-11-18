@@ -59,6 +59,8 @@ fun MidiMapPanel(state: AppState, modifier: Modifier = Modifier) {
             if (state.midiShift) T("⇧ SHIFT", size = 11.sp, color = C.Pink, family = Mono)
             androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
             Select("Buttons ▾", state.midiActs, { state.midiAimAct(it) }, tag = "midimap-acts")
+            // a knob on the picked pad's volume (Nov 18)
+            Btn("Pad volume", { state.midiAim(com.tideclock.messmachine.MidiTarget("vol", state.project.sel)) }, small = true, tight = true, tag = "midimap-vol")
         }
         if (list) MidiMapList(state)
     }

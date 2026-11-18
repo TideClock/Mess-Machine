@@ -48,7 +48,7 @@ fun MovesPanel(state: AppState) {
     var strength by remember { mutableFloatStateOf(1f) }
     Column(Modifier.fillMaxWidth().padding(bottom = 12.dp).sticker(C.Ink, shadow = 3.dp, borderColor = C.Teal).padding(10.dp).tagged("moves")) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            T("MOVES", size = 12.sp, color = C.Yellow, spacing = .1.em)
+            T("AUTO", size = 12.sp, color = C.Yellow, spacing = .1.em)
             Select(if (lane.isEmpty()) "No lanes yet" else state.laneLabel(lane), lanes.map { it to state.laneLabel(it) }, { state.moveLane = it }, tag = "moves-lane", modifier = Modifier.weight(1f))
         }
         // a new lane: a pad and what it moves
@@ -56,7 +56,7 @@ fun MovesPanel(state: AppState) {
         Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             T("NEW", size = 11.sp, color = C.Dim, spacing = .1.em)
             Select("Pad ${newPad + 1}", loaded.map { it to "Pad ${it + 1} · ${state.lib.titleOf(P.kit[it])}" }, { newPad = it }, tag = "moves-newpad")
-            Select("Moves… ▾", XY_TARGETS.filter { it.id >= 0 }.map { it.id to it.name }, { state.newLane(newPad, it) }, tag = "moves-newtarget")
+            Select("New lane… ▾", XY_TARGETS.filter { it.id >= 0 }.map { it.id to it.name }, { state.newLane(newPad, it) }, tag = "moves-newtarget")
         }
         if (lane.isEmpty()) {
             Note("Record XY, FX faders or the pitch wheel with Rec on while the loop plays, or start a lane here.", modifier = Modifier.padding(top = 8.dp))

@@ -80,7 +80,7 @@ fun SlotBar(state: AppState, tools: Boolean = false) {
                         Triple("Play loop $L", "slotmenu-pick") { state.selectSlot(i) },
                         Triple("Copy to the next empty loop", "slotmenu-copy") { state.copySlotToNextEmpty(i) },
                         Triple("Clear loop $L", "slotmenu-clear") { state.clearSlotAt(i) },
-                        if (P.pats[i].hasMotion()) Triple("Clear its XY moves", "slotmenu-moves") { state.edit { pats[i].motion.clear() } } else null,
+                        if (P.pats[i].hasMotion()) Triple("Clear its auto", "slotmenu-moves") { state.edit { pats[i].motion.clear() } } else null,
                     ))
                 }
             }
@@ -97,8 +97,8 @@ fun SlotBar(state: AppState, tools: Boolean = false) {
             Btn(if (bars == 1) "1 bar" else "$bars bars", { state.toggleLen() }, small = true, tag = "looplen")
             Select("Copy to", (0 until Project.NSLOTS).filter { it != P.cur }.map { it to "Loop ${Project.LETTERS[it]}" }, { state.copySlotTo(it) })
             Btn("Clear loop", { state.clearSlot() }, small = true, enabled = P.pat().used(), tier = Tier.Danger)
-            Btn("Moves", { state.movesOpen = !state.movesOpen }, on = state.movesOpen, onColor = C.Teal, small = true, tag = "moves-open")
-            if (P.pat().hasMotion()) Btn("Clear moves", { state.clearMoves() }, small = true, tag = "clear-moves")
+            Btn("Auto", { state.movesOpen = !state.movesOpen }, on = state.movesOpen, onColor = C.Teal, small = true, tag = "moves-open")
+            if (P.pat().hasMotion()) Btn("Clear auto", { state.clearMoves() }, small = true, tag = "clear-moves")
             Btn("Bottle it", { state.bottleIt() }, small = true, color = C.Pink, enabled = P.pat().used() || P.songLen() > 0, tag = "bottle")
         }
         Dashed(Modifier.padding(top = 12.dp))

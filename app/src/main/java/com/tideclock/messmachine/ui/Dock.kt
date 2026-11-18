@@ -233,7 +233,8 @@ private fun PitchWheel(state: AppState) {
                             state.pitchWheel(at(c.position.y), true)
                             c.consume()
                         }
-                        state.pitchWheel(0f, false)
+                        // Spring goes home; Stay settles on the nearest note in the key from where you let go
+                        state.pitchWheel(state.wheelAt, false)
                     }
                 },
         ) {
@@ -246,6 +247,7 @@ private fun PitchWheel(state: AppState) {
         }
         DockWord("±${state.wheelRange}", C.Yellow, "dock-pitch-range") { state.cycleWheelRange() }
         DockWord(if (state.wheelAll) "ALL" else "PAD", C.Dim, "dock-pitch-what") { state.switchWheelAll() }
+        DockWord(if (state.wheelStay) "STAY" else "SPRING", if (state.wheelStay) C.Teal else C.Dim, "dock-pitch-stay") { state.switchWheelStay() }
     }
 }
 

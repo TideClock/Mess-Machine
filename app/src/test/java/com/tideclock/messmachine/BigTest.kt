@@ -7,6 +7,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.swipe
@@ -137,7 +138,8 @@ class BigTest {
 
     /** Pads and Desk share the Play tab now: "Console" means the Play tab's My Desk view. */
     private fun tab(label: String) {
-        if (label == "Console") { rule.onNodeWithTag("tab-Pads").performClick(); settle(); at("view-desk").performClick(); settle(); return }
+        if (label == "Console") { state.pickPlayLayout(true); rule.onNodeWithTag("tab-Pads").performClick(); settle(); return }
+        if (label == "Pads") state.pickPlayLayout(false)
         rule.onNodeWithTag("tab-$label").performClick(); settle()
     }
 
@@ -249,12 +251,9 @@ class BigTest {
         state.setViewSize(1f)
         settle()
 
-        // keys mode keeps the grid and plays the scale
-        rule.onNodeWithTag("mode-keys").performScrollTo().performClick()
-        settle()
-        shot("04-keys-mode")
-        rule.onNodeWithTag("mode-pads").performClick()
-        settle()
+        // Nov 18: the view row is gone; the Padiano's Full size took Keys mode's place
+        rule.onAllNodesWithTag("mode-keys").fetchSemanticsNodes().let { assertTrue("no Keys view", it.isEmpty()) }
+        rule.onAllNodesWithTag("mode-step").fetchSemanticsNodes().let { assertTrue("no Step view", it.isEmpty()) }
     }
 
     @Test fun pianoChordsStackNotes() {
@@ -1143,20 +1142,21 @@ class BigTest {
 
     @Test fun playTabHoldsPadsKeysAndMyDesk() {
         rule.onAllNodesWithTag("tab-Console").fetchSemanticsNodes().let { assertTrue("no separate Desk tab", it.isEmpty()) }
-        at("view-desk").performClick()
-        settle()
+        // My Desk is a Play layout in Settings, next to View size (Nov 18)
+        state.overlay = Overlay.Settings; settle()
+        at("layout-desk").performClick()
+        state.overlay = null; settle()
         assertEquals(Tab.Console, state.tab)
         rule.onNodeWithTag("tab-Steps").performClick()
         settle()
         rule.onNodeWithTag("tab-Pads").performClick()
         settle()
-        assertEquals("Play reopens on the view you used last", Tab.Console, state.tab)
-        at("mode-keys").performClick()
-        settle()
+        assertEquals("Play reopens on the layout you picked", Tab.Console, state.tab)
+        state.overlay = Overlay.Settings; settle()
+        at("layout-pads").performClick()
+        state.overlay = null; settle()
         assertEquals(Tab.Pads, state.tab)
-        assertTrue(state.keysMode)
-        // the pad card under the pads is gone from the code entirely (build 57), so there is nothing left to look for
-        shot("46-play-keys")
+        shot("46-play-pads-layout")
     }
 
     /**
@@ -1201,8 +1201,7 @@ class BigTest {
         fun sheet(name: String) = grab(name) { tags -> "sheet" in tags }
 
         page("Play: Pads")
-        at("mode-keys").performClick(); page("Play: Keys")
-        at("mode-pads").performClick(); settle()
+        at("loop-open").performClick(); page("Play: loops"); at("loop-open").performClick(); settle()
         for (t in listOf("Steps", "Roll", "Song", "Sounds")) { tab(t); page(t) }
         // the Synth tab: with no synth on the pad, then each view of one
         tab("Synth"); page("Synth: none")
@@ -1261,6 +1260,57 @@ class BigTest {
         File("build/screens/design-check.md").writeText(out.toString())
         println(out)
         if (System.getenv("DESIGN_CHECK") != "report") assertTrue("Design check:\n" + problems.joinToString("\n"), problems.isEmpty())
+    }
+
+    /** Build 96 (Nov 18): loops from every page, Stay on the wheel, XY min, the FX fader picker, Auto, the Play layout. */
+    @Test fun build96LoopsWheelXyFaders() {
+        // loops from the top bar: stopped, a pick switches at once; playing, it waits for the bar line
+        at("loop-open").performClick(); settle()
+        at("loopstrip").assertExists()
+        at("loop-2").performClick(); settle()
+        assertEquals(2, state.project.cur)
+        state.togglePlay(); state.engine.render(FloatArray(512), 256); state.tick(System.nanoTime()); settle()
+        assertTrue(state.playing)
+        at("loop-0").performClick(); settle()
+        assertEquals("playing: the pick waits", 0, state.pendingSlot)
+        assertEquals(2, state.project.cur)
+        shot("80-loop-strip-waiting")
+        state.togglePlay(); state.engine.render(FloatArray(512), 256); state.tick(System.nanoTime()); settle()
+        assertEquals("stopped: the waiting loop takes over", 0, state.project.cur)
+        at("loop-open").performClick(); settle()
+
+        // the wheel's Stay settles on the nearest note in the key (C major: 1.4 semitones up lands on D, 2)
+        state.setScale("Major"); state.setRoot(0); settle()
+        if (!state.wheelStay) state.switchWheelStay()
+        state.pitchWheel(1.4f / state.wheelRange, false)
+        assertEquals(2f / state.wheelRange, state.wheelAt, 1e-4f)
+        state.switchWheelStay()
+        assertEquals("Spring goes home", 0f, state.wheelAt, 1e-4f)
+
+        // XY min and max: a direction can start above zero
+        val d = com.tideclock.messmachine.XyDir(com.tideclock.messmachine.engine.Engine.T_RVB, 1f, .4f)
+        val x = com.tideclock.messmachine.XySetup(dirs = listOf(d, com.tideclock.messmachine.XyDir(), com.tideclock.messmachine.XyDir(), com.tideclock.messmachine.XyDir()))
+        assertEquals(.4f, x.values(0f, 0f)[com.tideclock.messmachine.engine.Engine.T_RVB]!!, 1e-4f)
+        assertEquals(.7f, x.values(.5f, 0f)[com.tideclock.messmachine.engine.Engine.T_RVB]!!, 1e-4f)
+        assertEquals("min survives saving", .4f, com.tideclock.messmachine.XySetup.parse(x.code())!!.dirs[0].from, 1e-4f)
+
+        // the FX strip shows only the faders you pick
+        state.toggleKeyboard(1); state.togglePackStrip(1, "fx"); settle()
+        at("fx-${com.tideclock.messmachine.engine.Engine.T_DIRT}-1").assertExists()
+        state.toggleFxShown("Dirt"); settle()
+        rule.onAllNodesWithTag("fx-${com.tideclock.messmachine.engine.Engine.T_DIRT}-1").fetchSemanticsNodes().let { assertTrue("Dirt hidden", it.isEmpty()) }
+        state.toggleFxShown("Dirt")
+        // Wobble lives in the LFO strip now
+        state.togglePackStrip(1, "lfo"); settle()
+        at("lfo-wobble-1").performClick(); settle()
+        assertTrue(state.project.opt(1).lfoOn && state.project.opt(1).lfoTarget == com.tideclock.messmachine.engine.Engine.T_PITCH)
+        shot("81-fx-picker-and-wobble")
+        state.toggleKeyboard(1); settle()
+
+        // Moves is called Auto
+        tab("Steps"); at("moves-open").assertExists()
+        assertTrue(rule.onAllNodesWithText("Auto", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
+        tab("Pads")
     }
 
     /**
@@ -1486,17 +1536,7 @@ class BigTest {
         assertEquals(.5f, state.wheelAt, .01f)
         state.midiBend(0f)
 
-        // Step mode: the pads are the picked sound's steps of the bar on screen
-        tapPad(1); rule.mainClock.advanceTimeBy(300); settle()
-        val k = state.project.kit[1]
-        val was = state.project.pat().step(k, 2)
-        at("mode-step").performClick(); settle()
-        assertTrue(state.stepMode)
-        at("steppad-2").performTouchInput { down(center); up() }; settle()
-        assertEquals("tapping step 3 flips it", !was, state.project.pat().step(k, 2))
-        shot("71-step-mode")
-        at("mode-pads").performClick(); settle()
-        assertFalse(state.stepMode)
+        // Step mode was retired on Nov 18 (the Steps tab does it better)
     }
 
     /**
@@ -1527,16 +1567,14 @@ class BigTest {
             }
         }
         sweep("Play")
-        at("mode-keys").performClick(); sweep("Keys")
-        at("mode-step").performClick(); sweep("Step")
-        at("mode-pads").performClick(); settle()
+        at("loop-open").performClick(); sweep("loops"); at("loop-open").performClick(); settle()
         state.toggleKeyboard(1); state.togglePackStrip(1, "fx"); state.togglePackStrip(1, "lfo"); state.togglePackStrip(1, "xy"); settle()
         sweep("FannyPack")
         state.toggleKeyboard(1); settle()
         state.switchKeysBar(true); sweep("key panel"); state.switchKeysBar(false)
         state.switchDockOpen(true); sweep("dock"); state.switchDockOpen(false)
         for (t in listOf("Steps", "Roll", "Song", "Sounds", "Synth")) { tab(t); sweep(t) }
-        tab("Steps"); at("moves-open").performClick(); sweep("Moves")
+        tab("Steps"); at("moves-open").performClick(); sweep("Auto")
         tab("Pads")
         state.switchMidiMap(true); sweep("MIDI map"); state.switchMidiMap(false)
         println("FAQ MISSING: $missing")
@@ -2168,8 +2206,8 @@ class BigTest {
             assertTrue("tab ${t.label} shows its screen", ok)
         }
         tab("Pads")
-        // Play opens on the view used last (My Desk, after the loop above): back to the pads themselves
-        at("mode-pads").performClick(); settle()
+        // Play opens on the layout picked last (My Desk, after the loop above): back to the pads themselves
+        state.pickPlayLayout(false); settle()
         tapPad(12)
         assertEquals("tapping an empty pad opens the jars for it", Overlay.Picker(12), state.overlay)
         rule.onNodeWithTag("sheet", useUnmergedTree = true).assertExists()

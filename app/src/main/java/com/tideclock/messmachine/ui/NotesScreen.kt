@@ -116,6 +116,9 @@ fun NotesScreen(state: AppState) {
             }
         }
         NoteKeyCard(state)
+        if (state.notes.hasKey) Row(Modifier.padding(bottom = 12.dp)) {
+            Btn(if (state.quickSendNow) "Quick notes: send right away" else "Quick notes: wait on the phone", { state.switchQuickSendNow() }, on = state.quickSendNow, onColor = C.Teal, small = true, tag = "notes-sendnow")
+        }
         Row(Modifier.padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             T("Your notes", size = 16.sp, modifier = Modifier.weight(1f))
             val waiting = state.waitingNotes.size
