@@ -1,23 +1,26 @@
 {
-  "title": "FannyPack, the FX and LFO strips, triplet Repeat, pitch wheel",
+  "title": "FannyPack, LFO, triplets, MIDI round two, Step mode, What the FAQ, Moves",
   "thisBuild": [
-    "FannyPack: each sound has a pack that holds only the strips you put in it. Pick a pad, tap Pack on the bottom bar, and its pack unzips under its row (one per row). The zipper bar shows what is packed: tap a name to hide or show that strip, + to pack or unpack strips, the pull on the left to zip it shut. A pad with something packed shows a little zipper along its bottom edge.",
-    "FX strip (in the pack): faders for reverb, echo, dirty, crush, chorus and wobble sends, plus the pad's filter cutoff and resonance. They stay where you leave them, and with Rec on while the loop plays every move records like an XY move. Off sends them all back to zero.",
-    "LFO strip (in the pack): a wave that moves the sound. Sine, triangle, saw up, saw down, square or random. The rate strip in the middle runs from 2 bars to 1/32 and snaps at each mark however you drag it; T and Dot make the stop a triplet or dotted. Moves picks what it moves (filter, resonance, volume, pan, pitch, reverb, echo, dirty, crush, chorus), Depth how far. Its own filter is Lo, Hi or Band with cutoff and resonance. With loop keeps it in time with the loop; Each hit restarts it on every hit.",
-    "Repeat: Straight, Triplet and Dotted under the rate, for 1/4, 1/8, 1/16 and 1/32. Triplets land exactly between the sixteenths.",
-    "Pitch wheel on the side dock, next to the filter: drag up or down to bend the picked pad, let go and it springs back. The words under it set the range (2, 7 or 12) and whether it bends the picked pad or every pad. With Rec on while playing, the bend records.",
-    "Steps: tap a sound's name for its row tools: Every 2, 4 or 8, Repeat the first 4 or 8 across, nudge left or right, Copy and Paste a row onto another sound, Spread a number of hits evenly (3 over a bar is the classic tresillo), Clear."
+    "FannyPack: each sound has a pack that holds only the strips you put in it. Pick a pad, tap Pack on the bottom bar, and its pack unzips under its row. Tap a strip's name on the zipper to hide or show it, + to pack or unpack strips, the pull on the left to zip it shut. A pad with something packed shows a little zipper along its bottom edge.",
+    "FX strip (in the pack): faders for reverb, echo, dirty, crush, chorus and wobble sends, and the pad's filter. They stay where you leave them; with Rec on while playing, moves record. Off puts them back.",
+    "LFO strip (in the pack): sine, triangle, saw up, saw down, square or random. The rate strip in the middle runs from 2 bars to 1/32 and snaps at each mark; T and Dot make it triplet or dotted. Moves picks the filter, resonance, volume, pan, pitch or an effect; Depth how far. Its own filter is Lo, Hi or Band. With loop or Each hit.",
+    "Repeat: Straight, Triplet and Dotted for 1/4, 1/8, 1/16 and 1/32. Triplets land exactly between the sixteenths.",
+    "Pitch wheel on the side dock: bend the picked pad (or every pad), springs back. Your controller's own pitch wheel moves it too.",
+    "Steps: tap a sound's name for row tools: Every 2, 4 or 8, Repeat 4 or 8 across, nudge, Copy and Paste, Spread hits evenly, Clear. Moves (next to Clear loop) shows recorded moves as lanes: draw, erase, Smooth, or stamp a shape every beat, half bar or bar.",
+    "Step mode (Play: Pads, Keys, Step): the 16 pads are the picked sound's 16 steps; the bank numbers become bars.",
+    "MIDI round two: Buttons in the map teaches a controller button Play, Stop, Rec, Undo, Hold, Repeat, Chords, Pack, a bank, the next loop, a map page or Shift. Pages A to D let the same controller do different things. Hold Shift for each key's second job. Knobs now reach the FX faders, the pitch wheel, the dock's filter, the LFO's rate (it steps through the marks) and depth, and the tempo: touch one while the map is up, then turn a knob. Chord set boxes map to keys.",
+    "What the FAQ: the ? in the top bar. Tap it, then tap anything: it says what it is and which lesson shows it. Page help and the speed guide are on its card. The speed guide (also in Learn) walks the whole app in under a minute."
   ],
   "watch": [
     "The LFO on a bass with the filter on Lo, by ear: does 1/8 and 1/16 wub in time, and does the rate strip feel quantized enough?",
-    "Hi and Band on the LFO's filter: do they sound right, and is the resonance range useful?",
-    "The FannyPack on the cover screen at your view size: does an open pack leave room to play the pads above it?",
-    "Triplet Repeat while the loop plays: does it sit in time with the beat?"
+    "Map a few buttons, a page and Shift on your controller, then play: does each do what the map says?",
+    "The FannyPack on the cover screen at your view size: does an open pack leave room for the pads?",
+    "What the FAQ on anything that confuses you: is the line clear? Send a note for any that is not."
   ],
   "limits": [
-    "Triplet and dotted repeats that land between sixteenths play but are not recorded as hits (a loop stores sixteenths). The ones on a sixteenth record.",
-    "MIDI knobs cannot reach the FX faders, the LFO's rate strip or the pitch wheel yet: that is MIDI round two, next.",
+    "Triplet and dotted repeats between sixteenths play but are not recorded as hits. Knob moves on FX faders are not recorded.",
+    "Moves shows one bar at a time (the bar picked on Steps).",
     "The Wobble effect is still its own thing; the LFO does not replace it.",
-    "I cannot hear the app: the LFO's sound and the filter's resonance are for your ears."
+    "I cannot hear the app: the LFO, the filters and the chord voicings are for your ears."
   ]
 }
