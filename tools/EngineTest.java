@@ -723,6 +723,34 @@ public class EngineTest {
         }
         check(peaks[1] < peaks[0] * .2 && peaks[2] < peaks[0] * .5, String.format("LFO filter types: a 110 Hz tone through low %.3f, high %.3f, band %.3f (cutoff about 2.7 kHz)", peaks[0], peaks[1], peaks[2]));
       }
+      // the finer time grid (Nov 18): 1/16 triplet repeats record, the off-grid ones as ticks, and play back on time
+      {
+        Engine.Live gl = new Engine.Live(); gl.nr = true; gl.nrRate = 2.0 / 3; gl.rec = true;
+        Engine ge = new Engine(rate); ge.setSnapshot(Engine.Snapshot.build(rp, ts, gl));
+        ge.down(1, 0, new int[]{0}, false); ge.play();
+        for (int i = 0; i < (int) (16 * spbR / 256); i++) ge.render(rb, 256);
+        int stepsN = 0, offsN = 0; boolean ticksOk = true; Engine.RecEvent ev;
+        Project gp = rp.copy();
+        while ((ev = ge.pollRec()) != null) {
+          if (ev.type == Engine.RecEvent.STEP) stepsN++;
+          else if (ev.type == Engine.RecEvent.OFF) { offsN++; if (ev.step % 8 != 0) ticksOk = false; gp.pats[0].addOff(ev.key, ev.step); }
+        }
+        check(stepsN >= 7 && offsN >= 15 && ticksOk, String.format("finer grid: a bar of 1/16 triplets records %d hits on the sixteenths and %d between them, all on thirds of a step", stepsN, offsN));
+        String rk = rp.kit[0];
+        check(gp.pats[0].offs.get(rk) != null && gp.pats[0].offsIn(rk, 0) == 1, "finer grid: the triplet a third of the way into step 1 is stored there");
+        Project lp2 = Project.fromJson(gp.toJson(), k -> true).project;
+        check(lp2.pats[0].offs.get(rk) != null && lp2.pats[0].offs.get(rk).equals(gp.pats[0].offs.get(rk)), "finer grid: off-grid hits survive saving");
+        // playback: a hit stored a third into step 1 sounds a third of a step after one stored on the step itself
+        double spbP = rate * 60.0 / 120 / 4;
+        int[] onset = new int[2];
+        for (int c = 0; c < 2; c++) {
+          Project one = new Project(); one.bpm = 120; one.kit[0] = rk; one.pats[0].addOff(rk, c == 0 ? 0 : 8);
+          Engine pe = new Engine(rate); pe.setSnapshot(Engine.Snapshot.build(one, ts, new Engine.Live())); pe.play();
+          float[] ob = new float[128]; onset[c] = -1;
+          for (int f = 0; f < 4 * spbP && onset[c] < 0; f += 64) { pe.render(ob, 64); for (int q = 0; q < 64; q++) if (Math.abs(ob[q * 2]) > 1e-4) { onset[c] = f + q; break; } }
+        }
+        check(onset[0] >= 0 && Math.abs(onset[1] - onset[0] - spbP / 3) < 64, String.format("finer grid: the stored triplet sounds a third of a step late (%d frames after the on-step hit, %.0f wanted)", onset[1] - onset[0], spbP / 3));
+      }
       // the lag creep (Nov 18): a pile-up of long notes stays under the soft voice limit, and a heavy scene renders in time
       {
         float[] longT = new float[44100 * 4]; for (int i = 0; i < longT.length; i++) longT[i] = (float) (.2 * Math.sin(2 * Math.PI * 220 * i / 44100.0));

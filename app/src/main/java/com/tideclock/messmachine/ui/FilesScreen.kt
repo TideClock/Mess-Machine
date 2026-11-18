@@ -203,6 +203,9 @@ fun SettingsScreen(state: AppState) {
                 }, on = state.bgPlay, onColor = C.Teal, small = true, tag = "set-bgplay")
                 Note("A short buzz when you hit a pad.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
                 Btn(if (state.buzz) "Pad buzz: on" else "Pad buzz: off", { state.switchBuzz(!state.buzz) }, on = state.buzz, onColor = C.Teal, small = true, tag = "set-buzz")
+                // Nov 18: the finer time grid lets live hits record exactly where they were played
+                Btn(if (state.live.recExact) "Recording: exactly where you hit" else "Recording: snapped to 16ths", { state.switchRecExact() }, on = state.live.recExact, onColor = C.Teal, small = true, tag = "set-recexact",
+                    modifier = Modifier.padding(top = 8.dp))
                 // Nov 18: a quick flick up off a button opens its settings, like Menu then tap (try it; off by default)
                 Btn(if (state.flickOn) "Flick up for settings: on" else "Flick up for settings: off", { state.switchFlick() }, on = state.flickOn, onColor = C.Teal, small = true, tag = "set-flick",
                     modifier = Modifier.padding(top = 8.dp))

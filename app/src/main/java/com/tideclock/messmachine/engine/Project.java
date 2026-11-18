@@ -15,6 +15,8 @@ import java.util.Set;
  */
 public final class Project {
     public static final int NPADS = 64, BANK = 16, NSLOTS = 8, MAXSTEPS = 128, MAXSONG = 64;
+    /** The finer time grid: ticks in one sixteenth step (96 a quarter note), enough for every triplet and dotted rate. */
+    public static final int TICKS = 24;
     public static final String LETTERS = "ABCDEFGH";
     public static final String[] DEFAULT_KIT = {"basement-kick", "wet-clap", "pot-lid-hat", "bw-snare", "tom-of-doom", "bubble-pop", "spring-doink", "tape-wobble-chord"};
 
@@ -30,6 +32,28 @@ public final class Project {
         public final Map<String, List<Note>> notes = new LinkedHashMap<>();
         /** App only: recorded XY moves, "pad:target" to one value per step (NaN = nothing on that step). */
         public final Map<String, float[]> motion = new LinkedHashMap<>();
+        /**
+         * The finer time grid (Nov 18): hits between the sixteenths, per sound, in ticks from the top of the loop
+         * (TICKS per step). Triplet and dotted repeats land here, and live hits when Rec is set to exact.
+         */
+        public final Map<String, List<Integer>> offs = new LinkedHashMap<>();
+
+        public void addOff(String k, int tick) {
+            int t = Math.floorMod(tick, len * TICKS);
+            if (t % TICKS == 0) { setStep(k, t / TICKS, true); return; }
+            List<Integer> l = offs.get(k);
+            if (l == null) { l = new ArrayList<>(); offs.put(k, l); }
+            if (!l.contains(t)) { l.add(t); java.util.Collections.sort(l); }
+        }
+
+        /** Off-grid hits of a sound that fall inside step j. */
+        public int offsIn(String k, int j) {
+            List<Integer> l = offs.get(k);
+            if (l == null) return 0;
+            int n = 0;
+            for (int t : l) if (t / TICKS == j) n++;
+            return n;
+        }
 
         public void setMotion(int pad, int target, int step, float v) {
             float[] a = motion.get(pad + ":" + target);
@@ -146,6 +170,7 @@ public final class Project {
             if (a != null) Arrays.fill(a, false);
             List<Note> n = notes.get(k);
             if (n != null) n.clear();
+            offs.remove(k);
         }
 
         public boolean hasNoteAt(String k, int s) {
@@ -157,6 +182,7 @@ public final class Project {
         public boolean used() {
             for (List<Note> n : notes.values()) if (!n.isEmpty()) return true;
             for (boolean[] a : steps.values()) for (int j = 0; j < len; j++) if (a[j]) return true;
+            for (List<Integer> l : offs.values()) if (!l.isEmpty()) return true;
             return false;
         }
 
@@ -165,7 +191,8 @@ public final class Project {
             if (n != null && !n.isEmpty()) return true;
             boolean[] a = steps.get(k);
             if (a != null) for (int j = 0; j < len; j++) if (a[j]) return true;
-            return false;
+            List<Integer> o = offs.get(k);
+            return o != null && !o.isEmpty();
         }
 
         public Pattern copy() {
@@ -178,13 +205,14 @@ public final class Project {
                 p.notes.put(e.getKey(), l);
             }
             for (Map.Entry<String, float[]> e : motion.entrySet()) p.motion.put(e.getKey(), e.getValue().clone());
+            for (Map.Entry<String, List<Integer>> e : offs.entrySet()) p.offs.put(e.getKey(), new ArrayList<>(e.getValue()));
             return p;
         }
 
-        public void clear() { steps.clear(); notes.clear(); motion.clear(); }
+        public void clear() { steps.clear(); notes.clear(); motion.clear(); offs.clear(); }
 
         /** Pull a sound out of the loop entirely (when its pad is cleared). */
-        public void forget(String k) { steps.remove(k); notes.remove(k); }
+        public void forget(String k) { steps.remove(k); notes.remove(k); offs.remove(k); }
     }
 
     public String name = "";
@@ -316,6 +344,16 @@ public final class Project {
                 }
                 x.put("motion", mm);
             }
+            if (!p.offs.isEmpty()) {
+                Map<String, Object> om = new LinkedHashMap<>();
+                for (Map.Entry<String, List<Integer>> e : p.offs.entrySet()) {
+                    if (e.getValue().isEmpty() || padOf(e.getKey()) < 0) continue;
+                    StringBuilder b = new StringBuilder();
+                    for (int t : e.getValue()) { if (b.length() > 0) b.append(','); b.append(t); }
+                    om.put(e.getKey(), b.toString());
+                }
+                if (!om.isEmpty()) x.put("offs", om);
+            }
             pl.add(x);
         }
         o.put("pats", pl);
@@ -408,6 +446,9 @@ public final class Project {
                     String[] f = Json.str(e.getValue(), "").split(",", -1);
                     for (int j = 0; j < f.length && j < a.length; j++) if (!f[j].isEmpty()) try { a[j] = Float.parseFloat(f[j]); } catch (NumberFormatException ignored) {}
                     P.motion.put(e.getKey(), a);
+                }
+                for (Map.Entry<String, Object> e : Json.map(x.get("offs")).entrySet()) {
+                    for (String f : Json.str(e.getValue(), "").split(",")) if (!f.isEmpty()) try { P.addOff(e.getKey(), Integer.parseInt(f.trim())); } catch (NumberFormatException ignored) {}
                 }
                 Object nv = x.get("notes");
                 if (nv instanceof String) {

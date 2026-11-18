@@ -62,7 +62,9 @@ fun MovesPanel(state: AppState) {
             Note("Nothing recorded yet: Rec and move something, or start a lane.", modifier = Modifier.padding(top = 8.dp))
             return@Column
         }
-        val off = state.page.coerceIn(0, P.pat().len / 16 - 1) * 16
+        // the whole loop at once (Nov 18): every step of every bar across the lane
+        val off = 0
+        val n = P.pat().len
         val t = com.tideclock.messmachine.xyTarget(lane.substringAfter(":").toIntOrNull() ?: -1)
         val vals = P.pat().motion[lane]
         Canvas(
@@ -72,12 +74,12 @@ fun MovesPanel(state: AppState) {
                 .padding(top = 8.dp)
                 .background(C.Black)
                 .tagged("moves-lane-canvas")
-                .pointerInput(lane, off, erase) {
+                .pointerInput(lane, n, erase) {
                     awaitEachGesture {
                         val d = awaitFirstDown(requireUnconsumed = false)
                         d.consume()
                         fun put(o: Offset, commit: Boolean) {
-                            val st = off + (o.x / (size.width / 16f)).toInt().coerceIn(0, 15)
+                            val st = off + (o.x / (size.width / n.toFloat())).toInt().coerceIn(0, n - 1)
                             state.drawLane(lane, st, if (erase) null else (1f - o.y / size.height), commit)
                         }
                         put(d.position, false)
@@ -94,26 +96,26 @@ fun MovesPanel(state: AppState) {
                     }
                 },
         ) {
-            val w = size.width / 16f
-            for (c in 0..16) drawLine(if (c % 4 == 0) C.Card2 else C.Ink, Offset(c * w, 0f), Offset(c * w, size.height), strokeWidth = if (c % 4 == 0) 2f else 1f)
+            val w = size.width / n
+            for (c in 0..n) if (c % 4 == 0 || n <= 16) drawLine(if (c % 16 == 0) C.Cream.copy(alpha = .5f) else if (c % 4 == 0) C.Card2 else C.Ink, Offset(c * w, 0f), Offset(c * w, size.height), strokeWidth = if (c % 16 == 0) 3f else if (c % 4 == 0) 2f else 1f)
             drawLine(C.Card2, Offset(0f, size.height / 2), Offset(size.width, size.height / 2), strokeWidth = 1f)
             var prev: Offset? = null
-            for (c in 0 until 16) {
+            for (c in 0 until n) {
                 val v = vals?.getOrNull(off + c) ?: Float.NaN
                 if (v.isNaN()) { prev = null; continue }
-                val n = ((v - t.lo) / (t.hi - t.lo)).coerceIn(0f, 1f)
-                val y = size.height * (1 - n)
-                drawRect(C.Teal.copy(alpha = .35f), topLeft = Offset(c * w + 2f, y), size = Size(w - 4f, size.height - y))
+                val nv = ((v - t.lo) / (t.hi - t.lo)).coerceIn(0f, 1f)
+                val y = size.height * (1 - nv)
+                drawRect(C.Teal.copy(alpha = .35f), topLeft = Offset(c * w + (if (n > 32) 0f else 2f), y), size = Size(w - (if (n > 32) 0f else 4f), size.height - y))
                 val pt = Offset(c * w + w / 2, y)
                 prev?.let { drawLine(C.Teal, it, pt, strokeWidth = 4f) }
-                drawCircle(C.Cream, 5f, pt)
+                if (n <= 32) drawCircle(C.Cream, 5f, pt)
                 prev = pt
             }
             val now = if (state.playing && state.heardPat == P.cur) state.heardStep - off else -1
-            if (now in 0 until 16) drawRect(C.Yellow, topLeft = Offset(now * w, 0f), size = Size(3f, size.height))
+            if (now in 0 until n) drawRect(C.Yellow, topLeft = Offset(now * w, 0f), size = Size(3f, size.height))
             drawRect(C.Cream, style = Stroke(2f))
         }
-        Note("${t.name}: bottom is ${t.lo}${t.unit}, top is ${t.hi}${t.unit}. Steps ${off + 1} to ${off + 16}.", modifier = Modifier.padding(top = 4.dp))
+        Note("${t.name}: bottom is ${t.lo}${t.unit}, top is ${t.hi}${t.unit}. the whole loop, ${n / 16} bar${if (n > 16) "s" else ""}.", modifier = Modifier.padding(top = 4.dp))
         Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Btn("Draw", { erase = false }, on = !erase, onColor = C.Teal, small = true, tight = true, tag = "moves-draw")
             Btn("Erase", { erase = true }, on = erase, onColor = C.Pink, small = true, tight = true, tag = "moves-erase")

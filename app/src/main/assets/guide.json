@@ -1,18 +1,18 @@
 {
-  "title": "The Pro looks",
+  "title": "Triplets record, Auto shows the whole loop",
   "thisBuild": [
-    "Settings, Look: Classic (as before), Pro dark or Pro light. The Pro looks put your pixel icons on every bar: the top bar, the bottom bar and the tabs, on printed rails (dark dots, or cream paper like your prints).",
-    "Tile colors mean something: yellow for transport, purple for pages, pink for playing tools, teal for sound shaping, slate for housekeeping.",
-    "A small word sits under each icon until you know them; Settings, Look, Words under icons turns them off.",
-    "In the Pro looks the tempo button shows the lag in milliseconds under the BPM, so you can watch for a creep while you play.",
-    "Hold, Echo and Song got new icons (a pinned pad, an eye with sound rings, a music note)."
+    "The finer time grid: each sixteenth now has 24 ticks inside it. Triplet and dotted repeats record while you play, and land exactly between the sixteenths.",
+    "On Steps, hits between the sixteenths show as thin marks inside the step where they fall.",
+    "Settings, Playing: Recording snapped to 16ths (as before) or exactly where you hit. Exact keeps your timing as you played it.",
+    "Auto shows the whole loop now, every bar across the lane, with a bright line at each bar."
   ],
   "watch": [
-    "Try both Pro looks on the cover screen and opened: does the cream rail glare? Do the icons read?",
-    "Any icon you'd redraw: send a note naming it."
+    "Record a 1/16 triplet repeat over a loop and play it back: does it sound the way you played it?",
+    "Try Recording exactly where you hit for a while: does your playing feel more like you?"
   ],
   "limits": [
-    "The side dock keeps its words in every look; its pieces are sliders and wheels more than buttons.",
-    "Sheets (Settings, Sample, Messes) look the same in every look for now."
+    "Keys and chords played on the Padiano still record on the sixteenths; the finer grid is for pad hits and repeats.",
+    "Tapping a step on Steps flips the step itself; to remove a hit between the sixteenths, clear the row.",
+    "Lengthening a loop copies its steps into the new bars, but not its in-between hits yet."
   ]
 }

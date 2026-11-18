@@ -168,6 +168,8 @@ fun StepRow(state: AppState, k: String, col: Color, off: Int, ver: Int) {
     val pat = P.pat()
     val on = BooleanArray(16) { pat.step(k, off + it) }
     val dot = BooleanArray(16) { pat.hasNoteAt(k, off + it) }
+    // the finer grid (Nov 18): hits between the sixteenths, as ticks, drawn as thin marks where they fall
+    val offTicks = pat.offs[k].orEmpty().filter { it / com.tideclock.messmachine.engine.Project.TICKS in off until off + 16 }
     Canvas(
         Modifier
             .fillMaxWidth()
@@ -232,6 +234,11 @@ fun StepRow(state: AppState, k: String, col: Color, off: Int, ver: Int) {
             drawRoundRect(if (hot) C.Yellow else if (on[c]) C.Cream else C.Empty, tl, sz, r, style = Stroke(width = if (hot) 3.dp.toPx() else 1.5.dp.toPx()))
             if (dot[c]) drawCircle(if (on[c]) C.Ink else C.Cream, radius = 3.dp.toPx(), center = Offset(tl.x + sz.width / 2, sz.height / 2))
             if (state.stepStrip >= 0 && state.project.kit[state.stepStrip] == k && state.stepPick == off + c) drawRoundRect(C.Yellow, Offset(tl.x - 2, tl.y - 2), Size(sz.width + 4, sz.height + 4), r, style = Stroke(width = 4.dp.toPx()))
+        }
+        for (t in offTicks) {
+            val x = (t / com.tideclock.messmachine.engine.Project.TICKS.toFloat() - off) * cw
+            drawRect(col, Offset(x - 1.5.dp.toPx(), size.height * .15f), Size(3.dp.toPx(), size.height * .7f))
+            drawRect(C.Cream, Offset(x - 1.5.dp.toPx(), size.height * .15f), Size(3.dp.toPx(), size.height * .7f), style = Stroke(width = 1f))
         }
     }
 }

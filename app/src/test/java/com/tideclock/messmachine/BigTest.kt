@@ -1277,6 +1277,27 @@ class BigTest {
         if (System.getenv("DESIGN_CHECK") != "report") assertTrue("Design check:\n" + problems.joinToString("\n"), problems.isEmpty())
     }
 
+    /** Build 100 (Nov 18): the finer time grid shows on Steps, and Auto shows the whole loop. */
+    @Test fun build100FinerGrid() {
+        val k = state.project.kit[1]
+        state.edit { pats[cur].addOff(k, 8); pats[cur].addOff(k, 16 * com.tideclock.messmachine.engine.Project.TICKS / 16 * 5 + 16) }
+        assertEquals(1, state.project.pat().offsIn(k, 0))
+        tab("Steps"); settle()
+        shot("86-finer-grid-marks")
+        state.overlay = Overlay.Settings; settle()
+        at("set-recexact").performClick(); settle()
+        assertTrue(state.live.recExact)
+        state.overlay = null; settle()
+        state.toggleLen(); settle()
+        at("moves-open").performClick(); settle()
+        state.newLane(1, com.tideclock.messmachine.engine.Engine.T_RVB); settle()
+        at("moves-lane-canvas").performTouchInput { down(Offset(width * .9f, height * .2f)); up() }; settle()
+        val lane = state.project.pat().motion["1:${com.tideclock.messmachine.engine.Engine.T_RVB}"]!!
+        assertTrue("a touch near the end of a 2-bar lane lands in bar 2", !lane[28].isNaN() || !lane[29].isNaN())
+        shot("87-auto-whole-loop")
+        tab("Pads")
+    }
+
     /** Build 99 (Nov 18): the Pro looks, dark and light, with an icon on every bar control. */
     @Test fun build99ProLooks() {
         state.overlay = Overlay.Settings; settle()

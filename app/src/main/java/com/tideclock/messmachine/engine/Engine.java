@@ -24,13 +24,15 @@ public final class Engine {
     /** Toggles that live on the transport, not in the saved mess. */
     public static final class Live {
         public boolean click, rec, nr;
+        /** Rec exact (Nov 18): live hits record where they were played on the finer grid, not snapped to 16ths. */
+        public boolean recExact;
         public double nrRate = 1;      // steps between repeats: 4 = 1/4, 2 = 1/8, 1 = 1/16, 0.5 = 1/32; x 2/3 triplet, x 1.5 dotted
         public String arp = "rep";     // rep, up, down, updown, rand
         /** SE-6: how repeat plays each hit. "cut" stops it before the next, "ring" lets it play out, "flow" plays it once and pulses its volume. */
         public String nrStyle = "cut";
         /** Repeat's pattern, one letter per repeat: x plays, . rests ("xx." is hit, hit, skip). Empty plays every one. */
         public String nrPat = "";
-        public Live copy() { Live l = new Live(); l.click = click; l.rec = rec; l.nr = nr; l.nrRate = nrRate; l.arp = arp; l.nrStyle = nrStyle; l.nrPat = nrPat; return l; }
+        public Live copy() { Live l = new Live(); l.click = click; l.rec = rec; l.nr = nr; l.nrRate = nrRate; l.arp = arp; l.nrStyle = nrStyle; l.nrPat = nrPat; l.recExact = recExact; return l; }
         /** Does repeat number i (counted from 0) play, by the pattern? */
         public boolean patOn(long i) {
             String p = nrPat;
@@ -63,6 +65,8 @@ public final class Engine {
         final boolean[] steps;
         final int[] gap;
         final int[][] notes; // per step: pitch, length, pitch, length...
+        /** The finer grid: per step, hits between the sixteenths as ticks into the step (1 to TICKS - 1). */
+        int[][] offs;
         Track(PadSlot pad, boolean[] steps, int[] gap, int[][] notes) { this.pad = pad; this.steps = steps; this.gap = gap; this.notes = notes; }
     }
 
@@ -119,7 +123,18 @@ public final class Engine {
                         if (nl != null) for (Project.Note n : nl) if (n.s == j) { a[q++] = n.p; a[q++] = n.l; }
                         nt[j] = a;
                     }
-                    tr.add(new Track(ps, st, gap, nt));
+                    Track tk = new Track(ps, st, gap, nt);
+                    List<Integer> ol = P.offs.get(ps.key);
+                    if (ol != null && !ol.isEmpty()) {
+                        int[] cnt = new int[len];
+                        for (int t : ol) { int j = t / Project.TICKS; if (j >= 0 && j < len) cnt[j]++; }
+                        int[][] oa = new int[len][];
+                        for (int j = 0; j < len; j++) oa[j] = new int[cnt[j]];
+                        int[] fill = new int[len];
+                        for (int t : ol) { int j = t / Project.TICKS; if (j >= 0 && j < len) oa[j][fill[j]++] = t % Project.TICKS; }
+                        tk.offs = oa;
+                    }
+                    tr.add(tk);
                 }
                 List<int[]> ids = new ArrayList<>();
                 List<float[]> vals = new ArrayList<>();
@@ -139,7 +154,7 @@ public final class Engine {
     /* ================= what the engine tells the UI ================= */
 
     public static final class RecEvent {
-        public static final int STEP = 0, NOTES = 1;
+        public static final int STEP = 0, NOTES = 1, OFF = 2;
         public final int type, pat, step, len;
         public final String key;
         public final int[] pitches;
@@ -671,8 +686,12 @@ public final class Engine {
         if (L.rec && playing && !L.nr && !mel) {
             int pi = playingPat(S);
             if (pi >= 0) {
-                int len = S.pats[pi].len, q = Math.floorMod((int) Math.round(h.at), len);
-                recs.add(new RecEvent(RecEvent.STEP, pi, ps.key, q, null, 1));
+                int len = S.pats[pi].len;
+                if (L.recExact) {
+                    // Rec set to exact (Nov 18): the hit lands on the finer grid where it was played
+                    int tick = Math.floorMod((int) Math.round(h.at * Project.TICKS), len * Project.TICKS);
+                    recs.add(new RecEvent(RecEvent.OFF, pi, ps.key, tick, null, 1));
+                } else recs.add(new RecEvent(RecEvent.STEP, pi, ps.key, Math.floorMod((int) Math.round(h.at), len), null, 1));
             }
         }
     }
@@ -791,6 +810,8 @@ public final class Engine {
                 int ti = t.pad.index, ts = s0;
                 if (ti >= 0 && ti < 64 && padStut[ti] && !fxStut) { ts = pStutA[ti] + Math.floorMod(step - pStutB[ti], 2); if (ts >= len) ts = 0; }
                 if (t.steps[ts]) trigger(t.pad, rateMul, t.gap[ts] * spb / rate, false, .85f, delay, false);
+                // hits between the sixteenths, at their tick inside this step
+                if (t.offs != null && ts < t.offs.length) for (int tk : t.offs[ts]) trigger(t.pad, rateMul, spb / rate, false, .85f, delay + Math.round(tk * spb / Project.TICKS), false);
                 int[] nt = t.notes[ts];
                 for (int k = 0; k < nt.length; k += 2) trigger(t.pad, rateMul * Math.pow(2, nt[k] / 12.0), (fxStut ? Math.min(nt[k + 1], 2) : nt[k + 1]) * spb / rate, true, .78f, delay, false);
             }
@@ -871,6 +892,10 @@ public final class Engine {
         if (S.live.rec && pi >= 0 && !half) {
             if (h.mel) recs.add(new RecEvent(RecEvent.NOTES, pi, h.pad.key, s, new int[]{p}, every >= 2 ? 2 : 1));
             else recs.add(new RecEvent(RecEvent.STEP, pi, h.pad.key, s, null, 1));
+        } else if (S.live.rec && pi >= 0 && !h.mel) {
+            // a triplet or dotted repeat between the sixteenths lands on the finer grid (Nov 18)
+            long tick = Math.round((s + (double) (delay - Math.round(nextStepAt - frame)) / spb) * Project.TICKS);
+            recs.add(new RecEvent(RecEvent.OFF, pi, h.pad.key, (int) tick, null, 1));
         }
     }
 

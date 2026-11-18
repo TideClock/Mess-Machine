@@ -761,6 +761,7 @@ class AppState(private val app: Context) {
             val ev = engine.pollRec() ?: break
             val P = project.pats[ev.pat]
             if (ev.type == Engine.RecEvent.STEP) P.setStep(ev.key, ev.step, true)
+            else if (ev.type == Engine.RecEvent.OFF) P.addOff(ev.key, ev.step)
             else {
                 val notes = P.notes(ev.key)
                 for (q in ev.pitches) {
@@ -2190,7 +2191,10 @@ class AppState(private val app: Context) {
     var ownPattern by mutableStateOf(prefs.getString("nrPatOwn", "xx.x..x.")!!.filter { it == 'x' || it == '.' }.take(16).ifEmpty { "xx." })
         private set
 
-    init { live.nrPat = prefs.getString("nrPat", "")!!.filter { it == 'x' || it == '.' }.take(16) }
+    init { live.nrPat = prefs.getString("nrPat", "")!!.filter { it == 'x' || it == '.' }.take(16); live.recExact = prefs.getBoolean("recExact", false) }
+
+    /** Rec: snap live hits to the 16ths (as always), or record them exactly where played on the finer grid (Nov 18). */
+    fun switchRecExact() { val v = !live.recExact; prefs.edit().putBoolean("recExact", v).apply(); setLive { recExact = v } }
 
     /** Pick repeat's pattern ("" plays every repeat). Turns Repeat on, since a pattern is for hearing. */
     fun setRepeatPattern(p: String) {
