@@ -3,6 +3,7 @@ package com.tideclock.messmachine.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -167,27 +168,31 @@ fun BottomDock(state: AppState) {
     @Suppress("UNUSED_VARIABLE") val sv = state.selV
     @Suppress("UNUSED_VARIABLE") val vv = state.version
     val P = state.project
-    Column(Modifier.fillMaxWidth().background(C.Ink).drawBehind {
+    Column(Modifier.fillMaxWidth().rail(state).drawBehind {
         drawLine(C.Teal, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 2.dp.toPx())
     }.tagged("bottomdock")) {
         if (state.keysBarOpen) KeysPanel(state)
         Row(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             Box {
                 // Menu, then tap anything: its settings. Menu twice: what you touched last (Nov 18)
-                Btn(if (state.menuArmed) "Menu ●" else "Menu", { state.menuTap() }, on = state.menuArmed || state.padMenu >= 0 || state.tray != null, onColor = C.Yellow,
-                    small = true, tight = true, enabled = !state.locked, tag = "open-padmenu")
+                BarBtn(state, if (state.menuArmed) "Menu ●" else "Menu", "Menu", { state.menuTap() }, on = state.menuArmed || state.padMenu >= 0 || state.tray != null, onColor = C.Yellow,
+                    enabled = !state.locked, tag = "open-padmenu", word = "Menu")
                 if (state.padMenu >= 0) PadMenu(state, state.padMenu)
             }
             // the picked pad's FannyPack: one tap zips it open under its row, or shut
-            if (state.tab != com.tideclock.messmachine.Tab.Synth) Btn("Pack", { state.togglePack(state.project.sel) }, on = state.project.sel in state.keyboards, onColor = C.Teal, small = true, tight = true,
-                enabled = !state.locked && !state.keysMode && state.project.kit.getOrNull(state.project.sel).orEmpty().isNotEmpty(), tag = "pack-toggle")
-            Btn(if (!state.holdOn) "○ Hold" else if (state.holdCount == 0) "● Last" else "● ${state.latched.size}/${state.holdCount}", { state.switchHold() },
-                on = state.holdOn, onColor = C.Yellow, small = true, tight = true, tag = "hold-toggle")
-            Btn(if (state.chordMode == "off") "○ Chords" else "● Chords", { state.toggleChords() }, on = state.chordMode != "off", onColor = C.Teal, small = true, tight = true, tag = "chords-toggle")
+            if (state.tab != com.tideclock.messmachine.Tab.Synth) BarBtn(state, "Pack", "Pack", { state.togglePack(state.project.sel) }, on = state.project.sel in state.keyboards, onColor = C.Teal,
+                enabled = !state.locked && !state.keysMode && state.project.kit.getOrNull(state.project.sel).orEmpty().isNotEmpty(), tag = "pack-toggle", word = "Pack")
+            BarBtn(state, if (!state.holdOn) "○ Hold" else if (state.holdCount == 0) "● Last" else "● ${state.latched.size}/${state.holdCount}", "Hold", { state.switchHold() },
+                on = state.holdOn, onColor = C.Yellow, tag = "hold-toggle", word = if (!state.holdOn) "Hold" else if (state.holdCount == 0) "Last" else "${state.latched.size}/${state.holdCount}")
+            BarBtn(state, if (state.chordMode == "off") "○ Chords" else "● Chords", "Chords", { state.toggleChords() }, on = state.chordMode != "off", onColor = C.Teal, tag = "chords-toggle", word = "Chords")
             // the perform effects (stutter, echo throw, tape stop...), moved down from the view row (Nov 18)
-            if (state.tab == com.tideclock.messmachine.Tab.Pads) Btn("FX", { state.showFx = !state.showFx }, on = state.showFx, onColor = C.Pink, small = true, tight = true, tag = "fx-toggle")
-            Btn("${Theory.NN[P.root]} ${P.scale.lowercase()} · ${chordName(if (state.chordMode == "off") state.lastChordMode else state.chordMode).lowercase()} " + if (state.keysBarOpen) "▾" else "▴",
-                { state.switchKeysBar() }, small = true, tight = true, tier = Tier.Quiet, tag = "keysbar-open", modifier = Modifier.weight(1f))
+            if (state.tab == com.tideclock.messmachine.Tab.Pads) BarBtn(state, "FX", "FX", { state.showFx = !state.showFx }, on = state.showFx, onColor = C.Pink, tag = "fx-toggle", word = "FX")
+            val keyText = "${Theory.NN[P.root]} ${P.scale.lowercase()} · ${chordName(if (state.chordMode == "off") state.lastChordMode else state.chordMode).lowercase()} " + if (state.keysBarOpen) "▾" else "▴"
+            if (state.look == "classic") Btn(keyText, { state.switchKeysBar() }, small = true, tight = true, tier = Tier.Quiet, tag = "keysbar-open", modifier = Modifier.weight(1f))
+            else Row(Modifier.weight(1f).clickable { state.switchKeysBar() }.tagged("keysbar-open"), verticalAlignment = Alignment.CenterVertically) {
+                PixIcon("Key and scale", 30.dp)
+                T(keyText.uppercase(), size = 11.sp, color = railText(state), lines = 1, modifier = Modifier.padding(start = 6.dp))
+            }
         }
     }
 }

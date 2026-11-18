@@ -228,7 +228,7 @@ fun Transport(state: AppState) {
     val pulse = beatPulse(state)
     val free = !state.locked
     Row(
-        Modifier.fillMaxWidth().background(C.Ink).drawBehind {
+        Modifier.fillMaxWidth().rail(state).drawBehind {
             // the line under the top bar flashes on every beat, brighter on the one
             val v = pulse.value
             val down = state.heardStep >= 0 && state.heardStep % 16 < 4
@@ -238,10 +238,10 @@ fun Transport(state: AppState) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
-        Btn(if (state.playing) "❚❚" else "▶ Play", { state.togglePlay() }, color = C.Teal, on = state.playing, onColor = C.Yellow, small = true, tag = "play", tier = Tier.Primary, tight = true, modifier = Modifier.weight(1.25f))
-        Btn("■", { state.stop() }, small = true, tag = "stop", tight = true, modifier = Modifier.weight(.55f))
+        BarBtn(state, if (state.playing) "❚❚" else "▶ Play", "Play", { state.togglePlay() }, color = C.Teal, on = state.playing, onColor = C.Yellow, tag = "play", tier = Tier.Primary, word = if (state.playing) "Pause" else "Play", modifier = Modifier.weight(1.25f))
+        BarBtn(state, "■", "Stop", { state.stop() }, tag = "stop", word = "Stop", modifier = Modifier.weight(.55f))
         RecBtn(state, Modifier.weight(1.05f))
-        Btn("↶", { state.undo() }, enabled = state.canUndo && free, small = true, tag = "undo", tight = true, modifier = Modifier.weight(.55f))
+        BarBtn(state, "↶", "Undo", { state.undo() }, enabled = state.canUndo && free, tag = "undo", word = "Undo", modifier = Modifier.weight(.55f))
         // tempo and where the music is; the loop letter is its own button now (Nov 18), for loops from every page
         Box(
             Modifier.weight(.8f).height(36.dp).sticker(C.Black, shadow = 2.dp, border = 2.dp)
@@ -250,7 +250,12 @@ fun Transport(state: AppState) {
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 T("${P.bpm}", size = 12.sp, color = C.Cream, lines = 1, family = Mono, weight = FontWeight.Bold)
-                T("BPM", size = 9.sp, color = C.Dim, lines = 1, family = Mono, weight = FontWeight.Bold)
+                // the Pro looks show the lag here (Nov 18), so a creep is visible as it happens
+                if (state.look == "classic") T("BPM", size = 9.sp, color = C.Dim, lines = 1, family = Mono, weight = FontWeight.Bold)
+                else {
+                    val lag by androidx.compose.runtime.produceState(state.audio.outputMs) { while (true) { value = state.audio.outputMs; if (UiFlags.testing) break; kotlinx.coroutines.delay(1000) } }
+                    T(if (lag >= 0) "${lag.toInt()} MS" else "BPM", size = 9.sp, color = C.Dim, lines = 1, family = Mono, weight = FontWeight.Bold, modifier = Modifier.tagged("lag"))
+                }
             }
         }
         // the loop: where the music is; tap for the row of loops A to H (a pick waits for the bar line while playing)
@@ -262,7 +267,7 @@ fun Transport(state: AppState) {
             T(if (state.pendingSlot >= 0) "→ " + com.tideclock.messmachine.engine.Project.LETTERS[state.pendingSlot] else position(state), size = 10.sp, color = C.Yellow, lines = 1, family = Mono, weight = FontWeight.Bold, modifier = Modifier.tagged("position"))
         }
         // What the FAQ (Tyler's name): tap it, then tap anything to learn what it is. Page help moved onto its card
-        Btn("?", { state.switchFaq() }, small = true, on = state.faqOn, onColor = C.Teal, tag = "help-toggle", tier = Tier.Quiet, tight = true, modifier = Modifier.weight(.55f))
+        BarBtn(state, "?", "What the FAQ", { state.switchFaq() }, on = state.faqOn, onColor = C.Teal, tag = "help-toggle", tier = Tier.Quiet, word = "FAQ", modifier = Modifier.weight(.55f))
         TopMenu(state, Modifier.weight(.55f))
     }
 }
@@ -273,7 +278,7 @@ fun TopMenu(state: AppState, modifier: Modifier = Modifier) {
     var open by remember { mutableStateOf(false) }
     val free = !state.locked
     Box(modifier) {
-        Btn("☰", { open = true }, small = true, tight = true, enabled = free, color = if (state.crash != null) C.Riot else C.Ink, tag = "menu", tier = if (state.crash != null) Tier.Normal else Tier.Quiet, modifier = Modifier.fillMaxWidth())
+        BarBtn(state, "☰", "Settings", { open = true }, enabled = free, color = if (state.crash != null) C.Riot else C.Ink, tag = "menu", tier = if (state.crash != null) Tier.Normal else Tier.Quiet, word = "Menu", modifier = Modifier.fillMaxWidth())
         androidx.compose.material3.DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.background(C.Ink).border(3.dp, C.Cream).tagged("topmenu")) {
             for ((label, tag, act) in listOf(
                 Triple("☰  Messes", "messes") { state.refreshFiles(); state.overlay = Overlay.Files },
@@ -407,7 +412,7 @@ fun BeatLight(state: AppState, pulse: Animatable<Float, AnimationVector1D>) {
 fun RecBtn(state: AppState, modifier: Modifier = Modifier) {
     @Suppress("UNUSED_VARIABLE") val lv = state.liveV
     val pulse = beatPulse(state)
-    Btn("● Rec", { state.setLive { rec = !rec } }, on = state.live.rec, onColor = C.Riot, small = true, tag = "rec", tier = Tier.Primary, tight = true, modifier = modifier.recGlow(state, pulse))
+    BarBtn(state, "● Rec", "Rec", { state.setLive { rec = !rec } }, on = state.live.rec, onColor = C.Riot, tag = "rec", tier = Tier.Primary, word = "Rec", modifier = modifier.recGlow(state, pulse))
 }
 
 /**
@@ -452,12 +457,23 @@ fun position(state: AppState): String {
 
 @Composable
 fun Tabs(state: AppState) {
-    Row(Modifier.fillMaxWidth().background(C.Ink).drawBehind {
+    Row(Modifier.fillMaxWidth().rail(state).drawBehind {
         drawLine(C.Pink, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 3.dp.toPx())
     }.padding(horizontal = 4.dp, vertical = 7.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
         // the bug button in the bottom left corner of every page (note #16). Note #20: tap, talk, tap again, and the
         // note waits on the phone. Red while listening or when a crash waits (then it opens the note box)
         val hot = state.crash != null || state.quickText != null
+        if (state.look != "classic") {
+            // the Pro looks: icon tiles (the bug is red while listening or when a crash waits)
+            BarBtn(state, "🐞", "Notes (bug)", { state.bugTap() }, on = hot, onColor = C.Riot, enabled = !state.locked || state.quickText != null, tag = "notes", word = if (state.quickText != null) "Talk" else "Note")
+            for (t in Tab.entries.filter { it != Tab.Console }) {
+                val play = t == Tab.Pads
+                val on = state.tab == t || (play && state.tab == Tab.Console)
+                val icon = when (t) { Tab.Pads -> "Play tab"; Tab.Synth -> "Synth"; Tab.Steps -> "Steps"; Tab.Roll -> "Roll"; Tab.Song -> "Song"; else -> "Sounds" }
+                BarBtn(state, t.label, icon, { if (play) state.openPlay() else state.tab = t }, on = on, enabled = !state.locked, tag = "tab-${t.label}", word = if (play) "Play" else t.label, modifier = Modifier.weight(1f))
+            }
+            return@Row
+        }
         Box(
             Modifier.width(34.dp).height(34.dp).background(if (hot) C.Riot else C.Ink).border(2.dp, if (hot) C.Cream else C.Card2)
                 .clickable(enabled = !state.locked || state.quickText != null) { state.bugTap() }.tagged("notes"),

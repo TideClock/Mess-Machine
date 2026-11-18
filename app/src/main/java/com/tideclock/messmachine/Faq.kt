@@ -34,6 +34,8 @@ object Faq {
         Line("loop-when", "Bar or Now", "While playing, a picked loop waits for the bar line (Bar) or changes at once (Now)."),
         Line("loop-*", "A loop", "Switch to this loop. Lit letters have something in them."),
         Line("loopstrip", "Loops", "Loops A to H. Tap one to switch."),
+        Line("look-*", "Look", "Classic, or the Pro looks: icon tiles on printed rails, dark or light."),
+        Line("lag", "Lag", "How long a tap takes to be heard, by Android's clock. If it creeps up while you play, send a quick note."),
         Line("layout-*", "Play layout", "What the Play tab shows: the pads, or My Desk, your own layout."),
         Line("notes-sendnow", "Quick notes", "Send each quick note as soon as you stop talking, or keep them on the phone to send later."),
         // the Play tab

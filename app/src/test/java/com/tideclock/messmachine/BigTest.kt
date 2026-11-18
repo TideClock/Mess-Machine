@@ -7,6 +7,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.click
@@ -1274,6 +1275,25 @@ class BigTest {
         File("build/screens/design-check.md").writeText(out.toString())
         println(out)
         if (System.getenv("DESIGN_CHECK") != "report") assertTrue("Design check:\n" + problems.joinToString("\n"), problems.isEmpty())
+    }
+
+    /** Build 99 (Nov 18): the Pro looks, dark and light, with an icon on every bar control. */
+    @Test fun build99ProLooks() {
+        state.overlay = Overlay.Settings; settle()
+        at("look-dark").performClick(); settle()
+        state.overlay = null; settle()
+        assertEquals("dark", state.look)
+        // every control on the bars is an icon tile now (its icon carries the control's name)
+        for (n in listOf("Play", "Stop", "Rec", "Undo", "What the FAQ", "Settings", "Menu", "Pack", "Hold", "Chords", "FX", "Notes (bug)", "Play tab", "Synth", "Steps", "Roll", "Song", "Sounds"))
+            assertTrue("$n has its icon", rule.onAllNodesWithContentDescription(n).fetchSemanticsNodes().isNotEmpty())
+        shot("84-pro-dark")
+        at("tab-Steps").performClick(); settle()
+        assertEquals("the tabs still work as icons", Tab.Steps, state.tab)
+        tab("Pads")
+        state.pickLook("light"); settle()
+        shot("85-pro-light")
+        state.pickLook("classic"); settle()
+        assertTrue("Classic has no bar icons", rule.onAllNodesWithContentDescription("Undo").fetchSemanticsNodes().isEmpty())
     }
 
     /** Build 97 (Nov 18): Menu, then tap; Menu twice; the settings tray; Auto from a fader; flick behind a setting. */

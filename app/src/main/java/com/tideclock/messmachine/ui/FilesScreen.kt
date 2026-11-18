@@ -162,6 +162,19 @@ fun SettingsScreen(state: AppState) {
                 }
             }
         }
+        // the looks (Nov 18): Classic, or the Pro looks with icon tiles on printed rails, dark or light
+        Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
+            Column {
+                T("LOOK", size = 12.sp, color = C.Yellow, spacing = .1.em)
+                Wrap(Modifier.padding(top = 6.dp).tagged("look-chips")) {
+                    Btn("Classic", { state.pickLook("classic") }, on = state.look == "classic", small = true, tag = "look-classic")
+                    Btn("Pro dark", { state.pickLook("dark") }, on = state.look == "dark", onColor = C.Teal, small = true, tag = "look-dark")
+                    Btn("Pro light", { state.pickLook("light") }, on = state.look == "light", onColor = C.Pink, small = true, tag = "look-light")
+                }
+                if (state.look != "classic") Btn(if (state.proWords) "Words under icons: on" else "Words under icons: off", { state.switchProWords() }, on = state.proWords, onColor = C.Teal, small = true, tag = "look-words",
+                    modifier = Modifier.padding(top = 8.dp))
+            }
+        }
         // My Desk is a way of seeing the machine, so it lives here (Tyler, Nov 18): the Play tab shows the pads or your desk
         Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
             Column {

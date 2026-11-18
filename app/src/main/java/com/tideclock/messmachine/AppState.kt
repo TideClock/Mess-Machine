@@ -1892,6 +1892,15 @@ class AppState(private val app: Context) {
     /* ---------------- Menu, then tap (Nov 18, Tyler) ---------------- */
 
     /** Menu was tapped: the next thing you touch opens its settings instead of playing. */
+    /** The look (Nov 18): "classic" (today's), "dark" or "light" (the Pro looks: icon tiles on printed rails). */
+    var look by mutableStateOf(prefs.getString("look", "classic") ?: "classic")
+        private set
+    fun pickLook(v: String) { look = v; prefs.edit().putString("look", v).apply(); notes.trail("look $v") }
+    /** In the Pro looks, a small word under each bar icon (on until you know them). */
+    var proWords by mutableStateOf(prefs.getBoolean("proWords", true))
+        private set
+    fun switchProWords() { proWords = !proWords; prefs.edit().putBoolean("proWords", proWords).apply() }
+
     var menuArmed by mutableStateOf(false)
     /** The settings tray above the bottom bar: what it shows ("lfo:3", "glide:3", "hold"...), or null. */
     var tray by mutableStateOf<String?>(null)

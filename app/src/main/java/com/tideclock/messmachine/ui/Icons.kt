@@ -3,6 +3,13 @@ package com.tideclock.messmachine.ui
 import com.tideclock.messmachine.R
 import androidx.compose.foundation.background
 import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.layout.size
 
 /** The pixel icons (tools/icons, 32 x 32 art with an ink outline and a white glow). Written by tools/icons/export.py. */
@@ -107,5 +114,55 @@ fun PixIcon(name: String, size: androidx.compose.ui.unit.Dp, modifier: androidx.
             modifier = androidx.compose.ui.Modifier.size(size), filterQuality = androidx.compose.ui.graphics.FilterQuality.None,
             alpha = if (dim) .55f else 1f,
         )
+    }
+}
+
+/* ---------------- the Pro looks (Nov 18): icon tiles on rails, dark or light; Classic is today's look ---------------- */
+
+val PRO_DARK_RAIL = androidx.compose.ui.graphics.Color(0xFF1E1B21)
+val PRO_LIGHT_RAIL = androidx.compose.ui.graphics.Color(0xFFFAF0E0)
+
+/** A bar's background: Classic is flat ink; the Pro looks are printed rails with a dot texture. */
+fun androidx.compose.ui.Modifier.rail(state: com.tideclock.messmachine.AppState, classic: androidx.compose.ui.graphics.Color = C.Ink): androidx.compose.ui.Modifier = when (state.look) {
+    "classic" -> this.background(classic)
+    else -> {
+        val light = state.look == "light"
+        val base = if (light) PRO_LIGHT_RAIL else PRO_DARK_RAIL
+        val dot = if (light) androidx.compose.ui.graphics.Color(0xFFECD6C8) else androidx.compose.ui.graphics.Color(0xFF2C2830)
+        this.background(base).drawBehind {
+            val step = 6.dp.toPx(); val r = 1.2.dp.toPx()
+            var y = 0f; var row = 0
+            while (y < size.height) {
+                var x = if (row % 2 == 0) 0f else step / 2
+                while (x < size.width) { drawCircle(dot, r, androidx.compose.ui.geometry.Offset(x, y)); x += step }
+                y += step; row++
+            }
+        }
+    }
+}
+
+/** Words on a rail: cream on dark, ink on the light rail. */
+fun railText(state: com.tideclock.messmachine.AppState): androidx.compose.ui.graphics.Color = if (state.look == "light") C.Ink else C.Cream
+
+/**
+ * A button on a bar: words in Classic, an icon tile (with an optional small word under it) in the Pro looks.
+ * Lit: a cream ring (ink on the light rail).
+ */
+@androidx.compose.runtime.Composable
+fun BarBtn(
+    state: com.tideclock.messmachine.AppState, text: String, icon: String, onClick: () -> Unit, modifier: androidx.compose.ui.Modifier = androidx.compose.ui.Modifier,
+    on: Boolean = false, onColor: androidx.compose.ui.graphics.Color = C.Yellow, enabled: Boolean = true, tag: String? = null, word: String? = null,
+    tier: Tier = Tier.Normal, color: androidx.compose.ui.graphics.Color = C.Ink,
+) {
+    if (state.look == "classic") { Btn(text, onClick, modifier, color = color, on = on, onColor = onColor, enabled = enabled, small = true, tight = true, tag = tag, tier = tier); return }
+    val ring = if (state.look == "light") C.Ink else C.Cream
+    androidx.compose.foundation.layout.Column(
+        modifier.clickable(enabled = enabled) { onClick() }.let { if (tag != null) it.tagged(tag) else it }.padding(vertical = 2.dp),
+        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+    ) {
+        androidx.compose.foundation.layout.Box(
+            androidx.compose.ui.Modifier.border(if (on) 3.dp else 0.dp, if (on) ring else androidx.compose.ui.graphics.Color.Transparent, androidx.compose.foundation.shape.RoundedCornerShape(6.dp)).padding(2.dp),
+        ) { PixIcon(icon, 30.dp, dim = !enabled) }
+        if (state.proWords && word != null) T(word.uppercase(), size = 8.sp, color = if (on) onColor.takeIf { state.look != "light" } ?: C.Ink else railText(state), lines = 1, spacing = .04.em)
     }
 }

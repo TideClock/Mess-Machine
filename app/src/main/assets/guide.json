@@ -1,15 +1,18 @@
 {
-  "title": "Fewer words, your first icons",
+  "title": "The Pro looks",
   "thisBuild": [
-    "The text diet: the playing pages no longer explain themselves. What the FAQ (the ? in the top bar) says what anything is, and the lessons show how. Page help in What the FAQ brings the old explanations back if you want them.",
-    "The FannyPack's + is now four colored tiles with icons: Keys, FX, LFO and XY. Lit tiles are packed.",
-    "Shorter lines where a note had to stay (an empty pack, an empty bank, an empty song)."
+    "Settings, Look: Classic (as before), Pro dark or Pro light. The Pro looks put your pixel icons on every bar: the top bar, the bottom bar and the tabs, on printed rails (dark dots, or cream paper like your prints).",
+    "Tile colors mean something: yellow for transport, purple for pages, pink for playing tools, teal for sound shaping, slate for housekeeping.",
+    "A small word sits under each icon until you know them; Settings, Look, Words under icons turns them off.",
+    "In the Pro looks the tempo button shows the lag in milliseconds under the BPM, so you can watch for a creep while you play.",
+    "Hold, Echo and Song got new icons (a pinned pad, an eye with sound rings, a music note)."
   ],
   "watch": [
-    "Is anything now hard to figure out without its explanation? Send a note saying which, and I'll make its FAQ line clearer.",
-    "The pack tiles: do the icons read at a glance?"
+    "Try both Pro looks on the cover screen and opened: does the cream rail glare? Do the icons read?",
+    "Any icon you'd redraw: send a note naming it."
   ],
   "limits": [
-    "Icons only on the pack tiles so far. The Pro looks, with icons on every bar, come next."
+    "The side dock keeps its words in every look; its pieces are sliders and wheels more than buttons.",
+    "Sheets (Settings, Sample, Messes) look the same in every look for now."
   ]
 }
