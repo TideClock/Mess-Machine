@@ -227,7 +227,7 @@ fun Transport(state: AppState) {
         // tempo and where the music is, in one button: tap for tempo, swing and click
         Box(
             Modifier.weight(1.15f).height(36.dp).sticker(C.Black, shadow = 2.dp, border = 2.dp)
-                .clickable(enabled = free) { state.overlay = Overlay.Tempo }.tagged("bpm"),
+                .clickable(enabled = free) { if (state.midiMapOn) state.midiAim(com.tideclock.messmachine.MidiTarget("tempo", 0)) else state.overlay = Overlay.Tempo }.tagged("bpm"),
             contentAlignment = Alignment.Center,
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {

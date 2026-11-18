@@ -78,6 +78,8 @@ class MidiIn(private val ctx: Context, private val state: AppState) {
                     0x90 -> if (vel > 0) main.post { state.midiDown(note) } else main.post { state.midiUp(note) }
                     0x80 -> main.post { state.midiUp(note) }
                     0xB0 -> main.post { state.midiCc(note, vel) }
+                    // the controller's pitch wheel: 14 bits, the middle (8192) is no bend; it drives the dock's pitch wheel
+                    0xE0 -> { val bend = ((vel shl 7) or note) - 8192; main.post { state.midiBend(bend / 8192f) } }
                 }
             }
         }

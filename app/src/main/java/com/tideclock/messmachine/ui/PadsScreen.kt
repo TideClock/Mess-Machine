@@ -61,18 +61,20 @@ fun PadsScreen(state: AppState) {
         // the bank numbers and the picked pad's sound. Its menu, Hold and chords are on the bottom dock, which stays on
         // screen however far down the page you are (build 84, Tyler's Nov 17 note)
         Row(Modifier.fillMaxWidth().padding(bottom = 12.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-            BankButtons(state)
+            if (state.stepMode) BarButtons(state) else BankButtons(state)
             SoundButton(state)
         }
+        if (state.stepMode) Note("Step mode: the pads are the steps of " + state.lib.titleOf(state.selKey()).ifEmpty { "the picked pad" }.uppercase() + ", bar ${state.page + 1}. Tap to flip a step. Pads picks the sound again.",
+            color = C.Yellow, modifier = Modifier.padding(bottom = 8.dp))
         // zoomed out, the pad grid shrinks with everything else so more of the machine fits
         Box(Modifier.fillMaxWidth(minOf(1f, state.uiScale)).widthIn(max = 560.dp).align(Alignment.CenterHorizontally)) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 for (r in 0 until 4) {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        for (c in 0 until 4) Pad(state, r * 4 + c, Modifier.weight(1f))
+                        for (c in 0 until 4) if (state.stepMode) StepPad(state, r * 4 + c, Modifier.weight(1f)) else Pad(state, r * 4 + c, Modifier.weight(1f))
                     }
                     // an open FannyPack drops right here, under its pad's row (one per row)
-                    if (!state.keysMode) for (pad in state.keyboards.toList()) {
+                    if (!state.keysMode && !state.stepMode) for (pad in state.keyboards.toList()) {
                         if (pad / Project.BANK == state.bank && (pad % Project.BANK) / 4 == r) FannyPack(state, pad)
                     }
                 }
@@ -86,6 +88,47 @@ fun PadsScreen(state: AppState) {
                 modifier = Modifier.padding(top = 14.dp),
             )
         }
+    }
+}
+
+/** Step mode's bar numbers in place of the banks: which bar of the loop the 16 pads show. */
+@Composable
+private fun RowScope.BarButtons(state: AppState) {
+    val bars = state.project.pat().len / 16
+    T("BAR", size = 11.sp, color = C.Yellow, spacing = .1.em)
+    for (b in 0 until maxOf(1, minOf(bars, 8))) {
+        Btn("${b + 1}", modifier = Modifier.weight(1f), onClick = { state.page = b }, on = state.page == b, small = true, onColor = C.Yellow, tag = "stepbar-$b")
+    }
+}
+
+/** One step in step mode: lit when it plays, outlined when the loop is on it. */
+@Composable
+fun StepPad(state: AppState, d: Int, modifier: Modifier) {
+    @Suppress("UNUSED_VARIABLE") val vv = state.version
+    val P = state.project
+    val k = state.selKey()
+    val j = state.page * 16 + d
+    val on = k.isNotEmpty() && P.pat().step(k, j)
+    val col = if (k.isEmpty()) C.Card else padColor(Color(state.lib.colorOf(k)))
+    val now = state.playing && state.heardPat == P.cur && state.heardStep == j
+    Box(
+        modifier
+            .aspectRatio(1f)
+            .tagged("steppad-$d")
+            .drawBehind {
+                val r = CornerRadius(7.dp.toPx())
+                drawRoundRect(if (on) col else if (d % 4 == 0) C.Card2 else C.Card, cornerRadius = r)
+                drawRoundRect(if (now) C.Yellow else if (on) C.Cream else C.Empty, cornerRadius = r, style = Stroke(width = (if (now) 5 else 2).dp.toPx()))
+            }
+            .pointerInput(d, k) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false).consume()
+                    state.stepPadTap(d)
+                }
+            }
+            .padding(8.dp),
+    ) {
+        T("${j + 1}", size = 12.sp, color = if (on) ink(col) else C.Dim, family = Mono, modifier = Modifier.align(Alignment.TopStart))
     }
 }
 
@@ -322,10 +365,11 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
 fun PlayViews(state: AppState) {
     val desk = state.tab == com.tideclock.messmachine.Tab.Console
     Row(Modifier.fillMaxWidth().padding(bottom = 10.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Btn("Pads", { state.keysMode = false; state.tab = com.tideclock.messmachine.Tab.Pads }, on = !desk && !state.keysMode, small = true, tight = true, tag = "mode-pads", modifier = Modifier.weight(1f))
-        Btn("Keys", { state.keysMode = true; state.tab = com.tideclock.messmachine.Tab.Pads }, on = !desk && state.keysMode, onColor = C.Teal, small = true, tight = true, tag = "mode-keys", modifier = Modifier.weight(1f))
-        Btn("My Desk", { state.tab = com.tideclock.messmachine.Tab.Console }, on = desk, onColor = C.Teal, small = true, tight = true, enabled = !state.locked, tag = "view-desk", modifier = Modifier.weight(1.4f))
-        Btn("FX", { state.showFx = !state.showFx }, on = state.showFx && !desk, onColor = C.Pink, small = true, tight = true, enabled = !desk, tag = "fx-toggle", modifier = Modifier.weight(.8f))
+        Btn("Pads", { state.keysMode = false; state.stepMode = false; state.tab = com.tideclock.messmachine.Tab.Pads }, on = !desk && !state.keysMode && !state.stepMode, small = true, tight = true, tag = "mode-pads", modifier = Modifier.weight(1f))
+        Btn("Keys", { state.keysMode = true; state.stepMode = false; state.tab = com.tideclock.messmachine.Tab.Pads }, on = !desk && state.keysMode, onColor = C.Teal, small = true, tight = true, tag = "mode-keys", modifier = Modifier.weight(1f))
+        Btn("Step", { state.keysMode = false; state.stepMode = true; state.page = 0; state.tab = com.tideclock.messmachine.Tab.Pads }, on = !desk && state.stepMode, onColor = C.Yellow, small = true, tight = true, tag = "mode-step", modifier = Modifier.weight(1f))
+        Btn("My Desk", { state.tab = com.tideclock.messmachine.Tab.Console }, on = desk, onColor = C.Teal, small = true, tight = true, enabled = !state.locked, tag = "view-desk", modifier = Modifier.weight(1.5f))
+        Btn("FX", { state.showFx = !state.showFx }, on = state.showFx && !desk, onColor = C.Pink, small = true, tight = true, enabled = !desk, tag = "fx-toggle", modifier = Modifier.weight(.6f))
     }
 }
 

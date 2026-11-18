@@ -1445,6 +1445,58 @@ class BigTest {
         state.switchDockOpen(false); settle()
     }
 
+    /** MIDI round two (buttons, pages, Shift, knobs for more than synths, pitch bend) and Step mode on the pads. */
+    @Test fun midiRoundTwoAndStepMode() {
+        // a controller key taught Play presses Play
+        state.switchMidiMap(true); settle()
+        state.midiAimAct("play"); state.midiDown(90); state.midiUp(90)
+        assertEquals(com.tideclock.messmachine.MidiTarget("act", 0, 0, "play"), state.midiNotes[90])
+        // page B: the same key does something else there
+        state.midiPageTo(1); state.midiAim(com.tideclock.messmachine.MidiTarget("pad", 3)); state.midiDown(72); state.midiUp(72)
+        assertEquals(com.tideclock.messmachine.MidiTarget("pad", 3), state.midiNotes[2 * 128 + 72])
+        state.midiPageTo(0)
+        // Shift: teach it, then with it held a key learns a second job
+        state.midiAimAct("shift"); state.midiDown(91); state.midiUp(91)
+        state.midiDown(91)
+        assertTrue("Shift works while mapping", state.midiShift)
+        state.midiAim(com.tideclock.messmachine.MidiTarget("pad", 5)); state.midiDown(72); state.midiUp(72)
+        state.midiUp(91)
+        assertFalse(state.midiShift)
+        assertEquals(com.tideclock.messmachine.MidiTarget("pad", 5), state.midiNotes[128 + 72])
+        // a knob on the pitch wheel
+        state.pitchWheel(.5f, true); state.pitchWheel(0f, false)
+        state.midiCc(20, 100)
+        assertEquals(com.tideclock.messmachine.MidiTarget("wheel", 0), state.midiKnobs[20])
+        at("midimap-acts").assertExists()
+        shot("70-midi-map-round-two")
+        state.switchMidiMap(false); settle()
+        // played: Play, Shift + key, the knob, the controller's own pitch bend
+        state.midiDown(90); state.midiUp(90); settle()
+        assertTrue("the key pressed Play", state.playing)
+        state.stop(); settle()
+        state.midiDown(91); state.midiDown(72); state.midiUp(72); state.midiUp(91); settle()
+        assertEquals("Shift + key played pad 6", 5, state.project.sel)
+        state.midiCc(20, 127)
+        assertTrue("the knob bends (${state.wheelAt})", state.wheelAt > .9f)
+        state.midiCc(20, 64)
+        assertEquals(0f, state.wheelAt)
+        state.midiBend(.5f)
+        assertEquals(.5f, state.wheelAt, .01f)
+        state.midiBend(0f)
+
+        // Step mode: the pads are the picked sound's steps of the bar on screen
+        tapPad(1); rule.mainClock.advanceTimeBy(300); settle()
+        val k = state.project.kit[1]
+        val was = state.project.pat().step(k, 2)
+        at("mode-step").performClick(); settle()
+        assertTrue(state.stepMode)
+        at("steppad-2").performTouchInput { down(center); up() }; settle()
+        assertEquals("tapping step 3 flips it", !was, state.project.pat().step(k, 2))
+        shot("71-step-mode")
+        at("mode-pads").performClick(); settle()
+        assertFalse(state.stepMode)
+    }
+
     /** Menu's Move took over from hold-and-slide (build 84): Move, then tap the pad it goes to. */
     @Test fun moveAPadOntoAnotherToSwap() {
         val a = state.project.kit[4]
