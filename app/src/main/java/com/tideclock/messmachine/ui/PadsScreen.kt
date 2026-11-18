@@ -364,12 +364,15 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
 @Composable
 fun PlayViews(state: AppState) {
     val desk = state.tab == com.tideclock.messmachine.Tab.Console
+    // five views share the row; on a narrow page (a Fold's cover with the dock open) My Desk reads Desk so it fits
+    BoxWithConstraints(Modifier.fillMaxWidth()) { val narrow = maxWidth < 300.dp
     Row(Modifier.fillMaxWidth().padding(bottom = 10.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         Btn("Pads", { state.keysMode = false; state.stepMode = false; state.tab = com.tideclock.messmachine.Tab.Pads }, on = !desk && !state.keysMode && !state.stepMode, small = true, tight = true, tag = "mode-pads", modifier = Modifier.weight(1f))
         Btn("Keys", { state.keysMode = true; state.stepMode = false; state.tab = com.tideclock.messmachine.Tab.Pads }, on = !desk && state.keysMode, onColor = C.Teal, small = true, tight = true, tag = "mode-keys", modifier = Modifier.weight(1f))
         Btn("Step", { state.keysMode = false; state.stepMode = true; state.page = 0; state.tab = com.tideclock.messmachine.Tab.Pads }, on = !desk && state.stepMode, onColor = C.Yellow, small = true, tight = true, tag = "mode-step", modifier = Modifier.weight(1f))
-        Btn("My Desk", { state.tab = com.tideclock.messmachine.Tab.Console }, on = desk, onColor = C.Teal, small = true, tight = true, enabled = !state.locked, tag = "view-desk", modifier = Modifier.weight(1.5f))
+        Btn(if (narrow) "Desk" else "My Desk", { state.tab = com.tideclock.messmachine.Tab.Console }, on = desk, onColor = C.Teal, small = true, tight = true, enabled = !state.locked, tag = "view-desk", modifier = Modifier.weight(1.5f))
         Btn("FX", { state.showFx = !state.showFx }, on = state.showFx && !desk, onColor = C.Pink, small = true, tight = true, enabled = !desk, tag = "fx-toggle", modifier = Modifier.weight(.6f))
+    }
     }
 }
 

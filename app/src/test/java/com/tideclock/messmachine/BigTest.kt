@@ -682,8 +682,9 @@ class BigTest {
         settle()
         assertFalse("holding the lock unlocks", state.locked)
         // fold the dock away and back
-        rule.onNodeWithTag("dock-fold").performScrollTo().performClick()
+        at("dock-fold").performClick()
         settle()
+        assertFalse("Fold folds the dock (the pitch wheel made it taller)", state.dockOpen)
         rule.onNodeWithTag("dock-open").performClick()
         settle()
         assertTrue(state.dockOpen)
