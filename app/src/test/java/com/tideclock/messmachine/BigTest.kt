@@ -1497,6 +1497,72 @@ class BigTest {
         assertFalse(state.stepMode)
     }
 
+    /**
+     * What the FAQ, the speed guide and Moves. The FAQ part also walks the pages and fails if a control you can tap
+     * has no line in Faq.kt, so the FAQ cannot go stale.
+     */
+    @Test fun faqSpeedGuideAndMoves() {
+        // What the FAQ: tap ?, then a control: it is explained, not pressed
+        rule.onNodeWithTag("help-toggle").performClick(); settle()
+        assertTrue(state.faqOn)
+        val play = rule.onNodeWithTag("play").fetchSemanticsNode().boundsInRoot
+        rule.onNodeWithTag("faq-layer").performTouchInput { click(play.center - rule.onNodeWithTag("faq-layer").fetchSemanticsNode().boundsInRoot.topLeft) }
+        settle()
+        assertEquals("the tap explains Play", "play", state.faqTag)
+        assertFalse("and does not press it", state.playing)
+        rule.onNodeWithTag("faq-text").assertExists()
+        shot("72-what-the-faq")
+        rule.onNodeWithTag("faq-done").performClick(); settle()
+        assertFalse(state.faqOn)
+
+        // every control on every page has a line
+        val missing = LinkedHashSet<String>()
+        fun sweep(where: String) {
+            settle()
+            for (n in rule.onAllNodes(androidx.compose.ui.test.hasClickAction()).fetchSemanticsNodes()) {
+                val tag = generateSequence(n) { it.parent }.mapNotNull { it.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.TestTag) }.firstOrNull() ?: continue
+                if (com.tideclock.messmachine.Faq.lineFor(tag) == null) missing.add("$tag ($where)")
+            }
+        }
+        sweep("Play")
+        at("mode-keys").performClick(); sweep("Keys")
+        at("mode-step").performClick(); sweep("Step")
+        at("mode-pads").performClick(); settle()
+        state.toggleKeyboard(1); state.togglePackStrip(1, "fx"); state.togglePackStrip(1, "lfo"); state.togglePackStrip(1, "xy"); settle()
+        sweep("FannyPack")
+        state.toggleKeyboard(1); settle()
+        state.switchKeysBar(true); sweep("key panel"); state.switchKeysBar(false)
+        state.switchDockOpen(true); sweep("dock"); state.switchDockOpen(false)
+        for (t in listOf("Steps", "Roll", "Song", "Sounds", "Synth")) { tab(t); sweep(t) }
+        tab("Steps"); at("moves-open").performClick(); sweep("Moves")
+        tab("Pads")
+        state.switchMidiMap(true); sweep("MIDI map"); state.switchMidiMap(false)
+        println("FAQ MISSING: $missing")
+        assertTrue("controls with no FAQ line: $missing", missing.isEmpty())
+
+        // the speed guide: a card that moves its ring stop to stop
+        state.startSpeedGuide(); settle()
+        rule.onNodeWithTag("speed-card").assertExists()
+        shot("73-speed-guide")
+        rule.onNodeWithTag("speed-next").performClick(); settle()
+        assertEquals(1, state.speedStop)
+        rule.onNodeWithTag("speed-done").performClick(); settle()
+        assertEquals(-1, state.speedStop)
+
+        // Moves: a lane for pad 1's filter, a ramp stamped every beat, smoothed, cleared
+        tab("Steps")
+        state.newLane(0, com.tideclock.messmachine.engine.Engine.T_FILTER); settle()
+        at("moves-shape-1").performClick(); settle()
+        at("moves-stamp").performClick(); settle()
+        val ln = state.project.pat().motion["0:${com.tideclock.messmachine.engine.Engine.T_FILTER}"]
+        assertTrue("the ramp is on the lane", ln != null && ln[0] == 0f && ln[3] == 1f)
+        at("moves-lane-canvas").assertExists()
+        shot("74-moves-lane")
+        at("moves-smooth").performClick(); settle()
+        at("moves-clear").performClick(); settle()
+        assertFalse(state.project.pat().hasMotion())
+    }
+
     /** Menu's Move took over from hold-and-slide (build 84): Move, then tap the pad it goes to. */
     @Test fun moveAPadOntoAnotherToSwap() {
         val a = state.project.kit[4]
@@ -1707,9 +1773,11 @@ class BigTest {
         tab("Roll")
         tab("Steps")
         assertTrue("second visit hides it", rule.onAllNodesWithTag("help").fetchSemanticsNodes().isEmpty())
-        rule.onNodeWithTag("help-toggle").performClick()
-        settle()
-        assertTrue("? shows it again", rule.onAllNodesWithTag("help").fetchSemanticsNodes().isNotEmpty())
+        // the ? is What the FAQ now; page help switches on from its card (and Settings)
+        rule.onNodeWithTag("help-toggle").performClick(); settle()
+        rule.onNodeWithTag("faq-help").performClick(); settle()
+        rule.onNodeWithTag("faq-done").performClick(); settle()
+        assertTrue("page help shows it again", rule.onAllNodesWithTag("help").fetchSemanticsNodes().isNotEmpty())
         shot("45-help-on")
     }
 

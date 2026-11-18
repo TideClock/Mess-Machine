@@ -39,6 +39,56 @@ public final class Project {
 
         public boolean hasMotion() { return !motion.isEmpty(); }
 
+        /* ---- the automation view (note #17): one lane is "pad:target", one value per step, NaN = no move ---- */
+
+        /** A lane, made empty if it is not there yet. */
+        public float[] lane(String key) {
+            float[] a = motion.get(key);
+            if (a == null) { a = new float[MAXSTEPS]; Arrays.fill(a, Float.NaN); motion.put(key, a); }
+            return a;
+        }
+
+        /** Iron out a shaky take: each step moves toward the average of its neighbours, amt 0..1. Gaps stay gaps. */
+        public void laneSmooth(String key, float amt) {
+            float[] a = motion.get(key);
+            if (a == null) return;
+            float[] b = a.clone();
+            for (int j = 0; j < len; j++) {
+                if (Float.isNaN(a[j])) continue;
+                float sum = 0; int n = 0;
+                for (int d = -2; d <= 2; d++) { int k = Math.floorMod(j + d, len); if (!Float.isNaN(a[k])) { sum += a[k]; n++; } }
+                b[j] = a[j] + (sum / n - a[j]) * Math.max(0, Math.min(1, amt));
+            }
+            System.arraycopy(b, 0, a, 0, len);
+        }
+
+        /**
+         * Stamp a shape over the lane, repeating every span steps, between lo and hi, blended in by strength (0 keeps the
+         * lane, 1 is the pure shape). Shapes: 0 hold, 1 ramp up, 2 ramp down, 3 triangle, 4 sine, 5 saw, 6 square.
+         */
+        public void laneStamp(String key, int shape, int span, float lo, float hi, float strength) {
+            float[] a = lane(key);
+            span = Math.max(1, span);
+            float k = Math.max(0, Math.min(1, strength));
+            for (int j = 0; j < len; j++) {
+                double ph = (j % span) / (double) span, v;
+                switch (shape) {
+                    case 1: v = span == 1 ? 1 : (j % span) / (double) (span - 1); break;
+                    case 2: v = span == 1 ? 0 : 1 - (j % span) / (double) (span - 1); break;
+                    case 3: v = 1 - Math.abs(2 * ph - 1); break;
+                    case 4: v = .5 + .5 * Math.sin(2 * Math.PI * ph); break;
+                    case 5: v = ph; break;
+                    case 6: v = ph < .5 ? 1 : 0; break;
+                    default: v = Float.isNaN(a[j - j % span]) ? .5 : (a[j - j % span] - lo) / (double) Math.max(1e-6f, hi - lo); break;
+                }
+                float target = (float) (lo + (hi - lo) * v);
+                a[j] = Float.isNaN(a[j]) ? target : a[j] + (target - a[j]) * k;
+            }
+        }
+
+        /** One lane off. */
+        public void laneClear(String key) { motion.remove(key); }
+
         public boolean step(String k, int j) { boolean[] a = steps.get(k); return a != null && j >= 0 && j < a.length && a[j]; }
 
         public void setStep(String k, int j, boolean v) {

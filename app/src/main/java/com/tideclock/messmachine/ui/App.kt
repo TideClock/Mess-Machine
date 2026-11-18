@@ -156,6 +156,9 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
             if (state.midiMapOn) MidiMapPanel(state, Modifier.align(Alignment.TopCenter).padding(start = 22.dp, end = 12.dp, top = 56.dp))
             // a lesson sits over everything, sheets included; its ring lets taps through
             TutorOverlay(state)
+            SpeedGuideOverlay(state)
+            // What the FAQ goes over everything: while it is on, a tap explains instead of pressing
+            FaqOverlay(state)
             state.toast?.let { msg ->
                 Box(Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = 84.dp)) {
                     Row(Modifier.sticker(C.Yellow, shadow = 5.dp).clickable { state.toast = null }.tagged("toast").padding(start = 14.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
@@ -235,7 +238,8 @@ fun Transport(state: AppState) {
                 T(position(state), size = 10.sp, color = C.Yellow, lines = 1, family = Mono, weight = FontWeight.Bold, modifier = Modifier.tagged("position"))
             }
         }
-        Btn("?", { state.switchHelp() }, small = true, on = state.helpOn, onColor = C.Teal, tag = "help-toggle", tier = Tier.Quiet, tight = true, modifier = Modifier.weight(.55f))
+        // What the FAQ (Tyler's name): tap it, then tap anything to learn what it is. Page help moved onto its card
+        Btn("?", { state.switchFaq() }, small = true, on = state.faqOn, onColor = C.Teal, tag = "help-toggle", tier = Tier.Quiet, tight = true, modifier = Modifier.weight(.55f))
         TopMenu(state, Modifier.weight(.55f))
     }
 }
