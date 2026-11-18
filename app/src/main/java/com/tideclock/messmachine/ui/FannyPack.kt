@@ -195,20 +195,15 @@ fun LfoStrip(state: AppState, pad: Int, col: Color) {
     val o = state.project.opt(pad)
     val (base, feel) = lfoParts(o.lfoRate)
     fun set(commit: Boolean = true, f: com.tideclock.messmachine.engine.PadOpts.() -> Unit) = state.setPadOpt(pad, commit, f)
+    // Nov 18 (Tyler): what you change live sits on the strip (rate, depth, cutoff, res); the wave, filter type, target and
+    // restart moved into the settings tray (Menu, then tap the strip, or the wave button here)
     Column(Modifier.fillMaxWidth().padding(bottom = 8.dp).sticker(C.Black, shadow = 0.dp, border = 2.dp, borderColor = col).padding(8.dp).tagged("lfostrip-$pad")) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             T("LFO", size = 12.sp, color = C.Yellow, spacing = .1.em)
             Btn(if (o.lfoOn) "On" else "Off", { set { lfoOn = !lfoOn } }, on = o.lfoOn, onColor = C.Teal, small = true, tight = true, tag = "lfo-on-$pad")
             androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
-            Btn(if (o.lfoRetrig) "Each hit" else "With loop", { set { lfoRetrig = !lfoRetrig } }, small = true, tight = true, tier = Tier.Quiet, tag = "lfo-retrig-$pad")
-        }
-        Wrap(Modifier.padding(top = 6.dp).tagged("lfowave-chips"), gap = 6.dp) {
-            for ((w, n) in listOf(0 to "Sine", 1 to "Tri", 2 to "Saw ↑", 3 to "Saw ↓", 4 to "Square", 5 to "Random")) {
-                Btn(n, { set { lfoWave = w; lfoOn = true } }, on = o.lfoWave == w, onColor = C.Teal, small = true, tight = true, tag = "lfo-wave-$w-$pad")
-            }
-            // the old Wobble effect, folded in as a preset (Nov 18): a gentle pitch sway on a quarter-note sine
-            Btn("Wobble", { set { lfoOn = true; lfoWave = 0; lfoRate = 4.0; lfoTarget = com.tideclock.messmachine.engine.Engine.T_PITCH; lfoDepth = .03; lfoType = 0; lfoRetrig = false } },
-                on = o.lfoOn && o.lfoTarget == com.tideclock.messmachine.engine.Engine.T_PITCH && o.lfoDepth <= .05, onColor = C.Pink, small = true, tight = true, tag = "lfo-wobble-$pad")
+            val wave = LFO_WAVES.firstOrNull { it.first == o.lfoWave }?.second ?: "Sine"
+            Btn("$wave · " + (LFO_TARGETS.firstOrNull { it.first == o.lfoTarget }?.second ?: "Filter") + " ▾", { state.openTray("lfo:$pad") }, small = true, tight = true, tier = Tier.Quiet, tag = "lfo-more-$pad")
         }
         // the rate strip: drag along it and it snaps at each mark; T and dot change the stop's feel
         RateStrip(base, col, "lfo-rate-$pad") { b, done ->
@@ -219,18 +214,35 @@ fun LfoStrip(state: AppState, pad: Int, col: Color) {
             Btn("Straight", { set { lfoRate = base } }, on = feel == 1.0, onColor = C.Yellow, small = true, tight = true, tag = "lfo-straight-$pad")
             Btn("T", { set { lfoRate = base * 2 / 3 } }, on = feel < 1.0, onColor = C.Yellow, small = true, tag = "lfo-trip-$pad")
             Btn("Dot", { set { lfoRate = base * 1.5 } }, on = feel > 1.0, onColor = C.Yellow, small = true, tight = true, tag = "lfo-dot-$pad")
-            androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
-            Select("Target: " + (LFO_TARGETS.firstOrNull { it.first == o.lfoTarget }?.second ?: "Filter"), LFO_TARGETS, { t -> set { lfoTarget = t; lfoOn = true } }, tag = "lfo-target-$pad")
         }
         SliderRow("Depth", o.lfoDepth.toFloat(), 0f..1f, { "${(it * 100).toInt()}%" }, { v -> state.midiAim(com.tideclock.messmachine.MidiTarget("lfo", pad, 0, "depth")); set(false) { lfoDepth = v.toDouble() } }, { set { } }, accent = col)
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp).tagged("lfotype-chips")) {
-            T("FILTER", size = 11.sp, color = C.Dim, spacing = .1.em)
-            for ((ty, n) in listOf(0 to "Off", 1 to "Lo", 2 to "Hi", 3 to "Band")) Btn(n, { set { lfoType = ty } }, on = o.lfoType == ty, onColor = C.Pink, small = true, tight = true, tag = "lfo-type-$ty-$pad")
-        }
         if (o.lfoType > 0) {
             SliderRow("Cutoff", o.lfoCut.toFloat(), 0f..1f, { "${(40 * Math.pow(18000.0 / 40, it.toDouble())).toInt()} Hz" }, { v -> set(false) { lfoCut = v.toDouble() } }, { set { } }, accent = C.Teal)
             SliderRow("Res", o.lfoRes.toFloat(), 0f..1f, { "${(it * 100).toInt()}%" }, { v -> set(false) { lfoRes = v.toDouble() } }, { set { } }, accent = C.Pink)
         }
+    }
+}
+
+val LFO_WAVES = listOf(0 to "Sine", 1 to "Tri", 2 to "Saw ↑", 3 to "Saw ↓", 4 to "Square", 5 to "Random")
+
+/** The LFO's settings in the tray: wave, the Wobble preset, what it moves, its filter type, and how it restarts. */
+@Composable
+fun LfoTray(state: AppState, pad: Int) {
+    val o = state.project.opt(pad)
+    fun set(f: com.tideclock.messmachine.engine.PadOpts.() -> Unit) = state.setPadOpt(pad, true, f)
+    Wrap(Modifier.tagged("lfowave-chips"), gap = 6.dp) {
+        for ((w, n) in LFO_WAVES) Btn(n, { set { lfoWave = w; lfoOn = true } }, on = o.lfoWave == w, onColor = C.Teal, small = true, tight = true, tag = "lfo-wave-$w-$pad")
+        // the old Wobble effect, folded in as a preset (Nov 18): a gentle pitch sway on a quarter-note sine
+        Btn("Wobble", { set { lfoOn = true; lfoWave = 0; lfoRate = 4.0; lfoTarget = com.tideclock.messmachine.engine.Engine.T_PITCH; lfoDepth = .03; lfoType = 0; lfoRetrig = false } },
+            on = o.lfoOn && o.lfoTarget == com.tideclock.messmachine.engine.Engine.T_PITCH && o.lfoDepth <= .05, onColor = C.Pink, small = true, tight = true, tag = "lfo-wobble-$pad")
+    }
+    Wrap(Modifier.padding(top = 8.dp).tagged("lfotype-chips"), gap = 6.dp) {
+        T("FILTER", size = 11.sp, color = C.Dim, spacing = .1.em)
+        for ((ty, n) in listOf(0 to "Off", 1 to "Lo", 2 to "Hi", 3 to "Band")) Btn(n, { set { lfoType = ty } }, on = o.lfoType == ty, onColor = C.Pink, small = true, tight = true, tag = "lfo-type-$ty-$pad")
+    }
+    Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Select("Target: " + (LFO_TARGETS.firstOrNull { it.first == o.lfoTarget }?.second ?: "Filter"), LFO_TARGETS, { t -> set { lfoTarget = t; lfoOn = true } }, tag = "lfo-target-$pad")
+        Btn(if (o.lfoRetrig) "Each hit" else "With loop", { set { lfoRetrig = !lfoRetrig } }, small = true, tight = true, tier = Tier.Quiet, tag = "lfo-retrig-$pad")
     }
 }
 
@@ -275,5 +287,28 @@ fun RateStrip(stop: Double, col: Color, tag: String, onPick: (Double, Boolean) -
             drawText(tm, s.second, topLeft = Offset(i * w + 5f, size.height * .3f),
                 style = androidx.compose.ui.text.TextStyle(color = if (on) ink(col) else C.Cream, fontSize = 10.sp, fontWeight = FontWeight.Bold))
         }
+    }
+}
+
+
+/** The FX strip's settings in the tray: which faders show, and straight to a fader's automation lane (Auto). */
+@Composable
+fun FxTray(state: AppState, pad: Int) {
+    T("SHOW", size = 11.sp, color = C.Dim, spacing = .1.em)
+    Wrap(Modifier.padding(top = 4.dp), gap = 6.dp) {
+        for (name in com.tideclock.messmachine.FX_FADERS) Btn(name, { state.toggleFxShown(name) }, on = name in state.fxShown, onColor = C.Teal, small = true, tight = true, tag = "fxshow-$name")
+    }
+    T("AUTO LANE", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 10.dp))
+    Wrap(Modifier.padding(top = 4.dp), gap = 6.dp) {
+        for ((t, name) in FX_STRIP) Btn(name, { state.tray = null; state.openAutoLane(pad, t) }, small = true, tight = true, tag = "fxauto-$t")
+    }
+}
+
+/** The pack's settings in the tray: which strips are packed. */
+@Composable
+fun PackTray(state: AppState, pad: Int) {
+    val packed = state.packOf(pad)
+    Wrap(gap = 6.dp) {
+        for ((id, name) in PACK_STRIPS) Btn(name, { state.togglePackStrip(pad, id) }, on = id in packed, onColor = C.Teal, small = true, tag = "packtray-$id")
     }
 }

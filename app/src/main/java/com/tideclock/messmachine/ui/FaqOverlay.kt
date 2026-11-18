@@ -93,7 +93,7 @@ val SPEED_STOPS = listOf(
     "tab-Pads" to "The tabs: Play, Synth, Steps, Roll, Song and Sounds.",
     "loop-open" to "The loop: where the music is. Tap it for loops A to H from any page; while playing, a pick waits for the bar line.",
     "pad-0" to "Pads: tap to play, hold to keep playing, draw a circle for the pad's XY. Empty pads: top corner records, bottom corner picks a sound.",
-    "open-padmenu" to "The bottom bar stays under the page: Menu for the picked pad, Pack, Hold, Chords, FX and the key.",
+    "open-padmenu" to "The bottom bar stays under the page. Menu, then tap anything: its settings. Then Pack, Hold, Chords, FX and the key.",
     "pack-toggle" to "Pack opens the picked pad's FannyPack under its row: the Padiano, live FX faders, an LFO and XY, whichever you packed.",
     "dock-open" to "The side dock: Lock, Hold, the pitch wheel, the filter, Repeat and whatever else you put on it.",
     "tab-Steps" to "Steps: tap or slide to paint steps; tap a sound's name for row tools; Auto shows recorded moves as lanes you can draw.",

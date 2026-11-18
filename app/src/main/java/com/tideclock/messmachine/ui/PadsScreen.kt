@@ -173,11 +173,9 @@ fun BottomDock(state: AppState) {
         if (state.keysBarOpen) KeysPanel(state)
         Row(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             Box {
-                Btn("Menu", {
-                    val pad = state.project.sel
-                    state.bank = pad / Project.BANK
-                    state.padMenu = pad
-                }, small = true, tight = true, enabled = !state.locked, tag = "open-padmenu")
+                // Menu, then tap anything: its settings. Menu twice: what you touched last (Nov 18)
+                Btn(if (state.menuArmed) "Menu ●" else "Menu", { state.menuTap() }, on = state.menuArmed || state.padMenu >= 0 || state.tray != null, onColor = C.Yellow,
+                    small = true, tight = true, enabled = !state.locked, tag = "open-padmenu")
                 if (state.padMenu >= 0) PadMenu(state, state.padMenu)
             }
             // the picked pad's FannyPack: one tap zips it open under its row, or shut

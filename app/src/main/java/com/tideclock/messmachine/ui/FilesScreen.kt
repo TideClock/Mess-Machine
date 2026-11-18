@@ -190,6 +190,9 @@ fun SettingsScreen(state: AppState) {
                 }, on = state.bgPlay, onColor = C.Teal, small = true, tag = "set-bgplay")
                 Note("A short buzz when you hit a pad.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
                 Btn(if (state.buzz) "Pad buzz: on" else "Pad buzz: off", { state.switchBuzz(!state.buzz) }, on = state.buzz, onColor = C.Teal, small = true, tag = "set-buzz")
+                // Nov 18: a quick flick up off a button opens its settings, like Menu then tap (try it; off by default)
+                Btn(if (state.flickOn) "Flick up for settings: on" else "Flick up for settings: off", { state.switchFlick() }, on = state.flickOn, onColor = C.Teal, small = true, tag = "set-flick",
+                    modifier = Modifier.padding(top = 8.dp))
                 Note("Beat glow behind everything.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
                 Wrap(Modifier.tagged("glow-chips")) {
                     for ((v, n) in listOf(0 to "Off", 1 to "Soft", 2 to "Full")) Btn(n, { state.setPulse(v) }, on = state.pulseLevel == v, small = true, tag = "set-pulse-$v")

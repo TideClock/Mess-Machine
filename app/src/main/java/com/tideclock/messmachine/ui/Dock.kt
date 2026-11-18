@@ -390,3 +390,13 @@ fun RepeatPatternPicker(state: AppState) {
     }
     Note("Each step is one repeat. With Hold on, held notes follow the pattern too.", modifier = Modifier.padding(bottom = 6.dp))
 }
+
+
+/** The dock filter's settings in the tray: what it filters, and Stay or Spring. */
+@Composable
+fun DockFilterTray(state: AppState) {
+    Wrap(gap = 6.dp) {
+        Btn(if (state.dockTarget < 0) "Filters the mix" else "Filters pad ${state.dockTarget + 1}", { state.cycleDockTarget() }, small = true, tag = "tray-dock-target")
+        Btn(if (state.dockStay) "Stay" else "Spring", { state.dockStay = !state.dockStay; if (!state.dockStay) state.dockFilter(false) }, on = state.dockStay, onColor = C.Teal, small = true, tag = "tray-dock-stay")
+    }
+}

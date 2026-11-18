@@ -126,7 +126,16 @@ class BigTest {
     private fun padMenuOf(d: Int) {
         if (state.project.kit[state.bank * 16 + d].isEmpty()) { state.selectPad(state.bank * 16 + d, false); settle() }
         else { tapPad(d); rule.mainClock.advanceTimeBy(300); settle() }
-        at("open-padmenu").performClick()
+        menuThenTap("pad-$d")
+    }
+
+    /** Menu, then tap: arm Menu on the bottom bar, then tap a control through the clear layer (Nov 18). */
+    private fun menuThenTap(tag: String) {
+        at("open-padmenu").performClick(); settle()
+        assertTrue("Menu is armed", state.menuArmed)
+        val r = rule.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
+        val layer = rule.onNodeWithTag("menu-layer").fetchSemanticsNode().boundsInRoot
+        rule.onNodeWithTag("menu-layer").performTouchInput { click(r.center - layer.topLeft) }
         settle()
     }
 
@@ -521,9 +530,9 @@ class BigTest {
         rule.onNodeWithTag("pad-2").performTouchInput { up() }
         settle()
         assertEquals("a sustaining pad's hold is playing", -1, state.padMenu)
-        rule.onNodeWithTag("open-padmenu").performClick()
-        settle()
-        assertEquals("Menu on the bottom dock opens it", 2, state.padMenu)
+        rule.onNodeWithTag("open-padmenu").performClick(); settle()
+        rule.onNodeWithTag("open-padmenu").performClick(); settle()
+        assertEquals("Menu twice opens the last thing touched: the pad", 2, state.padMenu)
         state.padMenu = -1
         settle()
         // the bottom dock stays put while the page scrolls: scroll to the bottom and Menu is still on screen
@@ -613,7 +622,11 @@ class BigTest {
         rule.onNodeWithTag("glide-7").performScrollTo().performClick()
         settle()
         assertTrue(state.project.opt(7).glide)
-        rule.onNodeWithTag("glide-legato-7").performScrollTo().performClick()
+        // a tap never unrolls anything (Nov 18): Glide's settings wait in the tray
+        rule.onAllNodesWithTag("glide-legato-7").fetchSemanticsNodes().let { assertTrue("no settings unrolled", it.isEmpty()) }
+        menuThenTap("glide-7")
+        assertEquals("glide:7", state.tray)
+        rule.onNodeWithTag("glide-legato-7").performClick()
         settle()
         assertTrue(state.project.opt(7).legato)
         rule.onNodeWithTag("piano-7").performScrollTo()
@@ -1263,6 +1276,50 @@ class BigTest {
         if (System.getenv("DESIGN_CHECK") != "report") assertTrue("Design check:\n" + problems.joinToString("\n"), problems.isEmpty())
     }
 
+    /** Build 97 (Nov 18): Menu, then tap; Menu twice; the settings tray; Auto from a fader; flick behind a setting. */
+    @Test fun build97MenuThenTap() {
+        // Menu, then a dock button: its tray
+        state.switchDockOpen(true); settle()
+        menuThenTap("dock-pitch")
+        assertEquals("wheel", state.tray)
+        at("tray").assertExists()
+        shot("82-settings-tray-wheel")
+        at("tray-wheel-stay").performClick(); settle()
+        assertTrue(state.wheelStay)
+        at("tray-done").performClick(); settle()
+        assertNull(state.tray)
+        state.switchDockOpen(false); settle()
+        // Menu, then the tempo: the tempo sheet
+        menuThenTap("bpm")
+        assertEquals(Overlay.Tempo, state.overlay)
+        state.overlay = null; settle()
+        // Menu, then something with no settings: Menu lets go and says so
+        menuThenTap("tab-Steps")
+        assertFalse(state.menuArmed)
+        assertEquals(Tab.Pads, state.tab)
+        // Menu twice after touching the tempo: the tempo again
+        rule.onNodeWithTag("bpm").performClick(); settle(); state.overlay = null; settle()
+        at("open-padmenu").performClick(); settle(); at("open-padmenu").performClick(); settle()
+        assertEquals("Menu twice opens what was touched last", Overlay.Tempo, state.overlay)
+        state.overlay = null; settle()
+        // the FX tray goes straight to a fader's Auto lane
+        state.toggleKeyboard(1); state.togglePackStrip(1, "fx"); settle()
+        menuThenTap("fx-${com.tideclock.messmachine.engine.Engine.T_RVB}-1")
+        assertEquals("fx:1", state.tray)
+        at("fxauto-${com.tideclock.messmachine.engine.Engine.T_RVB}").performClick(); settle()
+        assertEquals(Tab.Steps, state.tab)
+        assertTrue(state.movesOpen)
+        assertEquals("1:${com.tideclock.messmachine.engine.Engine.T_RVB}", state.moveLane)
+        shot("83-auto-from-a-fader")
+        tab("Pads")
+        // flick is off until Settings turns it on
+        assertFalse(state.flickOn)
+        state.overlay = Overlay.Settings; settle()
+        at("set-flick").performClick(); settle()
+        assertTrue(state.flickOn)
+        state.overlay = null; settle()
+    }
+
     /** Build 96 (Nov 18): loops from every page, Stay on the wheel, XY min, the FX fader picker, Auto, the Play layout. */
     @Test fun build96LoopsWheelXyFaders() {
         // loops from the top bar: stopped, a pick switches at once; playing, it waits for the bar line
@@ -1303,7 +1360,9 @@ class BigTest {
         state.toggleFxShown("Dirt")
         // Wobble lives in the LFO strip now
         state.togglePackStrip(1, "lfo"); settle()
+        state.openTray("lfo:1"); settle()
         at("lfo-wobble-1").performClick(); settle()
+        state.openTray(null); settle()
         assertTrue(state.project.opt(1).lfoOn && state.project.opt(1).lfoTarget == com.tideclock.messmachine.engine.Engine.T_PITCH)
         shot("81-fx-picker-and-wobble")
         state.toggleKeyboard(1); settle()
@@ -1435,10 +1494,13 @@ class BigTest {
         rule.onNodeWithTag("pack-pick-lfo").performClick(); settle()
         rule.mainClock.advanceTimeBy(600); settle()
         assertEquals(listOf("keys", "fx", "lfo"), state.packOf(1))
+        at("lfo-more-1").performClick(); settle()
+        assertEquals("the wave button opens the LFO's tray", "lfo:1", state.tray)
         at("lfo-wave-4-1").performClick(); settle()
+        at("lfo-type-2-1").performClick(); settle()
+        at("tray-done").performClick(); settle()
         at("lfo-rate-1").performTouchInput { down(Offset(width * (4.5f / 7f), height / 2f)); up() }; settle()
         at("lfo-trip-1").performClick(); settle()
-        at("lfo-type-2-1").performClick(); settle()
         val lo = state.project.opt(1)
         assertTrue("the LFO is on, square, 1/8 triplet, high pass (${lo.lfoCode()})", lo.lfoOn && lo.lfoWave == 4 && kotlin.math.abs(lo.lfoRate - 4.0 / 3) < 1e-6 && lo.lfoType == 2)
         state.engine.play(); for (i in 0 until 40) state.engine.render(FloatArray(512), 256)
@@ -1780,7 +1842,8 @@ class BigTest {
         tapPad(1)
         rule.mainClock.advanceTimeBy(300); settle()
         at("open-padmenu").performClick(); settle()
-        assertEquals("Menu opens the picked pad's menu", 1, state.padMenu)
+        at("open-padmenu").performClick(); settle()
+        assertEquals("Menu twice opens the pad just tapped", 1, state.padMenu)
         state.padMenu = -1
         rule.mainClock.advanceTimeBy(1000); settle()
 

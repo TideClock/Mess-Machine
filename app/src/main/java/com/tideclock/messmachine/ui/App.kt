@@ -16,6 +16,12 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.remember
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.composed
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
@@ -104,7 +110,7 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
         val dn = LocalDensity.current
         CompositionLocalProvider(LocalDensity provides Density(dn.density * state.uiScale, dn.fontScale), LocalLocked provides state.locked, LocalHelp provides state.helpShows(state.tab.label)) {
         // test tags show up as view ids, so the phone test on the emulator can find things by name
-        Box(Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }.background(C.Paper).grit().safeDrawingPadding()) {
+        Box(Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }.background(C.Paper).grit().safeDrawingPadding().watchTouches(state)) {
             PulseBackdrop(state)
             Column(Modifier.fillMaxSize()) {
                 Transport(state)
@@ -160,6 +166,9 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
             // a lesson sits over everything, sheets included; its ring lets taps through
             TutorOverlay(state)
             SpeedGuideOverlay(state)
+            // Menu, then tap: a clear layer catches the next tap and opens that control's settings
+            MenuLayer(state)
+            state.tray?.let { SettingsTray(state, it, Modifier.align(Alignment.BottomCenter)) }
             // What the FAQ goes over everything: while it is on, a tap explains instead of pressing
             FaqOverlay(state)
             if (state.quickText != null) QuickNoteBar(state, Modifier.align(Alignment.BottomStart))
@@ -516,5 +525,104 @@ fun LoopStrip(state: AppState) {
                 color = if (used) C.Card2 else C.Ink, small = true, tight = true, tag = "loop-$i", modifier = Modifier.weight(1f))
         }
         Btn(if (state.loopAtBar) "Bar" else "Now", { state.switchLoopAtBar() }, small = true, tight = true, tier = Tier.Quiet, tag = "loop-when")
+    }
+}
+
+
+/**
+ * Every touch, seen before the control under it gets it (nothing is consumed): remembers the last control with
+ * settings for Menu twice, and, with Flick on, a quick flick up off a button opens that button's settings.
+ */
+fun Modifier.watchTouches(state: AppState): Modifier = composed {
+    var origin by remember { mutableStateOf(Offset.Zero) }
+    val dens = LocalDensity.current
+    this.onGloballyPositioned { origin = it.boundsInRoot().topLeft }.pointerInput(Unit) {
+        awaitPointerEventScope {
+            var downAt = Offset.Zero; var downT = 0L; var downTag: String? = null
+            while (true) {
+                val e = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                for (c in e.changes) {
+                    if (c.pressed && !c.previousPressed) {
+                        downAt = c.position; downT = c.uptimeMillis
+                        downTag = settingsTagAt(c.position + origin, state)
+                        state.noteTouch(downTag)
+                    } else if (!c.pressed && c.previousPressed) {
+                        val dy = downAt.y - c.position.y; val dx = kotlin.math.abs(c.position.x - downAt.x)
+                        val far = with(dens) { 44.dp.toPx() }
+                        if (state.flickOn && downTag != null && !downTag!!.startsWith("pad-") && c.uptimeMillis - downT < 300 && dy > far && dx < dy / 2) state.openSettingsFor(downTag!!)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** The smallest tagged control under a point that has settings. */
+fun settingsTagAt(p: Offset, state: AppState): String? =
+    TutHi.rects.entries.filter { it.value.contains(p) && it.value.width > 1f && state.settingsKind(it.key) != null }
+        .minByOrNull { it.value.width * it.value.height }?.key
+
+/** While Menu is armed: a clear layer over the page. The next tap opens what is under it; Menu again opens the last thing. */
+@Composable
+fun BoxScope.MenuLayer(state: AppState) {
+    if (!state.menuArmed) return
+    var me by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
+    Box(
+        Modifier.fillMaxSize().onGloballyPositioned { me = it.boundsInRoot() }.tagged("menu-layer")
+            .pointerInput(Unit) {
+                detectTapGestures { o ->
+                    val p = o + me.topLeft
+                    val menu = TutHi.rects["open-padmenu"]
+                    if (menu != null && menu.contains(p)) { state.menuTap(); return@detectTapGestures }
+                    val tag = settingsTagAt(p, state)
+                    if (tag == null || !state.openSettingsFor(tag)) { state.menuArmed = false; state.say("That has no settings. Menu, then tap a pad, a strip, a fader or a dock button.") }
+                }
+            },
+    ) {
+        Box(Modifier.align(Alignment.TopCenter).padding(top = 60.dp).sticker(C.Yellow, shadow = 4.dp).padding(horizontal = 14.dp, vertical = 8.dp)) {
+            T("Tap anything for its settings", color = C.Ink, size = 14.sp)
+        }
+    }
+}
+
+/** The settings tray (the light layer): what you change about a control, just above the bottom bar. */
+@Composable
+fun SettingsTray(state: AppState, kind: String, modifier: Modifier = Modifier) {
+    val dockUp = state.tab == Tab.Pads || state.tab == Tab.Console || state.tab == Tab.Synth
+    val pad = kind.substringAfter(':', "").toIntOrNull() ?: state.project.sel
+    val title = when (kind.substringBefore(':')) {
+        "glide" -> "GLIDE · PAD ${pad + 1}"; "lfo" -> "LFO · PAD ${pad + 1}"; "fx" -> "FX · PAD ${pad + 1}"; "padiano" -> "PADIANO · PAD ${pad + 1}"
+        "pack" -> "FANNYPACK · PAD ${pad + 1}"; "hold" -> "HOLD"; "repeat" -> "REPEAT"; "wheel" -> "PITCH WHEEL"; "dockfilter" -> "DOCK FILTER"; else -> kind.uppercase()
+    }
+    Column(
+        modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, bottom = if (dockUp) 100.dp else 52.dp).sticker(C.Ink, shadow = 5.dp, border = 3.dp, borderColor = C.Yellow)
+            .heightIn(max = 380.dp).verticalScroll(rememberScrollState()).padding(12.dp).tagged("tray"),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            T(title, size = 12.sp, color = C.Yellow, spacing = .1.em, modifier = Modifier.weight(1f))
+            // the deep layer: the sound's own Sample sheet (its FX page and the rest)
+            if (kind.startsWith("fx:") && state.project.kit.getOrNull(pad).orEmpty().isNotEmpty()) Btn("More", {
+                state.tray = null; state.overlay = Overlay.Doctor(state.project.kit[pad])
+            }, small = true, tight = true, tier = Tier.Quiet, tag = "tray-more")
+            Btn("Done", { state.tray = null }, small = true, tight = true, tag = "tray-done", modifier = Modifier.padding(start = 6.dp))
+        }
+        Column(Modifier.padding(top = 8.dp)) {
+            when (kind.substringBefore(':')) {
+                "glide" -> GlideTray(state, pad)
+                "lfo" -> LfoTray(state, pad)
+                "fx" -> FxTray(state, pad)
+                "padiano" -> PadianoSettings(state)
+                "pack" -> PackTray(state, pad)
+                "hold" -> HoldBar(state)
+                "repeat" -> Wrap(gap = 6.dp) { RepeatControls(state, "tray-repeat") }
+                "wheel" -> Wrap(gap = 6.dp) {
+                    Btn("Range ±${state.wheelRange}", { state.cycleWheelRange() }, small = true, tag = "tray-wheel-range")
+                    Btn(if (state.wheelAll) "Bends every pad" else "Bends the picked pad", { state.switchWheelAll() }, small = true, tag = "tray-wheel-what")
+                    Btn(if (state.wheelStay) "Stay" else "Spring", { state.switchWheelStay() }, on = state.wheelStay, onColor = C.Teal, small = true, tag = "tray-wheel-stay")
+                }
+                "dockfilter" -> DockFilterTray(state)
+                else -> T("Nothing to set here yet.", size = 13.sp, color = C.Dim)
+            }
+        }
     }
 }

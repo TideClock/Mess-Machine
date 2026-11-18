@@ -283,11 +283,14 @@ fun PadianoExtras(state: AppState, pad: Int) {
     Btn("Glide", { state.setPadOpt(pad) { glide = !glide } }, on = o.glide, onColor = C.Teal, small = true, tag = "glide-$pad")
 }
 
+/** Nov 18: Glide's tap only switches it; its time and Legato live in the settings tray (Menu, then tap Glide). */
 @Composable
-fun GlideRow(state: AppState, pad: Int) {
+fun GlideRow(state: AppState, pad: Int) {}
+
+@Composable
+fun GlideTray(state: AppState, pad: Int) {
     val o = state.project.opt(pad)
-    if (!o.glide) return
-    Column(Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
+    Column(Modifier.fillMaxWidth()) {
         SliderRow("Glide time", o.glideT.toFloat(), 0f..1f, { "${(it * 1000).toInt()} ms" }, { v -> state.setPadOpt(pad, commit = false) { glideT = v.toDouble() } }, { state.setPadOpt(pad) {} }, accent = C.Teal)
         Wrap(gap = 6.dp) {
             Btn("Always", { state.setPadOpt(pad) { legato = false } }, on = !o.legato, onColor = C.Teal, small = true, tag = "glide-always-$pad")

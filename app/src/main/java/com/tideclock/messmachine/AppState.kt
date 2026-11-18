@@ -1316,6 +1316,9 @@ class AppState(private val app: Context) {
         return t.lo to t.hi
     }
 
+    /** Straight to a control's automation: the Steps tab with Auto open on that lane (Nov 18: Auto from any fader). */
+    fun openAutoLane(pad: Int, target: Int) { tab = Tab.Steps; movesOpen = true; newLane(pad, target) }
+
     fun newLane(pad: Int, target: Int) { moveLane = "$pad:$target"; edit { pat().lane(moveLane) } }
 
     /** Draw on a lane: norm 0..1 is bottom to top of its range, or null to erase the step. commit when the finger lifts. */
@@ -1885,6 +1888,77 @@ class AppState(private val app: Context) {
 
     /** Which pad's hold menu is open, or -1. */
     var padMenu by mutableIntStateOf(-1)
+
+    /* ---------------- Menu, then tap (Nov 18, Tyler) ---------------- */
+
+    /** Menu was tapped: the next thing you touch opens its settings instead of playing. */
+    var menuArmed by mutableStateOf(false)
+    /** The settings tray above the bottom bar: what it shows ("lfo:3", "glide:3", "hold"...), or null. */
+    var tray by mutableStateOf<String?>(null)
+    /** The last control touched that has settings, for Menu twice. */
+    var lastTouch: String? = null
+    /** Flick up off a button to open its settings (off until you turn it on in Settings). */
+    var flickOn by mutableStateOf(prefs.getBoolean("flickOn", false))
+        private set
+    fun switchFlick() { flickOn = !flickOn; prefs.edit().putBoolean("flickOn", flickOn).apply() }
+
+    fun openTray(kind: String?) { tray = kind; menuArmed = false; if (kind != null) notes.trail("settings $kind") }
+
+    /** The Menu button: the first tap arms it, the second opens what you touched last (the picked pad when nothing). */
+    fun menuTap() {
+        if (padMenu >= 0 || tray != null) { padMenu = -1; tray = null; menuArmed = false; return }
+        if (!menuArmed) { menuArmed = true; return }
+        menuArmed = false
+        if (!openSettingsFor(lastTouch ?: "pad-${project.sel % Project.BANK}")) openSettingsFor("pad-${project.sel % Project.BANK}")
+    }
+
+    /** Pad tags carry the place in the bank; every other tag ends in the pad it belongs to. */
+    private fun tagPad(tag: String): Int = tag.substringAfterLast('-').toIntOrNull() ?: project.sel
+
+    /** What settings a control has, as a tray kind, or null when it has none. */
+    fun settingsKind(tag: String): String? {
+        fun p() = tagPad(tag)
+        return when {
+            Regex("^pad-(pick-)?\\d+$").matches(tag) -> "pad"
+            tag.startsWith("glide-") && !tag.startsWith("glide-always") && !tag.startsWith("glide-legato") -> "glide:${p()}"
+            tag.startsWith("lfo") -> "lfo:${p()}"
+            tag.startsWith("fx-") && tag != "fx-toggle" || tag.startsWith("fxstrip-") -> "fx:${p()}"
+            tag.startsWith("xyp-") || tag.startsWith("piano-xy-") || tag == "dock-xy" -> "xy:${if (tag == "dock-xy") project.sel else p()}"
+            tag.startsWith("piano-keys-") || tag.startsWith("piano-set-") || tag.startsWith("chord-slots-") -> "padiano:${tag.substringAfterLast('-').toIntOrNull() ?: project.sel}"
+            tag.startsWith("pack-") -> "pack:${p()}"
+            tag == "hold-toggle" || tag.startsWith("dock-hold") -> "hold"
+            tag == "chords-toggle" || tag == "keysbar-open" -> "keys"
+            tag == "dock-repeat" || tag == "dock-rate" || tag.startsWith("rate-") -> "repeat"
+            tag.startsWith("dock-pitch") -> "wheel"
+            tag == "dock-cut" || tag == "dock-res" || tag == "dock-target" || tag == "dock-stay" -> "dockfilter"
+            tag == "bpm" -> "tempo"
+            tag == "loop-open" || tag == "position" -> "loops"
+            else -> null
+        }
+    }
+
+    /** Open the settings for a control. False when it has none. */
+    fun openSettingsFor(tag: String): Boolean {
+        val k = settingsKind(tag) ?: return false
+        menuArmed = false
+        when {
+            k == "pad" -> {
+                val d = tag.substringAfterLast('-').toInt()
+                val pad = bank * Project.BANK + d
+                if (project.sel != pad) selectPad(pad, false)
+                tray = null; padMenu = pad
+            }
+            k.startsWith("xy:") -> { tray = null; overlay = Overlay.Xy(k.substringAfter(':').toInt()) }
+            k == "keys" -> { tray = null; switchKeysBar(true) }
+            k == "tempo" -> { tray = null; overlay = Overlay.Tempo }
+            k == "loops" -> { tray = null; loopStripOpen = true }
+            else -> openTray(k)
+        }
+        return true
+    }
+
+    /** A touch anywhere (seen before the control gets it): remembered for Menu twice. */
+    fun noteTouch(tag: String?) { if (tag != null && tag != "open-padmenu" && settingsKind(tag) != null) lastTouch = tag }
 
     /** One piano per row of pads: it drops right under the row its pad sits in. */
     fun toggleKeyboard(pad: Int) {

@@ -43,7 +43,7 @@ object Tutorials {
             TutStep("Tap a few pads.", t("pad-0")) { s, c -> played(s, c, 3) },
             TutStep("Tap 2 under BANK: a second set of 16 pads.", t("bank-1")) { s, _ -> s.bank == 1 },
             TutStep("Back to bank 1.", t("bank-0")) { s, _ -> s.bank == 0 },
-            TutStep("Tap Menu on the bar at the bottom: the picked pad's menu opens (sounds, keys, Sample, clear).", t("open-padmenu")) { s, _ -> s.padMenu >= 0 },
+            TutStep("Tap Menu on the bar at the bottom, then tap a pad: its menu opens instead of it playing. Menu, then tap works on strips and dock buttons too.", { s -> if (s.menuArmed) "pad-0" else "open-padmenu" }) { s, _ -> s.padMenu >= 0 },
             TutStep("Close the menu by tapping outside it.") { s, _ -> s.padMenu < 0 },
         )),
         Tutorial("hold", "Playing", "Hold", "Latch pads so they keep playing while your hands do something else.", listOf(
@@ -193,7 +193,7 @@ object Tutorials {
             closeSheet,
         )),
         Tutorial("xy", "Playing", "XY setup", "Choose what a pad's XY sphere does when you push it around.", listOf(
-            TutStep("Tap the first pad, then Menu at the bottom, then XY setup.", { s -> if (s.project.sel == 0) "open-padmenu" else "pad-0" }) { s, c -> (s.overlay is Overlay.Xy).also { if (it) c.xy0 = s.xyOf(s.project.sel).name } },
+            TutStep("Tap Menu at the bottom, then the first pad, then XY setup.", { s -> if (s.padMenu >= 0) "menu-xy" else if (s.menuArmed) "pad-0" else "open-padmenu" }) { s, c -> (s.overlay is Overlay.Xy).also { if (it) c.xy0 = s.xyOf(s.project.sel).name } },
             TutStep("Pick a different preset.", t("xy-editor")) { s, c -> s.xyOf(s.project.sel).name != c.xy0 },
             closeSheet,
             TutStep("Draw a circle on that pad and push the ball around: hear the new setup.", t("pad-0")) { s, c -> if (s.sphere != null) c.seen.add("sphere"); "sphere" in c.seen && s.sphere == null },
@@ -219,7 +219,7 @@ object Tutorials {
             TutStep("Press Stop.", t("stop")) { s, _ -> !s.playing },
         )),
         Tutorial("favorites", "Sounds", "Starred sounds", "Star the sounds you love and find them in one place.", listOf(
-            TutStep("Tap Menu at the bottom, then Star.", t("open-padmenu")) { s, c -> s.favs.size > c.fav0 },
+            TutStep("Tap Menu at the bottom, then a pad, then Star.", { s -> if (s.padMenu >= 0) "menu-star" else if (s.menuArmed) "pad-0" else "open-padmenu" }) { s, c -> s.favs.size > c.fav0 },
             TutStep("Tap SOUNDS.", t("tab-Sounds")) { s, _ -> s.tab == Tab.Sounds },
             TutStep("Tap Starred: your starred sounds. (Unstar from the same pad menu if you like; stars aren't part of the practice mess.)", t("mode-fav")) { s, _ -> s.soundsMode == "fav" },
         )),
