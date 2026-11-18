@@ -4,16 +4,12 @@
 
 Rewritten at the end of every session and at each step of a long job (BT-2). Read this first.
 
-- **Condensed (2026-11-17):** 84 went out as runs 85 to 88 (test fixes). Everything after 84 went into one build
-  (pack, FX and LFO strips, triplet repeat, wheel, row tools, MIDI round two, Step mode, What the FAQ, speed guide,
-  Moves), built in the worktree branch b85 while 84's runs went.
-- **In progress (2026-11-17):** Tyler approved the redraft (proposal doc https://claude.ai/artifact/Gj4cgJ4vm92N5Tpch5FT1n)
-  and builds 84 to 95, condensed where quality allows into six: 84 (bottom dock, Menu only, chords fix and chord-set
-  slots, five octaves, lesson bug, quarter note, empty pad slash, Steps drag paint, MIDI one at a time and list,
-  notes key and categories, audit at his real screens), 85 (FannyPack, FX strip, Steps row tools, pitch wheel), 86
-  (LFO strip with Hi/Band filters, triplet and dotted repeat clock), 87 (MIDI round two, Step mode), 88 (speed
-  guide, What the FAQ, automation view). Report the real cost of each build to Tyler (usage is tight).
-- **Live:** build 83 (green, published 2026-11-14; note #12 closed): the full test pass. 59 tests pass (51 big test
+- **Live:** build 92 (green, published 2026-11-17). The whole approved proposal (84 to 95) shipped in two builds:
+  88 (bottom dock, Menu only, chord slots and octaves, lesson bug, quarter note, slash, drag paint, MIDI one at a
+  time and list, notes key) and 92 (FannyPack, FX and LFO strips, triplet and dotted repeat, pitch wheel, row
+  tools, MIDI round two, Step mode, What the FAQ, speed guide, Moves). Runs 85 to 87 and 89 to 91 were test fixes.
+  Notes #16 to #19 closed; #15 (question, answered) open. Nothing heard by ear yet: LFO, filters, voicings.
+- **Earlier live:** build 83 (green, published 2026-11-14; note #12 closed): the full test pass. 59 tests pass (51 big test
   flows, the monkey test, 4 audit widths, 3 chord tests); the emulator phone test is clean (no crash, two monkey
   runs clean). Audit at 369 dp: 8 cut-off labels left (all sound names, plus the keys bar's button with the dock
   open), 6 buttons under 32 dp (five of them 30 or 31 dp wide in the top bar and the Song palette, and the effect
