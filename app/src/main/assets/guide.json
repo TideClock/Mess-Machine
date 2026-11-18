@@ -1,27 +1,23 @@
 {
-  "title": "The bottom dock, chords that stay put, and notes without the browser",
+  "title": "FannyPack, the FX and LFO strips, triplet Repeat, pitch wheel",
   "thisBuild": [
-    "A bar along the bottom of the Play, My Desk and Synth tabs stays on screen however far down you scroll: Menu for the picked pad, Hold, Chords on or off, and the key button. The key button opens root, scale, chord type, Hold's count and Let go just above the bar.",
-    "Menu is the one way to a pad's menu now. A hold on a pad always plays, on every kind of pad. Moving a pad's sound is in the menu: Move to another pad, then tap where it goes.",
-    "Chords: Chords on the bottom bar flips between chords and single notes and remembers which chords you had. Chords keep their root on the bottom, so G is G B D on every key. The Padiano and the Roll reach from C1 to C6 (Oct buttons), so chords play and record as written.",
-    "Chord sets work the Maschine way: with a set on, the Padiano shows the set's chords as named boxes, always in the same order, so box 3 of Sunday Pop is always Am. Oct moves the whole set. On the Keys grid, the bottom two rows are the set and the top two the same set an octave up. Two new chord types: 1-4-5 (the sus sound) and Octaves.",
-    "Empty pads have a slash: tap above it to record onto the pad, below it to pick a sound. The Settings switch for this is gone.",
-    "Steps: slide along a row to paint it (start on an empty step to fill, on a full one to erase). Names in the Steps list get two lines.",
-    "Repeat has 1/4. Triplets and dotted come with the LFO build, because they need a new clock in the engine.",
-    "The Repeat lesson starts on its first step, and Back waits for you instead of jumping forward. Every lesson starts with Repeat and chords off and puts them back after.",
-    "MIDI map: One at a time waits for you to tap the next target after each key (Run is the old way). List shows every key and knob on the map, with Teach to redo one and an x to take one off.",
-    "The bug button sits in the bottom left corner of every page. The note box opens on the kind of note you sent last, with big buttons. Send without the browser: paste a GitHub key once (steps are in the note box) and Send posts the note from inside the app. Notes written offline wait and go out later."
+    "FannyPack: each sound has a pack that holds only the strips you put in it. Pick a pad, tap Pack on the bottom bar, and its pack unzips under its row (one per row). The zipper bar shows what is packed: tap a name to hide or show that strip, + to pack or unpack strips, the pull on the left to zip it shut. A pad with something packed shows a little zipper along its bottom edge.",
+    "FX strip (in the pack): faders for reverb, echo, dirty, crush, chorus and wobble sends, plus the pad's filter cutoff and resonance. They stay where you leave them, and with Rec on while the loop plays every move records like an XY move. Off sends them all back to zero.",
+    "LFO strip (in the pack): a wave that moves the sound. Sine, triangle, saw up, saw down, square or random. The rate strip in the middle runs from 2 bars to 1/32 and snaps at each mark however you drag it; T and Dot make the stop a triplet or dotted. Moves picks what it moves (filter, resonance, volume, pan, pitch, reverb, echo, dirty, crush, chorus), Depth how far. Its own filter is Lo, Hi or Band with cutoff and resonance. With loop keeps it in time with the loop; Each hit restarts it on every hit.",
+    "Repeat: Straight, Triplet and Dotted under the rate, for 1/4, 1/8, 1/16 and 1/32. Triplets land exactly between the sixteenths.",
+    "Pitch wheel on the side dock, next to the filter: drag up or down to bend the picked pad, let go and it springs back. The words under it set the range (2, 7 or 12) and whether it bends the picked pad or every pad. With Rec on while playing, the bend records.",
+    "Steps: tap a sound's name for its row tools: Every 2, 4 or 8, Repeat the first 4 or 8 across, nudge left or right, Copy and Paste a row onto another sound, Spread a number of hits evenly (3 over a bar is the classic tresillo), Clear."
   ],
   "watch": [
-    "The bottom dock on the cover screen at your view size: does it fit, and is Menu where your thumb wants it?",
-    "Chord sets on the Padiano and the Keys grid, by ear: do the boxes feel like Maschine's chord sets, and are the chords voiced well?",
-    "Paint a row of steps with one slide, then scroll the Steps page: does a slide up or down still scroll, and a slide sideways still paint?",
-    "Make the GitHub key and send one note with it. If GitHub refuses the key, the app says so."
+    "The LFO on a bass with the filter on Lo, by ear: does 1/8 and 1/16 wub in time, and does the rate strip feel quantized enough?",
+    "Hi and Band on the LFO's filter: do they sound right, and is the resonance range useful?",
+    "The FannyPack on the cover screen at your view size: does an open pack leave room to play the pads above it?",
+    "Triplet Repeat while the loop plays: does it sit in time with the beat?"
   ],
   "limits": [
-    "A MIDI key plays chord set slots 1 to 7 by its place in the scale; the 8th chord is on the Padiano's boxes only. MIDI round two adds slots to the map.",
-    "The hold menus on a sound's name in Steps and Roll are still there; the pads have none.",
-    "Triplet and dotted Repeat, the FannyPack, the FX and LFO strips, the pitch wheel, Steps row tools and Step mode, MIDI round two, the speed guide, What the FAQ and the automation view come in the next builds.",
-    "I cannot hear the app: chord voicings and the slot sound are for your ears."
+    "Triplet and dotted repeats that land between sixteenths play but are not recorded as hits (a loop stores sixteenths). The ones on a sixteenth record.",
+    "MIDI knobs cannot reach the FX faders, the LFO's rate strip or the pitch wheel yet: that is MIDI round two, next.",
+    "The Wobble effect is still its own thing; the LFO does not replace it.",
+    "I cannot hear the app: the LFO's sound and the filter's resonance are for your ears."
   ]
 }
