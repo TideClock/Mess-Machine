@@ -457,6 +457,8 @@ class AppState(private val app: Context) {
         rebuild()
         loadKit()
         refreshFiles()
+        // a few seconds after start, ask GitHub quietly whether a newer build is out (the Update bar shows if so)
+        if (!com.tideclock.messmachine.ui.UiFlags.testing) main.postDelayed({ updater.check(true) }, 4000)
     }
 
     /* ---------------- loading and saving the working mess ---------------- */
@@ -1740,6 +1742,77 @@ class AppState(private val app: Context) {
     }
 
     fun sendNote(n: MNote) = notes.send(n, noteDetails(n.cat, n.extra.isNotEmpty())) { say(it) }
+
+    /** Notes still on the phone (quick notes wait here until you send them). */
+    val waitingNotes get() = notes.notes.filter { it.issue == 0 && !it.sent && it.status != "sending" }
+
+    /** Send all: with the key every waiting note goes; without it, GitHub's page opens for the oldest one. */
+    fun sendAllNotes() {
+        val w = waitingNotes
+        if (w.isEmpty()) { say("Nothing waiting."); return }
+        if (!notes.hasKey) { sendNote(w.last()); if (w.size > 1) say("Without the key each note opens its own GitHub page. ${w.size - 1} more after this one."); return }
+        for (n in w.reversed()) sendNote(n)
+    }
+
+    /* ---------------- the quick note (note #20): tap the bug, talk, tap it again ---------------- */
+
+    /** null while not listening; what was heard so far while listening. */
+    var quickText by mutableStateOf<String?>(null)
+        private set
+    private var quickCtx = ""
+    private var quickTrail = ""
+    private var quickScreen = ""
+    /** For the tests: what the quick note "hears" (no recognizer under Robolectric). */
+    var fakeVoice: String? = null
+    private val voice = VoiceNote(app, { t -> if (quickText != null) quickText = t }) { t, problem -> quickDone(t, problem) }
+
+    fun bugTap() {
+        if (crash != null) { overlay = Overlay.Notes; return }
+        if (quickText != null) { quickStop(); return }
+        val fake = fakeVoice != null
+        // no speech service on this phone: the note box, as before
+        if (!fake && !voice.available()) { overlay = Overlay.Notes; return }
+        if (micOn || mouthOn) { say("The mic is busy. Stop the recording or mouth control first."); return }
+        val ok = fake || androidx.core.content.ContextCompat.checkSelfPermission(app, android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (!ok) { askMicFor = MIC_FOR_NOTE; return }
+        // what was on screen and what you just did, from the moment you started talking
+        quickScreen = screenName()
+        quickCtx = noteDetails("bug")
+        quickTrail = notes.trailText()
+        quickText = ""
+        if (fake) quickText = fakeVoice else if (!voice.start()) { quickText = null; overlay = Overlay.Notes }
+    }
+
+    fun quickStop() {
+        if (quickText == null) return
+        if (fakeVoice != null) quickDone(quickText.orEmpty(), null) else voice.stop()
+    }
+
+    fun quickDrop() {
+        if (quickText == null) return
+        voice.cancel()
+        quickText = null
+        say("Note dropped.")
+    }
+
+    private fun quickDone(t: String, problem: String?) {
+        quickText = null
+        if (t.isBlank()) { say(problem ?: "Heard nothing, so no note was kept."); return }
+        val (c, tp, tx) = notes.parsePrefix(t, noteCat, "")
+        notes.add(MNote(NotesBook.newId(), c, tp.trim(), tx, System.currentTimeMillis(), buildName, quickScreen, ctx = quickCtx, ctxTrail = quickTrail))
+        notes.trail("quick note ${catLabel(c)}")
+        say("${catLabel(c)} note kept (${waitingNotes.size} waiting). Send them from Notes in the ☰ menu." + (problem?.let { " $it" } ?: ""))
+    }
+
+    /* ---------------- update from inside the app ---------------- */
+
+    val updater = Updater(app).also { Updater.live = it }
+
+    fun installUpdate() {
+        if (!updater.ready) { updater.check(false); return }
+        if (!updater.allowed()) { say("Turn on \"Allow from this source\" for Mess Machine, then come back and tap Update. Android asks this once."); return }
+        updater.download { saveNow(); notes.trail("update to build ${updater.latest}") }
+    }
 
     /** Check for Claude's replies, and send any note that waited for a connection. */
     fun checkNotes() {

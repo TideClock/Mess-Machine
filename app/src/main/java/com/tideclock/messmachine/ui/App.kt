@@ -95,7 +95,8 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
         val micPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
             val pad = state.askMicFor
             state.askMicFor = -1
-            if (ok && pad == com.tideclock.messmachine.MIC_FOR_MOUTH) state.switchMouth(true)
+            if (ok && pad == com.tideclock.messmachine.MIC_FOR_NOTE) state.bugTap()
+            else if (ok && pad == com.tideclock.messmachine.MIC_FOR_MOUTH) state.switchMouth(true)
             else if (ok && pad >= 0) state.recordToPad(pad) else if (!ok) state.say("The mic needs permission. You can allow it in the phone's settings for Mess Machine.")
         }
         LaunchedEffect(state.askMicFor) { if (state.askMicFor != -1) micPerm.launch(android.Manifest.permission.RECORD_AUDIO) }
@@ -108,6 +109,7 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
             Column(Modifier.fillMaxSize()) {
                 Transport(state)
                 if (state.micOn) RecordingBanner(state)
+                if (state.updater.ready && !state.updater.later || state.updater.busy) UpdateBar(state)
                 if (state.cpuAsk) CpuBanner(state)
                 Row(Modifier.weight(1f).fillMaxWidth()) {
                 Dock(state)
@@ -159,6 +161,7 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
             SpeedGuideOverlay(state)
             // What the FAQ goes over everything: while it is on, a tap explains instead of pressing
             FaqOverlay(state)
+            if (state.quickText != null) QuickNoteBar(state, Modifier.align(Alignment.BottomStart))
             state.toast?.let { msg ->
                 // above the tabs, and above the bottom dock where it shows, so a message never covers Menu or the dock's Fold
                 val dockUp = state.tab == Tab.Pads || state.tab == Tab.Console || state.tab == Tab.Synth
@@ -257,6 +260,7 @@ fun TopMenu(state: AppState, modifier: Modifier = Modifier) {
             for ((label, tag, act) in listOf(
                 Triple("☰  Messes", "messes") { state.refreshFiles(); state.overlay = Overlay.Files },
                 Triple("⚙  Settings", "settings") { state.overlay = Overlay.Settings },
+                Triple("🐞  Notes for Claude" + state.waitingNotes.size.let { if (it > 0) " ($it waiting)" else "" }, "notes-open") { state.overlay = Overlay.Notes },
                 Triple("🎓  Learn: lessons for every feature", "learn") { state.overlay = Overlay.Learn },
                 Triple("👄  Mouth control: wub with your voice", "mouth") { state.overlay = Overlay.Mouth },
                 Triple("🎛  MIDI map: teach your keyboard", "midimap-open") { state.switchMidiMap(true) },
@@ -433,12 +437,14 @@ fun Tabs(state: AppState) {
     Row(Modifier.fillMaxWidth().background(C.Ink).drawBehind {
         drawLine(C.Pink, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 3.dp.toPx())
     }.padding(horizontal = 4.dp, vertical = 7.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-        // the bug button (notes for Claude) in the bottom left corner of every page (note #16); red when a crash waits
+        // the bug button in the bottom left corner of every page (note #16). Note #20: tap, talk, tap again, and the
+        // note waits on the phone. Red while listening or when a crash waits (then it opens the note box)
+        val hot = state.crash != null || state.quickText != null
         Box(
-            Modifier.width(34.dp).height(34.dp).background(if (state.crash != null) C.Riot else C.Ink).border(2.dp, if (state.crash != null) C.Cream else C.Card2)
-                .clickable(enabled = !state.locked) { state.overlay = Overlay.Notes }.tagged("notes"),
+            Modifier.width(34.dp).height(34.dp).background(if (hot) C.Riot else C.Ink).border(2.dp, if (hot) C.Cream else C.Card2)
+                .clickable(enabled = !state.locked || state.quickText != null) { state.bugTap() }.tagged("notes"),
             contentAlignment = Alignment.Center,
-        ) { T("🐞", size = 16.sp) }
+        ) { T(if (state.quickText != null) "●" else "🐞", size = 16.sp, color = C.Cream) }
         // Pads and Desk share one Play tab: its views (Pads, Keys, My Desk) switch at the top of the page
         for (t in Tab.entries.filter { it != Tab.Console }) {
             val play = t == Tab.Pads
@@ -455,6 +461,34 @@ fun Tabs(state: AppState) {
             ) {
                 T(if (play) "PLAY" else t.label.uppercase(), size = 11.sp, color = if (on) C.Ink else if (state.locked) C.Empty else C.Dim, spacing = .02.em, lines = 1)
             }
+        }
+    }
+}
+
+
+/** Note #20: while the bug button listens, what it heard so far, with Keep and Drop. Sits just above the tabs. */
+@Composable
+fun QuickNoteBar(state: AppState, modifier: Modifier = Modifier) {
+    val heard = state.quickText.orEmpty()
+    Row(
+        modifier.padding(start = 6.dp, end = 12.dp, bottom = 52.dp).sticker(C.Riot, shadow = 5.dp).tagged("quick-note").padding(start = 12.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        T(if (heard.isEmpty()) "● Listening. Talk, then tap the bug." else "● " + heard.takeLast(90), color = C.Cream, size = 13.sp, lines = 2, modifier = Modifier.weight(1f, fill = false))
+        Btn("Keep", { state.quickStop() }, small = true, color = C.Ink, tag = "quick-save", modifier = Modifier.padding(start = 8.dp))
+        Btn("Drop", { state.quickDrop() }, small = true, color = C.Ink, tier = Tier.Quiet, tag = "quick-drop", modifier = Modifier.padding(start = 4.dp))
+    }
+}
+
+/** A newer build is on GitHub: one tap downloads and installs it (Tyler, Nov 17). */
+@Composable
+fun UpdateBar(state: AppState) {
+    val u = state.updater
+    Row(Modifier.fillMaxWidth().background(C.Teal).tagged("update-bar").padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        T(if (u.busy) u.status else "Build ${u.latest} is ready.", color = C.Ink, size = 13.sp, lines = 2, modifier = Modifier.weight(1f))
+        if (!u.busy) {
+            Btn("Update", { state.installUpdate() }, small = true, color = C.Ink, tag = "update-go", modifier = Modifier.padding(start = 8.dp))
+            Btn("Later", { u.later = true }, small = true, color = C.Teal, tier = Tier.Quiet, tag = "update-later", modifier = Modifier.padding(start = 4.dp))
         }
     }
 }

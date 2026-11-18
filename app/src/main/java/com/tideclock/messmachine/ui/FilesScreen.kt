@@ -140,7 +140,18 @@ fun SettingsScreen(state: AppState) {
     // Android 13 and up ask before an app shows notifications; without it the music still plays, the Stop notification just stays hidden
     val notif = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
     ScrollPane(hPad = 14.dp, vPad = 0.dp) {
+        // update from inside the app (Tyler, Nov 17)
         Card(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 14.dp)) {
+            Column {
+                T("BUILD ${state.updater.current}", size = 12.sp, color = C.Yellow, spacing = .1.em)
+                if (state.updater.status.isNotEmpty()) Note(state.updater.status, modifier = Modifier.padding(top = 2.dp))
+                Wrap(Modifier.padding(top = 6.dp)) {
+                    if (state.updater.ready) Btn("Update to build ${state.updater.latest}", { state.installUpdate() }, small = true, color = C.Teal, enabled = !state.updater.busy, tag = "update-go")
+                    else Btn("Check for updates", { state.updater.check(false) }, small = true, enabled = !state.updater.busy, tag = "update-check")
+                }
+            }
+        }
+        Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
             Column {
                 T("VIEW SIZE", size = 12.sp, color = C.Yellow, spacing = .1.em)
                 Help("Zoom out to fit more of the machine on the screen.", modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))

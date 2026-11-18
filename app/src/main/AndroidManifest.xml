@@ -12,6 +12,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Update from inside the app: hand the new build to Android's installer, without the Install tap where Android allows it -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
 
     <application
         android:name=".MessApp"
@@ -55,6 +58,13 @@
             android:name=".PlaybackService"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
+
+        <receiver android:name=".UpdateReceiver" android:exported="false" />
+        <receiver android:name=".UpdatedReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
         <provider
             android:name="androidx.core.content.FileProvider"

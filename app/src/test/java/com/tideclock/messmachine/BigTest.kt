@@ -33,6 +33,7 @@ import com.tideclock.messmachine.ui.TutHi
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -1613,6 +1614,60 @@ class BigTest {
         state.overlay = Overlay.Files
         settle()
         shot("49-messes-with-pictures")
+    }
+
+    @Test fun quickNoteAndInAppUpdate() {
+        // note #20: tap the bug, talk, tap it again: the note waits on the phone with the moment it was made
+        state.padDown(0); state.padUp(0); settle()
+        state.fakeVoice = "the piano overlaps bars"
+        val before = state.notes.notes.size
+        rule.onNodeWithTag("notes").performClick(); settle()
+        assertNotNull("listening", state.quickText)
+        rule.onNodeWithTag("quick-note").assertExists()
+        assertNull("the bug button listens instead of opening the note box", state.overlay)
+        shot("76-quick-note-listening")
+        state.padDown(1); state.padUp(1)
+        rule.onNodeWithTag("notes").performClick(); settle()
+        assertNull("the second tap stops listening", state.quickText)
+        assertEquals(before + 1, state.notes.notes.size)
+        val n = state.notes.notes.first()
+        assertEquals("the piano overlaps bars", n.text)
+        assertFalse("kept on the phone, not sent", n.sent)
+        assertTrue("it carries the phone's state from when it was spoken", n.ctx.contains("**Device:**"))
+        assertFalse("and the taps up to then, not the ones after", n.ctxTrail.lines().lastOrNull().orEmpty().contains("pad 2"))
+        // spoken prefixes still pick the kind of note
+        state.fakeVoice = "wishlist: a glowing bug"
+        rule.onNodeWithTag("notes").performClick(); settle()
+        rule.onNodeWithTag("quick-save").performClick(); settle()
+        assertEquals("wishlist", state.notes.notes.first().cat)
+        // Drop throws it away
+        state.fakeVoice = "never mind"
+        rule.onNodeWithTag("notes").performClick(); settle()
+        rule.onNodeWithTag("quick-drop").performClick(); settle()
+        assertEquals(before + 2, state.notes.notes.size)
+        // the notes list is in the ☰ menu now, with Send all for the waiting ones
+        rule.onNodeWithTag("menu").performClick(); settle()
+        rule.onNodeWithTag("notes-open").performClick(); settle()
+        assertEquals(Overlay.Notes, state.overlay)
+        rule.onNodeWithTag("notes-sendall").performScrollTo().assertExists()
+        shot("77-notes-send-all")
+        state.overlay = null; settle()
+
+        // the update bar: GitHub has a newer build
+        assertEquals(92, com.tideclock.messmachine.Updater.buildOf("Build 92 from 09de2b0. Passed the big test and the phone test."))
+        assertEquals(0, com.tideclock.messmachine.Updater.buildOf("Mess Machine, latest build"))
+        rule.onNodeWithTag("update-bar").assertDoesNotExist()
+        state.updater.found(BuildConfig.VERSION_CODE + 1, "https://example.invalid/MessMachine.apk", 1000)
+        settle()
+        rule.onNodeWithTag("update-bar").assertExists()
+        rule.onNodeWithTag("update-go").assertExists()
+        shot("78-update-bar")
+        rule.onNodeWithTag("update-later").performClick(); settle()
+        rule.onNodeWithTag("update-bar").assertDoesNotExist()
+        state.overlay = Overlay.Settings; settle()
+        rule.onNodeWithTag("update-go").assertExists()
+        shot("79-settings-update")
+        state.overlay = null; settle()
     }
 
     @Test fun audioCheckTimesTapsAndSavesANote() {

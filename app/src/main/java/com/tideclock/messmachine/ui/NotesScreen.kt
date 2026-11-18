@@ -118,6 +118,8 @@ fun NotesScreen(state: AppState) {
         NoteKeyCard(state)
         Row(Modifier.padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             T("Your notes", size = 16.sp, modifier = Modifier.weight(1f))
+            val waiting = state.waitingNotes.size
+            if (waiting > 0) Btn("Send all ($waiting)", { state.sendAllNotes() }, small = true, color = C.Pink, tag = "notes-sendall")
             Btn(if (state.notes.checking) "Checking…" else "Check for replies", { state.checkNotes() }, small = true, color = C.Teal, enabled = !state.notes.checking)
         }
         if (state.notes.lastCheck.isNotEmpty()) Note(state.notes.lastCheck, modifier = Modifier.padding(bottom = 8.dp))

@@ -1,26 +1,21 @@
 {
-  "title": "FannyPack, LFO, triplets, MIDI round two, Step mode, What the FAQ, Moves",
+  "title": "Update from inside the app, and quick voice notes",
   "thisBuild": [
-    "FannyPack: each sound has a pack that holds only the strips you put in it. Pick a pad, tap Pack on the bottom bar, and its pack unzips under its row. Tap a strip's name on the zipper to hide or show it, + to pack or unpack strips, the pull on the left to zip it shut. A pad with something packed shows a little zipper along its bottom edge.",
-    "FX strip (in the pack): faders for reverb, echo, dirty, crush, chorus and wobble sends, and the pad's filter. They stay where you leave them; with Rec on while playing, moves record. Off puts them back.",
-    "LFO strip (in the pack): sine, triangle, saw up, saw down, square or random. The rate strip in the middle runs from 2 bars to 1/32 and snaps at each mark; T and Dot make it triplet or dotted. Moves picks the filter, resonance, volume, pan, pitch or an effect; Depth how far. Its own filter is Lo, Hi or Band. With loop or Each hit.",
-    "Repeat: Straight, Triplet and Dotted for 1/4, 1/8, 1/16 and 1/32. Triplets land exactly between the sixteenths.",
-    "Pitch wheel on the side dock: bend the picked pad (or every pad), springs back. Your controller's own pitch wheel moves it too.",
-    "Steps: tap a sound's name for row tools: Every 2, 4 or 8, Repeat 4 or 8 across, nudge, Copy and Paste, Spread hits evenly, Clear. Moves (next to Clear loop) shows recorded moves as lanes: draw, erase, Smooth, or stamp a shape every beat, half bar or bar.",
-    "Step mode (Play: Pads, Keys, Step): the 16 pads are the picked sound's 16 steps; the bank numbers become bars.",
-    "MIDI round two: Buttons in the map teaches a controller button Play, Stop, Rec, Undo, Hold, Repeat, Chords, Pack, a bank, the next loop, a map page or Shift. Pages A to D let the same controller do different things. Hold Shift for each key's second job. Knobs now reach the FX faders, the pitch wheel, the dock's filter, the LFO's rate (it steps through the marks) and depth, and the tempo: touch one while the map is up, then turn a knob. Chord set boxes map to keys.",
-    "What the FAQ: the ? in the top bar. Tap it, then tap anything: it says what it is and which lesson shows it. Page help and the speed guide are on its card. The speed guide (also in Learn) walks the whole app in under a minute."
+    "Update button: when a newer build is on GitHub, a teal bar under the top bar says so. Tap Update: the app downloads it, saves your mess and hands it to Android. No browser, no Downloads folder. Settings has Check for updates too.",
+    "The first Update sends you to Android's Allow from this source switch for Mess Machine. Turn it on once and come back. After that Android may install without asking at all; if it asks, it is one Install tap.",
+    "Android closes the app while it swaps in the new build. A notice then says it updated: tap it to open.",
+    "Quick notes (note #20): tap the bug, talk, tap the bug again. The note stays on the phone with what was on screen and your last taps from that moment. Keep and Drop sit on the red bar while it listens. Start with \"wishlist\" or \"feature\" to pick the kind.",
+    "Notes for Claude (to write, send and read replies) moved into the ☰ menu, which shows how many notes are waiting. Send all sends them in one go."
   ],
   "watch": [
-    "The LFO on a bass with the filter on Lo, by ear: does 1/8 and 1/16 wub in time, and does the rate strip feel quantized enough?",
-    "Map a few buttons, a page and Shift on your controller, then play: does each do what the map says?",
-    "The FannyPack on the cover screen at your view size: does an open pack leave room for the pads?",
-    "What the FAQ on anything that confuses you: is the line clear? Send a note for any that is not."
+    "This build is the last one you install the old way. The next build should show the teal Update bar: tap it and tell me whether Android asked you anything.",
+    "Talk a long note with a few pauses: does it keep everything you said, or drop words at the pauses?",
+    "Music playing loud while you talk: does it still hear you?"
   ],
   "limits": [
-    "Triplet and dotted repeats between sixteenths play but are not recorded as hits. Knob moves on FX faders are not recorded.",
-    "Moves shows one bar at a time (the bar picked on Steps).",
-    "The Wobble effect is still its own thing; the LFO does not replace it.",
-    "I cannot hear the app: the LFO, the filters and the chord voicings are for your ears."
+    "Android can keep listening only in short runs, so the app restarts it at each pause. Some phones beep at each restart.",
+    "The app cannot reopen itself after an update; the notice is one tap. Without notification permission there is no notice, so open it from the home screen.",
+    "Notes 21 and 22 (how controls turn on and open, and icons from your art) are proposals, not in this build.",
+    "I cannot hear the app or try Android's installer on your phone: the first real in-app update is the test."
   ]
 }

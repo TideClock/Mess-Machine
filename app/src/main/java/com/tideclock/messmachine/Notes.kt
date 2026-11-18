@@ -26,6 +26,8 @@ import java.util.concurrent.Executors
 data class MNote(
     val id: String, val cat: String, val topic: String, val text: String, val at: Long, val build: String, val screen: String,
     val extra: String = "", val sent: Boolean = false, val issue: Int = 0, val status: String = "", val replies: List<String> = emptyList(),
+    /** A quick note keeps the phone's state and last taps from the moment you spoke, not from when it is sent. */
+    val ctx: String = "", val ctxTrail: String = "",
 )
 
 val NOTE_CATS = listOf("bug" to "Bug", "tuning" to "Tuning", "feature" to "Feature", "question" to "Question", "discuss" to "Discuss", "wishlist" to "Wishlist")
@@ -73,7 +75,7 @@ class NotesBook(private val app: Context) {
                         Json.str(m["id"], ""), Json.str(m["cat"], "bug"), Json.str(m["topic"], ""), Json.str(m["text"], ""),
                         Json.num(m["at"], 0.0).toLong(), Json.str(m["build"], ""), Json.str(m["screen"], ""), Json.str(m["extra"], ""),
                         Json.bool(m["sent"], false), Json.num(m["issue"], 0.0).toInt(), Json.str(m["status"], ""),
-                        Json.list(m["replies"]).map { it.toString() },
+                        Json.list(m["replies"]).map { it.toString() }, Json.str(m["ctx"], ""), Json.str(m["ctxTrail"], ""),
                     )
                 )
             }
@@ -85,7 +87,7 @@ class NotesBook(private val app: Context) {
             linkedMapOf<String, Any?>(
                 "id" to n.id, "cat" to n.cat, "topic" to n.topic, "text" to n.text, "at" to n.at.toDouble(), "build" to n.build,
                 "screen" to n.screen, "extra" to n.extra, "sent" to n.sent, "issue" to n.issue.toDouble(), "status" to n.status,
-                "replies" to n.replies,
+                "replies" to n.replies, "ctx" to n.ctx, "ctxTrail" to n.ctxTrail,
             )
         }
         val json = Json.write(list)
@@ -145,13 +147,13 @@ class NotesBook(private val app: Context) {
         append("**Category:** ${catLabel(n.cat)}")
         if (n.cat == "discuss") append(" · **Topic:** ${n.topic.ifEmpty { "general" }}")
         append("\n**Screen:** ${n.screen} · **Build:** ${n.build}\n")
-        append(details)
+        append(n.ctx.ifEmpty { details })
         if (n.extra.isNotEmpty() && extraChars > 0) {
             append("\n<details><summary>Crash</summary>\n\n```\n")
             append(n.extra.take(extraChars))
             append("\n```\n</details>\n")
         }
-        val tl = trailText().lines().takeLast(trailLines)
+        val tl = n.ctxTrail.ifEmpty { trailText() }.lines().filter { it.isNotBlank() }.takeLast(trailLines)
         if (tl.isNotEmpty() && trailLines > 0) {
             append("\n<details><summary>Last ${tl.size} actions</summary>\n\n```\n")
             append(tl.joinToString("\n"))
