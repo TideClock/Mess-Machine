@@ -68,6 +68,12 @@ One line each, dated, with the reason and who decided (BT-2). Older decisions li
 - 2026-11-17 Controller-agnostic MIDI (Tyler): nothing is built for one controller. The map works on his hardware.
 - 2026-11-17 Steps names: two lines, 84 dp column (Claude, Tyler left it to me).
 - 2026-11-17 "What the FAQ" is the helper's name (Tyler). FannyPack holds only the strips you add (Tyler).
+- 2026-11-17 FannyPack built (Claude, from Tyler's idea): per-pad `pack` in PadOpts (keys, fx, lfo, xy); open packs
+  are the old `keyboards` list (one per row); an empty pack opens with Keys; Pack on the bottom dock (not on Synth),
+  zipper bar with the pull, strip names to hide or show, + to pack. FX strip = live sends (engine.mod), kept until
+  Off, recorded as moves. LFO in PadOpts (lfo* fields, saved as one "lfo" string); engine lfoBlock sets the pad filter
+  (Lo/Hi/Band, no glide) and moves one target per block. Wobble kept as is (Claude: folding it in would change old
+  messes). Repeat: any rate, straight x1, triplet x2/3, dotted x1.5; off-grid repeats are not recorded.
 
 - 2026-11-10 Review go-ahead (Tyler): build MM-1 to MM-14 and more; skip MM-5 (Oboe) until the Audio check shows
   what the lag is; MM-11 (Play Store) after everything else; skip MM-15 (Fold layouts) with a big note; MM-22
