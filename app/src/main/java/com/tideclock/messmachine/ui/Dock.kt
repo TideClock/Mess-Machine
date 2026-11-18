@@ -308,8 +308,16 @@ private fun RepeatMenu(state: AppState, open: Boolean, onClose: () -> Unit) {
             T("REPEAT", size = 12.sp, color = C.Yellow, lines = 1, spacing = .06.em, modifier = Modifier.padding(bottom = 8.dp))
             T("EVERY", size = 10.sp, color = C.Dim, spacing = .12.em, modifier = Modifier.padding(bottom = 4.dp))
             Wrap(Modifier.padding(bottom = 10.dp).testTag("rate-chips"), gap = 6.dp) {
+                val (rb, rm) = repeatParts(state.live.nrRate)
                 for ((r, n, tag) in listOf(Triple(4.0, "1/4", "rate-r4"), Triple(2.0, "1/8", "rate-r2"), Triple(1.0, "1/16", "rate-r1"), Triple(.5, "1/32", "rate-r.5"))) {
-                    Btn(n, { onClose(); state.setLive { nrRate = r } }, on = state.live.nrRate == r, onColor = C.Pink, small = true, tag = tag)
+                    Btn(n, { onClose(); state.setLive { nrRate = r * rm } }, on = rb == r, onColor = C.Pink, small = true, tag = tag)
+                }
+            }
+            // straight, triplet or dotted (note #18): the same note, a different feel
+            Wrap(Modifier.padding(bottom = 10.dp).testTag("feel-chips"), gap = 6.dp) {
+                val (rb, rm) = repeatParts(state.live.nrRate)
+                for ((m, n, tag) in listOf(Triple(1.0, "Straight", "feel-straight"), Triple(2.0 / 3, "Triplet", "feel-trip"), Triple(1.5, "Dotted", "feel-dot"))) {
+                    Btn(n, { onClose(); state.setLive { nrRate = rb * m } }, on = kotlin.math.abs(rm - m) < 1e-6, onColor = C.Yellow, small = true, tag = tag)
                 }
             }
             T("PLAYS", size = 10.sp, color = C.Dim, spacing = .12.em, modifier = Modifier.padding(bottom = 4.dp))

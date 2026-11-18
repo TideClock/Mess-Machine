@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -38,7 +39,7 @@ import com.tideclock.messmachine.PACK_STRIPS
 
 /**
  * The FannyPack (build 85, Tyler's idea): everything packed on one sound, dropped under its row of pads. It holds
- * only the strips you put in it (Keys, FX, XY; LFO next). The zipper bar on top shows what is packed: tap the pull to
+ * only the strips you put in it (Keys, FX, LFO, XY). The zipper bar on top shows what is packed: tap the pull to
  * zip it shut, tap a strip's name to hide or show just that strip, + to pack or unpack strips.
  */
 @Composable
@@ -71,17 +72,18 @@ fun FannyPack(state: AppState, pad: Int) {
                 DropdownMenu(expanded = add, onDismissRequest = { add = false }, modifier = Modifier.background(C.Ink).tagged("pack-menu")) {
                     T("IN THE FANNYPACK", size = 11.sp, color = C.Yellow, spacing = .08.em, modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp))
                     for ((id, name) in PACK_STRIPS) DropdownMenuItem(
-                        text = { T((if (id in packed) "✓ " else "    ") + name + when (id) { "keys" -> ": Padiano"; "fx" -> ": live effect faders"; else -> ": the pad's XY" }, size = 14.sp, weight = FontWeight.Medium) },
-                        onClick = { state.togglePackStrip(pad, id) },
+                        text = { T((if (id in packed) "✓ " else "    ") + name + when (id) { "keys" -> ": Padiano"; "fx" -> ": live effect faders"; "lfo" -> ": a wave that moves the sound"; else -> ": the pad's XY" }, size = 14.sp, weight = FontWeight.Medium) },
+                        onClick = { state.togglePackStrip(pad, id); add = false },
                         modifier = Modifier.tagged("pack-pick-$id"),
                     )
                 }
             }
         }
-        if (packed.isEmpty()) Note("Nothing packed yet. Tap + to put Keys, FX or XY in this pad's pack.", color = C.Yellow)
+        if (packed.isEmpty()) Note("Nothing packed yet. Tap + to put Keys, FX, LFO or XY in this pad's pack.", color = C.Yellow)
         for (id in packed) if (id !in hidden) when (id) {
             "keys" -> PianoKeyboard(state, pad, close = false, synthBtn = true)
             "fx" -> FxStrip(state, pad, col)
+            "lfo" -> LfoStrip(state, pad, col)
             "xy" -> PadXy(state, pad, Modifier.padding(bottom = 6.dp))
         }
     }
@@ -151,5 +153,110 @@ fun Fader(value: Float, color: Color, tag: String, height: androidx.compose.ui.u
         drawRect(color.copy(alpha = .85f), topLeft = Offset(0f, size.height - h), size = Size(size.width, h))
         drawRect(C.Cream, topLeft = Offset(0f, size.height - h - 2.dp.toPx()), size = Size(size.width, 4.dp.toPx()))
         drawRect(C.Cream, style = Stroke(2.dp.toPx()))
+    }
+}
+
+/** The rate strip's stops, slowest on the left: steps per full wave. */
+val LFO_STOPS = listOf(32.0 to "2 bars", 16.0 to "1 bar", 8.0 to "1/2", 4.0 to "1/4", 2.0 to "1/8", 1.0 to "1/16", .5 to "1/32")
+
+/** A rate split into its stop and its feel: 1 straight, 2/3 triplet, 1.5 dotted. */
+fun lfoParts(r: Double): Pair<Double, Double> {
+    for ((b, _) in LFO_STOPS) for (m in listOf(1.0, 2.0 / 3, 1.5)) if (kotlin.math.abs(b * m - r) < 1e-6) return b to m
+    return 4.0 to 1.0
+}
+
+/** What an LFO can move (Engine targets). */
+val LFO_TARGETS = listOf(
+    com.tideclock.messmachine.engine.Engine.T_FILTER to "Filter", com.tideclock.messmachine.engine.Engine.T_RES to "Resonance",
+    com.tideclock.messmachine.engine.Engine.T_VOL to "Volume", com.tideclock.messmachine.engine.Engine.T_PAN to "Pan",
+    com.tideclock.messmachine.engine.Engine.T_PITCH to "Pitch", com.tideclock.messmachine.engine.Engine.T_RVB to "Reverb",
+    com.tideclock.messmachine.engine.Engine.T_ECHO to "Echo", com.tideclock.messmachine.engine.Engine.T_DIRT to "Dirty",
+    com.tideclock.messmachine.engine.Engine.T_CRUSH to "Crush", com.tideclock.messmachine.engine.Engine.T_CHORUS to "Chorus",
+)
+
+/**
+ * The LFO strip (Tyler's spec): a wave (sine, triangle, saw up and down, square, random), a rate strip in the middle
+ * from 2 bars to 1/32 that snaps at its marks (T and dot make the stop triplet or dotted), what it moves, how far, and
+ * the strip's own filter: Lo, Hi or Band with cutoff and resonance. It runs with the loop, or restarts on every hit.
+ */
+@Composable
+fun LfoStrip(state: AppState, pad: Int, col: Color) {
+    val o = state.project.opt(pad)
+    val (base, feel) = lfoParts(o.lfoRate)
+    fun set(commit: Boolean = true, f: com.tideclock.messmachine.engine.PadOpts.() -> Unit) = state.setPadOpt(pad, commit, f)
+    Column(Modifier.fillMaxWidth().padding(bottom = 8.dp).sticker(C.Black, shadow = 0.dp, border = 2.dp, borderColor = col).padding(8.dp).tagged("lfostrip-$pad")) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            T("LFO", size = 12.sp, color = C.Yellow, spacing = .1.em)
+            Btn(if (o.lfoOn) "On" else "Off", { set { lfoOn = !lfoOn } }, on = o.lfoOn, onColor = C.Teal, small = true, tight = true, tag = "lfo-on-$pad")
+            androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
+            Btn(if (o.lfoRetrig) "Each hit" else "With loop", { set { lfoRetrig = !lfoRetrig } }, small = true, tight = true, tier = Tier.Quiet, tag = "lfo-retrig-$pad")
+        }
+        Wrap(Modifier.padding(top = 6.dp).tagged("lfowave-chips"), gap = 6.dp) {
+            for ((w, n) in listOf(0 to "Sine", 1 to "Tri", 2 to "Saw ↑", 3 to "Saw ↓", 4 to "Square", 5 to "Random")) {
+                Btn(n, { set { lfoWave = w; lfoOn = true } }, on = o.lfoWave == w, onColor = C.Teal, small = true, tight = true, tag = "lfo-wave-$w-$pad")
+            }
+        }
+        // the rate strip: drag along it and it snaps at each mark; T and dot change the stop's feel
+        RateStrip(base, col, "lfo-rate-$pad") { b, done -> set(done) { lfoRate = b * feel; lfoOn = true } }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
+            Btn("Straight", { set { lfoRate = base } }, on = feel == 1.0, onColor = C.Yellow, small = true, tight = true, tag = "lfo-straight-$pad")
+            Btn("T", { set { lfoRate = base * 2 / 3 } }, on = feel < 1.0, onColor = C.Yellow, small = true, tag = "lfo-trip-$pad")
+            Btn("Dot", { set { lfoRate = base * 1.5 } }, on = feel > 1.0, onColor = C.Yellow, small = true, tight = true, tag = "lfo-dot-$pad")
+            androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
+            Select("Moves: " + (LFO_TARGETS.firstOrNull { it.first == o.lfoTarget }?.second ?: "Filter"), LFO_TARGETS, { t -> set { lfoTarget = t; lfoOn = true } }, tag = "lfo-target-$pad")
+        }
+        SliderRow("Depth", o.lfoDepth.toFloat(), 0f..1f, { "${(it * 100).toInt()}%" }, { v -> set(false) { lfoDepth = v.toDouble() } }, { set { } }, accent = col)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp).tagged("lfotype-chips")) {
+            T("FILTER", size = 11.sp, color = C.Dim, spacing = .1.em)
+            for ((ty, n) in listOf(0 to "Off", 1 to "Lo", 2 to "Hi", 3 to "Band")) Btn(n, { set { lfoType = ty } }, on = o.lfoType == ty, onColor = C.Pink, small = true, tight = true, tag = "lfo-type-$ty-$pad")
+        }
+        if (o.lfoType > 0) {
+            SliderRow("Cutoff", o.lfoCut.toFloat(), 0f..1f, { "${(40 * Math.pow(18000.0 / 40, it.toDouble())).toInt()} Hz" }, { v -> set(false) { lfoCut = v.toDouble() } }, { set { } }, accent = C.Teal)
+            SliderRow("Res", o.lfoRes.toFloat(), 0f..1f, { "${(it * 100).toInt()}%" }, { v -> set(false) { lfoRes = v.toDouble() } }, { set { } }, accent = C.Pink)
+        }
+    }
+}
+
+/**
+ * The rate strip in the middle of the LFO: seven marks from 2 bars (left) to 1/32 (right). A finger dragged along it
+ * snaps to the nearest mark, so it is quantized however fast you move. onPick gets the stop and whether the finger is up.
+ */
+@Composable
+fun RateStrip(stop: Double, col: Color, tag: String, onPick: (Double, Boolean) -> Unit) {
+    val tm = androidx.compose.ui.text.rememberTextMeasurer()
+    val idx = LFO_STOPS.indexOfFirst { it.first == stop }.coerceAtLeast(0)
+    Canvas(
+        Modifier
+            .fillMaxWidth()
+            .height(46.dp)
+            .padding(top = 6.dp)
+            .background(C.Ink)
+            .tagged(tag)
+            .pointerInput(tag) {
+                awaitEachGesture {
+                    val d = awaitFirstDown(requireUnconsumed = false)
+                    fun at(x: Float) = LFO_STOPS[((x / size.width) * LFO_STOPS.size).toInt().coerceIn(0, LFO_STOPS.size - 1)].first
+                    d.consume()
+                    var last = at(d.position.x)
+                    onPick(last, false)
+                    while (true) {
+                        val e = awaitPointerEvent()
+                        val c = e.changes.firstOrNull { it.id == d.id } ?: break
+                        if (!c.pressed) { c.consume(); break }
+                        val now = at(c.position.x)
+                        if (now != last) { last = now; onPick(now, false) }
+                        c.consume()
+                    }
+                    onPick(last, true)
+                }
+            },
+    ) {
+        val w = size.width / LFO_STOPS.size
+        for ((i, s) in LFO_STOPS.withIndex()) {
+            val on = i == idx
+            drawRect(if (on) col else C.Card2, topLeft = Offset(i * w + 2f, 2f), size = Size(w - 4f, size.height - 4f))
+            drawText(tm, s.second, topLeft = Offset(i * w + 5f, size.height * .3f),
+                style = androidx.compose.ui.text.TextStyle(color = if (on) ink(col) else C.Cream, fontSize = 10.sp, fontWeight = FontWeight.Bold))
+        }
     }
 }

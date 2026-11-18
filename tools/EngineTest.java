@@ -666,6 +666,48 @@ public class EngineTest {
         int rwantP = 0; for (int i = 0; i < 16; i++) if (rl.patOn(i)) rwantP++;
         check(Math.abs(rgot - rwant) <= 1 && Math.abs(rgotP - rwantP) <= 1, String.format("Repeat pattern \"%s\": %d of 24 repeats play while stopped (%d wanted), %d of 16 while playing (%d wanted)", pat.isEmpty() ? "every one" : pat, rgot, rwant, rgotP, rwantP));
       }
+      // straight, triplet and dotted rates while playing (note #18): one bar of 16 steps, a held pad
+      for (double[] rw : new double[][]{{4, 4}, {4.0 / 3, 12}, {6, 3}, {2.0 / 3, 24}, {3, 6}, {1.5, 11}}) {
+        Engine.Live tl = new Engine.Live(); tl.nr = true; tl.nrRate = rw[0];
+        Engine te = new Engine(rate); te.setSnapshot(Engine.Snapshot.build(rp, ts, tl));
+        te.down(1, 0, new int[]{0}, false); te.play();
+        int tt0 = te.triggers;
+        for (int i = 0; i < (int) (16 * spbR / 256); i++) te.render(rb, 256);
+        int got = te.triggers - tt0 - 1; // less the press itself
+        check(got == (int) rw[1], String.format("Repeat every %.3f steps while playing: %d in a bar (%d wanted)", rw[0], got, (int) rw[1]));
+      }
+      // the LFO strip: a sine of one quarter note runs with the loop; its filter follows the wave; Hi and Band work
+      {
+        PadOpts lo = new PadOpts(); lo.lfoOn = true; lo.lfoWave = 0; lo.lfoRate = 4; lo.lfoTarget = Engine.T_FILTER; lo.lfoDepth = 1; lo.lfoType = 1; lo.lfoCut = .5; lo.lfoRes = .2;
+        Project lp = new Project(); lp.kit[0] = "tone"; lp.bpm = 120; lp.setOpt(0, lo);
+        Engine le = new Engine(rate); le.setSnapshot(Engine.Snapshot.build(lp, ts, new Engine.Live()));
+        le.play();
+        double vmin = 9, vmax = -9, cmin = 1e9, cmax = 0; int peakBlock = -1;
+        int blocks = (int) (4 * spbR / 256);
+        for (int i = 0; i < blocks; i++) {
+          le.render(rb, 256);
+          double v = le.lfoValue(0);
+          if (v > vmax) { vmax = v; peakBlock = i; }
+          vmin = Math.min(vmin, v);
+          cmin = Math.min(cmin, le.padCutoff(0)); cmax = Math.max(cmax, le.padCutoff(0));
+        }
+        check(vmax > .95 && vmin < -.95 && Math.abs(peakBlock - blocks / 4) <= 2, String.format("LFO: a 1/4 sine peaks a quarter of the way through the beat (%.2f to %.2f, peak at block %d of %d)", vmin, vmax, peakBlock, blocks));
+        check(cmin < 300 && cmax > 5000, String.format("LFO: the strip's filter sweeps with the wave (%.0f to %.0f Hz)", cmin, cmax));
+        // high pass and band pass: a low tone through a high pass set high comes out much quieter than through low pass open
+        float[] low = new float[44100]; for (int i = 0; i < low.length; i++) low[i] = (float) (.5 * Math.sin(2 * Math.PI * 110 * i / 44100.0));
+        Engine.SampleSource lsrc = k -> new Sample(k, low, 44100);
+        double[] peaks = new double[3];
+        for (int ty = 1; ty <= 3; ty++) {
+          PadOpts fo = new PadOpts(); fo.lfoOn = true; fo.lfoTarget = Engine.T_VOL; fo.lfoDepth = 0; fo.lfoType = ty; fo.lfoCut = .75; fo.lfoRes = 0;
+          Project fp = new Project(); fp.kit[0] = "low"; fp.bpm = 120; fp.setOpt(0, fo);
+          Engine fe = new Engine(rate); fe.setSnapshot(Engine.Snapshot.build(fp, lsrc, new Engine.Live()));
+          fe.down(1, 0, new int[]{0}, false);
+          float[] ob = new float[1024]; double pk = 0;
+          for (int i = 0; i < 40; i++) { fe.render(ob, 512); if (i > 10) for (float x : ob) pk = Math.max(pk, Math.abs(x)); }
+          peaks[ty - 1] = pk;
+        }
+        check(peaks[1] < peaks[0] * .2 && peaks[2] < peaks[0] * .5, String.format("LFO filter types: a 110 Hz tone through low %.3f, high %.3f, band %.3f (cutoff about 2.7 kHz)", peaks[0], peaks[1], peaks[2]));
+      }
       // Hold plus a pattern: a latched note keeps the pattern after the finger lifts
       Engine.Live hl = new Engine.Live(); hl.nr = true; hl.nrPat = "xx.";
       Engine he2 = new Engine(rate); he2.setSnapshot(Engine.Snapshot.build(rp, ts, hl));
