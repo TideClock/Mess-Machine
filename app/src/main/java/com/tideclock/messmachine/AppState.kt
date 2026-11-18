@@ -50,6 +50,15 @@ data class Module(
     }
 }
 
+/** What a FannyPack can hold, in the order the strips stack (build 85). LFO comes with build 86. */
+val PACK_STRIPS = listOf("keys" to "Keys", "fx" to "FX", "xy" to "XY")
+
+/** The FX strip's faders: live sends on the pad, the same targets XY and recorded moves use. */
+val FX_STRIP = listOf(
+    Engine.T_RVB to "Verb", Engine.T_ECHO to "Echo", Engine.T_DIRT to "Dirt", Engine.T_CRUSH to "Crush",
+    Engine.T_CHORUS to "Chor", Engine.T_WOB to "Wob",
+)
+
 /** A chord-set slot's place in the note ids (pianoId): above every real note (the highest is about 84). */
 const val SLOT_P = 92
 
@@ -57,7 +66,7 @@ const val SLOT_P = 92
 val DOCK_TYPES = listOf(
     "lock" to "Lock", "hold" to "Hold", "filter" to "Filter + resonance", "repeat" to "Repeat",
     "rec" to "Rec", "beat" to "Beat light", "stutter" to "Stutter", "echo" to "Echo throw", "xy" to "XY setup for the picked pad", "desk" to "Desk layouts",
-    "mouth" to "Mouth control",
+    "mouth" to "Mouth control", "pitch" to "Pitch wheel",
 )
 
 /** Every module you can add, with its name. */
@@ -1597,6 +1606,8 @@ class AppState(private val app: Context) {
         val row = (pad % Project.BANK) / 4
         keyboards.removeAll { it / Project.BANK == b && (it % Project.BANK) / 4 == row }
         keyboards.add(pad)
+        // a pack opened with nothing in it starts with Keys (the Padiano), as the Padiano always did (build 85)
+        if (packOf(pad).isEmpty()) setPadOpt(pad, commit = false) { pack = "keys" }
         // Hold and Chords are on the bottom dock with every Padiano (build 84); the key panel opens from its button
         if (bank != b) bank = b
         notes.trail("piano pad ${pad + 1}")
@@ -2148,6 +2159,13 @@ class AppState(private val app: Context) {
         }
     }
 
+    /** The FX strip's filter faders: the pad's filter set and kept where it is (Stay), 1 / 0 opens it again. */
+    fun keepPadFilter(pad: Int, cut: Float, res: Float) {
+        if (pad !in padFiltStay) padFiltStay.add(pad)
+        if (cut >= .999f && res <= .001f) { padFilt.remove(pad); engine.padFilter(pad, 1f, 0f, false) }
+        else { padFilt[pad] = cut to res; engine.padFilter(pad, cut, res, true) }
+    }
+
     fun switchFiltStay(pad: Int) {
         if (pad in padFiltStay) { padFiltStay.remove(pad); padFilt.remove(pad); engine.padFilter(pad, 1f, 0f, false) }
         else padFiltStay.add(pad)
@@ -2226,7 +2244,12 @@ class AppState(private val app: Context) {
 
     /** What sits on the dock, top to bottom. */
     val dockItems = mutableStateListOf<String>().also { l ->
-        l.addAll((prefs.getString("dock", null) ?: "lock,hold,filter,repeat").split(",").filter { x -> DOCK_TYPES.any { it.first == x } })
+        l.addAll((prefs.getString("dock", null) ?: "lock,hold,pitch,filter,repeat").split(",").filter { x -> DOCK_TYPES.any { it.first == x } })
+        // build 85: the pitch wheel joins the dock once, left of the filter (Tyler, note #16); after that it is yours to remove
+        if (!prefs.getBoolean("dockPitch", false)) {
+            if ("pitch" !in l) l.add(maxOf(0, l.indexOf("filter")).coerceAtMost(l.size), "pitch")
+            prefs.edit().putBoolean("dockPitch", true).putString("dock", l.joinToString(",")).apply()
+        }
     }
     var dockOpen by mutableStateOf(prefs.getBoolean("dockOpen2", false))
         private set
@@ -2402,6 +2425,111 @@ class AppState(private val app: Context) {
     var sphere by mutableStateOf<Sphere?>(null)
 
     /* ---------------- per-pad settings: glide, routing, XY ---------------- */
+
+    /* ---------------- the FannyPack (build 85) ---------------- */
+
+    /** The strips packed on a pad's sound, in order. Only what you add is in it (Tyler, Nov 17). */
+    fun packOf(pad: Int): List<String> = project.opt(pad).pack.split(",").filter { it in PACK_STRIPS.map { s -> s.first } }
+
+    /** Strips hidden inside an open pack (tap a name on the zipper). Not saved: a pack opens with everything showing. */
+    val packHidden = mutableStateMapOf<Int, Set<String>>()
+
+    /** Add a strip to the pack, or take it out. */
+    fun togglePackStrip(pad: Int, strip: String) {
+        val now = packOf(pad)
+        val next = if (strip in now) now - strip else PACK_STRIPS.map { it.first }.filter { it in now || it == strip }
+        setPadOpt(pad) { pack = next.joinToString(",") }
+        packHidden[pad] = (packHidden[pad] ?: emptySet()) - strip
+        notes.trail("pack ${pad + 1} ${next.joinToString("+")}")
+        if (next.isNotEmpty() && pad !in keyboards) toggleKeyboard(pad)
+    }
+
+    fun togglePackHidden(pad: Int, strip: String) {
+        val h = packHidden[pad] ?: emptySet()
+        packHidden[pad] = if (strip in h) h - strip else h + strip
+    }
+
+    /** Zip or unzip a pad's pack (one per row, like the Padiano). An empty pack starts with Keys in it. */
+    fun togglePack(pad: Int) {
+        if (project.kit.getOrNull(pad).isNullOrEmpty()) { say("Put a sound on pad ${pad + 1} first."); return }
+        toggleKeyboard(pad)
+    }
+
+    /* ---------------- the FX strip: live sends on one pad, they stay where you leave them ---------------- */
+
+    /** Where each FX strip fader sits, "pad:target" to 0..1. Not saved; recorded as moves while Rec plays. */
+    val fxSend = mutableStateMapOf<String, Float>()
+
+    fun fxSendTo(pad: Int, t: Int, v: Float, on: Boolean) {
+        val x = v.coerceIn(0f, 1f)
+        fxSend["$pad:$t"] = x
+        engine.mod(pad, t, x)
+        recordMoves(pad, mapOf(t to x), setOf(t), on)
+    }
+
+    /** Every FX strip fader on a pad back to zero. */
+    fun fxSendsOff(pad: Int) {
+        for (t in FX_STRIP.map { it.first }) if ((fxSend["$pad:$t"] ?: 0f) > 0f) { fxSend.remove("$pad:$t"); engine.mod(pad, t, 0f) }
+    }
+
+    /* ---------------- Steps row tools (build 85) ---------------- */
+
+    /** The copied row (Copy, then Paste on another sound). */
+    var rowClip by mutableStateOf<Pair<BooleanArray, List<Project.Note>>?>(null)
+        private set
+
+    fun rowTool(pad: Int, what: String) {
+        val k = project.kit.getOrNull(pad).orEmpty()
+        if (k.isEmpty()) return
+        val P = project.pat()
+        notes.trail("row ${pad + 1} $what")
+        when (what) {
+            "every2" -> edit { P.rowEvery(k, 2) }
+            "every4" -> edit { P.rowEvery(k, 4) }
+            "every8" -> edit { P.rowEvery(k, 8) }
+            "rep4" -> edit { P.rowRepeat(k, 4) }
+            "rep8" -> edit { P.rowRepeat(k, 8) }
+            "repbar" -> edit { P.rowRepeat(k, 16) }
+            "left" -> edit { P.rowNudge(k, -1) }
+            "right" -> edit { P.rowNudge(k, 1) }
+            "clear" -> { edit { P.rowClear(k) }; sayUndo("Row cleared.") }
+            "copy" -> { rowClip = BooleanArray(P.len) { P.step(k, it) } to P.notes(k).map { it.copy() }; say("Row copied. Tap Paste on another sound's row.") }
+            "paste" -> rowClip?.let { (st, ns) ->
+                edit {
+                    P.rowClear(k)
+                    for (j in 0 until P.len) if (st.getOrElse(j % maxOf(1, st.size)) { false }) P.setStep(k, j, true)
+                    for (n in ns) if (n.s < P.len) P.notes(k).add(n.copy())
+                }
+            }
+            else -> if (what.startsWith("spread")) what.removePrefix("spread").toIntOrNull()?.let { h -> edit { P.rowSpread(k, h) } }
+        }
+    }
+
+    /* ---------------- the pitch wheel on the dock (build 85) ---------------- */
+
+    /** The wheel's range in semitones: 2, 7 or 12. */
+    var wheelRange by mutableIntStateOf(prefs.getInt("wheelRange", 2))
+        private set
+    /** The wheel bends every pad (true) or the picked one. */
+    var wheelAll by mutableStateOf(prefs.getBoolean("wheelAll", false))
+        private set
+    /** Where the wheel sits, -1..1 (0 = no bend). */
+    var wheelAt by mutableFloatStateOf(0f)
+        private set
+
+    fun cycleWheelRange() { wheelRange = when (wheelRange) { 2 -> 7; 7 -> 12; else -> 2 }; prefs.edit().putInt("wheelRange", wheelRange).apply() }
+    fun switchWheelAll() { wheelAll = !wheelAll; prefs.edit().putBoolean("wheelAll", wheelAll).apply() }
+
+    /** Bend with the wheel: v -1..1 while the finger is on it; on lift it springs back to 0. Recorded like XY pitch. */
+    fun pitchWheel(v: Float, on: Boolean) {
+        wheelAt = if (on) v.coerceIn(-1f, 1f) else 0f
+        val semis = wheelAt * wheelRange
+        val pads = if (wheelAll) (0 until Project.NPADS).filter { project.kit[it].isNotEmpty() } else listOf(project.sel)
+        for (pad in pads) {
+            engine.mod(pad, Engine.T_PITCH, semis)
+            recordMoves(pad, mapOf(Engine.T_PITCH to semis), setOf(Engine.T_PITCH), on)
+        }
+    }
 
     fun setPadOpt(pad: Int, commit: Boolean = true, f: com.tideclock.messmachine.engine.PadOpts.() -> Unit) {
         val o = project.opt(pad).copy()

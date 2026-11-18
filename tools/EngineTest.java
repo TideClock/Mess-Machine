@@ -40,6 +40,22 @@ public class EngineTest {
     check(Theory.chordLabel(0, 0, "triad", "Major", 0).equals("C") && Theory.chordLabel(2, 1, "triad", "Major", 0).equals("Dm"), "triad labels");
     check(Theory.chordLabel(0, 2, "set:Sunday Pop", "Major", 0).equals("Am"), "chord set label");
     check(Arrays.equals(Theory.chordOf(0, 0, "seventh", "Major", 0), new int[]{0, 4, 7, 11}), "seventh chord notes");
+    {
+        // Steps row tools (build 85): every n, repeat across, nudge, spread
+        Project.Pattern rp = new Project.Pattern();
+        rp.len = 16;
+        rp.rowEvery("k", 4);
+        check(rp.step("k", 0) && rp.step("k", 4) && rp.step("k", 12) && !rp.step("k", 2), "row tools: every 4");
+        rp.rowClear("k"); rp.setStep("k", 1, true); rp.notes("k").add(new Project.Note(1, 7, 1));
+        rp.rowRepeat("k", 4);
+        check(rp.step("k", 5) && rp.step("k", 13) && !rp.step("k", 4) && rp.notes("k").size() == 4, "row tools: the first 4 across, pitches too");
+        rp.rowNudge("k", 1);
+        check(rp.step("k", 2) && rp.step("k", 14) && !rp.step("k", 1) && rp.notes("k").get(0).s == 2, "row tools: nudge right");
+        rp.rowNudge("k", -3);
+        check(rp.step("k", 15) && rp.step("k", 3), "row tools: nudge left wraps");
+        rp.len = 8; rp.rowSpread("k", 3);
+        check(rp.step("k", 0) && rp.step("k", 3) && rp.step("k", 6) && !rp.step("k", 1), "row tools: 3 over 8 is the tresillo");
+    }
     // build 84 (note #18): chords keep the root on the bottom, and chord sets are fixed slots that never drift
     check(Arrays.equals(Theory.chordOf(7, 0, "triad", "Major", 0), new int[]{7, 11, 14}), "G4 triad is G B D, root on the bottom (was D4 G4 B4)");
     check(Arrays.equals(Theory.chordOf(11, 0, "seventh", "Major", 0), new int[]{11, 14, 17, 21}), "B4 seventh keeps B lowest");

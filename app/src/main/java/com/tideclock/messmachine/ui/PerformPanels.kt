@@ -238,7 +238,7 @@ private fun Modifier.playNotes(state: AppState, pad: Int, key: Any, origin: Orig
  * out-of-key notes. Slide or play with several fingers.
  */
 @Composable
-fun PianoKeyboard(state: AppState, pad: Int, keysHeight: Dp = 132.dp, filter: Boolean = false, close: Boolean = true) {
+fun PianoKeyboard(state: AppState, pad: Int, keysHeight: Dp = 132.dp, filter: Boolean = false, close: Boolean = true, synthBtn: Boolean = close) {
     val P = state.project
     val k = P.kit[pad]
     if (k.isEmpty()) return
@@ -261,7 +261,7 @@ fun PianoKeyboard(state: AppState, pad: Int, keysHeight: Dp = 132.dp, filter: Bo
             }
             PadianoExtras(state, pad)
             // a synth's Padiano on the grid: one tap to its knobs
-            if (close && com.tideclock.messmachine.engine.Project.isSynth(k)) Btn("◎", { state.selectPad(pad, false); state.tab = com.tideclock.messmachine.Tab.Synth }, small = true, tag = "piano-synth-$pad")
+            if (synthBtn && com.tideclock.messmachine.engine.Project.isSynth(k)) Btn("◎", { state.selectPad(pad, false); state.tab = com.tideclock.messmachine.Tab.Synth }, small = true, tag = "piano-synth-$pad")
             Btn("XY", { showXy = !showXy }, on = showXy, onColor = C.Pink, small = true, tag = "piano-xy-$pad")
             Btn("⚙", { showSet = !showSet }, small = true, on = showSet, tag = "piano-set-$pad", tier = Tier.Quiet)
             if (close) Btn("✕", { state.toggleKeyboard(pad) }, small = true, tag = "piano-close-$pad", tier = Tier.Quiet)

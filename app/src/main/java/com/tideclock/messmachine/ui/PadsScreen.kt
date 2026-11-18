@@ -71,9 +71,9 @@ fun PadsScreen(state: AppState) {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         for (c in 0 until 4) Pad(state, r * 4 + c, Modifier.weight(1f))
                     }
-                    // a piano opened from this row drops right here, under its pad
+                    // an open FannyPack drops right here, under its pad's row (one per row)
                     if (!state.keysMode) for (pad in state.keyboards.toList()) {
-                        if (pad / Project.BANK == state.bank && (pad % Project.BANK) / 4 == r) PianoKeyboard(state, pad)
+                        if (pad / Project.BANK == state.bank && (pad % Project.BANK) / 4 == r) FannyPack(state, pad)
                     }
                 }
             }
@@ -81,7 +81,7 @@ fun PadsScreen(state: AppState) {
         if (state.showFx) FxPanel(state)
         if (!state.keysMode && state.keyboards.isEmpty()) {
             Help(
-                "Tap a pad to play it. On an empty pad, the top corner records and the bottom corner picks a sound. Menu, on the bar at the bottom, is the picked pad's menu: Padiano drops a keyboard right under that pad's row, one per row. " +
+                "Tap a pad to play it. On an empty pad, the top corner records and the bottom corner picks a sound. Menu, on the bar at the bottom, is the picked pad's menu. Pack opens its FannyPack under its row (one per row): the Padiano, live FX faders and XY, whichever you put in it. " +
                     "Keys turns the grid into a scale. Repeat on the dock rolls whatever you hold, and with Rec on while playing, every hit lands in the loop.",
                 modifier = Modifier.padding(top = 14.dp),
             )
@@ -137,6 +137,9 @@ fun BottomDock(state: AppState) {
                 }, small = true, tight = true, enabled = !state.locked, tag = "open-padmenu")
                 if (state.padMenu >= 0) PadMenu(state, state.padMenu)
             }
+            // the picked pad's FannyPack: one tap zips it open under its row, or shut
+            if (state.tab != com.tideclock.messmachine.Tab.Synth) Btn("Pack", { state.togglePack(state.project.sel) }, on = state.project.sel in state.keyboards, onColor = C.Teal, small = true, tight = true,
+                enabled = !state.locked && !state.keysMode && state.project.kit.getOrNull(state.project.sel).orEmpty().isNotEmpty(), tag = "pack-toggle")
             Btn(if (!state.holdOn) "○ Hold" else if (state.holdCount == 0) "● Last" else "● ${state.latched.size}/${state.holdCount}", { state.switchHold() },
                 on = state.holdOn, onColor = C.Yellow, small = true, tight = true, tag = "hold-toggle")
             Btn(if (state.chordMode == "off") "○ Chords" else "● Chords", { state.toggleChords() }, on = state.chordMode != "off", onColor = C.Teal, small = true, tight = true, tag = "chords-toggle")
@@ -240,6 +243,11 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
                     drawRoundRect(Color.White.copy(alpha = .16f), topLeft = Offset(5.dp.toPx(), 4.dp.toPx()), size = androidx.compose.ui.geometry.Size(size.width - 10.dp.toPx(), 4.dp.toPx()), cornerRadius = CornerRadius(2.dp.toPx()))
                     if (pressed) drawRoundRect(C.Pink, cornerRadius = r, style = Stroke(width = 6.dp.toPx()))
                     if (state.swapFrom == i) drawRoundRect(C.Yellow, cornerRadius = r, style = Stroke(width = 5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 8f))))
+                    if (!hasKeys && P.opt(i).pack.isNotEmpty()) {
+                        // something is packed on this pad (zipped shut): a little zipper along its bottom edge
+                        drawLine(C.Yellow.copy(alpha = .8f), Offset(10.dp.toPx(), size.height - 5.dp.toPx()), Offset(size.width * .45f, size.height - 5.dp.toPx()),
+                            strokeWidth = 3.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 6f)))
+                    }
                     if (hasKeys) {
                         // the pad lights along its bottom edge: its piano is open below this row
                         val h = 7.dp.toPx()
@@ -370,7 +378,7 @@ fun PadMenu(state: AppState, i: Int) {
             item("Pick a sound", "menu-pick") { state.selectPad(i, false); state.overlay = Overlay.Picker(i) }
         } else {
             group("PLAY")
-            item(if (i in state.keyboards) "🎹 Hide the Padiano" else "🎹 Padiano under this row", "menu-piano") { state.selectPad(i, false); state.toggleKeyboard(i) }
+            item(if (i in state.keyboards) "Zip the FannyPack" else if (state.packOf(i).isEmpty()) "FannyPack: Padiano under this row" else "Open the FannyPack (${state.packOf(i).size})", "menu-piano") { state.selectPad(i, false); state.togglePack(i) }
             item("Hear it", "menu-hear") { state.preview(k) }
             item(if (P.mutes.contains(k)) "Unmute" else "Mute", "menu-mute-$i") { state.toggleMute(k) }
             item(if (P.solos.contains(k)) "Unsolo" else "Solo", "menu-solo-$i") { state.toggleSolo(k) }

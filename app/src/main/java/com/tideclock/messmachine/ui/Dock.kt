@@ -161,6 +161,7 @@ private fun DockItem(state: AppState, t: String) {
             DockBtn("MTH", { state.switchMouth() }, tag = "dock-mouth", on = state.mouthOn, onColor = C.Pink)
             DockWord(if (state.mouthOn && state.mouthHeard) "WUB" else "SET", if (state.mouthOn) C.Pink else C.Dim, "dock-mouth-set") { state.overlay = com.tideclock.messmachine.Overlay.Mouth }
         }
+        "pitch" -> PitchWheel(state)
         "xy" -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
             val pad = state.project.sel
             DockBtn("XY", { if (state.project.kit[pad].isNotEmpty()) state.cycleXy(pad) }, tag = "dock-xy", onColor = C.Pink)
@@ -203,6 +204,49 @@ private fun LockButton(state: AppState) {
         T(if (locked) "🔒" else "🔓", size = 18.sp)
     }
     if (locked) T("HOLD", size = 9.sp, color = C.Pink, family = Mono)
+}
+
+/**
+ * The pitch wheel (build 85, note #16): an upright strip that bends the picked pad (or every pad) up or down and
+ * springs back to the middle when you let go. With Rec on while the loop plays, the bend records like XY pitch.
+ * The words under it pick the range (2, 7 or 12 semitones) and what it bends.
+ */
+@Composable
+private fun PitchWheel(state: AppState) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        val v = state.wheelAt
+        Canvas(
+            Modifier
+                .size(width = 26.dp, height = 130.dp)
+                .background(C.Black)
+                .tagged("dock-pitch")
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        val d = awaitFirstDown(requireUnconsumed = false)
+                        fun at(y: Float) = (1f - 2f * y / size.height).coerceIn(-1f, 1f)
+                        d.consume()
+                        state.pitchWheel(at(d.position.y), true)
+                        while (true) {
+                            val e = awaitPointerEvent()
+                            val c = e.changes.firstOrNull { it.id == d.id } ?: break
+                            if (!c.pressed) { c.consume(); break }
+                            state.pitchWheel(at(c.position.y), true)
+                            c.consume()
+                        }
+                        state.pitchWheel(0f, false)
+                    }
+                },
+        ) {
+            val mid = size.height / 2
+            drawLine(C.Dim, Offset(0f, mid), Offset(size.width, mid), strokeWidth = 2.dp.toPx())
+            val y = mid - v * mid
+            drawRect(C.Yellow.copy(alpha = .85f), topLeft = Offset(0f, minOf(y, mid)), size = Size(size.width, kotlin.math.abs(y - mid)))
+            drawRect(C.Cream, topLeft = Offset(2f, y - 5.dp.toPx()), size = Size(size.width - 4f, 10.dp.toPx()))
+            drawRect(C.Cream, style = Stroke(2.dp.toPx()))
+        }
+        DockWord("±${state.wheelRange}", C.Yellow, "dock-pitch-range") { state.cycleWheelRange() }
+        DockWord(if (state.wheelAll) "ALL" else "PAD", C.Dim, "dock-pitch-what") { state.switchWheelAll() }
+    }
 }
 
 /** Two upright sliders: cutoff (top is open) and resonance (top is most). They spring back unless Stay. */
