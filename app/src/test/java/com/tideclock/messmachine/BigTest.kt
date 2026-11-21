@@ -200,6 +200,8 @@ class BigTest {
             rule.mainClock.advanceTimeBy(1000)
             settle()
         }
+        // the tray stays open after Padiano (it is not a menu): close it so the keys under it can be played
+        state.tray = null; settle()
         assertEquals(listOf(1, 5, 8, 13), state.keyboards.toList())
         // each piano sits between its own row and the next one
         // unclipped edges: the taller pianos run past the screen
@@ -785,8 +787,8 @@ class BigTest {
         assertEquals("a sustaining pad's hold is playing", -1, state.padMenu)
         rule.onNodeWithTag("open-padmenu").performClick(); settle()
         rule.onNodeWithTag("open-padmenu").performClick(); settle()
-        assertEquals("Menu twice opens the last thing touched: the pad", 2, state.padMenu)
-        state.padMenu = -1
+        assertTrue("Edit twice opens the last thing touched: the pad", editOpen(2))
+        state.padMenu = -1; state.tray = null
         settle()
         // the bottom dock stays put while the page scrolls: scroll to the bottom and Menu is still on screen
         state.toggleKeyboard(5); settle()
@@ -1291,7 +1293,7 @@ class BigTest {
         assertEquals(1, state.routeOf(7))
         rule.mainClock.advanceTimeBy(1000); settle()
         padMenuOf(7, "mod")
-        rule.onNodeWithTag("menu-xy").performClick()
+        at("menu-xy").performClick()
         settle()
         assertEquals(Overlay.Xy(7), state.overlay)
         rule.onNodeWithTag("xy-preset-Bend").performScrollTo().performClick()
@@ -2150,8 +2152,8 @@ class BigTest {
         rule.mainClock.advanceTimeBy(300); settle()
         at("open-padmenu").performClick(); settle()
         at("open-padmenu").performClick(); settle()
-        assertEquals("Menu twice opens the pad just tapped", 1, state.padMenu)
-        state.padMenu = -1
+        assertTrue("Edit twice opens the pad just tapped", editOpen(1))
+        state.padMenu = -1; state.tray = null
         rule.mainClock.advanceTimeBy(1000); settle()
 
         // the MIDI map, from the top menu

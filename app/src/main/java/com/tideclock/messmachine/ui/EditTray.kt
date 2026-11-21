@@ -65,11 +65,12 @@ fun EditTray(state: AppState, pad: Int) {
                 GlideTray(state, pad)
             }
             "mod" -> {
-                LfoStrip(state, pad, col)
-                LfoTray(state, pad)
-                Wrap(Modifier.padding(top = 10.dp), gap = 6.dp) {
+                // the XY square first: one tap, where the thumb lands; the LFO below it fills the drawer
+                Wrap(Modifier.padding(bottom = 8.dp), gap = 6.dp) {
                     Btn("XY square: ${state.xyOf(pad).name}", { state.closeEdit(); state.overlay = Overlay.Xy(pad) }, small = true, tag = "menu-xy")
                 }
+                LfoStrip(state, pad, col)
+                LfoTray(state, pad)
                 T("RECORD A LANE FOR", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
                 Wrap(gap = 6.dp) {
                     for ((t, name) in FX_STRIP) Btn(name, { state.closeEdit(); state.openAutoLane(pad, t) }, small = true, tight = true, tag = "edit-lane-$t")
