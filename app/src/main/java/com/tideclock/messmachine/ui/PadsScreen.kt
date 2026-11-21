@@ -314,6 +314,8 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
                             drawRoundRect(if (pressed) fill.copy(alpha = .35f) else C.Paper, cornerRadius = r)
                             drawRoundRect(fill, size = androidx.compose.ui.geometry.Size(size.width, size.height * .22f), cornerRadius = r)
                             drawRect(fill, topLeft = Offset(0f, size.height * .11f), size = androidx.compose.ui.geometry.Size(size.width, size.height * .11f))
+                            // an edge in the sound's colour, or the pad vanishes into the black page
+                            drawRoundRect(fill.copy(alpha = .7f), cornerRadius = r, style = Stroke(width = 2.dp.toPx()))
                         }
                         // Felt and Paper: a flat felt square with a soft drop and a stitched edge
                         "felt" -> {
