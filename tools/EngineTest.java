@@ -713,6 +713,37 @@ public class EngineTest {
       wq.clearPad(2);
       check(wq.opt(2).fx.isEmpty() && !wq.pats[0].motion.containsKey("2:" + Engine.T_RVB), "clearing a pad drops its lanes and settings");
     }
+    // ---- build 108: velocity. Steps hit at their strength, hits at their velocity
+    {
+      double[] pk8 = new double[3];
+      for (int sv = 0; sv < 3; sv++) {
+        Project vp = Project.starter();
+        for (int j8 = 0; j8 < vp.pats[vp.cur].len; j8++) for (String k8 : vp.kit) if (!k8.isEmpty()) vp.pats[vp.cur].setStep(k8, j8, false);
+        vp.pats[vp.cur].setStep(vp.kit[0], 0, true); vp.pats[vp.cur].setStrength(vp.kit[0], 0, sv);
+        float[] w8 = Engine.bounce(vp, lib, rate, false, 1);
+        for (int i = 0; i < Math.min(w8.length, rate / 2 * 2); i++) pk8[sv] = Math.max(pk8[sv], Math.abs(w8[i]));
+      }
+      check(pk8[0] < pk8[1] * .7 && pk8[2] > pk8[1] * 1.08, String.format("step strength: ghost %.3f < normal %.3f < accent %.3f", pk8[0], pk8[1], pk8[2]));
+      Project ap = Project.starter(); ap.pats[0].setStep(ap.kit[1], 3, true); ap.pats[0].setStrength(ap.kit[1], 3, 2); ap.pats[0].setStrength(ap.kit[1], 5, 0);
+      Project ab = Project.fromJson(ap.toJson(), null).project;
+      check(ab.pats[0].strength(ab.kit[1], 3) == 2 && ab.pats[0].strength(ab.kit[1], 5) == 0 && ab.pats[0].strength(ab.kit[1], 4) == 1, "step strengths save with the mess");
+      double[] vk = new double[2]; float[] vb = new float[256 * 2];
+      for (int q8 = 0; q8 < 2; q8++) {
+        Engine ve = new Engine(rate); ve.setSnapshot(Engine.Snapshot.build(Project.starter(), lib, new Engine.Live()));
+        ve.down(1, 0, new int[]{0}, false, false, q8 == 0 ? .15f : 1f);
+        for (int i = 0; i < 40; i++) { ve.render(vb, 256); for (float x : vb) vk[q8] = Math.max(vk[q8], Math.abs(x)); }
+      }
+      check(vk[0] < vk[1] * .5, String.format("a soft hit is quieter than a hard one: %.3f vs %.3f", vk[0], vk[1]));
+      // a soft hit recorded while playing comes back as a ghost step, a hard one as an accent
+      Project rp = Project.starter(); rp.pats[0].clear();
+      Engine.Live rl = new Engine.Live(); rl.rec = true;
+      Engine re8 = new Engine(rate); re8.setSnapshot(Engine.Snapshot.build(rp, lib, rl)); re8.play();
+      for (int i = 0; i < 4; i++) re8.render(vb, 256);
+      re8.down(1, 0, new int[]{0}, false, false, .3f); re8.render(vb, 256);
+      Engine.RecEvent ev8 = re8.pollRec();
+      check(ev8 != null && ev8.strength() == 0, "a soft recorded hit lands as a ghost step: " + (ev8 == null ? "none" : ev8.strength()));
+      check(new Engine.RecEvent(Engine.RecEvent.STEP, 0, "k", 0, null, 1, 1f).strength() == 2 && new Engine.RecEvent(Engine.RecEvent.STEP, 0, "k", 0, null, 1).strength() == 1, "a full hit records as an accent, a plain tap as normal");
+    }
     // ---- workbench tools
     Sample hat = lib.get(p.kit[2]);
     SoundEdit tr = new SoundEdit(); tr.st = .1; tr.en = .6; tr.tune = 12;

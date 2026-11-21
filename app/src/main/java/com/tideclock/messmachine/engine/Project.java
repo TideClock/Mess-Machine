@@ -37,6 +37,19 @@ public final class Project {
          * (TICKS per step). Triplet and dotted repeats land here, and live hits when Rec is set to exact.
          */
         public final Map<String, List<Integer>> offs = new LinkedHashMap<>();
+        /**
+         * Build 108: how hard each step hits, per sound: 0 ghost (quiet), 1 normal, 2 accent (full). Missing = normal.
+         * Saved as "acc": one character per step, "g", "." or "a".
+         */
+        public final Map<String, byte[]> acc = new LinkedHashMap<>();
+
+        public int strength(String k, int j) { byte[] a = acc.get(k); return a == null || j < 0 || j >= a.length ? 1 : a[j]; }
+
+        public void setStrength(String k, int j, int v) {
+            byte[] a = acc.get(k);
+            if (a == null) { if (v == 1) return; a = new byte[MAXSTEPS]; Arrays.fill(a, (byte) 1); acc.put(k, a); }
+            if (j >= 0 && j < a.length) a[j] = (byte) Math.max(0, Math.min(2, v));
+        }
 
         public void addOff(String k, int tick) {
             int t = Math.floorMod(tick, len * TICKS);
@@ -222,13 +235,14 @@ public final class Project {
             }
             for (Map.Entry<String, float[]> e : motion.entrySet()) p.motion.put(e.getKey(), e.getValue().clone());
             for (Map.Entry<String, List<Integer>> e : offs.entrySet()) p.offs.put(e.getKey(), new ArrayList<>(e.getValue()));
+            for (Map.Entry<String, byte[]> e : acc.entrySet()) p.acc.put(e.getKey(), e.getValue().clone());
             return p;
         }
 
-        public void clear() { steps.clear(); notes.clear(); motion.clear(); offs.clear(); }
+        public void clear() { steps.clear(); notes.clear(); motion.clear(); offs.clear(); acc.clear(); }
 
         /** Pull a sound out of the loop entirely (when its pad is cleared). */
-        public void forget(String k) { steps.remove(k); notes.remove(k); offs.remove(k); }
+        public void forget(String k) { steps.remove(k); notes.remove(k); offs.remove(k); acc.remove(k); }
     }
 
     public String name = "";
@@ -382,6 +396,17 @@ public final class Project {
                 }
                 if (!om.isEmpty()) x.put("offs", om);
             }
+            if (!p.acc.isEmpty()) {
+                Map<String, Object> am = new LinkedHashMap<>();
+                for (Map.Entry<String, byte[]> e : p.acc.entrySet()) {
+                    if (padOf(e.getKey()) < 0) continue;
+                    StringBuilder b = new StringBuilder();
+                    boolean any = false;
+                    for (int j = 0; j < p.len; j++) { byte v = e.getValue()[j]; b.append(v == 0 ? 'g' : v == 2 ? 'a' : '.'); if (v != 1) any = true; }
+                    if (any) am.put(e.getKey(), b.toString());
+                }
+                if (!am.isEmpty()) x.put("acc", am);
+            }
             pl.add(x);
         }
         o.put("pats", pl);
@@ -474,6 +499,10 @@ public final class Project {
                     String[] f = Json.str(e.getValue(), "").split(",", -1);
                     for (int j = 0; j < f.length && j < a.length; j++) if (!f[j].isEmpty()) try { a[j] = Float.parseFloat(f[j]); } catch (NumberFormatException ignored) {}
                     P.motion.put(e.getKey(), a);
+                }
+                for (Map.Entry<String, Object> e : Json.map(x.get("acc")).entrySet()) {
+                    String f = Json.str(e.getValue(), "");
+                    for (int j = 0; j < f.length() && j < MAXSTEPS; j++) { char c = f.charAt(j); if (c == 'g') P.setStrength(e.getKey(), j, 0); else if (c == 'a') P.setStrength(e.getKey(), j, 2); }
                 }
                 for (Map.Entry<String, Object> e : Json.map(x.get("offs")).entrySet()) {
                     for (String f : Json.str(e.getValue(), "").split(",")) if (!f.isEmpty()) try { P.addOff(e.getKey(), Integer.parseInt(f.trim())); } catch (NumberFormatException ignored) {}

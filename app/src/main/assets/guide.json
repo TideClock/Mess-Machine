@@ -1,20 +1,18 @@
 {
-  "title": "Edit, Repeat and the perform row",
+  "title": "Velocity: soft, normal and loud",
   "thisBuild": [
-    "Menu is now Edit, with a pencil: tap Edit, then anything, for its settings. Edit twice opens what you touched last.",
-    "Repeat sits on the bottom bar beside Hold. Edit, then Repeat, for its rate, style and pattern.",
-    "The side dock became the perform row: swipe up (or tap) the strip above the bottom bar. Wheel, filter, Lock, mouth and the rest live there; ⋯ picks them. Hold and Rec are left out, since they are on screen already.",
-    "The perform effects (stutter, echo throw, tape stop) are the Throws button in the perform row.",
-    "Pads show what moves them: a yellow dot for an LFO, teal for a lane in this loop, red for an FX fader left up.",
-    "Settings, Layout: New, New with the row on the left side, or Classic, which puts back Menu, FX and the side dock exactly as they were."
+    "Steps have three strengths now. Tap a step to turn it on, tap again for loud (a ring), again for quiet (half filled), and once more to turn it off.",
+    "16 Levels: Edit, then a pad, then 16 Levels. That sound fills all 16 pads, softest on pad 1 and hardest on pad 16. Tap the yellow banner to get your pads back.",
+    "Hits you record keep how hard they were: soft ones land as quiet steps, the hardest as loud ones.",
+    "A MIDI keyboard's velocity now plays and records too, instead of every key hitting full."
   ],
   "watch": [
-    "Does the perform row feel better at the bottom, or do you want it on the side? Layout switches it.",
-    "Repeat on the bar: is it where your thumb expects?",
-    "The dots on pads: do they help, or are they noise?"
+    "Program a hat with some quiet steps between loud ones: does it groove more?",
+    "16 Levels on a snare, then record a roll from pad 1 up to pad 16.",
+    "With a MIDI keyboard: do soft keys sound soft?"
   ],
   "limits": [
-    "The full Edit tray (Sound, FX, Keys, Mod, More in one place) is the next step; Edit still opens the same settings as Menu did.",
-    "Classic is the rollback switch for this build: nothing else is lost in it."
+    "Plain taps on the pads still play at normal strength; a phone screen cannot feel how hard you press.",
+    "16 Levels spreads loudness only for now; spreading filter, length or pitch across the pads is a later step."
   ]
 }

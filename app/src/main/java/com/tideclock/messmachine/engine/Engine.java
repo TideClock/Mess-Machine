@@ -67,6 +67,8 @@ public final class Engine {
         final int[][] notes; // per step: pitch, length, pitch, length...
         /** The finer grid: per step, hits between the sixteenths as ticks into the step (1 to TICKS - 1). */
         int[][] offs;
+        /** Build 108: each step's level, from its strength: ghost, normal or accent. */
+        float[] gain;
         Track(PadSlot pad, boolean[] steps, int[] gap, int[][] notes) { this.pad = pad; this.steps = steps; this.gap = gap; this.notes = notes; }
     }
 
@@ -124,6 +126,9 @@ public final class Engine {
                         nt[j] = a;
                     }
                     Track tk = new Track(ps, st, gap, nt);
+                    float[] gn = new float[len];
+                    for (int j = 0; j < len; j++) gn[j] = STEP_GAIN[P.strength(ps.key, j)];
+                    tk.gain = gn;
                     List<Integer> ol = P.offs.get(ps.key);
                     if (ol != null && !ol.isEmpty()) {
                         int[] cnt = new int[len];
@@ -158,9 +163,14 @@ public final class Engine {
         public final int type, pat, step, len;
         public final String key;
         public final int[] pitches;
-        RecEvent(int type, int pat, String key, int step, int[] pitches, int len) {
-            this.type = type; this.pat = pat; this.key = key; this.step = step; this.pitches = pitches; this.len = len;
+        /** Build 108: how hard the recorded hit was, 0..1, or below 0 for a plain tap. */
+        public final float vel;
+        public RecEvent(int type, int pat, String key, int step, int[] pitches, int len) { this(type, pat, key, step, pitches, len, -1f); }
+        public RecEvent(int type, int pat, String key, int step, int[] pitches, int len, float vel) {
+            this.type = type; this.pat = pat; this.key = key; this.step = step; this.pitches = pitches; this.len = len; this.vel = vel;
         }
+        /** The step strength a hit of this velocity records as: ghost, normal or accent. */
+        public int strength() { return vel < 0 ? 1 : vel <= .55f ? 0 : vel >= .95f ? 2 : 1; }
     }
 
     public static final class Position {
@@ -344,7 +354,12 @@ public final class Engine {
     /** A pad or key went down. mel = keys or the strip (pitched, may hold), pitches in semitones. */
     public void down(int id, int pad, int[] pitches, boolean mel) { down(id, pad, pitches, mel, false); }
     /** latch = keep sounding (and repeating) after the finger lifts, until unlatch(id). */
-    public void down(int id, int pad, int[] pitches, boolean mel, boolean latch) { cmds.add(new Object[]{"down", id, pad, pitches, mel, System.nanoTime(), latch}); }
+    public void down(int id, int pad, int[] pitches, boolean mel, boolean latch) { down(id, pad, pitches, mel, latch, -1f); }
+    /** Build 108: vel 0..1 is how hard it was hit (a MIDI key, a 16 Levels pad); below 0 = a plain tap, played as before. */
+    public void down(int id, int pad, int[] pitches, boolean mel, boolean latch, float vel) { cmds.add(new Object[]{"down", id, pad, pitches, mel, System.nanoTime(), latch, vel}); }
+
+    /** A step's level for ghost, normal and accent (normal is what every step played at before build 108). */
+    public static final float[] STEP_GAIN = {.42f, .85f, 1f};
     public void unlatch(int id) { cmds.add(new Object[]{"unlatch", id}); }
     public void up(int id) { cmds.add(new Object[]{"up", id, System.nanoTime()}); }
 
@@ -556,7 +571,7 @@ public final class Engine {
                 restHomes(S);
                 held.clear(); freeOn = false; beatOn = false;
                 break;
-            case "down": lastHitWaitNanos = renderNanos - (Long) c[5]; hits++; padDown(S, (Integer) c[1], (Integer) c[2], (int[]) c[3], (Boolean) c[4], (Long) c[5], renderNanos, c.length > 6 && (Boolean) c[6]); break;
+            case "down": lastHitWaitNanos = renderNanos - (Long) c[5]; hits++; padDown(S, (Integer) c[1], (Integer) c[2], (int[]) c[3], (Boolean) c[4], (Long) c[5], renderNanos, c.length > 6 && (Boolean) c[6], c.length > 7 ? (Float) c[7] : -1f); break;
             case "unlatch": {
                 Held h = held.remove((Integer) c[1]);
                 if (h != null) for (Voice v : h.voices) startRelease(v, .03f);
@@ -650,7 +665,7 @@ public final class Engine {
 
     private void releaseAll(float sec) { for (Voice v : pool) if (v.active && !v.preview) startRelease(v, sec); }
 
-    private void padDown(Snapshot S, int id, int pad, int[] pitches, boolean mel, long nanos, long renderNanos, boolean latch) {
+    private void padDown(Snapshot S, int id, int pad, int[] pitches, boolean mel, long nanos, long renderNanos, boolean latch, float vel) {
         PadSlot ps = pad >= 0 && pad < S.pads.length ? S.pads[pad] : null;
         if (ps == null) return;
         Held h = new Held();
@@ -684,6 +699,8 @@ public final class Engine {
         boolean arpLive = L.nr && !"rep".equals(L.arp);
         if ((!(L.nr && playing) && !arpLive) || h.flow) {
             float g = mel ? Theory.chordGain(pitches.length) : .85f;
+            // build 108: how hard it was hit; a plain tap stays where it always was
+            if (vel >= 0) g *= velGain(vel);
             sustainNow = h.flow;
             for (int p : pitches) {
                 Voice v = trigger(ps, oct() * Math.pow(2, p / 12.0), 0, false, g, 0, h.holdV);
@@ -716,7 +733,7 @@ public final class Engine {
                     // Rec set to exact (Nov 18): the hit lands on the finer grid where it was played
                     int tick = Math.floorMod((int) Math.round(h.at * Project.TICKS), len * Project.TICKS);
                     recs.add(new RecEvent(RecEvent.OFF, pi, ps.key, tick, null, 1));
-                } else recs.add(new RecEvent(RecEvent.STEP, pi, ps.key, Math.floorMod((int) Math.round(h.at), len), null, 1));
+                } else recs.add(new RecEvent(RecEvent.STEP, pi, ps.key, Math.floorMod((int) Math.round(h.at), len), null, 1, vel));
             }
         }
     }
@@ -834,7 +851,7 @@ public final class Engine {
                 if (!t.pad.audible) continue;
                 int ti = t.pad.index, ts = s0;
                 if (ti >= 0 && ti < 64 && padStut[ti] && !fxStut) { ts = pStutA[ti] + Math.floorMod(step - pStutB[ti], 2); if (ts >= len) ts = 0; }
-                if (t.steps[ts]) trigger(t.pad, rateMul, t.gap[ts] * spb / rate, false, .85f, delay, false);
+                if (t.steps[ts]) trigger(t.pad, rateMul, t.gap[ts] * spb / rate, false, t.gain[ts], delay, false);
                 // hits between the sixteenths, at their tick inside this step
                 if (t.offs != null && ts < t.offs.length) for (int tk : t.offs[ts]) trigger(t.pad, rateMul, spb / rate, false, .85f, delay + Math.round(tk * spb / Project.TICKS), false);
                 int[] nt = t.notes[ts];
@@ -1561,6 +1578,9 @@ public final class Engine {
      * (low, high or band pass), and an LFO aimed at the filter closes it from there by up to its depth. With the LFO
      * moving it the filter follows each block with no glide, so a 1/32 wub stays sharp.
      */
+    /** Velocity 0..1 to a level: soft hits stay audible, a full hit is a little over a plain tap. */
+    static float velGain(float v) { v = Math.max(0, Math.min(1, v)); return (float) (.3 + .85 * v); }
+
     private void filterBlock(Snapshot S) {
         for (int p = 0; p < 64; p++) {
             PadSlot ps = S != null && p < S.pads.length ? S.pads[p] : null;

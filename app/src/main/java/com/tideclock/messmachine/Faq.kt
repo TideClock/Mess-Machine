@@ -68,6 +68,8 @@ object Faq {
         Line("perform-handle", "Perform row", "Swipe up (or tap) for the controls you play live: wheel, filter, Lock, mouth, throws. ⋯ picks what lives in it."),
         Line("repeat-toggle", "Repeat", "Held notes repeat in time. Edit, then Repeat, for its rate, style and pattern."),
         Line("dock-throws", "Throws", "Opens the perform effects: stutter, echo throw, tape stop and the rest."),
+        Line("menu-levels", "16 Levels", "One sound on all 16 pads, softest on pad 1 and hardest on pad 16. Recorded hits keep how hard they were."),
+        Line("levels-banner", "16 Levels is on", "Every pad plays the same sound at its own level. Tap the banner to get your pads back."),
         Line("keys-panel", "Key panel", "Root, scale, chord type and Hold's count."),
         Line("pick-root", "Root", "The mess's key note. Keys, the Padiano and the Roll follow it."),
         Line("pick-scale", "Scale", "Which notes are in the key. In key only and the keys grid follow it."),

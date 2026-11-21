@@ -803,7 +803,7 @@ class AppState(private val app: Context) {
         while (true) {
             val ev = engine.pollRec() ?: break
             val P = project.pats[ev.pat]
-            if (ev.type == Engine.RecEvent.STEP) P.setStep(ev.key, ev.step, true)
+            if (ev.type == Engine.RecEvent.STEP) { P.setStep(ev.key, ev.step, true); P.setStrength(ev.key, ev.step, ev.strength()) }
             else if (ev.type == Engine.RecEvent.OFF) P.addOff(ev.key, ev.step)
             else {
                 val notes = P.notes(ev.key)
@@ -911,6 +911,12 @@ class AppState(private val app: Context) {
             return
         }
         if (stepMode) { stepPadTap(d); downIds[d] = -1; return }
+        if (levelsPad >= 0) {
+            val id = 4000 + d
+            downIds[d] = id
+            engine.down(id, levelsPad, intArrayOf(0), false, false, if (hitVel >= 0) hitVel else (d + 1) / 16f)
+            return
+        }
         val i = bank * Project.BANK + d
         if (project.sel != i) { project.sel = i; selV++; scheduleSave() }
         if (project.kit[i].isEmpty()) {
@@ -926,14 +932,32 @@ class AppState(private val app: Context) {
         // Hold latches grid pads too, under their own ids (1000 + pad), so a latch survives a bank switch
         if (holdOn) { val id = 1000 + i; downIds[d] = id; melodicDown(id, i, intArrayOf(0), mel = false); return }
         downIds[d] = d
-        engine.down(d, i, intArrayOf(0), false)
+        engine.down(d, i, intArrayOf(0), false, false, hitVel)
+    }
+
+    /** Build 108: how hard the hit being handled was (a MIDI key's velocity), or -1 for a plain tap. */
+    private var hitVel = -1f
+
+    /**
+     * Build 108: 16 Levels. One pad's sound fills all 16 pads, softest on pad 1, hardest on pad 16, so a touch
+     * screen can play dynamics; recorded hits keep their level as ghost, normal or accent steps. -1 = off.
+     */
+    var levelsPad by mutableIntStateOf(-1)
+        private set
+    fun switchLevels(pad: Int = project.sel) {
+        if (levelsPad >= 0) { levelsPad = -1; say("16 Levels off: your pads are back."); return }
+        if (project.kit.getOrNull(pad).isNullOrEmpty()) { say("Pick a pad with a sound first."); return }
+        keysMode = false; stepMode = false
+        levelsPad = pad
+        notes.trail("16 levels on pad ${pad + 1}")
+        say("16 Levels: pad 1 is softest, pad 16 hits hardest.")
     }
 
     fun padUp(d: Int) {
         val i = bank * Project.BANK + d
         if (recordHold && holdRecPad == i && micOn && micPad == i) { holdRecPad = -1; bench.stopMic() }
         val id = downIds[d]
-        if (id >= 1000) melodicUp(id) else if (id >= 0) engine.up(id)
+        if (id >= 4000) engine.up(id) else if (id >= 1000) melodicUp(id) else if (id >= 0) engine.up(id)
         downIds[d] = -1
     }
 
@@ -953,6 +977,12 @@ class AppState(private val app: Context) {
     // ---- MIDI in (MM-12): notes 36 to 51 are pads 1 to 16 of this bank, the rest play the selected pad as keys ----
     private val midiHeld = HashMap<Int, Int>()
     private val midiHeldT = HashMap<Int, MidiTarget>()
+    /** Build 108: a MIDI key's velocity (1..127) plays and records how hard it was hit. */
+    fun midiDown(note: Int, vel: Int) {
+        hitVel = (vel.coerceIn(1, 127) / 127f)
+        try { midiDown(note) } finally { hitVel = -1f }
+    }
+
     fun midiDown(note: Int) {
         if (midiMapOn) {
             // a key already taught Shift still works as Shift while mapping, so second jobs can be taught with it held
@@ -987,7 +1017,7 @@ class AppState(private val app: Context) {
      * A controller key only plays pads that have a sound: a finger on an empty pad opens the jars (or starts the
      * mic), and a stray key on the controller should never pop a sheet open in the middle of playing.
      */
-    private fun midiPadSounds(d: Int): Boolean = keysMode || project.kit[bank * Project.BANK + d].isNotEmpty()
+    private fun midiPadSounds(d: Int): Boolean = keysMode || levelsPad >= 0 || project.kit[bank * Project.BANK + d].isNotEmpty()
 
     /** A mapped key plays what it was taught: a pad like a finger on it, or one Padiano key (chords and Hold included). */
     private fun midiPlay(note: Int, t: MidiTarget) {
@@ -1331,9 +1361,17 @@ class AppState(private val app: Context) {
             edit { P.notes(key).removeAll { it.s == j }; P.setStep(key, j, false) }
             return
         }
-        val on = !P.step(key, j)
-        edit { P.setStep(key, j, on) }
-        if (on && playOnTap && !playing) preview(key)
+        // build 108: a lit step cycles normal, accent (loud), ghost (quiet), then off
+        if (P.step(key, j)) {
+            when (P.strength(key, j)) {
+                1 -> edit { P.setStrength(key, j, 2) }
+                2 -> edit { P.setStrength(key, j, 0) }
+                else -> edit { P.setStep(key, j, false); P.setStrength(key, j, 1) }
+            }
+            return
+        }
+        edit { P.setStep(key, j, true); P.setStrength(key, j, 1) }
+        if (playOnTap && !playing) preview(key)
     }
 
     /**
@@ -1344,7 +1382,7 @@ class AppState(private val app: Context) {
         val P = project.pat()
         if (j < 0 || j >= P.len) return
         if (P.step(key, j) == on && !(!on && P.hasNoteAt(key, j))) { if (commit) edit { } ; return }
-        edit(commit) { if (!on) P.notes(key).removeAll { it.s == j }; P.setStep(key, j, on) }
+        edit(commit) { if (!on) P.notes(key).removeAll { it.s == j }; P.setStep(key, j, on); P.setStrength(key, j, 1) }
     }
 
     /* ---------------- the automation view (note #17) ---------------- */
@@ -2311,12 +2349,12 @@ class AppState(private val app: Context) {
             for (o in latched) engine.unlatch(o)
             latched.clear()
             latched.add(id)
-            engine.down(id, pad, ps, mel, true)
+            engine.down(id, pad, ps, mel, true, hitVel)
             return
         }
         val latch = latched.size < holdSlots
         if (latch) latched.add(id)
-        engine.down(id, pad, ps, mel, latch)
+        engine.down(id, pad, ps, mel, latch, hitVel)
     }
 
     private fun melodicUp(id: Int) {

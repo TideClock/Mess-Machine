@@ -408,6 +408,32 @@ class BigTest {
         assertEquals(null, state.fxSend["0:$t"])
     }
 
+    @Test fun stepStrengthsAndSixteenLevels() {
+        // build 108: a lit step cycles loud, quiet, off; 16 Levels puts one sound on every pad, soft to hard
+        val k = state.project.kit[0]
+        state.edit { pat().clear() }
+        state.toggleStep(k, 2)
+        assertTrue(state.project.pat().step(k, 2)); assertEquals(1, state.project.pat().strength(k, 2))
+        state.toggleStep(k, 2); assertEquals("second tap: accent", 2, state.project.pat().strength(k, 2))
+        state.toggleStep(k, 2); assertEquals("third tap: ghost", 0, state.project.pat().strength(k, 2))
+        assertTrue(state.project.pat().step(k, 2))
+        state.toggleStep(k, 2); assertFalse("fourth tap: off", state.project.pat().step(k, 2))
+        state.toggleStep(k, 4); state.toggleStep(k, 4); state.toggleStep(k, 6); state.toggleStep(k, 6); state.toggleStep(k, 6)
+        tab("Steps"); settle()
+        shot("89-step-strengths")
+        tab("Pads"); settle()
+        state.switchLevels(0); settle()
+        assertEquals(0, state.levelsPad)
+        rule.onNodeWithTag("levels-banner").assertExists()
+        state.padDown(15); loudest(1024); state.padUp(15)
+        assertTrue("a level pad plays the levels sound", state.engine.hits > 0)
+        shot("90-sixteen-levels")
+        rule.onNodeWithTag("levels-banner").performClick(); settle()
+        assertEquals(-1, state.levelsPad)
+        // a MIDI key's velocity reaches the pad
+        state.midiDown(36, 20); loudest(1024); state.midiUp(36)
+    }
+
     @Test fun newLayoutEditRepeatAndPerformRow() {
         // build 107: Edit (was Menu) and Repeat on the bottom bar, no side dock, the perform row swipes up
         assertEquals("new", state.layout)

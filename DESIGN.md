@@ -18,6 +18,9 @@ Rewritten at the end of every session and at each step of a long job (BT-2). Rea
   the side dock became the perform row (PerformRow in Dock.kt, swipes up above the bottom bar; PERFORM_SKIP leaves
   out Hold and Rec). Settings, Layout: new / side / classic (classic = build 104's Menu, FX and side dock). Pads
   mark an LFO (yellow), a lane in this loop (teal) and a resting FX fader (red). Not yet: the one Edit tray.
+  Build 4 (velocity): Pattern.acc per sound per step (0 ghost, 1 normal, 2 accent; "acc" in the mess, g . a);
+  Engine.STEP_GAIN .42/.85/1; engine.down(..., vel) with velGain .3 + .85 v; RecEvent.vel records ghost (<=.55) or
+  accent (>=.95). Tap a lit step: normal, accent, ghost, off. 16 Levels (levelsPad, ids 4000+). MIDI velocity in.
 - **Live before the overhaul:** build 104 (green, 2026-11-18). The final plan (builds 96 to 101) shipped as runs 97, 98, 101, 102, 103 and 104
   (runs 96, 99 and 100 failed on tests or a compile error and were fixed; run 98's phone test was rerun after an
   emulator download broke). Notes 20, 21, 22 closed. Plan doc: https://claude.ai/artifact/SMmt7Jz3BfDsP7xUqLLEqq .

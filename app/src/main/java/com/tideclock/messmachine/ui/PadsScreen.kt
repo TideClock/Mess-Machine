@@ -65,6 +65,9 @@ fun PadsScreen(state: AppState) {
             if (state.stepMode) BarButtons(state) else BankButtons(state)
             SoundButton(state)
         }
+        if (state.levelsPad >= 0) Box(Modifier.fillMaxWidth().clickable { state.switchLevels() }.tagged("levels-banner")) {
+            Note("16 LEVELS: " + state.lib.titleOf(state.project.kit.getOrElse(state.levelsPad) { "" }).uppercase() + " on every pad, pad 16 hardest. Tap here to stop.", color = C.Yellow)
+        }
         if (state.stepMode) Note("Step mode: the pads are the steps of " + state.lib.titleOf(state.selKey()).ifEmpty { "the picked pad" }.uppercase() + ", bar ${state.page + 1}. Tap to flip a step. Pads picks the sound again.",
             color = C.Yellow, modifier = Modifier.padding(bottom = 8.dp))
         // zoomed out, the pad grid shrinks with everything else so more of the machine fits
@@ -255,9 +258,11 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
     var padDp by remember { mutableStateOf(0f) }
     val keys = state.keysMode
     val i = state.bank * Project.BANK + d
-    val key = if (keys) state.selKey() else P.kit[i]
+    // build 108: 16 Levels shows one sound on every pad, darker for soft and brighter for hard
+    val lv = !keys && state.levelsPad >= 0
+    val key = if (keys) state.selKey() else if (lv) P.kit.getOrElse(state.levelsPad) { "" } else P.kit[i]
     val empty = key.isEmpty()
-    val base = if (empty) C.Card else padColor(Color(state.lib.colorOf(key)))
+    val base = if (empty) C.Card else if (lv) lerp(C.Black, padColor(Color(state.lib.colorOf(key))), .3f + .7f * (d + 1) / 16f) else padColor(Color(state.lib.colorOf(key)))
     val sel = !keys && i == P.sel
     val hasKeys = !keys && i in state.keyboards
     val top: String
@@ -266,6 +271,9 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
         val off = state.keyOffset(d)
         top = if (off == 0) "ROOT" else (if (off > 0) "+$off" else "$off")
         main = state.keyLabel(d)
+    } else if (lv) {
+        top = "LEVEL"
+        main = "${d + 1}"
     } else {
         top = if (empty) "${i + 1} ●" else "${i + 1}"
         main = if (empty) "+" else state.lib.titleOf(key).uppercase()
@@ -438,6 +446,7 @@ fun PadMenu(state: AppState, i: Int) {
             group("PLAY")
             item(if (i in state.keyboards) "Zip the FannyPack" else if (state.packOf(i).isEmpty()) "FannyPack: Padiano under this row" else "Open the FannyPack (${state.packOf(i).size})", "menu-piano") { state.selectPad(i, false); state.togglePack(i) }
             item("Hear it", "menu-hear") { state.preview(k) }
+            item(if (state.levelsPad == i) "16 Levels: off" else "16 Levels: play it soft to hard", "menu-levels") { state.switchLevels(i) }
             item(if (P.mutes.contains(k)) "Unmute" else "Mute", "menu-mute-$i") { state.toggleMute(k) }
             item(if (P.solos.contains(k)) "Unsolo" else "Solo", "menu-solo-$i") { state.toggleSolo(k) }
             item("XY setup (${state.xyOf(i).name})", "menu-xy") { state.selectPad(i, false); state.overlay = Overlay.Xy(i) }

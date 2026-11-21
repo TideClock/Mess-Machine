@@ -156,7 +156,7 @@ fun StepsScreen(state: AppState) {
                 if (state.stepStrip == i) { RowTools(state, i); StepPitchStrip(state, i, k, col) }
             }
         }
-        Help("Tap a step to flip it, or slide along a row to paint it. Tap a sound's name for its row tools (every 2, 4 or 8, repeat across, nudge, copy, spread) and to give its steps pitches. Hold its name, then lift, for its menu: mute, solo, the Sample sheet and more. A red M or yellow S by the number shows a muted or soloed sound. A dot means a step has a pitch or roll notes; tap it to clear it, or Clear notes for the whole loop.", modifier = Modifier.padding(top = 4.dp))
+        Help("Tap a step to turn it on. Tap again: loud, then quiet, then off. Slide along a row to paint it. Tap a sound's name for its row tools (every 2, 4 or 8, repeat across, nudge, copy, spread) and to give its steps pitches. Hold its name, then lift, for its menu: mute, solo, the Sample sheet and more. A red M or yellow S by the number shows a muted or soloed sound. A dot means a step has a pitch or roll notes; tap it to clear it, or Clear notes for the whole loop.", modifier = Modifier.padding(top = 4.dp))
     }
 }
 
@@ -167,6 +167,8 @@ fun StepRow(state: AppState, k: String, col: Color, off: Int, ver: Int) {
     val pat = P.pat()
     val on = BooleanArray(16) { pat.step(k, off + it) }
     val dot = BooleanArray(16) { pat.hasNoteAt(k, off + it) }
+    // build 108: how hard each step hits: 0 ghost (drawn faint and small), 1 normal, 2 accent (a cream ring)
+    val str = IntArray(16) { pat.strength(k, off + it) }
     // the finer grid (Nov 18): hits between the sixteenths, as ticks, drawn as thin marks where they fall
     val offTicks = pat.offs[k].orEmpty().filter { it / com.tideclock.messmachine.engine.Project.TICKS in off until off + 16 }
     Canvas(
@@ -229,8 +231,16 @@ fun StepRow(state: AppState, k: String, col: Color, off: Int, ver: Int) {
             val sz = Size(cw - gap, size.height)
             val hot = c == now
             if (hot) drawRoundRect(C.Pink.copy(alpha = .55f), Offset(tl.x - 3, tl.y - 3), Size(sz.width + 6, sz.height + 6), r)
-            drawRoundRect(if (on[c]) (if (hot) lerp(col, C.Cream, .5f) else col) else if ((off + c) % 4 == 0) C.Card2 else C.Ink, tl, sz, r)
-            drawRoundRect(if (hot) C.Yellow else if (on[c]) C.Cream else C.Empty, tl, sz, r, style = Stroke(width = if (hot) 3.dp.toPx() else 1.5.dp.toPx()))
+            val ghost = on[c] && str[c] == 0
+            drawRoundRect(if ((off + c) % 4 == 0) C.Card2 else C.Ink, tl, sz, r)
+            if (on[c]) {
+                val fc = if (hot) lerp(col, C.Cream, .5f) else col
+                // a ghost fills only the lower part, so it reads as quieter at a glance
+                if (ghost) drawRoundRect(fc.copy(alpha = .55f), Offset(tl.x, tl.y + sz.height * .45f), Size(sz.width, sz.height * .55f), r)
+                else drawRoundRect(fc, tl, sz, r)
+            }
+            drawRoundRect(if (hot) C.Yellow else if (on[c] && !ghost) C.Cream else C.Empty, tl, sz, r, style = Stroke(width = if (hot) 3.dp.toPx() else 1.5.dp.toPx()))
+            if (on[c] && str[c] == 2) drawRoundRect(C.Cream, Offset(tl.x + 3.dp.toPx(), tl.y + 3.dp.toPx()), Size(sz.width - 6.dp.toPx(), sz.height - 6.dp.toPx()), r, style = Stroke(width = 2.5.dp.toPx()))
             if (dot[c]) drawCircle(if (on[c]) C.Ink else C.Cream, radius = 3.dp.toPx(), center = Offset(tl.x + sz.width / 2, sz.height / 2))
             if (state.stepStrip >= 0 && state.project.kit[state.stepStrip] == k && state.stepPick == off + c) drawRoundRect(C.Yellow, Offset(tl.x - 2, tl.y - 2), Size(sz.width + 4, sz.height + 4), r, style = Stroke(width = 4.dp.toPx()))
         }

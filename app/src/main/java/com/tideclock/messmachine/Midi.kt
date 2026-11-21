@@ -13,7 +13,7 @@ import android.os.Looper
 /**
  * MIDI over USB (MM-12): plug in a pad controller or a keyboard and play. Notes 36 to 51 (the usual pad
  * controller layout, C1 to D#2) hit pads 1 to 16 of the bank on screen; every other note plays the selected
- * pad as a key, with middle C (60) at the sound's own pitch. Velocity is not used yet: every hit is full.
+ * pad as a key, with middle C (60) at the sound's own pitch. Build 108: velocity plays and records how hard each key was hit.
  * The MIDI map (the menu's "MIDI map") teaches it your own layout: any key to any pad or Padiano key, and any
  * knob or slider (a control change) to a synth knob.
  */
@@ -75,7 +75,7 @@ class MidiIn(private val ctx: Context, private val state: AppState) {
                 if (d1 < 0) { d1 = b; continue }
                 val note = d1; val vel = b; d1 = -1 // running status: the next pair uses the same status
                 when (status and 0xF0) {
-                    0x90 -> if (vel > 0) main.post { state.midiDown(note) } else main.post { state.midiUp(note) }
+                    0x90 -> if (vel > 0) main.post { state.midiDown(note, vel) } else main.post { state.midiUp(note) }
                     0x80 -> main.post { state.midiUp(note) }
                     0xB0 -> main.post { state.midiCc(note, vel) }
                     // the controller's pitch wheel: 14 bits, the middle (8192) is no bend; it drives the dock's pitch wheel
