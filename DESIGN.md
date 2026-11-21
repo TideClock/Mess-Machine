@@ -28,6 +28,9 @@ Rewritten at the end of every session and at each step of a long job (BT-2). Rea
   the mess). Engine.loops counts loop wraps since Play; dice is seeded (11). Hold a step for the step sheet (chance,
   time round, strength). One-step locks that snap back are not built: step pitch (notes) and lanes cover most of it.
   Builds 3 to 6 went out in one push.
+  Build 7 (stems and MIDI): Engine.bounceStems soloes each used, audible sound and pads all stems to one length;
+  MidiOut writes format 1, PPQ 96, a tempo track plus one track per sound (C3 = 60 plus the step pitch, velocity 48,
+  100, 127 by strength, chance ignored). Messes, Pour it out, For a DAW. The master bus control is not built.
 - **Live before the overhaul:** build 104 (green, 2026-11-18). The final plan (builds 96 to 101) shipped as runs 97, 98, 101, 102, 103 and 104
   (runs 96, 99 and 100 failed on tests or a compile error and were fixed; run 98's phone test was rerun after an
   emulator download broke). Notes 20, 21, 22 closed. Plan doc: https://claude.ai/artifact/SMmt7Jz3BfDsP7xUqLLEqq .

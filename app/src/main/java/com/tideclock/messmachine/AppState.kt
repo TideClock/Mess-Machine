@@ -1781,6 +1781,52 @@ class AppState(private val app: Context) {
         }
     }
 
+    /** Build 7 of the overhaul: every sound as its own WAV, lined up from zero, in one zip for a DAW. */
+    fun shareStems(song: Boolean, loops: Int) {
+        notes.trail("stems ${if (song) "song" else "loop x$loops"}")
+        if (song && project.songLen() == 0) { say("The song lane is empty."); return }
+        if (!song && !project.pat().used()) { say("Loop ${Project.LETTERS[project.cur]} is empty."); return }
+        busy = "Bouncing stems…"
+        val p = project.copy()
+        val name = project.name.ifEmpty { "Untitled mess" }
+        worker.execute {
+            try {
+                for (k in p.kit) if (k.isNotEmpty()) try { lib.load(k) } catch (_: Exception) {}
+                val stems = Engine.bounceStems(p, lib, 44100, song, loops)
+                if (stems.isEmpty()) { main.post { busy = null; say("Nothing to bounce: every sound is muted or silent.") }; return@execute }
+                val f = File(sharedDir(), slug(name) + (if (song) "-song" else "-loop-" + Project.LETTERS[p.cur].lowercase()) + "-stems.zip")
+                java.util.zip.ZipOutputStream(FileOutputStream(f).buffered()).use { z ->
+                    val used = HashSet<String>()
+                    for ((k, w) in stems) {
+                        val pad = p.kit.indexOf(k)
+                        var n = String.format(java.util.Locale.US, "%02d", pad + 1) + "-" + slug(lib.titleOf(k).ifEmpty { "sound" })
+                        while (!used.add(n)) n += "-2"
+                        z.putNextEntry(java.util.zip.ZipEntry("$n.wav"))
+                        Wav.writeStereo16(z, w, 44100)
+                        z.closeEntry()
+                    }
+                }
+                main.post { busy = null; share(f, "application/zip", "Share the stems") }
+            } catch (e: Exception) {
+                main.post { busy = null; say("The stems failed: ${e.message}") }
+            }
+        }
+    }
+
+    /** Build 7 of the overhaul: the notes as a MIDI file, one track per sound. */
+    fun shareMidi(song: Boolean) {
+        notes.trail("midi file ${if (song) "song" else "loop"}")
+        if (song && project.songLen() == 0) { say("The song lane is empty."); return }
+        if (!song && !project.pat().used()) { say("Loop ${Project.LETTERS[project.cur]} is empty."); return }
+        val name = project.name.ifEmpty { "Untitled mess" }
+        try {
+            val f = File(sharedDir(), slug(name) + (if (song) "-song" else "-loop-" + Project.LETTERS[project.cur].lowercase()) + ".mid")
+            val names = project.kit.filter { it.isNotEmpty() }.associateWith { lib.titleOf(it) }
+            FileOutputStream(f).buffered().use { com.tideclock.messmachine.engine.MidiOut.write(project, song, 1, names, it) }
+            share(f, "audio/midi", "Share the MIDI file")
+        } catch (e: Exception) { say("The MIDI file failed: ${e.message}") }
+    }
+
     /* ---------------- notes for Claude ---------------- */
 
     val buildName: String get() = "${BuildConfig.VERSION_NAME} (${BuildConfig.GIT_SHA})"

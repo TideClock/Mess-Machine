@@ -768,6 +768,32 @@ public class EngineTest {
       check(cb.pats[0].chance(cb.kit[1], 2) == 75 && cb.pats[0].chance(cb.kit[1], 6) == 103 && cb.pats[0].chance(cb.kit[1], 3) == 100, "step chances save with the mess");
       check(Project.Pattern.chanceLabel(102).equals("2:2") && Project.Pattern.chanceLabel(25).equals("25%") && Project.Pattern.chanceLabel(100).isEmpty(), "chance labels read plainly");
     }
+    // ---- build 7 of the overhaul: stems and a MIDI file
+    {
+      Project sp = p;
+      int sounds = 0;
+      for (String k : sp.kit) if (!k.isEmpty() && sp.pats[sp.cur].usedBy(k)) sounds++;
+      java.util.Map<String, float[]> stems = Engine.bounceStems(sp, lib, rate, false, 1);
+      int len0 = -1; boolean same = true;
+      for (float[] w0 : stems.values()) { if (len0 < 0) len0 = w0.length; else if (w0.length != len0) same = false; }
+      check(sounds > 1 && stems.size() == sounds && same, "one stem per sound in the loop, all the same length: " + stems.size() + " of " + sounds);
+      float[] mix = Engine.bounce(sp, lib, rate, false, 1);
+      double em = 0, es = 0;
+      for (int i = 0; i < Math.min(mix.length, len0); i++) { double sum = 0; for (float[] w0 : stems.values()) sum += w0[i]; em += mix[i] * mix[i]; es += sum * sum; }
+      check(es > em * .4 && es < em * 2.5, String.format("the stems add up to about the mix: %.2f of its energy", es / Math.max(1e-9, em)));
+      Project mp = Project.starter(); Project.Pattern mq = mp.pats[mp.cur];
+      for (int j9 = 0; j9 < mq.len; j9++) for (String k9 : mp.kit) if (!k9.isEmpty()) mq.setStep(k9, j9, false);
+      mq.setStep(mp.kit[0], 0, true); mq.setStep(mp.kit[0], 8, true); mq.setStrength(mp.kit[0], 8, 2);
+      mq.setStep(mp.kit[1], 4, true);
+      java.io.ByteArrayOutputStream mo = new java.io.ByteArrayOutputStream();
+      try { MidiOut.write(mp, false, 2, null, mo); } catch (java.io.IOException ex) { throw new RuntimeException(ex); }
+      byte[] mb = mo.toByteArray();
+      int tracks = ((mb[10] & 0xFF) << 8) | (mb[11] & 0xFF);
+      int ons = 0, loud = 0;
+      for (int i = 14; i + 2 < mb.length; i++) if ((mb[i] & 0xF0) == 0x90 && mb[i + 1] == 60) { ons++; if ((mb[i + 2] & 0xFF) == 127) loud++; }
+      check(new String(mb, 0, 4).equals("MThd") && tracks == 3, "the MIDI file has a tempo track and one per sound: " + tracks);
+      check(ons == 6 && loud == 2, "two loops of three hits, the accents at full velocity: " + ons + " notes, " + loud + " loud");
+    }
     // ---- workbench tools
     Sample hat = lib.get(p.kit[2]);
     SoundEdit tr = new SoundEdit(); tr.st = .1; tr.en = .6; tr.tune = 12;

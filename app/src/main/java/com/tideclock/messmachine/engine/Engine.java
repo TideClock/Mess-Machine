@@ -1821,6 +1821,31 @@ public final class Engine {
     }
 
     /** exact = stop right at the loop's end with no tail, for resampling a loop into a sound. */
+    /**
+     * Build 7 of the overhaul: stems. Each sound bounced alone (soloed, with its own effects and tails), all padded to
+     * the same length so they line up from zero in a DAW. Keys are the sounds' keys in kit order; silent sounds are left out.
+     */
+    public static Map<String, float[]> bounceStems(Project p, SampleSource src, int rate, boolean song, int loops) {
+        Map<String, float[]> out = new LinkedHashMap<>();
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (String k : p.kit) {
+            if (k == null || k.isEmpty() || !seen.add(k) || !p.audible(k)) continue;
+            boolean used = false;
+            for (Project.Pattern P : MidiOut.order(p, song, loops)) if (P.usedBy(k)) { used = true; break; }
+            if (!used) continue;
+            Project q = p.copy();
+            q.solos.clear(); q.solos.add(k); q.mutes.remove(k);
+            float[] w = bounce(q, src, rate, song, loops);
+            boolean any = false;
+            for (float x : w) if (Math.abs(x) > 1e-4f) { any = true; break; }
+            if (any) out.put(k, w);
+        }
+        int n = 0;
+        for (float[] w : out.values()) n = Math.max(n, w.length);
+        for (Map.Entry<String, float[]> e : out.entrySet()) if (e.getValue().length < n) e.setValue(java.util.Arrays.copyOf(e.getValue(), n));
+        return out;
+    }
+
     public static float[] bounce(Project p, SampleSource src, int rate, boolean song, int loops, boolean exact) {
         Project q = p.copy();
         q.songMode = song && q.songLen() > 0;

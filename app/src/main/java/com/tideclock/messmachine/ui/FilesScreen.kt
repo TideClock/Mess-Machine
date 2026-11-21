@@ -61,12 +61,21 @@ fun FilesScreen(state: AppState) {
         Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
             Column {
                 T("POUR IT OUT", size = 12.sp, color = C.Yellow, spacing = .1.em)
-                Help("Makes a WAV of the music, then opens your share sheet.", modifier = Modifier.padding(bottom = 8.dp))
+                Help("Makes a WAV of the music, then opens your share sheet. Stems are a zip with each sound on its own, all starting together; MIDI is the notes, one track per sound.", modifier = Modifier.padding(bottom = 8.dp))
                 Wrap(Modifier) {
                     val L = Project.LETTERS[P.cur]
                     Btn("Loop $L once", { state.bounce(false, 1) }, small = true, color = C.Pink)
                     Btn("Loop $L ×4", { state.bounce(false, 4) }, small = true)
                     Btn("The song", { state.bounce(true, 1) }, small = true, enabled = P.songLen() > 0)
+                }
+                // build 7 of the overhaul: for a DAW. Each sound alone (lined up from zero), and the notes as MIDI
+                T("FOR A DAW", size = 10.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 10.dp))
+                Wrap(Modifier.padding(top = 4.dp)) {
+                    val L = Project.LETTERS[P.cur]
+                    Btn("Stems: loop $L", { state.shareStems(false, 1) }, small = true, color = C.Teal, tag = "stems-loop")
+                    Btn("Stems: the song", { state.shareStems(true, 1) }, small = true, enabled = P.songLen() > 0, tag = "stems-song")
+                    Btn("MIDI: loop $L", { state.shareMidi(false) }, small = true, tag = "midi-loop")
+                    Btn("MIDI: the song", { state.shareMidi(true) }, small = true, enabled = P.songLen() > 0, tag = "midi-song")
                 }
             }
         }

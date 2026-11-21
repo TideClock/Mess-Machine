@@ -1,23 +1,18 @@
 {
-  "title": "Edit, velocity, skins and chance",
+  "title": "Stems and MIDI for a DAW",
   "thisBuild": [
-    "Menu is now Edit, with a pencil: tap Edit, then anything, for its settings. Repeat sits on the bottom bar beside Hold.",
-    "The side dock became the perform row: swipe up (or tap) the strip above the bottom bar. The perform effects are its Throws button. Settings, Layout, Classic puts back Menu, FX and the side dock exactly as they were.",
-    "Pads show what moves them: a yellow dot for an LFO, teal for a lane, red for an FX fader left up.",
-    "Steps have three strengths: tap once for on, again for loud (a ring), again for quiet (half filled), once more for off.",
-    "16 Levels: Edit, then a pad, then 16 Levels. That sound fills all 16 pads, softest to hardest. Tap the yellow banner to get your pads back. Recorded hits and MIDI keys keep how hard they were.",
-    "Hold a step for its sheet: how often it plays (75%, 50%, 25%), which time round the loop (1st of 2, 4th of 4...) and how hard. A dashed yellow edge marks a step that only plays sometimes.",
-    "Skins: Settings, Skin. Classic, Specimen (a lab notebook at night, glass pads that glow) or Stage (pure black and loud, for dark rooms). The Look card below it is now the button skin, so any skin goes with Classic words or the Pro icons."
+    "Messes, Pour it out, For a DAW: Stems makes a zip with every sound as its own WAV, all starting at the same moment, so they drop straight into a DAW and line up.",
+    "MIDI makes a file with the notes, one track per sound, named after it. Loud steps are full velocity, quiet ones soft, and a step's pitch carries over.",
+    "Both work for the current loop or the whole song.",
+    "Also in this build if you skipped the last one: Edit, the perform row, step strengths, 16 Levels, step chance (hold a step) and skins (Settings, Skin)."
   ],
   "watch": [
-    "Try Stage in a dark room and Specimen in daylight: can you read every pad?",
-    "Put a 50% hat and a 4th of 4 snare in a loop: does it keep surprising you, or does it sound broken?",
-    "Does the perform row feel better at the bottom, or do you want it on the side? Layout switches it."
+    "Send the stems to your computer and drop them in your DAW: do they line up with each other?",
+    "Open the MIDI file: is every sound on its own track, in time?"
   ],
   "limits": [
-    "The full Edit tray (Sound, FX, Keys, Mod, More in one place) is not built yet; Edit opens the same settings Menu did.",
-    "Step locks that snap back after one step (a filter or pitch for one hit only) are not built; a step's pitch and the Auto lanes still do most of that.",
-    "Skins change colours and pad faces; Felt and Paper and Rust come later.",
-    "Plain taps still play at normal strength; a phone screen cannot feel how hard you press."
+    "Each stem goes through the master squash on its own, so the stems added up are close to the mix but not exact.",
+    "A MIDI file has no dice: steps set to 50% or 1st of 2 are written as if they always play.",
+    "There is no master bus control yet (a glue or squash amount); the gentle squash on the mix is the same as before."
   ]
 }

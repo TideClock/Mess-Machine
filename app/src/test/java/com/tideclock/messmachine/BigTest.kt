@@ -483,6 +483,25 @@ class BigTest {
         rule.onNodeWithTag("stepsheet").assertDoesNotExist()
     }
 
+    @Test fun stemsAndMidiForADaw() {
+        // build 7 of the overhaul: each sound alone in a zip, and the notes as a MIDI file
+        val k0 = state.project.kit[0]; val k1 = state.project.kit[1]
+        state.edit { pat().clear(); pat().setStep(k0, 0, true); pat().setStep(k1, 4, true) }
+        state.overlay = Overlay.Files; settle()
+        val dir = java.io.File(ApplicationProvider.getApplicationContext<Context>().cacheDir, "shared")
+        dir.listFiles()?.forEach { it.delete() }
+        at("midi-loop").performClick(); settle()
+        val mid = dir.listFiles()?.firstOrNull { it.name.endsWith(".mid") }
+        assertTrue("a MIDI file is made", mid != null && mid.length() > 30)
+        at("stems-loop").performClick(); settle()
+        waitFor("the stems", 40000) { state.busy == null && dir.listFiles()?.any { it.name.endsWith("-stems.zip") } == true }
+        val zip = dir.listFiles()!!.first { it.name.endsWith("-stems.zip") }
+        val names = java.util.zip.ZipFile(zip).use { z -> z.entries().toList().map { it.name } }
+        assertEquals("one WAV per sound in the loop: $names", 2, names.size)
+        assertTrue(names.all { it.endsWith(".wav") })
+        shot("95-stems-and-midi")
+    }
+
     @Test fun newLayoutEditRepeatAndPerformRow() {
         // build 107: Edit (was Menu) and Repeat on the bottom bar, no side dock, the perform row swipes up
         assertEquals("new", state.layout)
