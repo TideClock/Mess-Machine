@@ -100,6 +100,8 @@ class Skin(
     val shadow: Long? = null,
     /** how a loaded pad is painted: "jar" (Classic), "glass" (Specimen, a glow), "band" (Stage, black with a colour band) */
     val pad: String = "jar",
+    /** a light skin: dark words on paper, and dark icons in the phone's status bar */
+    val light: Boolean = false,
 )
 
 object Skins {
@@ -111,7 +113,13 @@ object Skins {
     /** Stage: for dark rooms. Pure black, white text, loud colours, no grit and no shadows */
     val stage = Skin("stage", "Stage", 0xFF0D0D0D, 0xFF000000, 0xFF000000, 0xFF1A1A1A, 0xFF4A4A4A, 0xFFFFFFFF, 0xFFC8C8C8,
         0xFFFF2FA0, 0xFF00E5FF, 0xFFFFE600, 0xFFFF6A00, 0xFFB48CFF, 0xFFA6FF00, 0xFF5AC8FF, 0xFFFF8A00, grit = 0f, shadow = 0x00000000, pad = "band")
-    val all = listOf(classic, specimen, stage)
+    /** Felt and Paper: daylight. Warm paper, ink words, pads like felt squares. Cream is the words colour, so it is dark here */
+    val felt = Skin("felt", "Felt and Paper", 0xFFDCD3BF, 0xFFE9E2D0, 0xFFF3EEE2, 0xFFD8CDB6, 0xFFA89F8C, 0xFF2A2522, 0xFF6B6358,
+        0xFFC9356F, 0xFF12857B, 0xFFA87A06, 0xFFBE3D1C, 0xFF6A4CC4, 0xFF5A8A10, 0xFF2F7FB0, 0xFFC0661A, grit = 0f, shadow = 0x40000000, pad = "felt", light = true)
+    /** Rust: a machine left out in the rain. Oxide browns, verdigris, chalky words */
+    val rust = Skin("rust", "Rust", 0xFF1C1411, 0xFF140E0B, 0xFF231915, 0xFF33241D, 0xFF4A372D, 0xFFEADBC8, 0xFFB09A86,
+        0xFFD9572B, 0xFF4FA392, 0xFFD9A441, 0xFFB8361E, 0xFFB08BC9, 0xFF9FBF4A, 0xFF6FA3B8, 0xFFE07B2E, grit = 2f, shadow = 0xFF5A2A14, pad = "jar")
+    val all = listOf(classic, specimen, stage, felt, rust)
     fun byId(id: String?) = all.firstOrNull { it.id == id } ?: classic
 }
 
@@ -143,7 +151,13 @@ val Archivo = FontFamily(
 val Bungee = FontFamily(Font(R.font.bungee))
 val Mono = FontFamily(Font(R.font.plexmono_400, FontWeight.Normal), Font(R.font.plexmono_700, FontWeight.Bold))
 
-fun ink(on: Color): Color = if (on.luminance() > .45f) C.Ink else C.Cream
+/** Words on a colour: whichever of the skin's dark and light reads better on it (on a light skin, Cream is the dark one). */
+fun ink(on: Color): Color {
+    val l = on.luminance()
+    val a = C.Ink; val b = C.Cream
+    fun contrast(x: Color): Float { val m = x.luminance(); return (maxOf(l, m) + .05f) / (minOf(l, m) + .05f) }
+    return if (contrast(a) >= contrast(b)) a else b
+}
 
 fun lerp(a: Color, b: Color, t: Float) = Color(a.red + (b.red - a.red) * t, a.green + (b.green - a.green) * t, a.blue + (b.blue - a.blue) * t, 1f)
 

@@ -77,6 +77,15 @@ import kotlinx.coroutines.delay
 @Composable
 fun MessMachineApp(state: AppState, ticker: Boolean = true) {
     MaterialTheme(colorScheme = darkColorScheme(primary = C.Pink, secondary = C.Teal, background = C.Paper, surface = C.Card)) {
+        // build 8 of the overhaul: on a light skin the phone's status and navigation bars switch to dark icons
+        val rootView = androidx.compose.ui.platform.LocalView.current
+        val lightSkin = C.skin.light
+        androidx.compose.runtime.SideEffect {
+            val w = (rootView.context as? android.app.Activity)?.window
+            if (w != null) androidx.core.view.WindowCompat.getInsetsController(w, rootView).apply {
+                isAppearanceLightStatusBars = lightSkin; isAppearanceLightNavigationBars = lightSkin
+            }
+        }
         if (ticker) LaunchedEffect(Unit) {
             while (true) {
                 val t = withFrameNanos { it }

@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -454,6 +455,12 @@ class BigTest {
         shot("93-skin-specimen-pro-dark")
         // the skin is kept for the next launch
         assertEquals("specimen", ApplicationProvider.getApplicationContext<Context>().getSharedPreferences("mess", 0).getString("skin", null))
+        // the daylight skin: dark words on paper, and words on a pad still read
+        state.pickSkin("felt"); settle()
+        assertTrue("Felt and Paper is light", com.tideclock.messmachine.ui.C.Paper.luminance() > .6f)
+        assertTrue("words on paper are dark", com.tideclock.messmachine.ui.ink(com.tideclock.messmachine.ui.C.Paper).luminance() < .2f)
+        shot("96-skin-felt"); tab("Steps"); settle(); shot("97-skin-felt-steps"); tab("Pads"); settle()
+        state.pickSkin("rust"); settle(); shot("98-skin-rust")
         state.pickSkin("nonsense"); settle()
         assertEquals("an unknown skin falls back to Classic", "classic", state.skin)
     }
@@ -463,7 +470,7 @@ class BigTest {
         val k = state.project.kit[0]
         state.edit { pat().clear() }
         tab("Steps"); settle()
-        at("steps-0").performTouchInput { down(Offset(width * 3.5f / 16f, height / 2)) }
+        at("steps-0").performTouchInput { down(Offset(width * 3.5f / 16f, height / 2f)) }
         rule.mainClock.advanceTimeBy(700); settle()
         rule.onNodeWithTag("steps-0").performTouchInput { advanceEventTime(100); up() }
         settle()

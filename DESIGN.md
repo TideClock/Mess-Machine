@@ -31,6 +31,9 @@ Rewritten at the end of every session and at each step of a long job (BT-2). Rea
   Build 7 (stems and MIDI): Engine.bounceStems soloes each used, audible sound and pads all stems to one length;
   MidiOut writes format 1, PPQ 96, a tempo track plus one track per sound (C3 = 60 plus the step pitch, velocity 48,
   100, 127 by strength, chance ignored). Messes, Pour it out, For a DAW. The master bus control is not built.
+  Build 8 (two more skins): felt (light: Cream is the words colour, so it is dark; pad face "felt"; Skin.light turns
+  the status bar icons dark) and rust. ink() now picks whichever of Ink and Cream contrasts more, so it works on light
+  skins. Builds 7 and 8 went out in one push.
 - **Live before the overhaul:** build 104 (green, 2026-11-18). The final plan (builds 96 to 101) shipped as runs 97, 98, 101, 102, 103 and 104
   (runs 96, 99 and 100 failed on tests or a compile error and were fixed; run 98's phone test was rerun after an
   emulator download broke). Notes 20, 21, 22 closed. Plan doc: https://claude.ai/artifact/SMmt7Jz3BfDsP7xUqLLEqq .

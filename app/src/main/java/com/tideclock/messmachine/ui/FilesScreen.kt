@@ -175,7 +175,7 @@ fun SettingsScreen(state: AppState) {
         Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
             Column {
                 T("SKIN", size = 12.sp, color = C.Yellow, spacing = .1.em)
-                if (LocalHelp.current) T("The colours of the whole machine. Specimen is a lab notebook at night; Stage is black and loud, for dark rooms.", size = 11.sp, color = C.Dim, weight = FontWeight.Medium,
+                if (LocalHelp.current) T("The colours of the whole machine. Specimen is a lab notebook at night; Stage is black and loud, for dark rooms; Felt and Paper is for daylight; Rust is a machine left out in the rain.", size = 11.sp, color = C.Dim, weight = FontWeight.Medium,
                     modifier = Modifier.padding(top = 4.dp))
                 Wrap(Modifier.padding(top = 6.dp).tagged("skin-chips")) {
                     Skins.all.forEach { k ->

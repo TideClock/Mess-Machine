@@ -280,7 +280,7 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
     }
     val fill = if (pressed) lerp(base, C.Cream, .55f) else base
     // words on the pad: on the jar they take the pad's colour; on Specimen glass and the Stage body they are light
-    val onPad = if (C.skin.pad == "jar") ink(fill) else C.Cream
+    val onPad = if (C.skin.pad == "jar" || C.skin.pad == "felt") ink(fill) else C.Cream
     val onTop = if (C.skin.pad == "band") ink(fill) else onPad
     Box(
         modifier
@@ -314,6 +314,14 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
                             drawRoundRect(if (pressed) fill.copy(alpha = .35f) else C.Paper, cornerRadius = r)
                             drawRoundRect(fill, size = androidx.compose.ui.geometry.Size(size.width, size.height * .22f), cornerRadius = r)
                             drawRect(fill, topLeft = Offset(0f, size.height * .11f), size = androidx.compose.ui.geometry.Size(size.width, size.height * .11f))
+                        }
+                        // Felt and Paper: a flat felt square with a soft drop and a stitched edge
+                        "felt" -> {
+                            drawRoundRect(C.Black.copy(alpha = .22f), topLeft = Offset(sh * .5f, sh * .7f), size = size, cornerRadius = r)
+                            drawRoundRect(fill, cornerRadius = r)
+                            val inset = 4.dp.toPx()
+                            drawRoundRect(Color.White.copy(alpha = .35f), topLeft = Offset(inset, inset), size = androidx.compose.ui.geometry.Size(size.width - inset * 2, size.height - inset * 2),
+                                cornerRadius = CornerRadius(4.dp.toPx()), style = Stroke(width = 1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 5f))))
                         }
                         else -> {
                             drawRoundRect(if (sel) C.Pink else C.Black, topLeft = Offset(sh, sh), size = size, cornerRadius = r)
