@@ -25,7 +25,7 @@ public final class PadOpts {
     public double lfoRate = 4;
     public int lfoTarget = 1;          // an Engine.T_ target: 1 is the strip's filter cutoff
     public double lfoDepth = .5;
-    public int lfoType = 0;            // before build 106 the strip's own filter (0 off, 1 low, 2 high, 3 band); now only read to move an old mess over
+    public int lfoType = 1;            // the strip's filter: 0 off, 1 low pass, 2 high pass, 3 band pass
     public double lfoCut = .55, lfoRes = .25;
     public boolean lfoRetrig = false;  // restart the wave on every hit, or run it with the loop
 
@@ -34,9 +34,6 @@ public final class PadOpts {
      * Saved so what you hear is what reloads and what a bounce renders. Absent targets rest at 0.
      */
     public String fx = "";
-
-    /** Build 106: the pad filter's kind, 1 low pass, 2 high pass, 3 band pass. Everything that moves the filter moves this one. */
-    public int ftype = 1;
 
     /** The resting value of one FX target, or 0. */
     public double fxHome(int target) {
@@ -91,12 +88,12 @@ public final class PadOpts {
 
     public PadOpts copy() {
         PadOpts o = new PadOpts();
-        o.glide = glide; o.glideT = glideT; o.legato = legato; o.route = route; o.xy = xy; o.pack = pack; o.fx = fx; o.ftype = ftype;
+        o.glide = glide; o.glideT = glideT; o.legato = legato; o.route = route; o.xy = xy; o.pack = pack; o.fx = fx;
         o.lfoParse(lfoCode());
         return o;
     }
 
-    public boolean isDefault() { return !glide && glideT == .12 && !legato && route == 0 && xy.isEmpty() && pack.isEmpty() && fx.isEmpty() && ftype == 1 && lfoCode().equals(LFO_DEFAULT); }
+    public boolean isDefault() { return !glide && glideT == .12 && !legato && route == 0 && xy.isEmpty() && pack.isEmpty() && fx.isEmpty() && lfoCode().equals(LFO_DEFAULT); }
 
     public Map<String, Object> toMap() {
         Map<String, Object> m = new LinkedHashMap<>();
@@ -104,7 +101,6 @@ public final class PadOpts {
         if (!xy.isEmpty()) m.put("xy", xy);
         if (!pack.isEmpty()) m.put("pack", pack);
         if (!fx.isEmpty()) m.put("fx", fx);
-        m.put("ftype", (double) ftype);  // its presence also marks a mess saved by build 106 or later
         if (!lfoCode().equals(LFO_DEFAULT)) m.put("lfo", lfoCode());
         return m;
     }
@@ -119,19 +115,6 @@ public final class PadOpts {
         o.pack = Json.str(m.get("pack"), "");
         o.fx = Json.str(m.get("fx"), "");
         o.lfoParse(Json.str(m.get("lfo"), ""));
-        o.ftype = (int) SoundEdit.clamp(Json.num(m.get("ftype"), 1), 1, 3);
-        // build 106: the LFO no longer has a filter of its own. A mess saved before that heard the LFO's filter
-        // (its kind, cutoff and resonance) whenever the LFO was on: those become the pad filter's resting place.
-        if (!m.containsKey("ftype") && o.lfoType > 0) {
-            if (o.lfoOn) {
-                Map<Integer, Double> h = o.fxMap();
-                h.put(1, SoundEdit.clamp(1 - o.lfoCut, 0, 1));   // Engine.T_FILTER: how far closed
-                h.put(2, SoundEdit.clamp(o.lfoRes, 0, 1));       // Engine.T_RES
-                o.fxSet(h);
-                o.ftype = o.lfoType;
-            }
-            o.lfoType = 0;
-        }
         return o;
     }
 }
