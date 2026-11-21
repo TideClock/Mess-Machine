@@ -67,7 +67,7 @@ object Faq {
         Line("bottomdock", "Bottom bar", "Edit, Pack, Hold, Chords, Repeat and the key: always under the page."),
         Line("perform-handle", "Perform row", "Swipe up (or tap) for the controls you play live: wheel, filter, Lock, mouth, throws. ⋯ picks what lives in it."),
         Line("repeat-toggle", "Repeat", "Held notes repeat in time. Edit, then Repeat, for its rate, style and pattern."),
-        Line("dock-throws", "Throws", "Opens the perform effects: stutter, echo throw, tape stop and the rest."),
+        Line("dock-throws", "Toss", "The throws: opens the perform effects: stutter, echo throw, tape stop and the rest."),
         Line("menu-levels", "16 Levels", "One sound on all 16 pads, softest on pad 1 and hardest on pad 16. Recorded hits keep how hard they were."),
         Line("edit-tabs", "The Edit tray", "Edit, then a pad: everything about it in five drawers. Sound (the sound itself), FX (its faders and filter), Keys (Padiano, 16 Levels, glide), Mod (LFO, XY square, lanes) and More (mute, solo, route, move, clear)."),
         Line("master-bus", "The master bus", "On the Tempo sheet. Squash presses the whole mix together; Level is its volume after. Both save with the mess."),

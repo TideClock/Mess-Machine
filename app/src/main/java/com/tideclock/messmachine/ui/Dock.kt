@@ -222,7 +222,7 @@ private fun DockItem(state: AppState, t: String) {
         }
         "pitch" -> PitchWheel(state)
         // build 107: the perform effects panel (stutter, echo throw, tape stop...) moved here from the bottom bar's FX
-        "throws" -> DockBtn("THRW", { state.showFx = !state.showFx }, tag = "dock-throws", on = state.showFx, onColor = C.Pink)
+        "throws" -> DockBtn("TOSS", { state.showFx = !state.showFx }, tag = "dock-throws", on = state.showFx, onColor = C.Pink)
         "xy" -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
             val pad = state.project.sel
             DockBtn("XY", { if (state.project.kit[pad].isNotEmpty()) state.cycleXy(pad) }, tag = "dock-xy", onColor = C.Pink)

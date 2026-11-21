@@ -42,14 +42,14 @@ fun EditTray(state: AppState, pad: Int) {
             "sound" -> {
                 val recHere = state.micOn && state.micPad == pad
                 Wrap(gap = 6.dp) {
-                    Btn("Hear it", { state.preview(k) }, small = true, color = col, tag = "menu-hear")
-                    if (Project.isSynth(k)) Btn("◎ Synth", { state.closeEdit(); state.tab = Tab.Synth }, small = true, tag = "menu-synth")
-                    else Btn("✂ Sample", { state.closeEdit(); state.overlay = Overlay.Doctor(k) }, small = true, tag = "menu-doctor")
-                    Btn("Swap sound", { state.closeEdit(); state.overlay = Overlay.Picker(pad) }, small = true, tag = "menu-swap")
-                    Btn(if (recHere) "■ Stop recording" else "● Record onto it", { state.closeEdit(); state.askRecord(pad) }, small = true, enabled = !state.micOn || recHere, tag = "menu-record")
-                    Btn(if (k in state.favs) "★ Starred" else "☆ Star", { state.toggleFav(k) }, on = k in state.favs, onColor = C.Yellow, small = true, tag = "menu-star")
-                    Btn("Keep in Workbench", { state.keepInBench(pad) }, small = true, tag = "menu-keep")
-                    Btn("Share this sound", { state.shareSoundWav(k) }, small = true, tag = "menu-share")
+                    Btn("Hear it", { state.preview(k) }, color = col, tag = "menu-hear")
+                    if (Project.isSynth(k)) Btn("◎ Synth", { state.closeEdit(); state.tab = Tab.Synth }, tag = "menu-synth")
+                    else Btn("✂ Sample", { state.closeEdit(); state.overlay = Overlay.Doctor(k) }, tag = "menu-doctor")
+                    Btn("Swap sound", { state.closeEdit(); state.overlay = Overlay.Picker(pad) }, tag = "menu-swap")
+                    Btn(if (recHere) "■ Stop recording" else "● Record onto it", { state.closeEdit(); state.askRecord(pad) }, enabled = !state.micOn || recHere, tag = "menu-record")
+                    Btn(if (k in state.favs) "★ Starred" else "☆ Star", { state.toggleFav(k) }, on = k in state.favs, onColor = C.Yellow, tag = "menu-star")
+                    Btn("Keep in Workbench", { state.keepInBench(pad) }, tag = "menu-keep")
+                    Btn("Share this sound", { state.shareSoundWav(k) }, tag = "menu-share")
                 }
             }
             "fx" -> {
@@ -58,8 +58,8 @@ fun EditTray(state: AppState, pad: Int) {
             }
             "keys" -> {
                 Wrap(gap = 6.dp) {
-                    Btn(if (pad in state.keyboards) "Padiano: hide" else "Padiano under this row", { state.togglePack(pad) }, on = pad in state.keyboards, onColor = col, small = true, tag = "menu-piano")
-                    Btn(if (state.levelsPad == pad) "16 Levels: off" else "16 Levels: soft to hard", { state.switchLevels(pad) }, on = state.levelsPad == pad, onColor = C.Yellow, small = true, tag = "menu-levels")
+                    Btn(if (pad in state.keyboards) "Padiano: hide" else "Padiano under this row", { state.togglePack(pad) }, on = pad in state.keyboards, onColor = col, tag = "menu-piano")
+                    Btn(if (state.levelsPad == pad) "16 Levels: off" else "16 Levels: soft to hard", { state.switchLevels(pad) }, on = state.levelsPad == pad, onColor = C.Yellow, tag = "menu-levels")
                 }
                 T("GLIDE", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
                 GlideTray(state, pad)
@@ -67,7 +67,7 @@ fun EditTray(state: AppState, pad: Int) {
             "mod" -> {
                 // the XY square first: one tap, where the thumb lands; the LFO below it fills the drawer
                 Wrap(Modifier.padding(bottom = 8.dp), gap = 6.dp) {
-                    Btn("XY square: ${state.xyOf(pad).name}", { state.closeEdit(); state.overlay = Overlay.Xy(pad) }, small = true, tag = "menu-xy")
+                    Btn("XY square: ${state.xyOf(pad).name}", { state.closeEdit(); state.overlay = Overlay.Xy(pad) }, tag = "menu-xy")
                 }
                 LfoStrip(state, pad, col)
                 LfoTray(state, pad)
@@ -78,16 +78,16 @@ fun EditTray(state: AppState, pad: Int) {
             }
             else -> {
                 Wrap(gap = 6.dp) {
-                    Btn(if (P.mutes.contains(k)) "Unmute" else "Mute", { state.toggleMute(k) }, on = P.mutes.contains(k), onColor = C.Riot, small = true, tag = "menu-mute-$pad")
-                    Btn(if (P.solos.contains(k)) "Unsolo" else "Solo", { state.toggleSolo(k) }, on = P.solos.contains(k), onColor = C.Yellow, small = true, tag = "menu-solo-$pad")
-                    Btn("Route: " + (if (P.opt(pad).route == 0) "mix" else "bus ${P.opt(pad).route}"), { state.cycleRoute(pad) }, small = true, tag = "menu-route")
-                    Btn("Move to another pad", { state.closeEdit(); state.armSwap(pad) }, small = true, tag = "menu-move")
+                    Btn(if (P.mutes.contains(k)) "Unmute" else "Mute", { state.toggleMute(k) }, on = P.mutes.contains(k), onColor = C.Riot, tag = "menu-mute-$pad")
+                    Btn(if (P.solos.contains(k)) "Unsolo" else "Solo", { state.toggleSolo(k) }, on = P.solos.contains(k), onColor = C.Yellow, tag = "menu-solo-$pad")
+                    Btn("Route: " + (if (P.opt(pad).route == 0) "mix" else "bus ${P.opt(pad).route}"), { state.cycleRoute(pad) }, tag = "menu-route")
+                    Btn("Move to another pad", { state.closeEdit(); state.armSwap(pad) }, tag = "menu-move")
                 }
                 T("FANNYPACK STRIPS", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
                 PackTray(state, pad)
                 Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    if (P.pat().usedBy(k)) Btn("Clear from loop ${Project.LETTERS[P.cur]}", { state.clearSoundInLoop(pad) }, small = true, tier = Tier.Danger, tag = "menu-clearloop")
-                    Btn("Clear pad", { state.closeEdit(); state.clearPad(pad) }, small = true, tier = Tier.Danger, tag = "menu-clear")
+                    if (P.pat().usedBy(k)) Btn("Clear from loop ${Project.LETTERS[P.cur]}", { state.clearSoundInLoop(pad) }, tier = Tier.Danger, tag = "menu-clearloop")
+                    Btn("Clear pad", { state.closeEdit(); state.clearPad(pad) }, tier = Tier.Danger, tag = "menu-clear")
                 }
             }
         }
