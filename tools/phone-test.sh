@@ -126,6 +126,43 @@ if [ -z "$xy" ]; then note "pad 6: NOT FOUND"; fail=1; else
   adb shell input motionevent UP $cx $cy; sleep 1
 fi
 alive && note "gestures: running" || { note "gestures: NOT RUNNING"; fail=1; adb shell am start -n $PKG/.MainActivity; sleep 5; }
+
+# 3d. the overhaul on the release APK: every colour skin on the Play tab, then the Edit tray's five drawers
+#     (R8 shrinks the release build; this is where a stripped class or a bad colour would show)
+textc() {
+  adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1
+  adb shell cat /sdcard/ui.xml > $OUT/ui-now.xml
+  python3 - "$1" "$OUT/ui-now.xml" <<'PY'
+import sys,re
+t=open(sys.argv[2],encoding='utf-8',errors='ignore').read()
+for m in re.finditer(r'text="([^"]*)"[^>]*?bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"',t):
+    if re.search(sys.argv[1],m[1],re.I): print('%d %d'%((int(m[2])+int(m[4]))//2,(int(m[3])+int(m[5]))//2)); break
+PY
+}
+close_sheets
+adb shell input tap $(centre tab-Pads); sleep 1
+for sk in specimen stage felt rust classic; do
+  m=$(centre menu); [ -n "$m" ] && { adb shell input tap $m; sleep 1; }
+  st=$(textc "SETTINGS"); [ -n "$st" ] && { adb shell input tap $st; sleep 2; }
+  k=""; for i in 1 2 3 4 5; do k=$(centre skin-$sk); [ -n "$k" ] && break; adb shell input swipe $(( W / 2 )) $(( H * 3 / 4 )) $(( W / 2 )) $(( H / 3 )) 300; sleep 1; done
+  if [ -z "$k" ]; then note "skin $sk: chip NOT FOUND"; fail=1; else adb shell input tap $k; sleep 1; note "skin $sk: picked"; fi
+  close_sheets
+  shot "10-skin-$sk"
+  alive || { note "skin $sk: NOT RUNNING"; fail=1; adb shell am start -n $PKG/.MainActivity; sleep 5; }
+done
+p=$(centre pad-1); e=$(centre open-padmenu)
+if [ -n "$p" ] && [ -n "$e" ]; then
+  adb shell input tap $p; sleep 1; adb shell input tap $e; sleep 1; adb shell input tap $p; sleep 2
+  for d in sound fx keys mod more; do
+    t=$(centre edit-tab-$d)
+    if [ -z "$t" ]; then note "edit tray $d: NOT FOUND"; fail=1; else adb shell input tap $t; sleep 1; shot "11-edit-$d"; fi
+  done
+  # Back closes the tray and stays in the app
+  adb shell input keyevent KEYCODE_BACK; sleep 1
+  [ -z "$(centre tray)" ] && note "edit tray: Back closed it" || { note "edit tray: Back DID NOT close it"; fail=1; }
+  infront "after the edit tray"
+else note "edit tray: pad or Edit NOT FOUND"; fail=1; fi
+alive && note "skins and edit tray: running" || { note "skins and edit tray: NOT RUNNING"; fail=1; adb shell am start -n $PKG/.MainActivity; sleep 5; }
 infront "gestures"
 
 # 3b. sound and smoothness: play the demo mess for 30 seconds, then read the audio log and the frame stats

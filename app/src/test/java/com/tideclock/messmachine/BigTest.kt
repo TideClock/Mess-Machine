@@ -548,8 +548,9 @@ class BigTest {
         assertTrue("Solo from the More drawer", state.project.solos.contains(state.project.kit[2]))
         assertEquals("and the tray stays open", "edit:2", state.tray)
         at("menu-solo-2").performClick(); settle()
-        at("open-padmenu").performClick(); settle()
-        assertEquals("Edit again closes it", null, state.tray)
+        rule.runOnUiThread { rule.activity.onBackPressedDispatcher.onBackPressed() }; settle()
+        assertEquals("Back closes the tray", null, state.tray)
+        assertFalse("and the app is still there", rule.activity.isFinishing)
         // Classic keeps the menu
         state.pickLayout("classic"); settle()
         padMenuOf(2)

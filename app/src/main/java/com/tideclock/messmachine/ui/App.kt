@@ -95,6 +95,11 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
         LaunchedEffect(state.toastId) {
             if (state.toast != null) { delay(3200); state.toast = null }
         }
+        // Back closes the tray, the step sheet or a pad's menu before it ever leaves the app (a sheet over them wins: it is
+        // registered after this one)
+        BackHandler(enabled = state.tray != null || state.stepSheet != null || state.padMenu >= 0 || state.performOpen) {
+            when { state.tray != null -> state.tray = null; state.padMenu >= 0 -> state.padMenu = -1; state.stepSheet != null -> state.stepSheet = null; else -> state.switchPerform(false) }
+        }
         BackHandler(enabled = state.overlay != null) { state.overlay = null }
         // Lock: back does nothing but remind you how to unlock; the screen is pinned if you chose that
         BackHandler(enabled = state.locked) { state.say("Locked. Hold the lock on the dock for a second to unlock.") }
