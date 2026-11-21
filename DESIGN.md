@@ -14,6 +14,10 @@ Rewritten at the end of every session and at each step of a long job (BT-2). Rea
   snapshot); the LFO adds on top. One pad filter (PadOpts.ftype; the LFO's own filter is gone and old messes move
   over in PadOpts.fromMap; "ftype" in a mess marks the new format). Swaps and clears carry lanes and pad options.
   Every mess is copied once to files/kept-before-106 before the new format saves.
+  Build 3 (doors): Menu is Edit (pencil icon ic_edit), Repeat on the bottom bar (FX moved to the perform row's Throws),
+  the side dock became the perform row (PerformRow in Dock.kt, swipes up above the bottom bar; PERFORM_SKIP leaves
+  out Hold and Rec). Settings, Layout: new / side / classic (classic = build 104's Menu, FX and side dock). Pads
+  mark an LFO (yellow), a lane in this loop (teal) and a resting FX fader (red). Not yet: the one Edit tray.
 - **Live before the overhaul:** build 104 (green, 2026-11-18). The final plan (builds 96 to 101) shipped as runs 97, 98, 101, 102, 103 and 104
   (runs 96, 99 and 100 failed on tests or a compile error and were fixed; run 98's phone test was rerun after an
   emulator download broke). Notes 20, 21, 22 closed. Plan doc: https://claude.ai/artifact/SMmt7Jz3BfDsP7xUqLLEqq .

@@ -119,7 +119,7 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
                 if (state.updater.ready && !state.updater.later || state.updater.busy) UpdateBar(state)
                 if (state.cpuAsk) CpuBanner(state)
                 Row(Modifier.weight(1f).fillMaxWidth()) {
-                Dock(state)
+                if (state.layout != "new") Dock(state)
                 Box(Modifier.weight(1f).fillMaxHeight().tagged("screen-${state.tab.label}")) {
                     // pages change with a short fade instead of a hard cut (note #5)
                     Crossfade(targetState = state.tab, animationSpec = tween(150), label = "tab") { t ->
@@ -135,7 +135,9 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
                     }
                 }
                 }
-                // Menu, Hold and chords stay under whatever page you play on (build 84)
+                // build 107: the perform row swipes up from the bottom bar, on every page
+                if (state.layout == "new") PerformRow(state)
+                // Edit, Hold and chords stay under whatever page you play on (build 84)
                 if (state.tab == Tab.Pads || state.tab == Tab.Console || state.tab == Tab.Synth) BottomDock(state)
                 Tabs(state)
             }
@@ -206,7 +208,7 @@ fun StartScreen(state: AppState) {
         for ((n, line) in listOf(
             "Tap a pad. It plays. Tap a few at once.",
             "Press Play. The beat starts looping.",
-            "Pick a pad, then tap Menu for its settings.",
+            "Pick a pad, then tap Edit for its settings.",
         ).withIndex()) {
             Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 T("${n + 1}", size = 26.sp, color = C.Yellow, family = Bungee, modifier = Modifier.padding(end = 12.dp))

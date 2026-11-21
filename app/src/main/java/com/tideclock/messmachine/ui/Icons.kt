@@ -37,6 +37,7 @@ object Icons {
         "MIDI map" to (R.drawable.ic_midi_map to "place"),
         "Notes (bug)" to (R.drawable.ic_notes_bug to "place"),
         "Menu" to (R.drawable.ic_menu to "perform"),
+        "Edit" to (R.drawable.ic_edit to "perform"),
         "Pack" to (R.drawable.ic_pack to "perform"),
         "Hold" to (R.drawable.ic_hold to "perform"),
         "Chords" to (R.drawable.ic_chords to "perform"),

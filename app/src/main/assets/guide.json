@@ -1,20 +1,20 @@
 {
-  "title": "One filter, one rule: let go and it goes back",
+  "title": "Edit, Repeat and the perform row",
   "thisBuild": [
-    "Every control now works the same way: your finger wins while it holds on, then a recorded lane, then where the control rests. Let go and it goes back to the lane or the resting place, never to zero.",
-    "One pad filter: the FX strip's Cut and Res, the LFO, the sphere, the Padiano strip and lanes all move the same filter, and they add up instead of fighting.",
-    "The LFO has no filter of its own any more. Aimed at the filter, it wubs the pad filter from where it rests. Lo, Hi or Band is the pad filter's kind, in the LFO's tray.",
-    "Cut and Res on the FX strip now save with the mess, like the other faders.",
-    "Swapping two pads swaps their faders, LFO and lanes too. Clearing a pad clears them, so the next sound starts clean.",
-    "Old messes are moved over: an LFO filter you set before becomes the pad filter's resting place. A copy of every mess as it was is kept on the phone."
+    "Menu is now Edit, with a pencil: tap Edit, then anything, for its settings. Edit twice opens what you touched last.",
+    "Repeat sits on the bottom bar beside Hold. Edit, then Repeat, for its rate, style and pattern.",
+    "The side dock became the perform row: swipe up (or tap) the strip above the bottom bar. Wheel, filter, Lock, mouth and the rest live there; ⋯ picks them. Hold and Rec are left out, since they are on screen already.",
+    "The perform effects (stutter, echo throw, tape stop) are the Throws button in the perform row.",
+    "Pads show what moves them: a yellow dot for an LFO, teal for a lane in this loop, red for an FX fader left up.",
+    "Settings, Layout: New, New with the row on the left side, or Classic, which puts back Menu, FX and the side dock exactly as they were."
   ],
   "watch": [
-    "An old mess with an LFO filter: does it sound the same as before?",
-    "A sphere on the filter over a set Cut: let go, does it come back to your Cut?",
-    "Swap two pads: do their faders go with them?"
+    "Does the perform row feel better at the bottom, or do you want it on the side? Layout switches it.",
+    "Repeat on the bar: is it where your thumb expects?",
+    "The dots on pads: do they help, or are they noise?"
   ],
   "limits": [
-    "The look and the doors are the same as before; the Edit door and the perform row are the next build.",
-    "A wheel left on Stay and a sphere on pitch share one hand: letting go of the sphere also lets go of the wheel."
+    "The full Edit tray (Sound, FX, Keys, Mod, More in one place) is the next step; Edit still opens the same settings as Menu did.",
+    "Classic is the rollback switch for this build: nothing else is lost in it."
   ]
 }

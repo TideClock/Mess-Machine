@@ -126,6 +126,15 @@ def _():
     im,d=new()
     for i,(x,y,c) in enumerate([(120,300,T),(256,190,Y),(392,80,P)]): ell(d,[x-80,y-80+40,x+80,y+80+40],c); eye(d,x,y+40,38)
     return im
+@icon('perform','Edit')
+def _():
+    # build 107: the bottom bar's Edit (was Menu): a fat pencil with an eye on its barrel
+    im,d=new()
+    poly(d,[(120,330),(330,120),(410,200),(200,410)],Y); poly(d,[(200,410),(410,200),(370,160),(160,370)],YD)
+    poly(d,[(330,120),(380,70),(460,150),(410,200)],P)
+    poly(d,[(120,330),(200,410),(70,460)],CR); poly(d,[(70,460),(100,400),(130,430)],K)
+    line(d,[(120,330),(330,120),(380,70),(460,150),(410,200),(200,410),(70,460),(120,330)])
+    eye(d,265,265,46); return im
 @icon('perform','Repeat')
 def _():
     im,d=new(); d.arc([70,70,442,442],30,330,fill=K,width=80); d.arc([70,70,442,442],30,330,fill=P,width=44)

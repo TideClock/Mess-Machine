@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -45,6 +46,62 @@ import androidx.compose.ui.unit.sp
 import com.tideclock.messmachine.AppState
 import com.tideclock.messmachine.DOCK_TYPES
 import kotlinx.coroutines.launch
+
+/**
+ * Build 107: the perform row. The side dock's controls (wheel, filter, Lock, mouth, throws...) in one row that swipes
+ * up from the bottom bar, where the thumbs are. Tap or swipe up the handle to open it, swipe down or tap to close.
+ * ⋯ picks what lives in it, from the same list the side dock used (Hold and Rec are left out: they are on screen already).
+ */
+@Composable
+fun PerformRow(state: AppState) {
+    Column(Modifier.fillMaxWidth().background(C.Ink).tagged("performrow")) {
+        Box(
+            Modifier.fillMaxWidth().heightIn(min = 26.dp)
+                .pointerInput(state.performOpen) {
+                    awaitEachGesture {
+                        val d = awaitFirstDown(requireUnconsumed = false)
+                        d.consume()
+                        var dy = 0f
+                        while (true) {
+                            val e = awaitPointerEvent()
+                            val c = e.changes.firstOrNull { it.id == d.id } ?: break
+                            dy = c.position.y - d.position.y
+                            c.consume()
+                            if (!c.pressed) break
+                        }
+                        // a tap flips it; a swipe opens (up) or closes (down)
+                        state.switchPerform(if (dy < -12.dp.toPx()) true else if (dy > 12.dp.toPx()) false else !state.performOpen)
+                    }
+                }
+                .tagged("perform-handle"),
+            contentAlignment = Alignment.Center,
+        ) {
+            T(if (state.performOpen) "▾ PERFORM ROW" else "▴ PERFORM ROW", size = 10.sp, color = C.Dim, family = Mono, spacing = .12.em)
+        }
+        if (!state.performOpen) return
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(start = 8.dp, end = 8.dp, bottom = 8.dp).heightIn(max = 190.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.Top,
+        ) {
+            for (t in state.dockItems.toList()) if (t !in com.tideclock.messmachine.PERFORM_SKIP) Column(Modifier.width(62.dp), horizontalAlignment = Alignment.CenterHorizontally) { DockItem(state, t) }
+            var pick by remember { mutableStateOf(false) }
+            Box(Modifier.width(52.dp)) {
+                DockBtn("⋯", { pick = true }, tag = "perform-edit", enabled = !state.locked)
+                DropdownMenu(expanded = pick, onDismissRequest = { pick = false }, modifier = Modifier.background(C.Ink)) {
+                    T("IN THE PERFORM ROW", size = 11.sp, color = C.Yellow, spacing = .08.em, modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp))
+                    for ((id, name) in DOCK_TYPES) if (id !in com.tideclock.messmachine.PERFORM_SKIP) {
+                        DropdownMenuItem(
+                            text = { T((if (id in state.dockItems) "✓ " else "    ") + name, size = 14.sp, weight = FontWeight.Medium) },
+                            onClick = { state.toggleDockItem(id) },
+                            modifier = Modifier.tagged("perform-pick-$id"),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
 
 /**
  * The side dock: a slim column on the left edge of every page with the controls you want while
@@ -162,6 +219,8 @@ private fun DockItem(state: AppState, t: String) {
             DockWord(if (state.mouthOn && state.mouthHeard) "WUB" else "SET", if (state.mouthOn) C.Pink else C.Dim, "dock-mouth-set") { state.overlay = com.tideclock.messmachine.Overlay.Mouth }
         }
         "pitch" -> PitchWheel(state)
+        // build 107: the perform effects panel (stutter, echo throw, tape stop...) moved here from the bottom bar's FX
+        "throws" -> DockBtn("THRW", { state.showFx = !state.showFx }, tag = "dock-throws", on = state.showFx, onColor = C.Pink)
         "xy" -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
             val pad = state.project.sel
             DockBtn("XY", { if (state.project.kit[pad].isNotEmpty()) state.cycleXy(pad) }, tag = "dock-xy", onColor = C.Pink)

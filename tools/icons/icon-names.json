@@ -95,6 +95,10 @@
   "ic_chords",
   "perform"
  ],
+ "Edit": [
+  "ic_edit",
+  "perform"
+ ],
  "Repeat": [
   "ic_repeat",
   "perform"

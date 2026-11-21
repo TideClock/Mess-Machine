@@ -69,8 +69,11 @@ const val SLOT_P = 92
 val DOCK_TYPES = listOf(
     "lock" to "Lock", "hold" to "Hold", "filter" to "Filter + resonance", "repeat" to "Repeat",
     "rec" to "Rec", "beat" to "Beat light", "stutter" to "Stutter", "echo" to "Echo throw", "xy" to "XY setup for the picked pad", "desk" to "Desk layouts",
-    "mouth" to "Mouth control", "pitch" to "Pitch wheel",
+    "mouth" to "Mouth control", "pitch" to "Pitch wheel", "throws" to "All the throws (perform effects)",
 )
+
+/** Build 107: Hold and Rec are already on the bottom bar and the transport, so the perform row does not offer them. */
+val PERFORM_SKIP = setOf("hold", "rec")
 
 /** Every module you can add, with its name. */
 val CONSOLE_TYPES = listOf(
@@ -1984,7 +1987,7 @@ class AppState(private val app: Context) {
             tag.startsWith("pack-") -> "pack:${p()}"
             tag == "hold-toggle" || tag.startsWith("dock-hold") -> "hold"
             tag == "chords-toggle" || tag == "keysbar-open" -> "keys"
-            tag == "dock-repeat" || tag == "dock-rate" || tag.startsWith("rate-") -> "repeat"
+            tag == "dock-repeat" || tag == "dock-rate" || tag == "repeat-toggle" || tag.startsWith("rate-") -> "repeat"
             tag.startsWith("dock-pitch") -> "wheel"
             tag == "dock-cut" || tag == "dock-res" || tag == "dock-target" || tag == "dock-stay" -> "dockfilter"
             tag == "bpm" -> "tempo"
@@ -2672,6 +2675,11 @@ class AppState(private val app: Context) {
             if ("pitch" !in l) l.add(maxOf(0, l.indexOf("filter")).coerceAtMost(l.size), "pitch")
             prefs.edit().putBoolean("dockPitch", true).putString("dock", l.joinToString(",")).apply()
         }
+        // build 107: the throws (the old FX button) join the perform row once; after that they are yours to remove
+        if (!prefs.getBoolean("dockThrows", false)) {
+            if ("throws" !in l) l.add("throws")
+            prefs.edit().putBoolean("dockThrows", true).putString("dock", l.joinToString(",")).apply()
+        }
     }
     var dockOpen by mutableStateOf(prefs.getBoolean("dockOpen2", false))
         private set
@@ -2682,6 +2690,20 @@ class AppState(private val app: Context) {
     var dockRes by mutableFloatStateOf(0f)
 
     fun switchDockOpen(v: Boolean) { dockOpen = v; prefs.edit().putBoolean("dockOpen2", v).apply() }
+
+    /**
+     * Build 107: where things live. "new" = Edit on the bottom bar, Repeat beside Hold, and the side dock's controls in
+     * a perform row that swipes up from the bottom bar; "side" = the same with that row on the left edge as before;
+     * "classic" = everything as it was in build 104 (Menu, FX, the side dock), so the change can be tried and undone.
+     */
+    var layout by mutableStateOf(prefs.getString("layout", "new")!!.let { if (it in listOf("new", "side", "classic")) it else "new" })
+        private set
+    fun pickLayout(v: String) { layout = v; prefs.edit().putString("layout", v).apply(); notes.trail("layout $v") }
+    /** The perform row is up (new layout). */
+    var performOpen by mutableStateOf(prefs.getBoolean("performOpen", false))
+        private set
+    fun switchPerform(v: Boolean) { performOpen = v; prefs.edit().putBoolean("performOpen", v).apply() }
+    fun switchRepeat() { setLive { nr = !nr }; notes.trail("repeat ${if (live.nr) "on" else "off"}") }
     fun toggleDockItem(t: String) {
         if (!dockItems.remove(t)) dockItems.add(t)
         prefs.edit().putString("dock", dockItems.joinToString(",")).apply()

@@ -408,6 +408,39 @@ class BigTest {
         assertEquals(null, state.fxSend["0:$t"])
     }
 
+    @Test fun newLayoutEditRepeatAndPerformRow() {
+        // build 107: Edit (was Menu) and Repeat on the bottom bar, no side dock, the perform row swipes up
+        assertEquals("new", state.layout)
+        rule.onNodeWithTag("dock-open").assertDoesNotExist()
+        rule.onNodeWithTag("fx-toggle").assertDoesNotExist()
+        rule.onNodeWithTag("repeat-toggle").performClick(); settle()
+        assertTrue("Repeat on the bar turns repeat on", state.live.nr)
+        rule.onNodeWithTag("repeat-toggle").performClick(); settle()
+        assertFalse(state.live.nr)
+        rule.onNodeWithTag("perform-handle").performClick(); settle()
+        assertTrue(state.performOpen)
+        rule.onNodeWithTag("performrow").assertExists()
+        rule.onNodeWithTag("dock-hold").assertDoesNotExist()
+        // the throws joined the row: add them, then they open the perform effects
+        if ("throws" !in state.dockItems) state.toggleDockItem("throws")
+        settle()
+        rule.onNodeWithTag("dock-throws").performScrollTo().performClick(); settle()
+        assertTrue(state.showFx)
+        // marks: an LFO and a resting FX fader on pad 1 show as dots on the pad
+        state.setPadOpt(0) { lfoOn = true }
+        state.fxSendTo(0, com.tideclock.messmachine.engine.Engine.T_RVB, .5f, false)
+        ShadowLooper.idleMainLooper(600, java.util.concurrent.TimeUnit.MILLISECONDS); settle()
+        shot("87-new-layout-perform-row")
+        // Edit, then tap Repeat, opens Repeat's settings (rate, style, pattern)
+        assertEquals("repeat", state.settingsKind("repeat-toggle"))
+        // the perform row folds down again, and Classic puts the side dock back
+        rule.onNodeWithTag("perform-handle").performClick(); settle()
+        assertFalse(state.performOpen)
+        state.pickLayout("classic"); settle()
+        rule.onNodeWithTag("dock-open").assertExists()
+        rule.onNodeWithTag("fx-toggle").assertExists()
+    }
+
     @Test fun padsCarryTheirFadersAndLanes() {
         // build 106: swapping two pads swaps their FX faders and lanes with their sounds; clearing a pad drops them
         val t = com.tideclock.messmachine.engine.Engine.T_RVB
@@ -490,6 +523,7 @@ class BigTest {
     }
 
     @Test fun dockLightsFollowRepeatAndRec() {
+        state.pickLayout("classic"); settle()  // build 107: this flow drives the side dock and the FX button
         // the dock starts folded to a thin edge strip; tap it to open
         assertFalse("the dock starts folded", state.dockOpen)
         rule.onNodeWithTag("dock-open").performClick()
@@ -683,6 +717,7 @@ class BigTest {
     }
 
     @Test fun dockLockAndFilter() {
+        state.pickLayout("classic"); settle()  // build 107: this flow drives the side dock and the FX button
         state.switchDockOpen(true)
         settle()
         rule.onNodeWithTag("dock").assertExists()
@@ -752,6 +787,7 @@ class BigTest {
     /* ---------- build C: effects, routing, XY ---------- */
 
     @Test fun effectsYouCanEdit() {
+        state.pickLayout("classic"); settle()  // build 107: this flow drives the side dock and the FX button
         at("fx-toggle").performClick()
         settle()
         rule.onNodeWithTag("fxedit-crush").performScrollTo().performClick()
@@ -781,6 +817,7 @@ class BigTest {
 
     /** SE-1, SE-5, SE-6, SE-7: the Sample sheet's Play page, the one-tap Sample button and the repeat styles. */
     @Test fun samplePlayPage() {
+        state.pickLayout("classic"); settle()  // build 107: this flow drives the side dock and the FX button
         val k = state.project.kit[state.project.sel]
         assertTrue(k.isNotEmpty())
         rule.onNodeWithTag("open-sample").performClick()
@@ -900,6 +937,7 @@ class BigTest {
      * mouth control moves the picked pad's filter.
      */
     @Test fun synthHoldPadianoPatternsAndMouth() {
+        state.pickLayout("classic"); settle()  // build 107: this flow drives the side dock and the FX button
         tab("Synth")
         at("synth-new-empty").performClick(); settle()
         val pad = state.project.sel
@@ -1028,6 +1066,7 @@ class BigTest {
 
     /** MM-T: the Hold lesson, done by touch: each step moves on only when it is really done, and the ring finds its control. */
     @Test fun holdLessonByTouch() {
+        state.pickLayout("classic"); settle()  // build 107: this flow drives the side dock and the FX button
         state.overlay = Overlay.Learn
         settle()
         shot("50-learn")
@@ -1364,6 +1403,7 @@ class BigTest {
 
     /** Build 97 (Nov 18): Menu, then tap; Menu twice; the settings tray; Auto from a fader; flick behind a setting. */
     @Test fun build97MenuThenTap() {
+        state.pickLayout("classic"); settle()  // build 107: this flow drives the side dock and the FX button
         // Menu, then a dock button: its tray
         state.switchDockOpen(true); settle()
         menuThenTap("dock-pitch")
@@ -1560,6 +1600,7 @@ class BigTest {
 
     /** The FannyPack, the FX strip, Steps row tools and the pitch wheel (the build after 84). */
     @Test fun fannyPackFxStripRowToolsAndWheel() {
+        state.pickLayout("classic"); settle()  // build 107: this flow drives the side dock and the FX button
         val T_RVB = com.tideclock.messmachine.engine.Engine.T_RVB
         // Pack on the bottom dock opens the picked pad's FannyPack under its row, with Keys in it
         tapPad(1); rule.mainClock.advanceTimeBy(300); settle()
@@ -1693,6 +1734,7 @@ class BigTest {
      * has no line in Faq.kt, so the FAQ cannot go stale.
      */
     @Test fun faqSpeedGuideAndMoves() {
+        state.pickLayout("classic"); settle()  // build 107: this flow drives the side dock and the FX button
         // What the FAQ: tap ?, then a control: it is explained, not pressed
         rule.onNodeWithTag("help-toggle").performClick(); settle()
         assertTrue(state.faqOn)
@@ -2230,6 +2272,7 @@ class BigTest {
     /* ---------- live effects ---------- */
 
     @Test fun fxHoldAndFilterPad() {
+        state.pickLayout("classic"); settle()  // build 107: this flow drives the side dock and the FX button
         rule.onNodeWithTag("fx-toggle").performClick()
         settle()
         state.togglePlay()

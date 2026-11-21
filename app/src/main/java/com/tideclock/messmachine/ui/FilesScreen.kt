@@ -175,6 +175,18 @@ fun SettingsScreen(state: AppState) {
                     modifier = Modifier.padding(top = 8.dp))
             }
         }
+        // build 107: where things live. New is the default; Classic puts back build 104's Menu, FX and side dock
+        Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
+            Column {
+                T("LAYOUT", size = 12.sp, color = C.Yellow, spacing = .1.em)
+                Wrap(Modifier.padding(top = 6.dp).tagged("layout-chips")) {
+                    Btn("New", { state.pickLayout("new") }, on = state.layout == "new", onColor = C.Teal, small = true, tag = "layout-new")
+                    Btn("New, row on the side", { state.pickLayout("side") }, on = state.layout == "side", onColor = C.Teal, small = true, tag = "layout-side")
+                    Btn("Classic", { state.pickLayout("classic") }, on = state.layout == "classic", small = true, tag = "layout-classic")
+                }
+                Help("New: Edit and Repeat on the bar; the perform row swipes up. Classic: Menu, FX and the side dock.", modifier = Modifier.padding(top = 6.dp))
+            }
+        }
         // My Desk is a way of seeing the machine, so it lives here (Tyler, Nov 18): the Play tab shows the pads or your desk
         Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
             Column {

@@ -84,7 +84,7 @@ fun PadsScreen(state: AppState) {
         if (state.showFx) FxPanel(state)
         if (!state.keysMode && state.keyboards.isEmpty()) {
             Help(
-                "Tap a pad to play it. On an empty pad, the top corner records and the bottom corner picks a sound. Menu, on the bar at the bottom, is the picked pad's menu. Pack opens its FannyPack under its row (one per row): the Padiano, live FX faders and XY, whichever you put in it. " +
+                "Tap a pad to play it. On an empty pad, the top corner records and the bottom corner picks a sound. Edit, on the bar at the bottom, is the picked pad's menu. Pack opens its FannyPack under its row (one per row): the Padiano, live FX faders and XY, whichever you put in it. " +
                     "Keys turns the grid into a scale. Repeat on the dock rolls whatever you hold, and with Rec on while playing, every hit lands in the loop.",
                 modifier = Modifier.padding(top = 14.dp),
             )
@@ -165,6 +165,7 @@ private fun SoundButton(state: AppState) {
  */
 @Composable
 fun BottomDock(state: AppState) {
+    @Suppress("UNUSED_VARIABLE") val lv = state.liveV
     @Suppress("UNUSED_VARIABLE") val sv = state.selV
     @Suppress("UNUSED_VARIABLE") val vv = state.version
     val P = state.project
@@ -174,9 +175,10 @@ fun BottomDock(state: AppState) {
         if (state.keysBarOpen) KeysPanel(state)
         Row(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             Box {
-                // Menu, then tap anything: its settings. Menu twice: what you touched last (Nov 18)
-                BarBtn(state, if (state.menuArmed) "Menu ●" else "Menu", "Menu", { state.menuTap() }, on = state.menuArmed || state.padMenu >= 0 || state.tray != null, onColor = C.Yellow,
-                    enabled = !state.locked, tag = "open-padmenu", word = "Menu")
+                // Edit (Menu before build 107), then tap anything: its settings. Edit twice: what you touched last (Nov 18)
+                val ed = if (state.layout == "classic") "Menu" else "Edit"
+                BarBtn(state, if (state.menuArmed) "$ed ●" else ed, ed, { state.menuTap() }, on = state.menuArmed || state.padMenu >= 0 || state.tray != null, onColor = C.Yellow,
+                    enabled = !state.locked, tag = "open-padmenu", word = ed)
                 if (state.padMenu >= 0) PadMenu(state, state.padMenu)
             }
             // the picked pad's FannyPack: one tap zips it open under its row, or shut
@@ -186,7 +188,9 @@ fun BottomDock(state: AppState) {
                 on = state.holdOn, onColor = C.Yellow, tag = "hold-toggle", word = if (!state.holdOn) "Hold" else if (state.holdCount == 0) "Last" else "${state.latched.size}/${state.holdCount}")
             BarBtn(state, if (state.chordMode == "off") "○ Chords" else "● Chords", "Chords", { state.toggleChords() }, on = state.chordMode != "off", onColor = C.Teal, tag = "chords-toggle", word = "Chords")
             // the perform effects (stutter, echo throw, tape stop...), moved down from the view row (Nov 18)
-            if (state.tab == com.tideclock.messmachine.Tab.Pads) BarBtn(state, "FX", "FX", { state.showFx = !state.showFx }, on = state.showFx, onColor = C.Pink, tag = "fx-toggle", word = "FX")
+            if (state.layout == "classic") { if (state.tab == com.tideclock.messmachine.Tab.Pads) BarBtn(state, "FX", "FX", { state.showFx = !state.showFx }, on = state.showFx, onColor = C.Pink, tag = "fx-toggle", word = "FX") }
+            // build 107: Repeat sits beside Hold (the throws moved into the perform row); Edit, then Repeat, for its rate
+            else BarBtn(state, if (state.live.nr) "● Repeat" else "○ Repeat", "Repeat", { state.switchRepeat() }, on = state.live.nr, onColor = C.Pink, tag = "repeat-toggle", word = "Repeat")
             val keyText = "${Theory.NN[P.root]} ${P.scale.lowercase()} · ${chordName(if (state.chordMode == "off") state.lastChordMode else state.chordMode).lowercase()} " + if (state.keysBarOpen) "▾" else "▴"
             if (state.look == "classic") Btn(keyText, { state.switchKeysBar() }, small = true, tight = true, tier = Tier.Quiet, tag = "keysbar-open", modifier = Modifier.weight(1f))
             else Row(Modifier.weight(1f).clickable { state.switchKeysBar() }.tagged("keysbar-open"), verticalAlignment = Alignment.CenterVertically) {
@@ -295,6 +299,16 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
                         // something is packed on this pad (zipped shut): a little zipper along its bottom edge
                         drawLine(C.Yellow.copy(alpha = .8f), Offset(10.dp.toPx(), size.height - 5.dp.toPx()), Offset(size.width * .45f, size.height - 5.dp.toPx()),
                             strokeWidth = 3.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 6f)))
+                    }
+                    if (!empty && !keys) {
+                        // build 107: what moves this pad, one dot each down its right edge: yellow, a wave (LFO);
+                        // teal, a lane in this loop; red, an FX fader resting above zero
+                        val o = P.opt(i)
+                        val rr = 3.5.dp.toPx(); val x = size.width - 8.dp.toPx(); var y = size.height * .36f
+                        fun mark(c: Color) { drawCircle(C.Black, rr + 1.5.dp.toPx(), Offset(x, y)); drawCircle(c, rr, Offset(x, y)); y += 11.dp.toPx() }
+                        if (o.lfoOn) mark(C.Yellow)
+                        if (P.pat().motion.keys.any { it.startsWith("$i:") }) mark(C.Teal)
+                        if (o.fx.isNotEmpty()) mark(C.Riot)
                     }
                     if (hasKeys) {
                         // the pad lights along its bottom edge: its piano is open below this row
