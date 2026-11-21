@@ -1,17 +1,20 @@
 {
-  "title": "Pump, Tape, Phaser, Freeze",
+  "title": "Trust fixes: nothing you set gets lost",
   "thisBuild": [
-    "Four new effects in the FX strip: Pump (ducks the sound on every beat, the sidechain feel), Tape (warmth and a slow wow), Phase (a sweeping phaser) and Freeze (push it past halfway and the sound holds right where it is).",
-    "Pump shows by default; Faders (Menu, then a fader, or the strip's picker) adds Tape, Phase and Freeze.",
-    "Pump, Tape and Phaser are also LFO targets and XY targets, so a wave or your finger can move them. Every fader records with Rec on and maps to a MIDI knob."
+    "FX faders now save with your mess. Close the app, reopen it, and the reverb is still where you left it. Bounces and Bottle it hear them too.",
+    "One Undo takes back a whole take: everything you recorded while Rec was playing, not just the last hit.",
+    "Bottle it now does what it says: the loop becomes one sound on a free pad. Sharing a WAV is Pour it out, in Messes.",
+    "A cleared Auto lane lets go: the filter or pitch it was moving goes back to where it rests.",
+    "Saving is crash safe: the mess is written to a new file and swapped in, with the last copy kept.",
+    "The synth's Wave knob names the shape (saw, tri to saw 30%) instead of 200%."
   ],
   "watch": [
-    "Pump on a pad or bass over a kick loop: does it breathe in time?",
-    "Freeze on a vocal or a long sample: does it hold smoothly, or does it buzz?",
-    "Play hard with these on: does the lag readout (Pro looks) or the feel creep?"
+    "Set a reverb fader, close the app from the recent apps list, reopen: is it still there?",
+    "Record a few passes with Rec on, then Undo once: does the whole take go?",
+    "Bottle it on Steps: does a new pad appear with your loop on it?"
   ],
   "limits": [
-    "Freeze holds samples; on synths it does nothing yet.",
-    "I measured the engine with all four on sixteen pads at once and it keeps up, but on a phone, heavy use costs more than before. Tell me if it crackles."
+    "This is the first of the overhaul builds. Every build from here is kept on its own release, so any of them can be rebuilt if you want to go back.",
+    "The bigger changes (one Edit door, the perform row, skins) come in the next builds."
   ]
 }

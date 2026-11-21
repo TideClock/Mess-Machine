@@ -60,8 +60,8 @@ fun FilesScreen(state: AppState) {
         }
         Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
             Column {
-                T("BOTTLE IT", size = 12.sp, color = C.Yellow, spacing = .1.em)
-                Help("Renders the music, then opens your share sheet so you can save it or send it anywhere.", modifier = Modifier.padding(bottom = 8.dp))
+                T("POUR IT OUT", size = 12.sp, color = C.Yellow, spacing = .1.em)
+                Help("Makes a WAV of the music, then opens your share sheet.", modifier = Modifier.padding(bottom = 8.dp))
                 Wrap(Modifier) {
                     val L = Project.LETTERS[P.cur]
                     Btn("Loop $L once", { state.bounce(false, 1) }, small = true, color = C.Pink)

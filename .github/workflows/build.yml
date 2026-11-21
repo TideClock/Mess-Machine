@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 concurrency:
   group: build-${{ github.ref }}
@@ -146,3 +147,35 @@ jobs:
             --title "Mess Machine, latest build" \
             --notes "Build ${GITHUB_RUN_NUMBER} from ${GITHUB_SHA::7}. Passed the big test and the phone test. On your phone, tap MessMachine.apk below, open it, and allow installs from your browser if Android asks. It installs over the last build and keeps your messes." \
             --prerelease
+
+      # the overhaul's rollback (Nov 21): every green build keeps its own release, so any build can be fetched or
+      # rebuilt later. A rollback rebuilds old code with a new build number, since Android won't install a lower one.
+      - name: Keep this build for rollback
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create build-${GITHUB_RUN_NUMBER} MessMachine.apk mapping.txt -R ${{ github.repository }} \
+            --target ${GITHUB_SHA} --title "Build ${GITHUB_RUN_NUMBER} (kept)" \
+            --notes "Kept for rollback. Build ${GITHUB_RUN_NUMBER} from ${GITHUB_SHA::7}." --prerelease || true
+
+      # build 104, the last build before the overhaul, from its own run's stored files (once; skipped when it exists)
+      - name: Fetch build 104
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: MessMachine-apk
+          path: keep104
+          run-id: 44284918351
+          github-token: ${{ github.token }}
+
+      - name: Keep build 104
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view build-104 -R ${{ github.repository }} >/dev/null 2>&1; then exit 0; fi
+          a=$(find keep104 -name app-release.apk | head -1); m=$(find keep104 -name mapping.txt | head -1)
+          [ -n "$a" ] || { echo "build 104's files are not there"; exit 0; }
+          cp "$a" MessMachine-104.apk; cp "$m" mapping-104.txt
+          gh release create build-104 MessMachine-104.apk mapping-104.txt -R ${{ github.repository }} \
+            --target f704a4caf3ba1d8ffd04a90292b9f5e0a0747794 --title "Build 104 (kept, before the overhaul)" \
+            --notes "The last build before the overhaul (commit f704a4c)." --prerelease || true

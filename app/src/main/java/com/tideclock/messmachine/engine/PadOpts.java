@@ -29,6 +29,45 @@ public final class PadOpts {
     public double lfoCut = .55, lfoRes = .25;
     public boolean lfoRetrig = false;  // restart the wave on every hit, or run it with the loop
 
+    /**
+     * Where the FX strip's faders rest on this pad (build 105), "target=value;target=value", values 0..1.
+     * Saved so what you hear is what reloads and what a bounce renders. Absent targets rest at 0.
+     */
+    public String fx = "";
+
+    /** The resting value of one FX target, or 0. */
+    public double fxHome(int target) {
+        Double v = fxMap().get(target);
+        return v == null ? 0 : v;
+    }
+
+    public Map<Integer, Double> fxMap() {
+        Map<Integer, Double> m = new LinkedHashMap<>();
+        if (fx == null || fx.isEmpty()) return m;
+        for (String part : fx.split(";")) {
+            int e = part.indexOf('=');
+            if (e <= 0) continue;
+            try {
+                int t = Integer.parseInt(part.substring(0, e));
+                double v = SoundEdit.clamp(Double.parseDouble(part.substring(e + 1)), 0, 1);
+                if (v > 0) m.put(t, v);
+            } catch (NumberFormatException ignored) {}
+        }
+        return m;
+    }
+
+    /** Sets the resting values; zeros are left out. */
+    public void fxSet(Map<Integer, Double> m) {
+        StringBuilder b = new StringBuilder();
+        for (Map.Entry<Integer, Double> e : new java.util.TreeMap<>(m).entrySet()) {
+            double v = SoundEdit.clamp(e.getValue(), 0, 1);
+            if (v <= 0) continue;
+            if (b.length() > 0) b.append(';');
+            b.append(e.getKey()).append('=').append(Math.round(v * 1000) / 1000.0);
+        }
+        fx = b.toString();
+    }
+
     public String lfoCode() {
         return (lfoOn ? 1 : 0) + "," + lfoWave + "," + lfoRate + "," + lfoTarget + "," + lfoDepth + "," + lfoType + "," + lfoCut + "," + lfoRes + "," + (lfoRetrig ? 1 : 0);
     }
@@ -49,18 +88,19 @@ public final class PadOpts {
 
     public PadOpts copy() {
         PadOpts o = new PadOpts();
-        o.glide = glide; o.glideT = glideT; o.legato = legato; o.route = route; o.xy = xy; o.pack = pack;
+        o.glide = glide; o.glideT = glideT; o.legato = legato; o.route = route; o.xy = xy; o.pack = pack; o.fx = fx;
         o.lfoParse(lfoCode());
         return o;
     }
 
-    public boolean isDefault() { return !glide && glideT == .12 && !legato && route == 0 && xy.isEmpty() && pack.isEmpty() && lfoCode().equals(LFO_DEFAULT); }
+    public boolean isDefault() { return !glide && glideT == .12 && !legato && route == 0 && xy.isEmpty() && pack.isEmpty() && fx.isEmpty() && lfoCode().equals(LFO_DEFAULT); }
 
     public Map<String, Object> toMap() {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("glide", glide); m.put("glideT", glideT); m.put("legato", legato); m.put("route", (double) route);
         if (!xy.isEmpty()) m.put("xy", xy);
         if (!pack.isEmpty()) m.put("pack", pack);
+        if (!fx.isEmpty()) m.put("fx", fx);
         if (!lfoCode().equals(LFO_DEFAULT)) m.put("lfo", lfoCode());
         return m;
     }
@@ -73,6 +113,7 @@ public final class PadOpts {
         o.route = (int) SoundEdit.clamp(Json.num(m.get("route"), 0), 0, 4);
         o.xy = Json.str(m.get("xy"), "");
         o.pack = Json.str(m.get("pack"), "");
+        o.fx = Json.str(m.get("fx"), "");
         o.lfoParse(Json.str(m.get("lfo"), ""));
         return o;
     }

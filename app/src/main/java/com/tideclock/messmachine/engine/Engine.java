@@ -544,7 +544,9 @@ public final class Engine {
             case "panic":
                 for (Voice v : pool) v.active = false;
                 for (float[] m : pMod) java.util.Arrays.fill(m, 0f);
+                for (boolean[] m : laneHeld) java.util.Arrays.fill(m, false);
                 for (float[] m : tFx) java.util.Arrays.fill(m, 0f);
+                restHomes(S);
                 held.clear(); freeOn = false; beatOn = false;
                 break;
             case "down": lastHitWaitNanos = renderNanos - (Long) c[5]; hits++; padDown(S, (Integer) c[1], (Integer) c[2], (int[]) c[3], (Boolean) c[4], (Long) c[5], renderNanos, c.length > 6 && (Boolean) c[6]); break;
@@ -820,12 +822,25 @@ public final class Engine {
         }
         tapeNow = false;
         // recorded XY moves play back, unless a finger is moving that control right now
+        laneSerial++;
         if (P != null) for (int q = 0; q < P.lanePad.length; q++) {
             int lp = P.lanePad[q], lt = P.laneT[q];
             if (lp < 0 || lp >= 64 || lt < 0 || lt >= NT) continue;
+            laneSeen[lp][lt] = laneSerial;
             float v = P.laneV[q][s];
-            if (Float.isNaN(v) || frame - modTouch[lp][lt] < .25 * rate) continue;
+            if (Float.isNaN(v)) continue;  // between marks a lane holds its last value
+            if (frame - modTouch[lp][lt] < .25 * rate) continue;
             pMod[lp][lt] = v;
+            laneHeld[lp][lt] = true;
+            if (lt == T_FILTER || lt == T_RES) filterFromMod(lp);
+        }
+        // build 105: where a lane stops (a cleared lane, a loop without it) the control goes back to where it rests,
+        // instead of staying stuck at the lane's last value
+        for (int lp = 0; lp < 64; lp++) for (int lt = 0; lt < NT; lt++) {
+            if (!laneHeld[lp][lt] || laneSeen[lp][lt] == laneSerial) continue;
+            laneHeld[lp][lt] = false;
+            if (frame - modTouch[lp][lt] < .25 * rate) continue;
+            pMod[lp][lt] = home(S, lp, lt);
             if (lt == T_FILTER || lt == T_RES) filterFromMod(lp);
         }
         if (s % 4 == 0) beatTick(delay);
@@ -1483,6 +1498,31 @@ public final class Engine {
     public void gateLength(int steps) { cmds.add(new Object[]{"gatelen", steps}); }
 
     private final long[][] modTouch = new long[64][NT];
+    /** Which controls a recorded lane is driving right now, and the step serial each lane was last heard on (build 105). */
+    private final boolean[][] laneHeld = new boolean[64][NT];
+    private final long[][] laneSeen = new long[64][NT];
+    private long laneSerial = 0;
+
+    /** Where a control rests when nothing moves it: the FX strip's saved fader position, else 0 (build 105). */
+    private static float home(Snapshot S, int pad, int t) {
+        if (S == null || pad < 0 || pad >= S.pads.length || S.pads[pad] == null) return 0f;
+        return (float) S.pads[pad].opts.fxHome(t);
+    }
+
+    /** Every pad's FX strip faders back to where they rest. */
+    private void restHomes(Snapshot S) {
+        if (S == null) return;
+        for (int i = 0; i < Math.min(64, S.pads.length); i++) {
+            PadSlot ps = S.pads[i];
+            if (ps == null) continue;
+            for (java.util.Map.Entry<Integer, Double> en : ps.opts.fxMap().entrySet()) {
+                int t = en.getKey();
+                if (t < 0 || t >= NT) continue;
+                pMod[i][t] = (float) (double) en.getValue();
+                if (t == T_FILTER || t == T_RES) filterFromMod(i);
+            }
+        }
+    }
     { for (long[] m : modTouch) java.util.Arrays.fill(m, Long.MIN_VALUE / 2); }
 
     /** Filter and resonance moved through mod() or recorded moves: set that pad's live filter. */
@@ -1689,6 +1729,7 @@ public final class Engine {
         Snapshot S = Snapshot.build(q, src, new Live());
         Engine e = new Engine(rate);
         e.snap = S;
+        e.restHomes(S);
         long total = 0;
         if (q.songMode) for (int k = 0; k < q.songLen(); k++) total += q.song[k] >= 0 ? q.pats[q.song[k]].len : 16;
         else total = (long) q.pats[q.cur].len * Math.max(1, loops);

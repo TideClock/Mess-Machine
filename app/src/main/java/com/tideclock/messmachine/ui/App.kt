@@ -153,6 +153,7 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
                     Overlay.Settings -> Sheet(state, "Settings") { SettingsScreen(state) }
                     Overlay.Tempo -> Sheet(state, "Tempo + feel") { TempoScreen(state) }
                     Overlay.Notes -> Sheet(state, "Notes for Claude") { NotesScreen(state) }
+                    Overlay.Start -> Sheet(state, "Welcome to the mess") { StartScreen(state) }
                     Overlay.AudioCheck -> Sheet(state, "Latency") { AudioCheckScreen(state) }
                     Overlay.Packs -> Sheet(state, "Packs") { PacksScreen(state) }
                     Overlay.Learn -> Sheet(state, "Learn") { LearnScreen(state) }
@@ -197,6 +198,29 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
 }
 
 /** A full-height panel over the machine, for picking, editing and files. */
+/** Build 105: a new install's first screen. Three things to try, then out of the way. */
+@Composable
+fun StartScreen(state: AppState) {
+    ScrollPane(hPad = 16.dp, vPad = 4.dp) {
+        T("Three things to try:", size = 16.sp)
+        for ((n, line) in listOf(
+            "Tap a pad. It plays. Tap a few at once.",
+            "Press Play. The beat starts looping.",
+            "Pick a pad, then tap Menu for its settings.",
+        ).withIndex()) {
+            Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                T("${n + 1}", size = 26.sp, color = C.Yellow, family = Bungee, modifier = Modifier.padding(end = 12.dp))
+                T(line, size = 15.sp)
+            }
+        }
+        Help("Stuck? The ☰ menu has lessons, and the ladybug sends notes.", modifier = Modifier.padding(top = 16.dp))
+        Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Btn("Make a mess", { state.overlay = null }, color = C.Yellow, tag = "start-go")
+            Btn("Take a lesson", { state.overlay = Overlay.Learn }, tag = "start-learn")
+        }
+    }
+}
+
 @Composable
 fun Sheet(state: AppState, title: String, content: @Composable () -> Unit) {
     val page = "sheet:$title"

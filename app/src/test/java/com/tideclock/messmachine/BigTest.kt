@@ -382,9 +382,37 @@ class BigTest {
 
     /* ---------- launching like a phone does ---------- */
 
+    @Test fun aBrandNewInstallOpensTheStartCard() {
+        // build 105: nothing saved yet and no guide ever seen: three steps to try, not the build notes
+        val ctx = ApplicationProvider.getApplicationContext<Context>()
+        for (n in listOf("current.json", "current.json.bak", "current.json.new")) File(ctx.filesDir, n).delete()
+        ctx.getSharedPreferences("mess", 0).edit().remove("guideSeen").commit()
+        val fresh = AppState(ctx)
+        assertEquals(Overlay.Start, fresh.overlay)
+    }
+
+    @Test fun startCardAndSavedFaders() {
+        state.overlay = Overlay.Start
+        settle()
+        rule.onNodeWithTag("start-learn").assertExists()
+        shot("86-start-card")
+        rule.onNodeWithTag("start-go").performClick(); settle()
+        assertEquals(null, state.overlay)
+        // build 105: an FX fader lands in the mess once the hand settles, and Undo puts it back
+        val t = com.tideclock.messmachine.engine.Engine.T_RVB
+        state.fxSendTo(0, t, .7f, false)
+        ShadowLooper.idleMainLooper(600, java.util.concurrent.TimeUnit.MILLISECONDS); settle()
+        assertEquals(.7, state.project.opt(0).fxHome(t), .001)
+        state.undo(); settle()
+        assertEquals(0.0, state.project.opt(0).fxHome(t), .001)
+        assertEquals(null, state.fxSend["0:$t"])
+    }
+
     @Test fun firstLaunchOfANewBuildShowsTheGuide() {
         // a phone installing a new build has not seen its guide: the app must open it at launch, not crash
         val ctx = ApplicationProvider.getApplicationContext<Context>()
+        // someone updating already has a working mess (a brand new install gets the start card instead)
+        File(ctx.filesDir, "current.json").writeText(com.tideclock.messmachine.engine.Project.demo().toJson())
         ctx.getSharedPreferences("mess", 0).edit().remove("guideSeen").commit()
         val fresh = AppState(ctx)
         assertEquals(Overlay.Notes, fresh.overlay)
@@ -2274,11 +2302,17 @@ class BigTest {
         state.tick(System.nanoTime())
         settle()
         assertTrue("a live hit while recording lands in the loop", (0 until 16).any { state.project.pat().step(k, it) })
+        // build 105: a second hit later in the same take; one Undo takes the whole take back, not just the last hit
+        loudest(9600)
+        tapPad(4)
+        loudest(2048)
+        state.tick(System.nanoTime())
+        settle()
         state.stop()
         state.setLive { rec = false }
         state.undo()
         settle()
-        assertFalse("undo takes the recorded hit back", (0 until 16).any { state.project.pat().step(k, it) })
+        assertFalse("one undo takes the whole take back", (0 until 16).any { state.project.pat().step(k, it) })
 
         val site = """{"name":"Site mess","bpm":120,"v":3,"kit":["samples/basement-kick.wav","samples/wet-clap.wav","a:uploaded1"],
             "pats":[{"len":16,"steps":{"samples/basement-kick.wav":"1000100010001000"},"notes":{}}],"song":"A","swing":20}"""
@@ -2288,10 +2322,12 @@ class BigTest {
         assertEquals(120, state.project.bpm)
         assertTrue(state.project.pat().step("samples/basement-kick.wav", 4))
 
+        // build 105: Bottle it puts the loop on a free pad, as its help line and lesson say
+        val padsBefore = state.project.kit.count { it.isNotEmpty() }
         state.bottleIt()
         waitFor("the bottle") { state.busy == null }
-        val started = shadowOf(rule.activity.application).nextStartedActivity
-        println("BOTTLE share intent: ${started?.action}")
+        settle()
+        assertEquals("Bottle it makes the loop a sound on a free pad", padsBefore + 1, state.project.kit.count { it.isNotEmpty() })
         shot("18-after-import")
     }
 

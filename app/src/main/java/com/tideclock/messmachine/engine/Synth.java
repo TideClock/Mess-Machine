@@ -65,6 +65,15 @@ public final class Synth {
             if ("s".equals(unit)) return v < 1 ? Math.round(v * 1000) + " ms" : String.format(java.util.Locale.US, "%.1f s", v); // format-ok: number only
             if ("Hz".equals(unit)) return v < 1000 ? (v < 10 ? String.format(java.util.Locale.US, "%.1f Hz", v) : Math.round(v) + " Hz") : String.format(java.util.Locale.US, "%.1f kHz", v / 1000); // format-ok: number only
             if ("%".equals(unit)) return Math.round(v * 100) + "%";
+            if ("w".equals(unit)) {
+                // sine, triangle, saw and square, with how far it has morphed toward the next one (build 105: no more "200%")
+                String[] n = {"sine", "tri", "saw", "square"};
+                int a = (int) Math.max(0, Math.min(3, Math.floor(v)));
+                double f = v - a;
+                if (a >= 3 || f < .05) return n[a];
+                if (f > .95) return n[a + 1];
+                return n[a] + " to " + n[a + 1] + " " + Math.round(f * 100) + "%";
+            }
             if ("c".equals(unit)) return (v > 0 ? "+" : "") + Math.round(v) + " cents";
             return (v > 0 && min < 0 ? "+" : "") + Math.round(v * 100) + "%";
         }
@@ -95,9 +104,9 @@ public final class Synth {
 
     public static final Kind ANALOG = new Kind("analog", "Analog", "Two oscillators, a warm filter, envelopes and an LFO. Poly for chords, Mono for leads, Acid for squelch.",
         p("mode", "Mode", "Voice", CHOICE, 0, 2, 0, "", true, "Poly", "Mono", "Acid"),
-        p("w1", "Wave", "Oscillator 1", LIN, 0, 3, 2, "", true),
+        p("w1", "Wave", "Oscillator 1", LIN, 0, 3, 2, "w", true),
         p("pw1", "Width", "Oscillator 1", LIN, .05, .95, .5, "", false),
-        p("w2", "Wave", "Oscillator 2", LIN, 0, 3, 2, "", false),
+        p("w2", "Wave", "Oscillator 2", LIN, 0, 3, 2, "w", false),
         p("semi2", "Semis", "Oscillator 2", INT, -24, 24, 0, "", false),
         p("fine2", "Fine", "Oscillator 2", LIN, -50, 50, 7, "c", false),
         p("mix2", "Level", "Oscillator 2", LIN, 0, 1, .5, "%", false),

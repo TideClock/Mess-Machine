@@ -109,6 +109,8 @@ sealed class Overlay {
     data object Settings : Overlay()
     data object Tempo : Overlay()
     data object Notes : Overlay()
+    /** Build 105: what a brand new install opens on, three steps instead of the build notes. */
+    data object Start : Overlay()
     data object AudioCheck : Overlay()
     data object Packs : Overlay()
     data object Learn : Overlay()
@@ -415,6 +417,7 @@ class AppState(private val app: Context) {
         commitUndo()
         version++
         rebuild()
+        restFx()
         loadKit()
     }
 
@@ -460,11 +463,15 @@ class AppState(private val app: Context) {
         } catch (_: Exception) {}
         try { guide = Json.map(Json.parse(app.assets.open("guide.json").use { String(it.readBytes()) })) } catch (_: Exception) {}
         val seen = prefs.getInt("guideSeen", 0)
+        // a brand new install (never saw a guide, no working mess yet) gets the start card; people updating get the build notes
+        val newInstall = seen == 0 && !currentFile.exists() && !File(currentFile.path + ".bak").exists()
         if (crash != null) overlay = Overlay.Notes
+        else if (newInstall) overlay = Overlay.Start
         else if (guideOn && seen != BuildConfig.VERSION_CODE && guide.isNotEmpty()) overlay = Overlay.Notes
         prefs.edit().putInt("guideSeen", BuildConfig.VERSION_CODE).apply()
         commitUndo()
         rebuild()
+        restFx()
         loadKit()
         refreshFiles()
         // a few seconds after start, ask GitHub quietly whether a newer build is out (the Update bar shows if so)
@@ -474,11 +481,20 @@ class AppState(private val app: Context) {
     /* ---------------- loading and saving the working mess ---------------- */
 
     private fun loadCurrent(): Project {
-        return try {
-            if (currentFile.exists()) Project.fromJson(currentFile.readText(), lib::has).project else Project.demo()
-        } catch (e: Exception) {
-            Project.demo()
+        // build 105: the working mess is written to a new file and swapped in, so a crash mid-save leaves the last good
+        // copy (current.json, or current.json.bak from the save before) instead of half a file
+        for (f in listOf(currentFile, File(currentFile.path + ".bak"))) {
+            try { if (f.exists()) return Project.fromJson(f.readText(), lib::has).project } catch (_: Exception) {}
         }
+        return Project.demo()
+    }
+
+    /** Writes a file whole or not at all: a new file next to it, the old one kept as .bak, then a rename. */
+    private fun writeSafe(f: File, text: String) {
+        val tmp = File(f.path + ".new")
+        tmp.writeText(text)
+        if (f.exists()) { val bak = File(f.path + ".bak"); bak.delete(); f.renameTo(bak) }
+        if (!tmp.renameTo(f)) { tmp.copyTo(f, overwrite = true); tmp.delete() }
     }
 
     private val saveRun = Runnable { saveNow() }
@@ -493,7 +509,7 @@ class AppState(private val app: Context) {
         // a lesson's practice mess is never saved over yours
         if (tut != null) return
         val json = project.toJson()
-        worker.execute { try { currentFile.writeText(json) } catch (_: Exception) {} }
+        worker.execute { try { writeSafe(currentFile, json) } catch (_: Exception) {} }
     }
 
     /** Decode any pad sounds that are not ready yet, then let the engine hear them. */
@@ -686,13 +702,19 @@ class AppState(private val app: Context) {
 
     private fun undoFlags() { canUndo = hi > 0; canRedo = hi < hist.size - 1 }
 
-    fun undo() { notes.trail("undo"); if (hi > 0) { hi--; restore(hist[hi]) } }
+    fun undo() {
+        notes.trail("undo")
+        // a take still open (Rec just stopped, or still going) closes first, so Undo takes the whole take back
+        if (takeOpen) { takeOpen = false; commitUndo() }
+        if (hi > 0) { hi--; restore(hist[hi]) }
+    }
     fun redo() { notes.trail("redo"); if (hi < hist.size - 1) { hi++; restore(hist[hi]) } }
 
     private fun restore(j: String) {
         project = Project.fromJson(j, lib::has).project
         version++
         rebuild()
+        restFx()
         scheduleSave()
         undoFlags()
     }
@@ -708,6 +730,7 @@ class AppState(private val app: Context) {
         commitUndo()
         version++
         rebuild()
+        restFx()
         scheduleSave()
         loadKit()
     }
@@ -771,8 +794,13 @@ class AppState(private val app: Context) {
             }
             any = true
         }
-        if (any) changed(true)
+        if (any) { if (taking()) { changed(false); takeOpen = true } else changed(true) }
+        if (takeOpen && !taking()) { takeOpen = false; commitUndo() }
     }
+
+    /** Build 105: while Rec plays, everything recorded is one take, and one Undo takes the whole take back. */
+    private var takeOpen = false
+    private fun taking() = live.rec && playing
 
     /* ---------------- transport ---------------- */
 
@@ -1177,7 +1205,7 @@ class AppState(private val app: Context) {
     private fun midiTurn(t: MidiTarget, value: Int, cc: Int = -1) {
         val v = value.coerceIn(0, 127) / 127f
         when (t.kind) {
-            "fx" -> { fxSend["${t.a}:${t.b}"] = v; engine.mod(t.a, t.b, v) }
+            "fx" -> { fxSend["${t.a}:${t.b}"] = v; engine.mod(t.a, t.b, v); keepFxSoon() }
             "wheel" -> pitchWheel((value - 64) / 63f, value != 64)
             "dock" -> { if (t.id == "res") dockRes = v else dockCut = v; dockFilter(true) }
             "lfo" -> if (t.id == "rate") {
@@ -1335,7 +1363,16 @@ class AppState(private val app: Context) {
         edit { pat().laneStamp(key, shape, span, lo, hi, strength) }
     }
 
-    fun clearLane(key: String) { edit { pat().laneClear(key) }; moveLane = ""; sayUndo("That lane is cleared.") }
+    fun clearLane(key: String) { edit { pat().laneClear(key) }; moveLane = ""; restLanes(listOf(key)); sayUndo("That lane is cleared.") }
+
+    /** Build 105: a cleared lane lets its control go back to where it rests (while playing, the engine does this itself). */
+    private fun restLanes(keys: List<String>) {
+        for (k in keys) {
+            val pad = k.substringBefore(":").toIntOrNull() ?: continue
+            val t = k.substringAfter(":").toIntOrNull() ?: continue
+            engine.mod(pad, t, project.opt(pad).fxHome(t).toFloat())
+        }
+    }
 
     /** Every pitch and roll note in the current loop, for every sound (plain hits stay). */
     fun clearAllNotes() {
@@ -1472,10 +1509,8 @@ class AppState(private val app: Context) {
     }
 
     /** The site's Bottle it: the loop to four bars (or the song), as a WAV. */
-    fun bottleIt() {
-        if (project.songMode && project.songLen() > 0) bounce(true, 1)
-        else bounce(false, maxOf(1, 4 / (project.pat().len / 16)))
-    }
+    /** Bottle it (build 105): the loop becomes one sound on a free pad, as its FAQ line and lesson always said. */
+    fun bottleIt() = resampleLoop()
 
     fun clearSlot() { edit { pat().clear() }; sayUndo("Loop ${Project.LETTERS[project.cur]} cleared.") }
 
@@ -1592,7 +1627,7 @@ class AppState(private val app: Context) {
         version++
         scheduleSave()
         worker.execute {
-            File(messDir, "$id.json").writeText(json)
+            try { writeSafe(File(messDir, "$id.json"), json) } catch (_: Exception) {}
             main.post { refreshFiles(); say("Saved \"$nm\".") }
         }
     }
@@ -1701,6 +1736,7 @@ class AppState(private val app: Context) {
         Overlay.Learn -> "learn"
         Overlay.Mouth -> "mouth control"
         Overlay.AudioCheck -> "latency"
+        Overlay.Start -> "start card"
     }
 
     // ---- Audio check (MM-1): where the time goes between a tap and the sound ----
@@ -2504,7 +2540,7 @@ class AppState(private val app: Context) {
         writeMoves()
         if (!on) {
             for (t in used) recHold.remove(pad to t)
-            changed(true)
+            if (taking()) { changed(false); takeOpen = true } else changed(true)
         }
     }
 
@@ -2515,7 +2551,7 @@ class AppState(private val app: Context) {
         recStep = heardStep
     }
 
-    fun clearMoves() { edit { pat().motion.clear() }; sayUndo("XY moves cleared from loop ${Project.LETTERS[project.cur]}.") }
+    fun clearMoves() { val ks = project.pat().motion.keys.toList(); edit { pat().motion.clear() }; restLanes(ks); sayUndo("XY moves cleared from loop ${Project.LETTERS[project.cur]}.") }
 
 
     /* ---------------- a live filter on one pad ---------------- */
@@ -2833,7 +2869,10 @@ class AppState(private val app: Context) {
 
     /* ---------------- the FX strip: live sends on one pad, they stay where you leave them ---------------- */
 
-    /** Where each FX strip fader sits, "pad:target" to 0..1. Not saved; recorded as moves while Rec plays. */
+    /**
+     * Where each FX strip fader sits, "pad:target" to 0..1; recorded as moves while Rec plays.
+     * Build 105: saved in the mess (the pad's options), so what you hear is what reloads and what a bounce renders.
+     */
     val fxSend = mutableStateMapOf<String, Float>()
 
     fun fxSendTo(pad: Int, t: Int, v: Float, on: Boolean) {
@@ -2842,11 +2881,43 @@ class AppState(private val app: Context) {
         fxSend["$pad:$t"] = x
         engine.mod(pad, t, x)
         recordMoves(pad, mapOf(t to x), setOf(t), on)
+        keepFxSoon()
     }
 
     /** Every FX strip fader on a pad back to zero. */
     fun fxSendsOff(pad: Int) {
         for (t in FX_STRIP.map { it.first }) if ((fxSend["$pad:$t"] ?: 0f) > 0f) { fxSend.remove("$pad:$t"); engine.mod(pad, t, 0f) }
+        keepFxSoon()
+    }
+
+    /** A fader move lands in the mess once the hand settles: one undo step per gesture, not one per frame. */
+    private val keepFxRun = Runnable { keepFx() }
+    internal fun keepFxSoon() { main.removeCallbacks(keepFxRun); main.postDelayed(keepFxRun, 450) }
+
+    private fun keepFx() {
+        val want = HashMap<Int, Map<Int, Double>>()
+        for ((k, v) in fxSend) {
+            val pad = k.substringBefore(":").toIntOrNull() ?: continue
+            val t = k.substringAfter(":").toIntOrNull() ?: continue
+            if (v > 0f) want[pad] = (want[pad] ?: emptyMap()) + (t to v.toDouble())
+        }
+        val pads = (0 until Project.NPADS).filter { p -> (want[p] ?: emptyMap()) != project.opt(p).fxMap().toMap() }
+        if (pads.isEmpty()) return
+        edit {
+            for (p in pads) { val o = opt(p).copy(); o.fxSet(want[p] ?: emptyMap()); setOpt(p, o) }
+        }
+    }
+
+    /** After a mess loads, or Undo: the faders and the sound go back to where that mess keeps them. */
+    private fun restFx() {
+        val old = fxSend.keys.toList()
+        fxSend.clear()
+        for (p in 0 until Project.NPADS) for ((t, v) in project.opt(p).fxMap()) { fxSend["$p:$t"] = v.toFloat(); engine.mod(p, t, v.toFloat()) }
+        for (k in old) if (k !in fxSend) {
+            val p = k.substringBefore(":").toIntOrNull() ?: continue
+            val t = k.substringAfter(":").toIntOrNull() ?: continue
+            engine.mod(p, t, 0f)
+        }
     }
 
     /* ---------------- Steps row tools (build 85) ---------------- */
@@ -2941,8 +3012,6 @@ class AppState(private val app: Context) {
     }
 
     /** Settings for playing: empty pads record, hold-to-record, the beat glow, in key only. */
-    var emptyRecord by mutableStateOf(prefs.getBoolean("emptyRec", false))
-        private set
     var recordHold by mutableStateOf(prefs.getBoolean("recHold", false))
         private set
     private var holdRecPad = -1
@@ -2953,7 +3022,6 @@ class AppState(private val app: Context) {
     var inKeyOnly by mutableStateOf(prefs.getBoolean("inKey", false))
         private set
 
-    fun switchEmptyRecord(v: Boolean) { emptyRecord = v; prefs.edit().putBoolean("emptyRec", v).apply(); notes.trail("empty pads record ${if (v) "on" else "off"}") }
     fun switchRecordHold(v: Boolean) { recordHold = v; prefs.edit().putBoolean("recHold", v).apply() }
     fun setPulse(v: Int) { pulseLevel = v.coerceIn(0, 2); prefs.edit().putInt("pulse", pulseLevel).apply() }
     fun switchInKey(v: Boolean) { inKeyOnly = v; prefs.edit().putBoolean("inKey", v).apply(); notes.trail("in key only ${if (v) "on" else "off"}") }

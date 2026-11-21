@@ -4,7 +4,13 @@
 
 Rewritten at the end of every session and at each step of a long job (BT-2). Read this first.
 
-- **Live:** build 104 (green, 2026-11-18). The final plan (builds 96 to 101) shipped as runs 97, 98, 101, 102, 103 and 104
+- **In progress (2026-11-21): the overhaul**, Tyler's go on Nov 21 for all builds with rollback built in. Plan and
+  review: https://claude.ai/artifact/PjAnmWrBStAqX9wNEc6ZHf ; skin mockups: https://claude.ai/artifact/WBbiA2MqRCDftPaEuayoVV .
+  Rollback: build 104's code is commit f704a4c (also release build-104); every green build from 105 on keeps its own
+  build-N release. A rollback rebuilds old code with a new build number (Android will not install a lower one).
+  Build 1 (trust fixes): saved FX faders (PadOpts.fx), undo per take, Bottle it makes a pad (Pour it out shares),
+  cleared lanes let go, crash-safe saving (.new then rename, .bak kept), start card for new installs, Wave names.
+- **Live before the overhaul:** build 104 (green, 2026-11-18). The final plan (builds 96 to 101) shipped as runs 97, 98, 101, 102, 103 and 104
   (runs 96, 99 and 100 failed on tests or a compile error and were fixed; run 98's phone test was rerun after an
   emulator download broke). Notes 20, 21, 22 closed. Plan doc: https://claude.ai/artifact/SMmt7Jz3BfDsP7xUqLLEqq .
   Not heard by ear yet: Pump, Tape, Phaser, Freeze, the voice limit's feel. The first in-app update Tyler can try is
@@ -467,7 +473,7 @@ The proposal doc (claude.ai artifact 7DvA8tAeAYSUofSab1sWFG) is the short versio
 - Tabs, sheets and menus act on lift with a short (about 150 ms) slide or fade (#5). Pads and keys still fire on touch down.
 - Pad menu: hold still about 0.45 s, then lift. Any move over about 10 dp cancels it, so drags and circles never open menus.
 - In key only (scale setting): the Padiano hides out-of-key notes; chords use only scale notes.
-- Empty pads record (setting, off by default). Mode: tap to start, tap again to stop (default) or hold to record.
+- Empty pads: the top corner records, the bottom corner picks a sound (note #14). Mode: tap to start, tap again to stop (default) or hold to record. (The old "Empty pads record" setting is gone, build 105.)
 - Beat pulse behind the whole screen: off, soft or full (View size area of the menu).
 - Scrolling: anything you play (pads, Padiano, XY, sliders) never scrolls the page. Everything else scrolls with one finger; the scroll bar always works; Lock turns scrolling off.
 

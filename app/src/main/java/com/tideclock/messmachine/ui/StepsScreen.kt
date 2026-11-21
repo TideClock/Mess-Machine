@@ -99,7 +99,7 @@ fun SlotBar(state: AppState, tools: Boolean = false) {
             Btn("Clear loop", { state.clearSlot() }, small = true, enabled = P.pat().used(), tier = Tier.Danger)
             Btn("Auto", { state.movesOpen = !state.movesOpen }, on = state.movesOpen, onColor = C.Teal, small = true, tag = "moves-open")
             if (P.pat().hasMotion()) Btn("Clear auto", { state.clearMoves() }, small = true, tag = "clear-moves")
-            Btn("Bottle it", { state.bottleIt() }, small = true, color = C.Pink, enabled = P.pat().used() || P.songLen() > 0, tag = "bottle")
+            Btn("Bottle it", { state.bottleIt() }, small = true, color = C.Pink, enabled = P.pat().used(), tag = "bottle")
         }
         Dashed(Modifier.padding(top = 12.dp))
     }
@@ -121,7 +121,6 @@ fun StepsScreen(state: AppState) {
         }
         Wrap(Modifier.padding(bottom = 12.dp)) {
             Btn("Random drums", { state.randomDrums() }, small = true, tag = "random")
-            Btn("Resample to a pad", { state.resampleLoop() }, small = true, enabled = pat.used())
             Btn("Clear notes", { state.clearAllNotes() }, small = true, tier = Tier.Danger, enabled = pat.notes.values.any { it.isNotEmpty() }, tag = "clear-all-notes")
         }
         val rows = (0 until Project.BANK).map { state.bank * Project.BANK + it }.filter { P.kit[it].isNotEmpty() }
@@ -157,7 +156,7 @@ fun StepsScreen(state: AppState) {
                 if (state.stepStrip == i) { RowTools(state, i); StepPitchStrip(state, i, k, col) }
             }
         }
-        Help("Tap a step to flip it, or slide along a row to paint it. Tap a sound's name for its row tools (every 2, 4 or 8, repeat across, nudge, copy, spread) and to give its steps pitches. Hold its name, then lift, for its menu: mute, solo, the doctor and more. A red M or yellow S by the number shows a muted or soloed sound. A dot means a step has a pitch or roll notes; tap it to clear it, or Clear notes for the whole loop.", modifier = Modifier.padding(top = 4.dp))
+        Help("Tap a step to flip it, or slide along a row to paint it. Tap a sound's name for its row tools (every 2, 4 or 8, repeat across, nudge, copy, spread) and to give its steps pitches. Hold its name, then lift, for its menu: mute, solo, the Sample sheet and more. A red M or yellow S by the number shows a muted or soloed sound. A dot means a step has a pitch or roll notes; tap it to clear it, or Clear notes for the whole loop.", modifier = Modifier.padding(top = 4.dp))
     }
 }
 

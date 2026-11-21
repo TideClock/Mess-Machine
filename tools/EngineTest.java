@@ -634,6 +634,36 @@ public class EngineTest {
       for (int i = 0; i < (int) (4 * spbF / 256); i++) me2.render(b, 256);
       check(Math.abs(during - 2) < 1e-6 && Math.abs(me2.padRate(7) - 1) < 1e-6, "a recorded bend plays back on its step and lets go on the next mark: " + during + ", " + me2.padRate(7));
     }
+    // ---- build 105: FX faders rest where you leave them; a cleared lane lets go
+    {
+      PadOpts po = new PadOpts();
+      java.util.Map<Integer, Double> fm = new java.util.HashMap<>(); fm.put(Engine.T_RVB, .9); fm.put(Engine.T_ECHO, 0.0);
+      po.fxSet(fm);
+      Project fp = Project.starter(); fp.setOpt(0, po);
+      Project fb = Project.fromJson(fp.toJson(), null).project;
+      check(Math.abs(fb.opt(0).fxHome(Engine.T_RVB) - .9) < 1e-9 && fb.opt(0).fxHome(Engine.T_ECHO) == 0 && fb.opt(0).fx.indexOf(Engine.T_ECHO + "=") < 0,
+        "the FX strip's fader positions save with the mess: " + fb.opt(0).fx);
+      // a bounce starts with the faders where they rest, so the reverb is in the file
+      Project dry = Project.starter(), wet = Project.starter(); wet.setOpt(0, po);
+      for (Project q5 : new Project[]{dry, wet}) { for (int j5 = 0; j5 < q5.pats[q5.cur].len; j5++) for (String k5 : q5.kit) if (!k5.isEmpty()) q5.pats[q5.cur].setStep(k5, j5, false); q5.pats[q5.cur].setStep(q5.kit[0], 0, true); }
+      float[] bd = Engine.bounce(dry, lib, rate, false, 1), bw = Engine.bounce(wet, lib, rate, false, 1);
+      double td5 = 0, tw5 = 0; int from = (int) (rate * .5) * 2;
+      for (int i = from; i < bd.length; i++) td5 += bd[i] * bd[i];
+      for (int i = from; i < bw.length; i++) tw5 += bw[i] * bw[i];
+      check(tw5 > td5 * 2, String.format("a bounce keeps a pad's resting reverb: tail energy %.4f with it, %.4f without", tw5, td5));
+      // a lane on pitch, then the lane is cleared while playing: the pad goes back to its own pitch
+      Project lp = Project.starter(); lp.pats[0].setMotion(7, Engine.T_PITCH, 0, 12f);
+      Engine le = new Engine(rate); le.setSnapshot(Engine.Snapshot.build(lp, lib, new Engine.Live()));
+      float[] lb = new float[256 * 2]; double spb5 = rate * 60.0 / lp.bpm / 4.0;
+      le.play(); for (int i = 0; i < (int) (2.5 * spb5 / 256); i++) le.render(lb, 256);
+      double heldR = le.padRate(7);
+      lp.pats[0].motion.clear(); le.setSnapshot(Engine.Snapshot.build(lp, lib, new Engine.Live()));
+      for (int i = 0; i < (int) (2 * spb5 / 256); i++) le.render(lb, 256);
+      check(Math.abs(heldR - 2) < 1e-6 && Math.abs(le.padRate(7) - 1) < 1e-6, "a cleared lane lets the pad go back to its own pitch: " + heldR + " then " + le.padRate(7));
+      // the synth's Wave knob says the shape, not 200%
+      Synth.Param wv = null; for (Synth.Param pm : Synth.ANALOG.params) if (pm.id.equals("w1")) wv = pm;
+      check(wv != null && wv.show(2).equals("saw") && wv.show(1.3).equals("tri to saw 30%") && wv.show(3).equals("square"), "the Wave knob names the shape: " + (wv == null ? "?" : wv.show(2) + ", " + wv.show(1.3)));
+    }
     // ---- workbench tools
     Sample hat = lib.get(p.kit[2]);
     SoundEdit tr = new SoundEdit(); tr.st = .1; tr.en = .6; tr.tune = 12;
