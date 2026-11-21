@@ -1378,6 +1378,18 @@ class AppState(private val app: Context) {
      * Drag to paint (note #16): a finger sliding along a row of steps gives every step it crosses the state the first
      * step took. commit is false while the finger moves and true once it lifts, so the whole drag is one undo.
      */
+    /** Build 6 of the overhaul: the step sheet (hold a step): its chance, loop condition and strength. */
+    var stepSheet by mutableStateOf<Pair<String, Int>?>(null)
+    fun openStepSheet(key: String, j: Int) {
+        val P = project.pat()
+        if (j < 0 || j >= P.len) return
+        notes.trail("step sheet ${lib.titleOf(key)} ${j + 1}")
+        if (!P.step(key, j)) edit { P.setStep(key, j, true) }
+        stepSheet = key to j
+    }
+    fun setStepChance(key: String, j: Int, v: Int) { notes.trail("chance ${j + 1} $v"); edit { project.pat().setChance(key, j, v) } }
+    fun setStepStrength(key: String, j: Int, v: Int) { edit { project.pat().setStrength(key, j, v) } }
+
     fun paintStep(key: String, j: Int, on: Boolean, commit: Boolean) {
         val P = project.pat()
         if (j < 0 || j >= P.len) return

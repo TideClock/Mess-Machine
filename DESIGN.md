@@ -23,7 +23,11 @@ Rewritten at the end of every session and at each step of a long job (BT-2). Rea
   accent (>=.95). Tap a lit step: normal, accent, ghost, off. 16 Levels (levelsPad, ids 4000+). MIDI velocity in.
   Build 5 (skins): ui.Skins (classic, specimen, stage); C's colours are getters over C.skin (state), so every screen
   follows. Skin also sets grit strength, sticker shadow (null keeps each sticker's own) and pad face (jar, glass, band).
-  Pref "skin". Look (classic, dark, light) is the button skin and stays separate. Builds 3 to 5 went out in one push.
+  Pref "skin". Look (classic, dark, light) is the button skin and stays separate. 
+  Build 6 (chance): Pattern.chance per sound per step (0 to 100 percent, 101 1:2, 102 2:2, 103 1:4, 104 4:4; "chance" in
+  the mess). Engine.loops counts loop wraps since Play; dice is seeded (11). Hold a step for the step sheet (chance,
+  time round, strength). One-step locks that snap back are not built: step pitch (notes) and lanes cover most of it.
+  Builds 3 to 6 went out in one push.
 - **Live before the overhaul:** build 104 (green, 2026-11-18). The final plan (builds 96 to 101) shipped as runs 97, 98, 101, 102, 103 and 104
   (runs 96, 99 and 100 failed on tests or a compile error and were fixed; run 98's phone test was rerun after an
   emulator download broke). Notes 20, 21, 22 closed. Plan doc: https://claude.ai/artifact/SMmt7Jz3BfDsP7xUqLLEqq .

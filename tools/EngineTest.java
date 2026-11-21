@@ -744,6 +744,30 @@ public class EngineTest {
       check(ev8 != null && ev8.strength() == 0, "a soft recorded hit lands as a ghost step: " + (ev8 == null ? "none" : ev8.strength()));
       check(new Engine.RecEvent(Engine.RecEvent.STEP, 0, "k", 0, null, 1, 1f).strength() == 2 && new Engine.RecEvent(Engine.RecEvent.STEP, 0, "k", 0, null, 1).strength() == 1, "a full hit records as an accent, a plain tap as normal");
     }
+    // ---- build 6 of the overhaul: step chance and loop conditions
+    {
+      int[] heard = new int[3]; int[] cond = {101, 50, 0};
+      boolean[] firstOfTwo = new boolean[8];
+      for (int ci = 0; ci < 3; ci++) {
+        Project cp = Project.starter(); Project.Pattern pp = cp.pats[cp.cur];
+        for (int j9 = 0; j9 < pp.len; j9++) for (String k9 : cp.kit) if (!k9.isEmpty()) pp.setStep(k9, j9, false);
+        pp.setStep(cp.kit[0], 0, true); pp.setChance(cp.kit[0], 0, cond[ci]);
+        float[] w9 = Engine.bounce(cp, lib, rate, false, 8);
+        int loopLen = w9.length / 2 / 8;
+        for (int lq = 0; lq < 8; lq++) {
+          double pk9 = 0;
+          for (int i = lq * loopLen; i < lq * loopLen + Math.min(loopLen, rate / 4); i++) pk9 = Math.max(pk9, Math.abs(w9[i * 2]));
+          if (pk9 > .05) { heard[ci]++; if (ci == 0) firstOfTwo[lq] = true; }
+        }
+      }
+      check(heard[0] == 4 && firstOfTwo[0] && !firstOfTwo[1] && firstOfTwo[2] && !firstOfTwo[3], "a 1:2 step plays on the 1st time round of every 2: heard " + heard[0] + " of 8, " + java.util.Arrays.toString(firstOfTwo));
+      check(heard[1] > 0 && heard[1] < 8, "a 50% step plays some loops and not others: " + heard[1] + " of 8");
+      check(heard[2] == 0, "a 0% step never plays: " + heard[2]);
+      Project cq = Project.starter(); cq.pats[0].setStep(cq.kit[1], 2, true); cq.pats[0].setChance(cq.kit[1], 2, 75); cq.pats[0].setChance(cq.kit[1], 6, 103);
+      Project cb = Project.fromJson(cq.toJson(), null).project;
+      check(cb.pats[0].chance(cb.kit[1], 2) == 75 && cb.pats[0].chance(cb.kit[1], 6) == 103 && cb.pats[0].chance(cb.kit[1], 3) == 100, "step chances save with the mess");
+      check(Project.Pattern.chanceLabel(102).equals("2:2") && Project.Pattern.chanceLabel(25).equals("25%") && Project.Pattern.chanceLabel(100).isEmpty(), "chance labels read plainly");
+    }
     // ---- workbench tools
     Sample hat = lib.get(p.kit[2]);
     SoundEdit tr = new SoundEdit(); tr.st = .1; tr.en = .6; tr.tune = 12;

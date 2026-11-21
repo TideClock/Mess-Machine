@@ -1,20 +1,22 @@
 {
-  "title": "Edit, velocity and skins",
+  "title": "Edit, velocity, skins and chance",
   "thisBuild": [
     "Menu is now Edit, with a pencil: tap Edit, then anything, for its settings. Repeat sits on the bottom bar beside Hold.",
     "The side dock became the perform row: swipe up (or tap) the strip above the bottom bar. The perform effects are its Throws button. Settings, Layout, Classic puts back Menu, FX and the side dock exactly as they were.",
     "Pads show what moves them: a yellow dot for an LFO, teal for a lane, red for an FX fader left up.",
     "Steps have three strengths: tap once for on, again for loud (a ring), again for quiet (half filled), once more for off.",
     "16 Levels: Edit, then a pad, then 16 Levels. That sound fills all 16 pads, softest to hardest. Tap the yellow banner to get your pads back. Recorded hits and MIDI keys keep how hard they were.",
+    "Hold a step for its sheet: how often it plays (75%, 50%, 25%), which time round the loop (1st of 2, 4th of 4...) and how hard. A dashed yellow edge marks a step that only plays sometimes.",
     "Skins: Settings, Skin. Classic, Specimen (a lab notebook at night, glass pads that glow) or Stage (pure black and loud, for dark rooms). The Look card below it is now the button skin, so any skin goes with Classic words or the Pro icons."
   ],
   "watch": [
     "Try Stage in a dark room and Specimen in daylight: can you read every pad?",
-    "Program a hat with quiet steps between loud ones: does it groove more?",
+    "Put a 50% hat and a 4th of 4 snare in a loop: does it keep surprising you, or does it sound broken?",
     "Does the perform row feel better at the bottom, or do you want it on the side? Layout switches it."
   ],
   "limits": [
     "The full Edit tray (Sound, FX, Keys, Mod, More in one place) is not built yet; Edit opens the same settings Menu did.",
+    "Step locks that snap back after one step (a filter or pitch for one hit only) are not built; a step's pitch and the Auto lanes still do most of that.",
     "Skins change colours and pad faces; Felt and Paper and Rust come later.",
     "Plain taps still play at normal strength; a phone screen cannot feel how hard you press."
   ]

@@ -69,6 +69,8 @@ public final class Engine {
         int[][] offs;
         /** Build 108: each step's level, from its strength: ghost, normal or accent. */
         float[] gain;
+        /** Build 6 of the overhaul: each step's chance or loop condition (null when every step always plays). */
+        byte[] chance;
         Track(PadSlot pad, boolean[] steps, int[] gap, int[][] notes) { this.pad = pad; this.steps = steps; this.gap = gap; this.notes = notes; }
     }
 
@@ -129,6 +131,8 @@ public final class Engine {
                     float[] gn = new float[len];
                     for (int j = 0; j < len; j++) gn[j] = STEP_GAIN[P.strength(ps.key, j)];
                     tk.gain = gn;
+                    byte[] ch = P.chance.get(ps.key);
+                    if (ch != null) tk.chance = java.util.Arrays.copyOf(ch, len);
                     List<Integer> ol = P.offs.get(ps.key);
                     if (ol != null && !ol.isEmpty()) {
                         int[] cnt = new int[len];
@@ -544,7 +548,7 @@ public final class Engine {
     private void command(Snapshot S, Object[] c, long renderNanos) {
         switch ((String) c[0]) {
             case "play":
-                if (!paused) { step = 0; songPos = 0; }
+                if (!paused) { step = 0; songPos = 0; loops = 0; }
                 paused = false; playing = true; freeOn = false;
                 nextStepAt = frame + .004 * rate;
                 break;
@@ -825,6 +829,21 @@ public final class Engine {
         return true;
     }
 
+    /** Build 6 of the overhaul: how many times the loop has come round since Play, for the 1:2 and 1:4 steps. */
+    public int loops;
+    private final java.util.Random dice = new java.util.Random(11);
+
+    /** Does a step with this chance play this time? */
+    boolean plays(int c) {
+        switch (c) {
+            case 101: return loops % 2 == 0;
+            case 102: return loops % 2 == 1;
+            case 103: return loops % 4 == 0;
+            case 104: return loops % 4 == 3;
+            default: return c >= 100 || dice.nextInt(100) < c;
+        }
+    }
+
     private void fireStep(Snapshot S) {
         int pi = playingPat(S);
         Pat P = pi >= 0 ? S.pats[pi] : null;
@@ -851,7 +870,7 @@ public final class Engine {
                 if (!t.pad.audible) continue;
                 int ti = t.pad.index, ts = s0;
                 if (ti >= 0 && ti < 64 && padStut[ti] && !fxStut) { ts = pStutA[ti] + Math.floorMod(step - pStutB[ti], 2); if (ts >= len) ts = 0; }
-                if (t.steps[ts]) trigger(t.pad, rateMul, t.gap[ts] * spb / rate, false, t.gain[ts], delay, false);
+                if (t.steps[ts] && (t.chance == null || plays(t.chance[ts]))) trigger(t.pad, rateMul, t.gap[ts] * spb / rate, false, t.gain[ts], delay, false);
                 // hits between the sixteenths, at their tick inside this step
                 if (t.offs != null && ts < t.offs.length) for (int tk : t.offs[ts]) trigger(t.pad, rateMul, spb / rate, false, .85f, delay + Math.round(tk * spb / Project.TICKS), false);
                 int[] nt = t.notes[ts];
@@ -900,6 +919,7 @@ public final class Engine {
         step++;
         if (step >= len) {
             step = 0;
+            loops++;
             if (S.songMode) songPos = (songPos + 1) % Math.max(1, S.songLen);
         }
     }

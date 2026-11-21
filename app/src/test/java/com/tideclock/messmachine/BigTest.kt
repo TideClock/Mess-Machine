@@ -458,6 +458,31 @@ class BigTest {
         assertEquals("an unknown skin falls back to Classic", "classic", state.skin)
     }
 
+    @Test fun holdAStepForItsChance() {
+        // build 6 of the overhaul: hold a step for its sheet: how often, which time round, how hard
+        val k = state.project.kit[0]
+        state.edit { pat().clear() }
+        tab("Steps"); settle()
+        at("steps-0").performTouchInput { down(Offset(width * 3.5f / 16f, height / 2)) }
+        rule.mainClock.advanceTimeBy(700); settle()
+        rule.onNodeWithTag("steps-0").performTouchInput { advanceEventTime(100); up() }
+        settle()
+        assertEquals("holding step 4 opens its sheet", k to 3, state.stepSheet)
+        assertTrue("and turns it on", state.project.pat().step(k, 3))
+        at("chance-50").performClick(); settle()
+        assertEquals(50, state.project.pat().chance(k, 3))
+        at("chance-101").performClick(); settle()
+        assertEquals(101, state.project.pat().chance(k, 3))
+        at("strength-2").performClick(); settle()
+        assertEquals(2, state.project.pat().strength(k, 3))
+        shot("94-step-sheet")
+        state.undo(); settle()
+        assertEquals("undo takes back the strength", 1, state.project.pat().strength(k, 3))
+        at("stepsheet-done").performClick(); settle()
+        assertEquals(null, state.stepSheet)
+        rule.onNodeWithTag("stepsheet").assertDoesNotExist()
+    }
+
     @Test fun newLayoutEditRepeatAndPerformRow() {
         // build 107: Edit (was Menu) and Repeat on the bottom bar, no side dock, the perform row swipes up
         assertEquals("new", state.layout)

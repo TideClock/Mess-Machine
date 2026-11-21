@@ -51,6 +51,27 @@ public final class Project {
             if (j >= 0 && j < a.length) a[j] = (byte) Math.max(0, Math.min(2, v));
         }
 
+        /**
+         * Build 6 of the overhaul: whether each step plays, per sound. 0 to 100 is a percent chance; above that, which
+         * time round the loop it plays on: 101 the 1st of 2, 102 the 2nd of 2, 103 the 1st of 4, 104 the 4th of 4.
+         * Missing = 100 (always). Saved as "chance": per step, empty for always, else the number.
+         */
+        public final Map<String, byte[]> chance = new LinkedHashMap<>();
+        public static final int[] CHANCES = {100, 75, 50, 25, 101, 102, 103, 104};
+
+        public int chance(String k, int j) { byte[] a = chance.get(k); return a == null || j < 0 || j >= a.length ? 100 : a[j]; }
+
+        public void setChance(String k, int j, int v) {
+            byte[] a = chance.get(k);
+            if (a == null) { if (v == 100) return; a = new byte[MAXSTEPS]; Arrays.fill(a, (byte) 100); chance.put(k, a); }
+            if (j >= 0 && j < a.length) a[j] = (byte) Math.max(0, Math.min(104, v));
+        }
+
+        /** What a chance says on screen: "75%", "1:2" and so on; "" for always. */
+        public static String chanceLabel(int v) {
+            switch (v) { case 101: return "1:2"; case 102: return "2:2"; case 103: return "1:4"; case 104: return "4:4"; case 100: return ""; default: return v + "%"; }
+        }
+
         public void addOff(String k, int tick) {
             int t = Math.floorMod(tick, len * TICKS);
             if (t % TICKS == 0) { setStep(k, t / TICKS, true); return; }
@@ -236,13 +257,14 @@ public final class Project {
             for (Map.Entry<String, float[]> e : motion.entrySet()) p.motion.put(e.getKey(), e.getValue().clone());
             for (Map.Entry<String, List<Integer>> e : offs.entrySet()) p.offs.put(e.getKey(), new ArrayList<>(e.getValue()));
             for (Map.Entry<String, byte[]> e : acc.entrySet()) p.acc.put(e.getKey(), e.getValue().clone());
+            for (Map.Entry<String, byte[]> e : chance.entrySet()) p.chance.put(e.getKey(), e.getValue().clone());
             return p;
         }
 
-        public void clear() { steps.clear(); notes.clear(); motion.clear(); offs.clear(); acc.clear(); }
+        public void clear() { steps.clear(); notes.clear(); motion.clear(); offs.clear(); acc.clear(); chance.clear(); }
 
         /** Pull a sound out of the loop entirely (when its pad is cleared). */
-        public void forget(String k) { steps.remove(k); notes.remove(k); offs.remove(k); acc.remove(k); }
+        public void forget(String k) { steps.remove(k); notes.remove(k); offs.remove(k); acc.remove(k); chance.remove(k); }
     }
 
     public String name = "";
@@ -407,6 +429,17 @@ public final class Project {
                 }
                 if (!am.isEmpty()) x.put("acc", am);
             }
+            if (!p.chance.isEmpty()) {
+                Map<String, Object> cm = new LinkedHashMap<>();
+                for (Map.Entry<String, byte[]> e : p.chance.entrySet()) {
+                    if (padOf(e.getKey()) < 0) continue;
+                    StringBuilder b = new StringBuilder();
+                    boolean any = false;
+                    for (int j = 0; j < p.len; j++) { if (j > 0) b.append(','); byte v = e.getValue()[j]; if (v != 100) { b.append(v); any = true; } }
+                    if (any) cm.put(e.getKey(), b.toString());
+                }
+                if (!cm.isEmpty()) x.put("chance", cm);
+            }
             pl.add(x);
         }
         o.put("pats", pl);
@@ -499,6 +532,10 @@ public final class Project {
                     String[] f = Json.str(e.getValue(), "").split(",", -1);
                     for (int j = 0; j < f.length && j < a.length; j++) if (!f[j].isEmpty()) try { a[j] = Float.parseFloat(f[j]); } catch (NumberFormatException ignored) {}
                     P.motion.put(e.getKey(), a);
+                }
+                for (Map.Entry<String, Object> e : Json.map(x.get("chance")).entrySet()) {
+                    String[] f = Json.str(e.getValue(), "").split(",", -1);
+                    for (int j = 0; j < f.length && j < MAXSTEPS; j++) if (!f[j].isEmpty()) P.setChance(e.getKey(), j, parseIntOr(f[j].trim(), 100));
                 }
                 for (Map.Entry<String, Object> e : Json.map(x.get("acc")).entrySet()) {
                     String f = Json.str(e.getValue(), "");

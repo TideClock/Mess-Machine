@@ -46,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -154,9 +155,11 @@ fun StepsScreen(state: AppState) {
                     Box(Modifier.weight(1f).alpha(if (audible) 1f else .45f).tagged("steps-$i")) { StepRow(state, k, col, off, state.version) }
                 }
                 if (state.stepStrip == i) { RowTools(state, i); StepPitchStrip(state, i, k, col) }
+                val sheetAt = state.stepSheet
+                if (sheetAt != null && sheetAt.first == k) StepSheet(state, k, sheetAt.second)
             }
         }
-        Help("Tap a step to turn it on. Tap again: loud, then quiet, then off. Slide along a row to paint it. Tap a sound's name for its row tools (every 2, 4 or 8, repeat across, nudge, copy, spread) and to give its steps pitches. Hold its name, then lift, for its menu: mute, solo, the Sample sheet and more. A red M or yellow S by the number shows a muted or soloed sound. A dot means a step has a pitch or roll notes; tap it to clear it, or Clear notes for the whole loop.", modifier = Modifier.padding(top = 4.dp))
+        Help("Tap a step to turn it on. Tap again: loud, then quiet, then off. Hold a step for how often it plays (75%, every other loop...) and how hard; a dashed yellow edge marks one that only plays sometimes. Slide along a row to paint it. Tap a sound's name for its row tools (every 2, 4 or 8, repeat across, nudge, copy, spread) and to give its steps pitches. Hold its name, then lift, for its menu: mute, solo, the Sample sheet and more. A red M or yellow S by the number shows a muted or soloed sound. A dot means a step has a pitch or roll notes; tap it to clear it, or Clear notes for the whole loop.", modifier = Modifier.padding(top = 4.dp))
     }
 }
 
@@ -169,6 +172,8 @@ fun StepRow(state: AppState, k: String, col: Color, off: Int, ver: Int) {
     val dot = BooleanArray(16) { pat.hasNoteAt(k, off + it) }
     // build 108: how hard each step hits: 0 ghost (drawn faint and small), 1 normal, 2 accent (a cream ring)
     val str = IntArray(16) { pat.strength(k, off + it) }
+    val chance = IntArray(16) { pat.chance(k, off + it) }
+    val sheet = state.stepSheet?.let { if (it.first == k) it.second - off else -1 } ?: -1
     // the finer grid (Nov 18): hits between the sixteenths, as ticks, drawn as thin marks where they fall
     val offTicks = pat.offs[k].orEmpty().filter { it / com.tideclock.messmachine.engine.Project.TICKS in off until off + 16 }
     Canvas(
@@ -192,9 +197,15 @@ fun StepRow(state: AppState, k: String, col: Color, off: Int, ver: Int) {
                     var paintOn = false
                     var last = -1
                     var tap = true
+                    // build 6 of the overhaul: hold a step still for its sheet (chance, every other loop, strength)
+                    val holdAt = d.uptimeMillis + viewConfiguration.longPressTimeoutMillis
+                    var lastAt = d.uptimeMillis
+                    var held = false
                     while (true) {
-                        val e = awaitPointerEvent()
+                        val e = if (tap && !painting) withTimeoutOrNull((holdAt - lastAt).coerceAtLeast(1L)) { awaitPointerEvent() } else awaitPointerEvent()
+                        if (e == null) { held = true; break }
                         val c = e.changes.firstOrNull { it.id == d.id } ?: break
+                        lastAt = c.uptimeMillis
                         if (!c.pressed) break
                         val dx = c.position.x - d.position.x
                         val dy = c.position.y - d.position.y
@@ -217,7 +228,11 @@ fun StepRow(state: AppState, k: String, col: Color, off: Int, ver: Int) {
                             c.consume()
                         }
                     }
-                    if (painting) state.paintStep(k, off + last, paintOn, true)
+                    if (held) {
+                        state.openStepSheet(k, off + j0)
+                        // the finger is still down: let it lift without doing anything else
+                        while (true) { val e2 = awaitPointerEvent(); e2.changes.forEach { it.consume() }; if (e2.changes.none { it.pressed }) break }
+                    } else if (painting) state.paintStep(k, off + last, paintOn, true)
                     else if (tap) state.toggleStep(k, off + j0)
                 }
             },
@@ -240,6 +255,10 @@ fun StepRow(state: AppState, k: String, col: Color, off: Int, ver: Int) {
                 else drawRoundRect(fc, tl, sz, r)
             }
             drawRoundRect(if (hot) C.Yellow else if (on[c] && !ghost) C.Cream else C.Empty, tl, sz, r, style = Stroke(width = if (hot) 3.dp.toPx() else 1.5.dp.toPx()))
+            // build 6 of the overhaul: a step that only plays sometimes gets a dashed yellow edge
+            if (on[c] && chance[c] != 100) drawRoundRect(C.Yellow, Offset(tl.x + 1.5.dp.toPx(), tl.y + 1.5.dp.toPx()), Size(sz.width - 3.dp.toPx(), sz.height - 3.dp.toPx()), r,
+                style = Stroke(width = 2.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 4f))))
+            if (sheet == c) drawRoundRect(C.Teal, Offset(tl.x - 2, tl.y - 2), Size(sz.width + 4, sz.height + 4), r, style = Stroke(width = 4.dp.toPx()))
             if (on[c] && str[c] == 2) drawRoundRect(C.Cream, Offset(tl.x + 3.dp.toPx(), tl.y + 3.dp.toPx()), Size(sz.width - 6.dp.toPx(), sz.height - 6.dp.toPx()), r, style = Stroke(width = 2.5.dp.toPx()))
             if (dot[c]) drawCircle(if (on[c]) C.Ink else C.Cream, radius = 3.dp.toPx(), center = Offset(tl.x + sz.width / 2, sz.height / 2))
             if (state.stepStrip >= 0 && state.project.kit[state.stepStrip] == k && state.stepPick == off + c) drawRoundRect(C.Yellow, Offset(tl.x - 2, tl.y - 2), Size(sz.width + 4, sz.height + 4), r, style = Stroke(width = 4.dp.toPx()))
@@ -248,6 +267,32 @@ fun StepRow(state: AppState, k: String, col: Color, off: Int, ver: Int) {
             val x = (t / com.tideclock.messmachine.engine.Project.TICKS.toFloat() - off) * cw
             drawRect(col, Offset(x - 1.5.dp.toPx(), size.height * .15f), Size(3.dp.toPx(), size.height * .7f))
             drawRect(C.Cream, Offset(x - 1.5.dp.toPx(), size.height * .15f), Size(3.dp.toPx(), size.height * .7f), style = Stroke(width = 1f))
+        }
+    }
+}
+
+/** Build 6 of the overhaul: one step's sheet. How often it plays, which time round the loop, and how hard. */
+@Composable
+fun StepSheet(state: AppState, k: String, j: Int) {
+    val pat = state.project.pat()
+    val ch = pat.chance(k, j)
+    Column(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 6.dp).sticker(C.Card, radius = 6.dp, shadow = 3.dp, border = 2.dp, borderColor = C.Teal, shadowColor = C.Teal).padding(10.dp).tagged("stepsheet")) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            T("STEP ${j + 1}", size = 12.sp, color = C.Teal, spacing = .1.em, modifier = Modifier.weight(1f))
+            Btn("Done", { state.stepSheet = null }, small = true, tag = "stepsheet-done")
+        }
+        T("HOW OFTEN", size = 10.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 6.dp))
+        Wrap(Modifier.padding(top = 4.dp)) {
+            for (v in intArrayOf(100, 75, 50, 25)) Btn(if (v == 100) "Always" else "$v%", { state.setStepChance(k, j, v) }, on = ch == v, onColor = C.Yellow, small = true, tag = "chance-$v")
+        }
+        T("WHICH TIME ROUND", size = 10.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 6.dp))
+        Wrap(Modifier.padding(top = 4.dp)) {
+            for ((v, name) in listOf(101 to "1st of 2", 102 to "2nd of 2", 103 to "1st of 4", 104 to "4th of 4")) Btn(name, { state.setStepChance(k, j, v) }, on = ch == v, onColor = C.Yellow, small = true, tag = "chance-$v")
+        }
+        T("HOW HARD", size = 10.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 6.dp))
+        Wrap(Modifier.padding(top = 4.dp)) {
+            val st = pat.strength(k, j)
+            for ((v, name) in listOf(0 to "Quiet", 1 to "Normal", 2 to "Loud")) Btn(name, { state.setStepStrength(k, j, v) }, on = st == v, onColor = C.Pink, small = true, tag = "strength-$v")
         }
     }
 }
