@@ -113,6 +113,22 @@ public final class Project {
         /** One lane off. */
         public void laneClear(String key) { motion.remove(key); }
 
+        /** Build 106: every lane of one pad, gone (the pad was cleared). */
+        public void lanesForget(int pad) { motion.keySet().removeIf(k -> k.startsWith(pad + ":")); }
+
+        /** Build 106: lanes follow their pad when two pads swap. */
+        public void lanesSwap(int a, int b) {
+            Map<String, float[]> out = new LinkedHashMap<>();
+            for (Map.Entry<String, float[]> e : motion.entrySet()) {
+                String k = e.getKey();
+                int c = k.indexOf(':');
+                int pd = c > 0 ? parseIntOr(k.substring(0, c), -1) : -1;
+                String nk = pd == a ? b + k.substring(c) : pd == b ? a + k.substring(c) : k;
+                out.put(nk, e.getValue());
+            }
+            motion.clear(); motion.putAll(out);
+        }
+
         public boolean step(String k, int j) { boolean[] a = steps.get(k); return a != null && j >= 0 && j < a.length && a[j]; }
 
         public void setStep(String k, int j, boolean v) {
@@ -301,10 +317,22 @@ public final class Project {
         String k = kit[pad];
         if (k.isEmpty()) return;
         kit[pad] = "";
-        for (Pattern p : pats) p.forget(k);
+        for (Pattern p : pats) { p.forget(k); p.lanesForget(pad); }
+        // build 106: the pad's own settings go with its sound, so the next sound starts clean
+        opts[pad] = null;
         mutes.remove(k);
         solos.remove(k);
     }
+
+    /** Build 106: two pads trade everything: sound, steps (they follow the sound), lanes and pad settings. */
+    public void swapPads(int a, int b) {
+        if (a == b || a < 0 || b < 0 || a >= NPADS || b >= NPADS) return;
+        String t = kit[a]; kit[a] = kit[b]; kit[b] = t;
+        PadOpts o = opts[a]; opts[a] = opts[b]; opts[b] = o;
+        for (Pattern p : pats) p.lanesSwap(a, b);
+    }
+
+    static int parseIntOr(String s, int d) { try { return Integer.parseInt(s); } catch (NumberFormatException e) { return d; } }
 
     public Project copy() { return fromJson(toJson(), null).project; }
 

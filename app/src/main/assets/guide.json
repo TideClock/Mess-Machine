@@ -1,20 +1,20 @@
 {
-  "title": "Trust fixes: nothing you set gets lost",
+  "title": "One filter, one rule: let go and it goes back",
   "thisBuild": [
-    "FX faders now save with your mess. Close the app, reopen it, and the reverb is still where you left it. Bounces and Bottle it hear them too.",
-    "One Undo takes back a whole take: everything you recorded while Rec was playing, not just the last hit.",
-    "Bottle it now does what it says: the loop becomes one sound on a free pad. Sharing a WAV is Pour it out, in Messes.",
-    "A cleared Auto lane lets go: the filter or pitch it was moving goes back to where it rests.",
-    "Saving is crash safe: the mess is written to a new file and swapped in, with the last copy kept.",
-    "The synth's Wave knob names the shape (saw, tri to saw 30%) instead of 200%."
+    "Every control now works the same way: your finger wins while it holds on, then a recorded lane, then where the control rests. Let go and it goes back to the lane or the resting place, never to zero.",
+    "One pad filter: the FX strip's Cut and Res, the LFO, the sphere, the Padiano strip and lanes all move the same filter, and they add up instead of fighting.",
+    "The LFO has no filter of its own any more. Aimed at the filter, it wubs the pad filter from where it rests. Lo, Hi or Band is the pad filter's kind, in the LFO's tray.",
+    "Cut and Res on the FX strip now save with the mess, like the other faders.",
+    "Swapping two pads swaps their faders, LFO and lanes too. Clearing a pad clears them, so the next sound starts clean.",
+    "Old messes are moved over: an LFO filter you set before becomes the pad filter's resting place. A copy of every mess as it was is kept on the phone."
   ],
   "watch": [
-    "Set a reverb fader, close the app from the recent apps list, reopen: is it still there?",
-    "Record a few passes with Rec on, then Undo once: does the whole take go?",
-    "Bottle it on Steps: does a new pad appear with your loop on it?"
+    "An old mess with an LFO filter: does it sound the same as before?",
+    "A sphere on the filter over a set Cut: let go, does it come back to your Cut?",
+    "Swap two pads: do their faders go with them?"
   ],
   "limits": [
-    "This is the first of the overhaul builds. Every build from here is kept on its own release, so any of them can be rebuilt if you want to go back.",
-    "The bigger changes (one Edit door, the perform row, skins) come in the next builds."
+    "The look and the doors are the same as before; the Edit door and the perform row are the next build.",
+    "A wheel left on Stay and a sphere on pitch share one hand: letting go of the sphere also lets go of the wheel."
   ]
 }

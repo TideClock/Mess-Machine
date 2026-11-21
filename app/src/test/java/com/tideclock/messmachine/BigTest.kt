@@ -408,6 +408,23 @@ class BigTest {
         assertEquals(null, state.fxSend["0:$t"])
     }
 
+    @Test fun padsCarryTheirFadersAndLanes() {
+        // build 106: swapping two pads swaps their FX faders and lanes with their sounds; clearing a pad drops them
+        val t = com.tideclock.messmachine.engine.Engine.T_RVB
+        state.fxSendTo(1, t, .8f, false)
+        ShadowLooper.idleMainLooper(600, java.util.concurrent.TimeUnit.MILLISECONDS); settle()
+        state.edit { pat().setMotion(1, t, 0, .4f) }
+        val k1 = state.project.kit[1]
+        state.swapPads(1, 3); settle()
+        assertEquals(k1, state.project.kit[3])
+        assertEquals(.8f, state.fxSend["3:$t"] ?: 0f, .001f)
+        assertEquals(null, state.fxSend["1:$t"])
+        assertTrue("the lane moved with the pad", state.project.pat().motion.containsKey("3:$t") && !state.project.pat().motion.containsKey("1:$t"))
+        state.clearPad(3); settle()
+        assertEquals(null, state.fxSend["3:$t"])
+        assertFalse(state.project.pat().motion.containsKey("3:$t"))
+    }
+
     @Test fun firstLaunchOfANewBuildShowsTheGuide() {
         // a phone installing a new build has not seen its guide: the app must open it at launch, not crash
         val ctx = ApplicationProvider.getApplicationContext<Context>()
@@ -1571,7 +1588,7 @@ class BigTest {
         at("lfo-rate-1").performTouchInput { down(Offset(width * (4.5f / 7f), height / 2f)); up() }; settle()
         at("lfo-trip-1").performClick(); settle()
         val lo = state.project.opt(1)
-        assertTrue("the LFO is on, square, 1/8 triplet, high pass (${lo.lfoCode()})", lo.lfoOn && lo.lfoWave == 4 && kotlin.math.abs(lo.lfoRate - 4.0 / 3) < 1e-6 && lo.lfoType == 2)
+        assertTrue("the LFO is on, square, 1/8 triplet, the pad filter high pass (${lo.lfoCode()})", lo.lfoOn && lo.lfoWave == 4 && kotlin.math.abs(lo.lfoRate - 4.0 / 3) < 1e-6 && lo.ftype == 2)
         state.engine.play(); for (i in 0 until 40) state.engine.render(FloatArray(512), 256)
         assertTrue("the square wave is moving (${state.engine.lfoValue(1)})", kotlin.math.abs(state.engine.lfoValue(1)) > .99)
         state.engine.stop(); state.engine.render(FloatArray(512), 256)

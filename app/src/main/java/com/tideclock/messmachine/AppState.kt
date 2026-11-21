@@ -454,6 +454,7 @@ class AppState(private val app: Context) {
     }
 
     init {
+        keepOldMesses()
         try { packs.loadInstalled() } catch (_: Exception) {}
         // the app closed in the middle of a lesson: put the mess from before it back
         if (tutFile.exists()) main.post { try { restoreAfterLesson(); say("Your mess from before the lesson is back.") } catch (_: Exception) {} }
@@ -477,6 +478,21 @@ class AppState(private val app: Context) {
         refreshFiles()
         // a few seconds after start, ask GitHub quietly whether a newer build is out (the Update bar shows if so)
         if (!com.tideclock.messmachine.ui.UiFlags.testing) main.postDelayed({ updater.check(true) }, 4000)
+    }
+
+    /**
+     * Build 106 changes how a mess saves its filter and LFO. Once, before anything is saved the new way, every mess on
+     * the phone is copied as it was into kept-before-106, so a rolled-back app can still open them all.
+     */
+    private fun keepOldMesses() {
+        if (prefs.getInt("fmtKept", 0) >= 106) return
+        try {
+            val keep = File(app.filesDir, "kept-before-106").also { it.mkdirs() }
+            if (currentFile.exists()) currentFile.copyTo(File(keep, "current.json"), overwrite = true)
+            val md = File(keep, "messes").also { it.mkdirs() }
+            messDir.listFiles()?.filter { it.isFile && it.name.endsWith(".json") }?.forEach { it.copyTo(File(md, it.name), overwrite = true) }
+            prefs.edit().putInt("fmtKept", 106).apply()
+        } catch (_: Exception) {}
     }
 
     /* ---------------- loading and saving the working mess ---------------- */
@@ -1206,7 +1222,7 @@ class AppState(private val app: Context) {
     private fun midiTurn(t: MidiTarget, value: Int, cc: Int = -1) {
         val v = value.coerceIn(0, 127) / 127f
         when (t.kind) {
-            "fx" -> { fxSend["${t.a}:${t.b}"] = v; engine.mod(t.a, t.b, v); keepFxSoon() }
+            "fx" -> { fxSend["${t.a}:${t.b}"] = v; engine.home(t.a, t.b, v); keepFxSoon() }
             "wheel" -> pitchWheel((value - 64) / 63f, value != 64)
             "dock" -> { if (t.id == "res") dockRes = v else dockCut = v; dockFilter(true) }
             "lfo" -> if (t.id == "rate") {
@@ -1296,6 +1312,7 @@ class AppState(private val app: Context) {
         notes.trail("clear pad ${pad + 1}")
         val t = lib.titleOf(project.kit[pad])
         edit { this.clearPad(pad) }
+        restFx()
         sayUndo("Pad ${pad + 1} is empty again${if (t.isNotEmpty()) " ($t is back in its jar)" else ""}.")
     }
 
@@ -1364,16 +1381,7 @@ class AppState(private val app: Context) {
         edit { pat().laneStamp(key, shape, span, lo, hi, strength) }
     }
 
-    fun clearLane(key: String) { edit { pat().laneClear(key) }; moveLane = ""; restLanes(listOf(key)); sayUndo("That lane is cleared.") }
-
-    /** Build 105: a cleared lane lets its control go back to where it rests (while playing, the engine does this itself). */
-    private fun restLanes(keys: List<String>) {
-        for (k in keys) {
-            val pad = k.substringBefore(":").toIntOrNull() ?: continue
-            val t = k.substringAfter(":").toIntOrNull() ?: continue
-            engine.mod(pad, t, project.opt(pad).fxHome(t).toFloat())
-        }
-    }
+    fun clearLane(key: String) { edit { pat().laneClear(key) }; moveLane = ""; sayUndo("That lane is cleared.") }
 
     /** Every pitch and roll note in the current loop, for every sound (plain hits stay). */
     fun clearAllNotes() {
@@ -1399,7 +1407,8 @@ class AppState(private val app: Context) {
     fun swapPads(a: Int, b: Int) {
         if (a == b || a !in 0 until Project.NPADS || b !in 0 until Project.NPADS) return
         notes.trail("swap pads ${a + 1} ${b + 1}")
-        edit { val t = kit[a]; kit[a] = kit[b]; kit[b] = t }
+        edit { this.swapPads(a, b) }
+        restFx()
         if (project.sel == a) selectPad(b, false)
         sayUndo("Pads ${a + 1} and ${b + 1} swapped sounds.")
     }
@@ -2552,7 +2561,7 @@ class AppState(private val app: Context) {
         recStep = heardStep
     }
 
-    fun clearMoves() { val ks = project.pat().motion.keys.toList(); edit { pat().motion.clear() }; restLanes(ks); sayUndo("XY moves cleared from loop ${Project.LETTERS[project.cur]}.") }
+    fun clearMoves() { edit { pat().motion.clear() }; sayUndo("XY moves cleared from loop ${Project.LETTERS[project.cur]}.") }
 
 
     /* ---------------- a live filter on one pad ---------------- */
@@ -2801,6 +2810,8 @@ class AppState(private val app: Context) {
         val vals = if (on || !x.spring) x.values(fx, fy) else emptyMap()
         val used = x.targets() + (xyUsed[pad] ?: emptySet())
         for (t in used) {
+            // build 106: a sphere on spring lets go, so the control goes back to its lane or where it rests
+            if (vals[t] == null && note == Int.MIN_VALUE && t != Engine.T_FILTER && t != Engine.T_RES) { engine.release(pad, t); continue }
             var v = vals[t] ?: 0f
             when (t) {
                 Engine.T_FILTER, Engine.T_RES -> {}
@@ -2880,14 +2891,14 @@ class AppState(private val app: Context) {
         if (midiMapOn && on) midiAim(MidiTarget("fx", pad, t))
         val x = v.coerceIn(0f, 1f)
         fxSend["$pad:$t"] = x
-        engine.mod(pad, t, x)
+        engine.home(pad, t, x)
         recordMoves(pad, mapOf(t to x), setOf(t), on)
         keepFxSoon()
     }
 
     /** Every FX strip fader on a pad back to zero. */
     fun fxSendsOff(pad: Int) {
-        for (t in FX_STRIP.map { it.first }) if ((fxSend["$pad:$t"] ?: 0f) > 0f) { fxSend.remove("$pad:$t"); engine.mod(pad, t, 0f) }
+        for (t in FX_STRIP.map { it.first } + listOf(Engine.T_FILTER, Engine.T_RES)) if ((fxSend["$pad:$t"] ?: 0f) > 0f) { fxSend.remove("$pad:$t"); engine.home(pad, t, 0f) }
         keepFxSoon()
     }
 
@@ -2913,11 +2924,11 @@ class AppState(private val app: Context) {
     private fun restFx() {
         val old = fxSend.keys.toList()
         fxSend.clear()
-        for (p in 0 until Project.NPADS) for ((t, v) in project.opt(p).fxMap()) { fxSend["$p:$t"] = v.toFloat(); engine.mod(p, t, v.toFloat()) }
+        for (p in 0 until Project.NPADS) for ((t, v) in project.opt(p).fxMap()) { fxSend["$p:$t"] = v.toFloat(); engine.home(p, t, v.toFloat()) }
         for (k in old) if (k !in fxSend) {
             val p = k.substringBefore(":").toIntOrNull() ?: continue
             val t = k.substringAfter(":").toIntOrNull() ?: continue
-            engine.mod(p, t, 0f)
+            engine.home(p, t, 0f)
         }
     }
 
@@ -3001,7 +3012,7 @@ class AppState(private val app: Context) {
         val semis = wheelAt * wheelRange
         val pads = if (wheelAll) (0 until Project.NPADS).filter { project.kit[it].isNotEmpty() } else listOf(project.sel)
         for (pad in pads) {
-            engine.mod(pad, Engine.T_PITCH, semis)
+            if (!on && !wheelStay) engine.release(pad, Engine.T_PITCH) else engine.mod(pad, Engine.T_PITCH, semis)
             recordMoves(pad, mapOf(Engine.T_PITCH to semis), setOf(Engine.T_PITCH), on)
         }
     }

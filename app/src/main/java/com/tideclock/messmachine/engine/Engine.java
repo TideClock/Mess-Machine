@@ -399,6 +399,8 @@ public final class Engine {
         java.util.Arrays.fill(rvbIn, 0, frames * 2, 0f);
         java.util.Arrays.fill(echoIn, 0, frames * 2, 0f);
         lfoBlock(S);
+        if (S != lastSnap) { lastSnap = S; dropGoneLanes(S); restHomes(S); }
+        filterBlock(S);
         padFilters(frames);
         padBlock(S, frames);
         int done = 0;
@@ -437,7 +439,7 @@ public final class Engine {
             if (!lfoFilt[p] && pfFreq[p] >= 19900 && pfTarget[p] >= 19999) { pfFreq[p] = 20000; pfQ[p] = .7; pfOn[p] = false; continue; }
             double f = Math.min(pfFreq[p], rate * .45), w = 2 * Math.PI * f / rate, cs = Math.cos(w), al = Math.sin(w) / (2 * pfQ[p]), a0 = 1 + al;
             float[] c = pfC[p];
-            int ty = lfoFilt[p] ? pfType[p] : 1;
+            int ty = pfType[p];
             if (ty == 2) { c[0] = (float) ((1 + cs) / 2 / a0); c[1] = (float) (-(1 + cs) / a0); c[2] = c[0]; }
             else if (ty == 3) { c[0] = (float) (al / a0); c[1] = 0f; c[2] = -c[0]; }
             else { c[0] = (float) ((1 - cs) / 2 / a0); c[1] = (float) ((1 - cs) / a0); c[2] = c[0]; }
@@ -449,6 +451,22 @@ public final class Engine {
     /* ---------- the LFO strip: one slow wave per pad (the build after 84) ---------- */
 
     private final double[] lfoV = new double[64], lfoRandV = new double[64];
+    private Snapshot lastSnap;
+
+    /** A new snapshot (an edit, Undo, a cleared lane while stopped): lanes that no longer exist let go at once. */
+    private void dropGoneLanes(Snapshot S) {
+        int pi = S != null ? playingPat(S) : -1;
+        Pat P = S != null && pi >= 0 && pi < S.pats.length ? S.pats[pi] : null;
+        boolean[][] keep = new boolean[64][];
+        if (P != null) for (int q = 0; q < P.lanePad.length; q++) {
+            int lp = P.lanePad[q], lt = P.laneT[q];
+            if (lp < 0 || lp >= 64 || lt < 0 || lt >= NT) continue;
+            if (keep[lp] == null) keep[lp] = new boolean[NT];
+            keep[lp][lt] = true;
+        }
+        for (int lp = 0; lp < 64; lp++) for (int lt = 0; lt < NT; lt++)
+            if (laneHeld[lp][lt] && (keep[lp] == null || !keep[lp][lt])) { laneHeld[lp][lt] = false; combine(lp, lt); }
+    }
     private final long[] lfoRandCyc = new long[64], padLast = new long[64];
     private final boolean[] lfoFilt = new boolean[64];
     private final int[] pfType = new int[64];
@@ -482,25 +500,12 @@ public final class Engine {
         for (int p = 0; p < 64; p++) {
             PadSlot ps = S.pads[p];
             PadOpts o = ps != null ? ps.opts : null;
-            if (o == null || !o.lfoOn) {
-                lfoV[p] = 0;
-                if (lfoFilt[p]) { lfoFilt[p] = false; pfType[p] = 1; pfTarget[p] = 20000; pfQT[p] = .7; pfSlow[p] = true; }
-                continue;
-            }
+            if (o == null || !o.lfoOn) { lfoV[p] = 0; continue; }
             double per = Math.max(.125, o.lfoRate);
             double x = (o.lfoRetrig ? (frame - padLast[p]) / spbF : pos) / per;
             long cyc = (long) Math.floor(x);
             double v = lfoWave(o.lfoWave, x - cyc, cyc, p);
             lfoV[p] = v;
-            if (o.lfoType > 0) {
-                double c = o.lfoCut, r = o.lfoRes;
-                if (o.lfoTarget == T_FILTER) c += o.lfoDepth * .5 * v;
-                if (o.lfoTarget == T_RES) r += o.lfoDepth * .5 * (v + 1);
-                c = Math.max(0, Math.min(1, c)); r = Math.max(0, Math.min(1, r));
-                double f = 40 * Math.pow(18000.0 / 40, c);
-                pfType[p] = o.lfoType; pfTarget[p] = f; pfFreq[p] = f; pfQT[p] = .7 + r * 12; pfQ[p] = pfQT[p]; pfSlow[p] = false;
-                lfoFilt[p] = true;
-            } else if (lfoFilt[p]) { lfoFilt[p] = false; pfType[p] = 1; pfTarget[p] = 20000; pfQT[p] = .7; pfSlow[p] = true; }
         }
     }
 
@@ -544,7 +549,9 @@ public final class Engine {
             case "panic":
                 for (Voice v : pool) v.active = false;
                 for (float[] m : pMod) java.util.Arrays.fill(m, 0f);
+                for (float[] m : pHome) java.util.Arrays.fill(m, 0f);
                 for (boolean[] m : laneHeld) java.util.Arrays.fill(m, false);
+                for (boolean[] m : handOn) java.util.Arrays.fill(m, false);
                 for (float[] m : tFx) java.util.Arrays.fill(m, 0f);
                 restHomes(S);
                 held.clear(); freeOn = false; beatOn = false;
@@ -571,12 +578,24 @@ public final class Engine {
             case "stopprev": for (Voice v : pool) if (v.active && v.preview) startRelease(v, .03f); break;
             case "fx": fxSet(S, (String) c[1], (Boolean) c[2]); break;
             case "mod": {
+                // a hand (finger, wheel, mouth, a knob) holds this control until it lets go (build 106)
                 int pd = (Integer) c[1], t = (Integer) c[2];
                 if (pd >= 0 && pd < 64 && t >= 0 && t < NT) {
-                    pMod[pd][t] = (Float) c[3];
+                    pHand[pd][t] = (Float) c[3];
+                    handOn[pd][t] = true;
                     modTouch[pd][t] = frame;
-                    if (t == T_FILTER || t == T_RES) filterFromMod(pd);
+                    combine(pd, t);
                 }
+                break;
+            }
+            case "rel": {
+                int pd = (Integer) c[1], t = (Integer) c[2];
+                if (pd >= 0 && pd < 64 && t >= 0 && t < NT) { handOn[pd][t] = false; combine(pd, t); }
+                break;
+            }
+            case "home": {
+                int pd = (Integer) c[1], t = (Integer) c[2];
+                if (pd >= 0 && pd < 64 && t >= 0 && t < NT) { pHome[pd][t] = (Float) c[3]; combine(pd, t); }
                 break;
             }
             case "fxt": {
@@ -601,13 +620,15 @@ public final class Engine {
                 } else { filtTarget = xyHP ? 10 : 20000; qTarget = .7; filtSlow = true; }
                 break;
             case "pf": {
+                // a hand on the pad filter (XY, the Padiano strip, the dock filter): cut 1 = open. Let go and the
+                // filter goes back to where it rests, not wide open (build 106)
                 int pd = (Integer) c[1];
                 if (pd < 0 || pd >= 64) break;
                 boolean on = (Boolean) c[4];
-                double cut = Math.max(0, Math.min(1, (Float) c[2])), res = Math.max(0, Math.min(1, (Float) c[3]));
-                pfTarget[pd] = on ? 90 * Math.pow(20000.0 / 90, cut) : 20000;
-                pfQT[pd] = on ? .7 + res * 13 : .7;
-                pfSlow[pd] = !on;
+                float cut = Math.max(0, Math.min(1, (Float) c[2])), res = Math.max(0, Math.min(1, (Float) c[3]));
+                pHand[pd][T_FILTER] = 1 - cut; pHand[pd][T_RES] = res;
+                handOn[pd][T_FILTER] = on; handOn[pd][T_RES] = on;
+                combine(pd, T_FILTER); combine(pd, T_RES);
                 break;
             }
             case "xyhp": xyHP = (Boolean) c[1]; filtFreq = filtTarget = xyHP ? 10 : 20000; filtQ = qTarget = .7; fzL = new float[4]; fzR = new float[4]; break;
@@ -829,19 +850,16 @@ public final class Engine {
             laneSeen[lp][lt] = laneSerial;
             float v = P.laneV[q][s];
             if (Float.isNaN(v)) continue;  // between marks a lane holds its last value
-            if (frame - modTouch[lp][lt] < .25 * rate) continue;
-            pMod[lp][lt] = v;
+            laneVal[lp][lt] = v;
             laneHeld[lp][lt] = true;
-            if (lt == T_FILTER || lt == T_RES) filterFromMod(lp);
+            combine(lp, lt);  // a hand on the same control still wins until it lets go
         }
         // build 105: where a lane stops (a cleared lane, a loop without it) the control goes back to where it rests,
         // instead of staying stuck at the lane's last value
         for (int lp = 0; lp < 64; lp++) for (int lt = 0; lt < NT; lt++) {
             if (!laneHeld[lp][lt] || laneSeen[lp][lt] == laneSerial) continue;
             laneHeld[lp][lt] = false;
-            if (frame - modTouch[lp][lt] < .25 * rate) continue;
-            pMod[lp][lt] = home(S, lp, lt);
-            if (lt == T_FILTER || lt == T_RES) filterFromMod(lp);
+            combine(lp, lt);
         }
         if (s % 4 == 0) beatTick(delay);
         Live L = S.live;
@@ -1489,6 +1507,10 @@ public final class Engine {
 
     /** Move one thing on one pad: semitones for pitch, -1..1 for volume and pan, seconds for attack, release and glide, 0..1 for the rest. */
     public void mod(int pad, int what, float value) { cmds.add(new Object[]{"mod", pad, what, value}); }
+    /** A hand lets go of a control: it goes back to its lane or where it rests (build 106). */
+    public void release(int pad, int what) { cmds.add(new Object[]{"rel", pad, what}); }
+    /** Where a control rests (an FX strip fader): saved in the mess by the app. */
+    public void home(int pad, int what, float value) { cmds.add(new Object[]{"home", pad, what, value}); }
     /** A perform effect on one pad (0..63) or one bus (65..68 = buses 1..4); amount 0 turns it off. */
     public void fxTo(String name, int target, float amount) { cmds.add(new Object[]{"fxt", name, target, amount}); }
     /** Bend and level for one held note only (a circle drawn on a Padiano key). */
@@ -1503,36 +1525,72 @@ public final class Engine {
     private final long[][] laneSeen = new long[64][NT];
     private long laneSerial = 0;
 
-    /** Where a control rests when nothing moves it: the FX strip's saved fader position, else 0 (build 105). */
-    private static float home(Snapshot S, int pad, int t) {
-        if (S == null || pad < 0 || pad >= S.pads.length || S.pads[pad] == null) return 0f;
-        return (float) S.pads[pad].opts.fxHome(t);
+    /*
+     * Build 106, the shared layer: every pad control has one value the sound reads (pMod), built the same way for all:
+     * a hand on it (finger, wheel, mouth, knob) wins while it holds on; else a recorded lane where one is playing;
+     * else where the control rests (Home: the FX strip's faders, saved in the mess). The LFO adds its wave on top
+     * when the sound is made, so it moves from wherever the control is.
+     */
+    private final float[][] pHome = new float[64][NT], pHand = new float[64][NT], laneVal = new float[64][NT];
+    private final boolean[][] handOn = new boolean[64][NT];
+
+    private void combine(int p, int t) {
+        pMod[p][t] = handOn[p][t] ? pHand[p][t] : laneHeld[p][t] ? laneVal[p][t] : pHome[p][t];
     }
 
-    /** Every pad's FX strip faders back to where they rest. */
+    /** Every pad's controls rest where the mess says (each new snapshot, a bounce, panic). */
     private void restHomes(Snapshot S) {
         if (S == null) return;
-        for (int i = 0; i < Math.min(64, S.pads.length); i++) {
-            PadSlot ps = S.pads[i];
-            if (ps == null) continue;
-            for (java.util.Map.Entry<Integer, Double> en : ps.opts.fxMap().entrySet()) {
-                int t = en.getKey();
-                if (t < 0 || t >= NT) continue;
-                pMod[i][t] = (float) (double) en.getValue();
-                if (t == T_FILTER || t == T_RES) filterFromMod(i);
+        for (int i = 0; i < 64; i++) {
+            PadSlot ps = i < S.pads.length ? S.pads[i] : null;
+            java.util.Map<Integer, Double> m = ps != null ? ps.opts.fxMap() : java.util.Collections.emptyMap();
+            for (int t = 0; t < NT; t++) {
+                Double d = m.get(t);
+                float v = d == null ? 0f : (float) (double) d;
+                if (pHome[i][t] != v) { pHome[i][t] = v; combine(i, t); }
             }
         }
     }
+
+    /** What a control sounds like right now, before the LFO (for tests and the UI's ghost marks). */
+    public float controlValue(int pad, int t) { return pad >= 0 && pad < 64 && t >= 0 && t < NT ? pMod[pad][t] : 0f; }
     { for (long[] m : modTouch) java.util.Arrays.fill(m, Long.MIN_VALUE / 2); }
 
-    /** Filter and resonance moved through mod() or recorded moves: set that pad's live filter. */
-    private void filterFromMod(int pd) {
-        double cut = 1 - Math.max(0, Math.min(1, pMod[pd][T_FILTER])), res = Math.max(0, Math.min(1, pMod[pd][T_RES]));
-        boolean on = cut < .999 || res > .001;
-        pfTarget[pd] = on ? 90 * Math.pow(20000.0 / 90, cut) : 20000;
-        pfQT[pd] = on ? .7 + res * 13 : .7;
-        pfSlow[pd] = !on;
+    /**
+     * Build 106: one pad filter for everything. Its value is the shared one (hand, lane or rest), its kind is the pad's
+     * (low, high or band pass), and an LFO aimed at the filter closes it from there by up to its depth. With the LFO
+     * moving it the filter follows each block with no glide, so a 1/32 wub stays sharp.
+     */
+    private void filterBlock(Snapshot S) {
+        for (int p = 0; p < 64; p++) {
+            PadSlot ps = S != null && p < S.pads.length ? S.pads[p] : null;
+            double closed = Math.max(0, Math.min(1, pMod[p][T_FILTER])), res = Math.max(0, Math.min(1, pMod[p][T_RES]));
+            int type = ps != null ? ps.opts.ftype : 1;
+            boolean wave = ps != null && ps.opts.lfoOn && (ps.opts.lfoTarget == T_FILTER || ps.opts.lfoTarget == T_RES);
+            if (wave) {
+                double v = lfoV[p], dp = ps.opts.lfoDepth;
+                if (ps.opts.lfoTarget == T_FILTER) closed = Math.max(0, Math.min(1, closed + dp * (1 - v) / 2));
+                else res = Math.max(0, Math.min(1, res + dp * (v + 1) / 2));
+            }
+            boolean on = closed > .001 || res > .001;
+            if (!on) {
+                // a high or band pass that opens jumps straight to open: gliding it as a low pass would sweep the wrong way
+                if (pfType[p] != 1) { pfType[p] = 1; pfFreq[p] = 20000; }
+                pfTarget[p] = 20000; pfQT[p] = .7; pfSlow[p] = true; lfoFilt[p] = false;
+                continue;
+            }
+            double f = type == 2 ? 20 * Math.pow(16000.0 / 20, closed) : type == 3 ? 90 * Math.pow(16000.0 / 90, 1 - closed) : 90 * Math.pow(20000.0 / 90, 1 - closed);
+            pfType[p] = type;
+            pfTarget[p] = f;
+            pfQT[p] = .7 + res * 13;
+            pfSlow[p] = false;
+            if (wave) { pfFreq[p] = f; pfQ[p] = pfQT[p]; }
+            lfoFilt[p] = wave || type != 1;
+        }
     }
+
+    /** Kept for the callers above; the filter is now worked out once per block in filterBlock. */
+    private void filterFromMod(int pd) {}
 
     private static int fxIndex(String n) { for (int k = 0; k < FXN.length; k++) if (FXN[k].equals(n)) return k; return -1; }
 

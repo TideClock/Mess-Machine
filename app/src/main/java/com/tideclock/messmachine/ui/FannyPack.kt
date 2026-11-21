@@ -131,14 +131,16 @@ fun FxStrip(state: AppState, pad: Int, col: Color) {
                     T(name.uppercase(), size = 10.sp, color = C.Dim, lines = 1, modifier = Modifier.padding(top = 3.dp))
                 }
             }
-            // the pad's own filter: cutoff (top is open) and resonance, kept where you leave them
-            val f = state.padFilt[pad]
+            // the pad's own filter: cutoff (top is open) and resonance. Build 106: where it rests, saved with the mess,
+            // the same filter an LFO, XY or lane moves
+            val ft = com.tideclock.messmachine.engine.Engine.T_FILTER
+            val rt = com.tideclock.messmachine.engine.Engine.T_RES
             if ("Cut" in state.fxShown) Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                Fader(f?.first ?: 1f, C.Teal, "fx-cut-$pad") { v, _ -> state.keepPadFilter(pad, v, state.padFilt[pad]?.second ?: 0f) }
+                Fader(1f - (state.fxSend["$pad:$ft"] ?: 0f), C.Teal, "fx-cut-$pad") { v, on -> state.fxSendTo(pad, ft, 1f - v, on) }
                 T("CUT", size = 10.sp, color = C.Teal, lines = 1, modifier = Modifier.padding(top = 3.dp))
             }
             if ("Res" in state.fxShown) Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                Fader(f?.second ?: 0f, C.Pink, "fx-res-$pad") { v, _ -> state.keepPadFilter(pad, state.padFilt[pad]?.first ?: 1f, v) }
+                Fader(state.fxSend["$pad:$rt"] ?: 0f, C.Pink, "fx-res-$pad") { v, on -> state.fxSendTo(pad, rt, v, on) }
                 T("RES", size = 10.sp, color = C.Pink, lines = 1, modifier = Modifier.padding(top = 3.dp))
             }
         }
@@ -229,9 +231,13 @@ fun LfoStrip(state: AppState, pad: Int, col: Color) {
             Btn("Dot", { set { lfoRate = base * 1.5 } }, on = feel > 1.0, onColor = C.Yellow, small = true, tight = true, tag = "lfo-dot-$pad")
         }
         SliderRow("Depth", o.lfoDepth.toFloat(), 0f..1f, { "${(it * 100).toInt()}%" }, { v -> state.midiAim(com.tideclock.messmachine.MidiTarget("lfo", pad, 0, "depth")); set(false) { lfoDepth = v.toDouble() } }, { set { } }, accent = col)
-        if (o.lfoType > 0) {
-            SliderRow("Cutoff", o.lfoCut.toFloat(), 0f..1f, { "${(40 * Math.pow(18000.0 / 40, it.toDouble())).toInt()} Hz" }, { v -> set(false) { lfoCut = v.toDouble() } }, { set { } }, accent = C.Teal)
-            SliderRow("Res", o.lfoRes.toFloat(), 0f..1f, { "${(it * 100).toInt()}%" }, { v -> set(false) { lfoRes = v.toDouble() } }, { set { } }, accent = C.Pink)
+        // build 106: the LFO has no filter of its own; aimed at the filter it moves the pad filter, and these set where
+        // that filter rests (the same as the FX strip's Cut and Res)
+        val ft = com.tideclock.messmachine.engine.Engine.T_FILTER
+        val rt = com.tideclock.messmachine.engine.Engine.T_RES
+        if (o.lfoTarget == ft || o.lfoTarget == rt) {
+            SliderRow("Cutoff", 1f - (state.fxSend["$pad:$ft"] ?: 0f), 0f..1f, { "${(90 * Math.pow(20000.0 / 90, it.toDouble())).toInt()} Hz" }, { v -> state.fxSendTo(pad, ft, 1f - v, true) }, { state.fxSendTo(pad, ft, 1f - (state.fxSend["$pad:$ft"] ?: 0f), false) }, accent = C.Teal)
+            SliderRow("Res", state.fxSend["$pad:$rt"] ?: 0f, 0f..1f, { "${(it * 100).toInt()}%" }, { v -> state.fxSendTo(pad, rt, v, true) }, { state.fxSendTo(pad, rt, state.fxSend["$pad:$rt"] ?: 0f, false) }, accent = C.Pink)
         }
     }
 }
@@ -246,12 +252,13 @@ fun LfoTray(state: AppState, pad: Int) {
     Wrap(Modifier.tagged("lfowave-chips"), gap = 6.dp) {
         for ((w, n) in LFO_WAVES) Btn(n, { set { lfoWave = w; lfoOn = true } }, on = o.lfoWave == w, onColor = C.Teal, small = true, tight = true, tag = "lfo-wave-$w-$pad")
         // the old Wobble effect, folded in as a preset (Nov 18): a gentle pitch sway on a quarter-note sine
-        Btn("Wobble", { set { lfoOn = true; lfoWave = 0; lfoRate = 4.0; lfoTarget = com.tideclock.messmachine.engine.Engine.T_PITCH; lfoDepth = .03; lfoType = 0; lfoRetrig = false } },
+        Btn("Wobble", { set { lfoOn = true; lfoWave = 0; lfoRate = 4.0; lfoTarget = com.tideclock.messmachine.engine.Engine.T_PITCH; lfoDepth = .03; lfoRetrig = false } },
             on = o.lfoOn && o.lfoTarget == com.tideclock.messmachine.engine.Engine.T_PITCH && o.lfoDepth <= .05, onColor = C.Pink, small = true, tight = true, tag = "lfo-wobble-$pad")
     }
     Wrap(Modifier.padding(top = 8.dp).tagged("lfotype-chips"), gap = 6.dp) {
-        T("FILTER", size = 11.sp, color = C.Dim, spacing = .1.em)
-        for ((ty, n) in listOf(0 to "Off", 1 to "Lo", 2 to "Hi", 3 to "Band")) Btn(n, { set { lfoType = ty } }, on = o.lfoType == ty, onColor = C.Pink, small = true, tight = true, tag = "lfo-type-$ty-$pad")
+        // build 106: the pad filter's kind (everything that moves the filter moves this one)
+        T("PAD FILTER", size = 11.sp, color = C.Dim, spacing = .1.em)
+        for ((ty, n) in listOf(1 to "Lo", 2 to "Hi", 3 to "Band")) Btn(n, { set { ftype = ty } }, on = o.ftype == ty, onColor = C.Pink, small = true, tight = true, tag = "lfo-type-$ty-$pad")
     }
     Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
         Select("Target: " + (LFO_TARGETS.firstOrNull { it.first == o.lfoTarget }?.second ?: "Filter"), LFO_TARGETS, { t -> set { lfoTarget = t; lfoOn = true } }, tag = "lfo-target-$pad")

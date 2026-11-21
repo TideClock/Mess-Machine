@@ -664,6 +664,55 @@ public class EngineTest {
       Synth.Param wv = null; for (Synth.Param pm : Synth.ANALOG.params) if (pm.id.equals("w1")) wv = pm;
       check(wv != null && wv.show(2).equals("saw") && wv.show(1.3).equals("tri to saw 30%") && wv.show(3).equals("square"), "the Wave knob names the shape: " + (wv == null ? "?" : wv.show(2) + ", " + wv.show(1.3)));
     }
+    // ---- build 106: one shared layer. Hand beats lane beats rest; letting go goes back, not to zero
+    {
+      float[] sb = new float[256 * 2];
+      Project sp6 = Project.starter();
+      PadOpts so = new PadOpts(); java.util.Map<Integer, Double> sh = new java.util.HashMap<>(); sh.put(Engine.T_RVB, .6); sh.put(Engine.T_FILTER, .5); so.fxSet(sh);
+      sp6.setOpt(3, so);
+      Engine se = new Engine(rate); se.setSnapshot(Engine.Snapshot.build(sp6, lib, new Engine.Live())); se.render(sb, 256);
+      check(Math.abs(se.controlValue(3, Engine.T_RVB) - .6f) < 1e-6, "a pad's controls start where the mess says they rest: verb " + se.controlValue(3, Engine.T_RVB));
+      se.mod(3, Engine.T_RVB, 1f); se.render(sb, 256); float held = se.controlValue(3, Engine.T_RVB);
+      se.release(3, Engine.T_RVB); se.render(sb, 256);
+      check(held == 1f && Math.abs(se.controlValue(3, Engine.T_RVB) - .6f) < 1e-6, "a hand lets go and the control goes back to rest, not to zero: " + held + " then " + se.controlValue(3, Engine.T_RVB));
+      se.padFilter(3, 1f, 0f, true); se.render(sb, 256); float open = se.controlValue(3, Engine.T_FILTER);
+      se.padFilter(3, 1f, 0f, false); se.render(sb, 256);
+      check(open == 0f && Math.abs(se.controlValue(3, Engine.T_FILTER) - .5f) < 1e-6, "an XY opens the filter, and letting go puts it back where it rests: " + open + " then " + se.controlValue(3, Engine.T_FILTER));
+      // a lane beats the rest, a hand beats the lane, and letting go hands it back to the lane
+      Project lp6 = Project.starter(); lp6.setOpt(3, so);
+      for (int j6 = 0; j6 < 16; j6++) lp6.pats[0].setMotion(3, Engine.T_RVB, j6, .2f);
+      Engine le6 = new Engine(rate); le6.setSnapshot(Engine.Snapshot.build(lp6, lib, new Engine.Live())); le6.play();
+      double spb6 = rate * 60.0 / lp6.bpm / 4.0;
+      for (int i = 0; i < (int) (1.5 * spb6 / 256); i++) le6.render(sb, 256);
+      float laneNow = le6.controlValue(3, Engine.T_RVB);
+      le6.mod(3, Engine.T_RVB, .9f); for (int i = 0; i < (int) (2 * spb6 / 256); i++) le6.render(sb, 256);
+      float handNow = le6.controlValue(3, Engine.T_RVB);
+      le6.release(3, Engine.T_RVB); for (int i = 0; i < (int) (1.5 * spb6 / 256); i++) le6.render(sb, 256);
+      check(Math.abs(laneNow - .2f) < 1e-6 && Math.abs(handNow - .9f) < 1e-6 && Math.abs(le6.controlValue(3, Engine.T_RVB) - .2f) < 1e-6,
+        "lane beats rest, hand beats lane, letting go gives it back to the lane: " + laneNow + ", " + handNow + ", " + le6.controlValue(3, Engine.T_RVB));
+      // an LFO on the filter closes an open pad filter from where it rests (the old LFO filter is gone)
+      Project wp = Project.starter(); PadOpts wo = new PadOpts(); wo.lfoOn = true; wo.lfoTarget = Engine.T_FILTER; wo.lfoDepth = 1; wo.lfoRate = 4; wp.setOpt(3, wo);
+      Engine we = new Engine(rate); we.setSnapshot(Engine.Snapshot.build(wp, lib, new Engine.Live()));
+      double wlo = 1e9, whi = 0;
+      for (int i = 0; i < 200; i++) { we.render(sb, 256); wlo = Math.min(wlo, we.padCutoff(3)); whi = Math.max(whi, we.padCutoff(3)); }
+      check(wlo < 300 && whi > 5000, String.format("an LFO on the filter wubs an open pad (%.0f to %.0f Hz)", wlo, whi));
+      // old messes: the LFO's own filter becomes the pad filter's resting place
+      String old = "{\"name\":\"old\",\"bpm\":100,\"v\":3,\"kit\":[\"samples/basement-kick.wav\"],\"pats\":[{\"len\":16,\"steps\":{}}],\"padOpts\":{\"0\":{\"glide\":false,\"glideT\":0.12,\"legato\":false,\"route\":0.0,\"lfo\":\"1,0,4.0,1,0.5,2,0.3,0.4,0\"}}}";
+      Project op = Project.fromJson(old, null).project;
+      PadOpts oo = op.opt(0);
+      check(oo.ftype == 2 && Math.abs(oo.fxHome(Engine.T_FILTER) - .7) < 1e-9 && Math.abs(oo.fxHome(Engine.T_RES) - .4) < 1e-9 && oo.lfoType == 0,
+        "an old mess's LFO filter becomes the pad filter: kind " + oo.ftype + ", rest " + oo.fxHome(Engine.T_FILTER) + ", res " + oo.fxHome(Engine.T_RES));
+      PadOpts again = Project.fromJson(op.toJson(), null).project.opt(0);
+      check(again.ftype == 2 && Math.abs(again.fxHome(Engine.T_FILTER) - .7) < 1e-9, "and saving it again keeps it the same");
+      // pads trade lanes and settings when swapped; a cleared pad drops them
+      Project wq = Project.starter(); wq.setOpt(1, so); wq.pats[0].setMotion(1, Engine.T_RVB, 0, .3f);
+      String k1 = wq.kit[1], k2 = wq.kit[2];
+      wq.swapPads(1, 2);
+      check(wq.kit[2].equals(k1) && wq.kit[1].equals(k2) && wq.opt(2).fxHome(Engine.T_RVB) > .5 && wq.opt(1).fx.isEmpty() && wq.pats[0].motion.containsKey("2:" + Engine.T_RVB) && !wq.pats[0].motion.containsKey("1:" + Engine.T_RVB),
+        "swapping pads moves their lanes and settings with them");
+      wq.clearPad(2);
+      check(wq.opt(2).fx.isEmpty() && !wq.pats[0].motion.containsKey("2:" + Engine.T_RVB), "clearing a pad drops its lanes and settings");
+    }
     // ---- workbench tools
     Sample hat = lib.get(p.kit[2]);
     SoundEdit tr = new SoundEdit(); tr.st = .1; tr.en = .6; tr.tune = 12;
@@ -743,7 +792,8 @@ public class EngineTest {
         Engine.SampleSource lsrc = k -> new Sample(k, low, 44100);
         double[] peaks = new double[3];
         for (int ty = 1; ty <= 3; ty++) {
-          PadOpts fo = new PadOpts(); fo.lfoOn = true; fo.lfoTarget = Engine.T_VOL; fo.lfoDepth = 0; fo.lfoType = ty; fo.lfoCut = .75; fo.lfoRes = 0;
+          // build 106: the pad filter's kind and where it rests, half closed (the LFO has no filter of its own now)
+          PadOpts fo = new PadOpts(); fo.ftype = ty; java.util.Map<Integer, Double> fh = new java.util.HashMap<>(); fh.put(Engine.T_FILTER, .5); fo.fxSet(fh);
           Project fp = new Project(); fp.kit[0] = "low"; fp.bpm = 120; fp.setOpt(0, fo);
           Engine fe = new Engine(rate); fe.setSnapshot(Engine.Snapshot.build(fp, lsrc, new Engine.Live()));
           fe.down(1, 0, new int[]{0}, false);
@@ -751,7 +801,7 @@ public class EngineTest {
           for (int i = 0; i < 40; i++) { fe.render(ob, 512); if (i > 10) for (float x : ob) pk = Math.max(pk, Math.abs(x)); }
           peaks[ty - 1] = pk;
         }
-        check(peaks[1] < peaks[0] * .2 && peaks[2] < peaks[0] * .5, String.format("LFO filter types: a 110 Hz tone through low %.3f, high %.3f, band %.3f (cutoff about 2.7 kHz)", peaks[0], peaks[1], peaks[2]));
+        check(peaks[1] < peaks[0] * .2 && peaks[2] < peaks[0] * .5, String.format("pad filter kinds, half closed: a 110 Hz tone through low %.3f, high %.3f, band %.3f", peaks[0], peaks[1], peaks[2]));
       }
       // the finer time grid (Nov 18): 1/16 triplet repeats record, the off-grid ones as ticks, and play back on time
       {
