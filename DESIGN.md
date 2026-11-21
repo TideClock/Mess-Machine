@@ -59,6 +59,13 @@ Rewritten at the end of every session and at each step of a long job (BT-2). Rea
 
 One line each, dated, with the reason and who decided (BT-2). Older decisions live in the plan sections below.
 
+- 2026-11-20 Deep review (Tyler, doc https://claude.ai/artifact/PjAnmWrBStAqX9wNEc6ZHf): the design reference is
+  Freakshow Industries (playful, ominous, mysterious controls, one hero XY per screen). Playful names stay and grow,
+  each with a plain caption. Play Store is the goal. Velocity: 16 Levels across the pads plus an accent per step,
+  and MIDI velocity. FX means one fader strip. Build order agreed: 1 trust fixes, 2 shared parameter layer,
+  3 one Edit door, 4 velocity, 5 skin system with Stage and Specimen, 6 step locks and chance, 7 stems and master
+  bus, 8 Felt and Paper and Rust. The side dock is still open: Tyler asked how its controls stay reachable.
+
 - 2026-11-18 Builds 96 to 101 (Tyler, final plan https://claude.ai/artifact/SMmt7Jz3BfDsP7xUqLLEqq): soft voice limit 48
   with the quietest fading first, delay given back after 10 clean seconds, growth logged with voices; loops from the
   top bar (a pick waits for the bar line, or Now); the view row is gone (Step and Keys modes retired, Padiano Full
