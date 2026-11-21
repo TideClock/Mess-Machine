@@ -70,7 +70,7 @@ fun FilesScreen(state: AppState) {
                 }
                 // build 7 of the overhaul: for a DAW. Each sound alone (lined up from zero), and the notes as MIDI
                 T("FOR A DAW", size = 10.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 10.dp))
-                Wrap(Modifier.padding(top = 4.dp)) {
+                Wrap(Modifier.padding(top = 4.dp).tagged("daw-chips")) {
                     val L = Project.LETTERS[P.cur]
                     Btn("Stems: loop $L", { state.shareStems(false, 1) }, small = true, color = C.Teal, tag = "stems-loop")
                     Btn("Stems: the song", { state.shareStems(true, 1) }, small = true, enabled = P.songLen() > 0, tag = "stems-song")

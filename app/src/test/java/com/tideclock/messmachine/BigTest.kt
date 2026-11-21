@@ -509,6 +509,19 @@ class BigTest {
         shot("95-stems-and-midi")
     }
 
+    @Test fun midiMapInTheNewLayout() {
+        // the MIDI map, one at a time, in the new layout (build84Pack runs it in Classic)
+        assertEquals("new", state.layout)
+        state.switchMidiMap(true); settle()
+        at("midimap-one").performClick(); settle()
+        assertFalse("One at a time is picked", state.midiRun)
+        tapPad(0)
+        assertEquals("tapping a pad aims the map at it (map on: ${state.midiMapOn}, overlay ${state.overlay})", "pad", state.midiCursor?.kind)
+        state.midiDown(80); state.midiUp(80); settle()
+        assertTrue("one at a time: the map waits for the next tap (map on: ${state.midiMapOn}, cursor ${state.midiCursor}, says ${state.midiLast})", state.midiCursor == null)
+        state.switchMidiMap(false); settle()
+    }
+
     @Test fun newLayoutEditRepeatAndPerformRow() {
         // build 107: Edit (was Menu) and Repeat on the bottom bar, no side dock, the perform row swipes up
         assertEquals("new", state.layout)
@@ -1485,6 +1498,7 @@ class BigTest {
 
     /** Build 99 (Nov 18): the Pro looks, dark and light, with an icon on every bar control. */
     @Test fun build99ProLooks() {
+        state.pickLayout("classic"); settle()
         state.overlay = Overlay.Settings; settle()
         at("look-dark").performClick(); settle()
         state.overlay = null; settle()
@@ -1492,6 +1506,10 @@ class BigTest {
         // every control on the bars is an icon tile now (its icon carries the control's name)
         for (n in listOf("Play", "Stop", "Rec", "Undo", "What the FAQ", "Settings", "Menu", "Pack", "Hold", "Chords", "FX", "Notes (bug)", "Play tab", "Synth", "Steps", "Roll", "Song", "Sounds"))
             assertTrue("$n has its icon", rule.onAllNodesWithContentDescription(n).fetchSemanticsNodes().isNotEmpty())
+        // the new layout's bar: Edit has its icon too
+        state.pickLayout("new"); settle()
+        assertTrue("Edit has its icon", rule.onAllNodesWithContentDescription("Edit").fetchSemanticsNodes().isNotEmpty())
+        state.pickLayout("classic"); settle()
         shot("84-pro-dark")
         at("tab-Steps").performClick(); settle()
         assertEquals("the tabs still work as icons", Tab.Steps, state.tab)
@@ -1606,6 +1624,7 @@ class BigTest {
      * slash, the MIDI map's one-at-a-time and list, and the note box's categories and key.
      */
     @Test fun build84Pack() {
+        state.pickLayout("classic"); settle()
         // note #19: with Repeat already on, the Repeat lesson starts on step 1, and Back waits instead of bouncing
         state.setLive { nr = true }; state.switchHold(true); state.pickChordMode("triad"); settle()
         val rpt = com.tideclock.messmachine.Tutorials.all.first { it.id == "repeat" }
