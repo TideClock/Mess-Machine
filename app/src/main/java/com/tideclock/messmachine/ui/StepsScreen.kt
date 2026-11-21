@@ -159,7 +159,7 @@ fun StepsScreen(state: AppState) {
                 if (sheetAt != null && sheetAt.first == k) StepSheet(state, k, sheetAt.second)
             }
         }
-        Help("Tap a step to turn it on. Tap again: loud, then quiet, then off. Hold a step for how often it plays (75%, every other loop...) and how hard; a dashed yellow edge marks one that only plays sometimes. Slide along a row to paint it. Tap a sound's name for its row tools (every 2, 4 or 8, repeat across, nudge, copy, spread) and to give its steps pitches. Hold its name, then lift, for its menu: mute, solo, the Sample sheet and more. A red M or yellow S by the number shows a muted or soloed sound. A dot means a step has a pitch or roll notes; tap it to clear it, or Clear notes for the whole loop.", modifier = Modifier.padding(top = 4.dp))
+        Help("Tap a step to turn it on. Tap again: loud, then quiet, then off. Hold a step for how often it plays (75%, every other loop...), how hard, and a filter, reverb or echo for that one hit (a teal corner); a dashed yellow edge marks one that only plays sometimes. Slide along a row to paint it. Tap a sound's name for its row tools (every 2, 4 or 8, repeat across, nudge, copy, spread) and to give its steps pitches. Hold its name, then lift, for its menu: mute, solo, the Sample sheet and more. A red M or yellow S by the number shows a muted or soloed sound. A dot means a step has a pitch or roll notes; tap it to clear it, or Clear notes for the whole loop.", modifier = Modifier.padding(top = 4.dp))
     }
 }
 
@@ -173,6 +173,7 @@ fun StepRow(state: AppState, k: String, col: Color, off: Int, ver: Int) {
     // build 108: how hard each step hits: 0 ghost (drawn faint and small), 1 normal, 2 accent (a cream ring)
     val str = IntArray(16) { pat.strength(k, off + it) }
     val chance = IntArray(16) { pat.chance(k, off + it) }
+    val locked = BooleanArray(16) { pat.hasLock(k, off + it) }
     val sheet = state.stepSheet?.let { if (it.first == k) it.second - off else -1 } ?: -1
     // the finer grid (Nov 18): hits between the sixteenths, as ticks, drawn as thin marks where they fall
     val offTicks = pat.offs[k].orEmpty().filter { it / com.tideclock.messmachine.engine.Project.TICKS in off until off + 16 }
@@ -258,6 +259,8 @@ fun StepRow(state: AppState, k: String, col: Color, off: Int, ver: Int) {
             // build 6 of the overhaul: a step that only plays sometimes gets a dashed yellow edge
             if (on[c] && chance[c] != 100) drawRoundRect(C.Yellow, Offset(tl.x + 1.5.dp.toPx(), tl.y + 1.5.dp.toPx()), Size(sz.width - 3.dp.toPx(), sz.height - 3.dp.toPx()), r,
                 style = Stroke(width = 2.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 4f))))
+            // a step lock: a small teal corner
+            if (on[c] && locked[c]) drawCircle(C.Teal, radius = 3.dp.toPx(), center = Offset(tl.x + sz.width - 5.dp.toPx(), tl.y + 5.dp.toPx()))
             if (sheet == c) drawRoundRect(C.Teal, Offset(tl.x - 2, tl.y - 2), Size(sz.width + 4, sz.height + 4), r, style = Stroke(width = 4.dp.toPx()))
             if (on[c] && str[c] == 2) drawRoundRect(C.Cream, Offset(tl.x + 3.dp.toPx(), tl.y + 3.dp.toPx()), Size(sz.width - 6.dp.toPx(), sz.height - 6.dp.toPx()), r, style = Stroke(width = 2.5.dp.toPx()))
             if (dot[c]) drawCircle(if (on[c]) C.Ink else C.Cream, radius = 3.dp.toPx(), center = Offset(tl.x + sz.width / 2, sz.height / 2))
@@ -288,6 +291,22 @@ fun StepSheet(state: AppState, k: String, j: Int) {
         T("WHICH TIME ROUND", size = 10.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 6.dp))
         Wrap(Modifier.padding(top = 4.dp)) {
             for ((v, name) in listOf(101 to "1st of 2", 102 to "2nd of 2", 103 to "1st of 4", 104 to "4th of 4")) Btn(name, { state.setStepChance(k, j, v) }, on = ch == v, onColor = C.Yellow, small = true, tag = "chance-$v")
+        }
+        // step locks: these snap back on the next step
+        T("THIS STEP ONLY", size = 10.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 6.dp))
+        for ((t, name, vals) in listOf(
+            Triple(com.tideclock.messmachine.engine.Engine.T_FILTER, "Filter shut", floatArrayOf(.25f, .5f, .75f, .9f)),
+            Triple(com.tideclock.messmachine.engine.Engine.T_RVB, "Reverb", floatArrayOf(.3f, .6f, 1f)),
+            Triple(com.tideclock.messmachine.engine.Engine.T_ECHO, "Echo", floatArrayOf(.3f, .6f, 1f)),
+        )) {
+            val cur = pat.lock(k, t, j)
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+                T(name.uppercase(), size = 10.sp, color = C.Cream, modifier = Modifier.width(78.dp))
+                Wrap(Modifier.weight(1f)) {
+                    Btn("Off", { state.setStepLock(k, j, t, Float.NaN) }, on = cur.isNaN(), small = true, tight = true, tag = "lock-$t-off")
+                    for (v in vals) Btn("${(v * 100).toInt()}%", { state.setStepLock(k, j, t, v) }, on = !cur.isNaN() && kotlin.math.abs(cur - v) < .01f, onColor = C.Teal, small = true, tight = true, tag = "lock-$t-${(v * 100).toInt()}")
+                }
+            }
         }
         T("HOW HARD", size = 10.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 6.dp))
         Wrap(Modifier.padding(top = 4.dp)) {

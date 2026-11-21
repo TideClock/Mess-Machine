@@ -280,6 +280,18 @@ fun TempoScreen(state: AppState) {
             { state.setBpm(bpm.roundToInt()) })
         SliderRow("Swing", swing, 0f..100f, { "${it.roundToInt()}%" }, { swing = it }, { state.edit { this.swing = swing.roundToInt() } }, accent = C.Teal)
         Help("Swing pushes every other 16th late, like the site.", modifier = Modifier.padding(bottom = 12.dp))
+        // the last build of the overhaul: the master bus, the last thing every sound goes through
+        var squash by remember { mutableStateOf(P.squash.toFloat()) }
+        var level by remember { mutableStateOf(P.level.toFloat()) }
+        T("THE MASTER BUS", size = 12.sp, color = C.Yellow, spacing = .1.em, modifier = Modifier.padding(top = 4.dp).tagged("master-bus"))
+        SliderRow("Squash", squash, 0f..1f, { v -> when { v < .05f -> "off"; v < .35f -> "light"; v < .65f -> "as it was"; v < .85f -> "pressed"; else -> "flattened" } },
+            { squash = it; state.setMaster(squash = it.toDouble(), commit = false) }, { state.setMaster(squash = squash.toDouble()) }, accent = C.Pink)
+        SliderRow("Level", level, 0f..1.6f, { "${(it * 100).roundToInt()}%" },
+            { level = it; state.setMaster(level = it.toDouble(), commit = false) }, { state.setMaster(level = level.toDouble()) }, accent = C.Teal)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 4.dp)) {
+            Btn("As it was", { squash = .5f; level = 1f; state.setMaster(.5, 1.0) }, small = true, tag = "master-reset")
+        }
+        Help("Squash presses the whole mix together: off keeps every peak, flattened makes it dense and loud. Level is the mix's volume after it. Both save with the mess and go into bounces and stems.", modifier = Modifier.padding(bottom = 12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Btn("Click", { state.setLive { click = !click } }, on = state.live.click, small = true)
             Btn("Hear steps on tap", { state.switchPlayOnTap(!state.playOnTap) }, on = state.playOnTap, small = true, onColor = C.Teal)

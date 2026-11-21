@@ -1,0 +1,94 @@
+package com.tideclock.messmachine.ui
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
+import com.tideclock.messmachine.AppState
+import com.tideclock.messmachine.FX_STRIP
+import com.tideclock.messmachine.Overlay
+import com.tideclock.messmachine.Tab
+import com.tideclock.messmachine.engine.Project
+
+/** The Edit tray's five drawers, in the order the tabs show them. */
+val EDIT_TABS = listOf("sound" to "Sound", "fx" to "FX", "keys" to "Keys", "mod" to "Mod", "more" to "More")
+
+/**
+ * The Edit tray (the overhaul's last build): Edit, then a pad, opens everything about that pad in one place, in five
+ * drawers. Sound is the sound itself, FX its faders and filter, Keys how it plays as notes, Mod what moves it (the
+ * LFO, the XY square, lanes), More the rest (mute, solo, route, move, clear). The pad menu's list is the Classic
+ * layout's way in and is still there.
+ */
+@Composable
+fun EditTray(state: AppState, pad: Int) {
+    val P = state.project
+    val k = P.kit.getOrNull(pad).orEmpty()
+    if (k.isEmpty()) { T("This pad is empty.", size = 13.sp, color = C.Dim); return }
+    val col = padColor(Color(state.lib.colorOf(k)))
+    Row(Modifier.fillMaxWidth().tagged("edit-tabs"), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+        for ((id, name) in EDIT_TABS) Btn(name, { state.pickEditTab(id) }, on = state.editTab == id, onColor = col, small = true, tight = true,
+            tag = "edit-tab-$id", modifier = Modifier.weight(1f))
+    }
+    Column(Modifier.fillMaxWidth().padding(top = 10.dp).tagged("edit-${state.editTab}")) {
+        when (state.editTab) {
+            "sound" -> {
+                val recHere = state.micOn && state.micPad == pad
+                Wrap(gap = 6.dp) {
+                    Btn("Hear it", { state.preview(k) }, small = true, color = col, tag = "menu-hear")
+                    if (Project.isSynth(k)) Btn("◎ Synth", { state.closeEdit(); state.tab = Tab.Synth }, small = true, tag = "menu-synth")
+                    else Btn("✂ Sample", { state.closeEdit(); state.overlay = Overlay.Doctor(k) }, small = true, tag = "menu-doctor")
+                    Btn("Swap sound", { state.closeEdit(); state.overlay = Overlay.Picker(pad) }, small = true, tag = "menu-swap")
+                    Btn(if (recHere) "■ Stop recording" else "● Record onto it", { state.closeEdit(); state.askRecord(pad) }, small = true, enabled = !state.micOn || recHere, tag = "menu-record")
+                    Btn(if (k in state.favs) "★ Starred" else "☆ Star", { state.toggleFav(k) }, on = k in state.favs, onColor = C.Yellow, small = true, tag = "menu-star")
+                    Btn("Keep in Workbench", { state.keepInBench(pad) }, small = true, tag = "menu-keep")
+                    Btn("Share this sound", { state.shareSoundWav(k) }, small = true, tag = "menu-share")
+                }
+            }
+            "fx" -> {
+                FxStrip(state, pad, col)
+                FxTray(state, pad)
+            }
+            "keys" -> {
+                Wrap(gap = 6.dp) {
+                    Btn(if (pad in state.keyboards) "Padiano: hide" else "Padiano under this row", { state.togglePack(pad) }, on = pad in state.keyboards, onColor = col, small = true, tag = "menu-piano")
+                    Btn(if (state.levelsPad == pad) "16 Levels: off" else "16 Levels: soft to hard", { state.switchLevels(pad) }, on = state.levelsPad == pad, onColor = C.Yellow, small = true, tag = "menu-levels")
+                }
+                T("GLIDE", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
+                GlideTray(state, pad)
+            }
+            "mod" -> {
+                LfoStrip(state, pad, col)
+                LfoTray(state, pad)
+                Wrap(Modifier.padding(top = 10.dp), gap = 6.dp) {
+                    Btn("XY square: ${state.xyOf(pad).name}", { state.closeEdit(); state.overlay = Overlay.Xy(pad) }, small = true, tag = "menu-xy")
+                }
+                T("RECORD A LANE FOR", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
+                Wrap(gap = 6.dp) {
+                    for ((t, name) in FX_STRIP) Btn(name, { state.closeEdit(); state.openAutoLane(pad, t) }, small = true, tight = true, tag = "edit-lane-$t")
+                }
+            }
+            else -> {
+                Wrap(gap = 6.dp) {
+                    Btn(if (P.mutes.contains(k)) "Unmute" else "Mute", { state.toggleMute(k) }, on = P.mutes.contains(k), onColor = C.Riot, small = true, tag = "menu-mute-$pad")
+                    Btn(if (P.solos.contains(k)) "Unsolo" else "Solo", { state.toggleSolo(k) }, on = P.solos.contains(k), onColor = C.Yellow, small = true, tag = "menu-solo-$pad")
+                    Btn("Route: " + (if (P.opt(pad).route == 0) "mix" else "bus ${P.opt(pad).route}"), { state.cycleRoute(pad) }, small = true, tag = "menu-route")
+                    Btn("Move to another pad", { state.closeEdit(); state.armSwap(pad) }, small = true, tag = "menu-move")
+                }
+                T("FANNYPACK STRIPS", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
+                PackTray(state, pad)
+                Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (P.pat().usedBy(k)) Btn("Clear from loop ${Project.LETTERS[P.cur]}", { state.clearSoundInLoop(pad) }, small = true, tier = Tier.Danger, tag = "menu-clearloop")
+                    Btn("Clear pad", { state.closeEdit(); state.clearPad(pad) }, small = true, tier = Tier.Danger, tag = "menu-clear")
+                }
+            }
+        }
+    }
+}

@@ -1389,6 +1389,12 @@ class AppState(private val app: Context) {
     }
     fun setStepChance(key: String, j: Int, v: Int) { notes.trail("chance ${j + 1} $v"); edit { project.pat().setChance(key, j, v) } }
     fun setStepStrength(key: String, j: Int, v: Int) { edit { project.pat().setStrength(key, j, v) } }
+    /** Step locks: a control's value for this step only (NaN takes the lock off). */
+    fun setStepLock(key: String, j: Int, t: Int, v: Float) { notes.trail("lock ${j + 1} t$t ${if (v.isNaN()) "off" else v}"); edit { project.pat().setLock(key, t, j, v) } }
+    /** The master bus: squash and level, saved with the mess. Moving a slider is not an undo step until it is let go. */
+    fun setMaster(squash: Double? = null, level: Double? = null, commit: Boolean = true) {
+        edit(commit) { if (squash != null) this.squash = squash.coerceIn(0.0, 1.0); if (level != null) this.level = level.coerceIn(0.0, 1.6) }
+    }
 
     fun paintStep(key: String, j: Int, on: Boolean, commit: Boolean) {
         val P = project.pat()
@@ -2065,6 +2071,11 @@ class AppState(private val app: Context) {
         private set
     fun switchFlick() { flickOn = !flickOn; prefs.edit().putBoolean("flickOn", flickOn).apply() }
 
+    /** The Edit tray's open drawer (sound, fx, keys, mod, more); it stays where you left it. */
+    var editTab by mutableStateOf(prefs.getString("editTab", "sound") ?: "sound")
+    fun pickEditTab(t: String) { editTab = t; prefs.edit().putString("editTab", t).apply() }
+    fun closeEdit() { if (tray?.startsWith("edit:") == true) tray = null }
+
     fun openTray(kind: String?) { tray = kind; menuArmed = false; if (kind != null) notes.trail("settings $kind") }
 
     /** The Menu button: the first tap arms it, the second opens what you touched last (the picked pad when nothing). */
@@ -2109,7 +2120,9 @@ class AppState(private val app: Context) {
                 val d = tag.substringAfterLast('-').toInt()
                 val pad = bank * Project.BANK + d
                 if (project.sel != pad) selectPad(pad, false)
-                tray = null; padMenu = pad
+                // the overhaul's last build: in the new layouts a loaded pad opens the Edit tray; Classic keeps the menu
+                if (layout != "classic" && project.kit[pad].isNotEmpty()) { padMenu = -1; openTray("edit:$pad") }
+                else { tray = null; padMenu = pad }
             }
             k.startsWith("xy:") -> { tray = null; overlay = Overlay.Xy(k.substringAfter(':').toInt()) }
             k == "keys" -> { tray = null; switchKeysBar(true) }

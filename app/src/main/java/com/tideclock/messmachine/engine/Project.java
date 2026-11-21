@@ -67,6 +67,30 @@ public final class Project {
             if (j >= 0 && j < a.length) a[j] = (byte) Math.max(0, Math.min(104, v));
         }
 
+        /**
+         * Step locks (overhaul, last build): a value for one step only, per sound and control, that snaps back on the
+         * next step. Key "sound@target" (Engine.T_FILTER and so on), one value per step, NaN for none. Saved as "locks".
+         */
+        public final Map<String, float[]> locks = new LinkedHashMap<>();
+
+        public float lock(String k, int t, int j) { float[] a = locks.get(k + "@" + t); return a == null || j < 0 || j >= a.length ? Float.NaN : a[j]; }
+
+        public void setLock(String k, int t, int j, float v) {
+            String key = k + "@" + t;
+            float[] a = locks.get(key);
+            if (a == null) { if (Float.isNaN(v)) return; a = new float[MAXSTEPS]; Arrays.fill(a, Float.NaN); locks.put(key, a); }
+            if (j >= 0 && j < a.length) a[j] = v;
+            boolean any = false;
+            for (float x : a) if (!Float.isNaN(x)) { any = true; break; }
+            if (!any) locks.remove(key);
+        }
+
+        /** Does this step have any lock on it? */
+        public boolean hasLock(String k, int j) {
+            for (Map.Entry<String, float[]> e : locks.entrySet()) if (e.getKey().startsWith(k + "@") && j >= 0 && j < e.getValue().length && !Float.isNaN(e.getValue()[j])) return true;
+            return false;
+        }
+
         /** What a chance says on screen: "75%", "1:2" and so on; "" for always. */
         public static String chanceLabel(int v) {
             switch (v) { case 101: return "1:2"; case 102: return "2:2"; case 103: return "1:4"; case 104: return "4:4"; case 100: return ""; default: return v + "%"; }
@@ -258,13 +282,14 @@ public final class Project {
             for (Map.Entry<String, List<Integer>> e : offs.entrySet()) p.offs.put(e.getKey(), new ArrayList<>(e.getValue()));
             for (Map.Entry<String, byte[]> e : acc.entrySet()) p.acc.put(e.getKey(), e.getValue().clone());
             for (Map.Entry<String, byte[]> e : chance.entrySet()) p.chance.put(e.getKey(), e.getValue().clone());
+            for (Map.Entry<String, float[]> e : locks.entrySet()) p.locks.put(e.getKey(), e.getValue().clone());
             return p;
         }
 
-        public void clear() { steps.clear(); notes.clear(); motion.clear(); offs.clear(); acc.clear(); chance.clear(); }
+        public void clear() { steps.clear(); notes.clear(); motion.clear(); offs.clear(); acc.clear(); chance.clear(); locks.clear(); }
 
         /** Pull a sound out of the loop entirely (when its pad is cleared). */
-        public void forget(String k) { steps.remove(k); notes.remove(k); offs.remove(k); acc.remove(k); chance.remove(k); }
+        public void forget(String k) { steps.remove(k); notes.remove(k); offs.remove(k); acc.remove(k); chance.remove(k); locks.keySet().removeIf(x -> x.startsWith(k + "@")); }
     }
 
     public String name = "";
@@ -277,6 +302,11 @@ public final class Project {
     public final Pattern[] pats = new Pattern[NSLOTS];
     public final int[] song = new int[MAXSONG];
     public int bpm = 112, swing = 0, sel = 7, root = 0, cur = 0;
+    /**
+     * The master bus (overhaul, last build): squash is how hard the mix is pressed together (0 off, .5 where it always
+     * sat, 1 hard), level is the mix's volume after it (1 = as before). Saved only when changed.
+     */
+    public double squash = .5, level = 1;
     public boolean fold = false, songMode = false;
     public String scale = "Minor"; // new messes start in C minor (Tyler, 2026-11-10); files without a scale still load as Chromatic
     public final Set<String> mutes = new LinkedHashSet<>(), solos = new LinkedHashSet<>();
@@ -440,6 +470,17 @@ public final class Project {
                 }
                 if (!cm.isEmpty()) x.put("chance", cm);
             }
+            if (!p.locks.isEmpty()) {
+                Map<String, Object> lm = new LinkedHashMap<>();
+                for (Map.Entry<String, float[]> e : p.locks.entrySet()) {
+                    String k = e.getKey(); int at = k.lastIndexOf('@');
+                    if (at < 0 || padOf(k.substring(0, at)) < 0) continue;
+                    StringBuilder b = new StringBuilder();
+                    for (int j = 0; j < p.len; j++) { if (j > 0) b.append(','); float v = e.getValue()[j]; if (!Float.isNaN(v)) b.append(Math.round(v * 1000) / 1000f); }
+                    lm.put(k, b.toString());
+                }
+                if (!lm.isEmpty()) x.put("locks", lm);
+            }
             pl.add(x);
         }
         o.put("pats", pl);
@@ -448,6 +489,8 @@ public final class Project {
         for (int k = 0; k < sl; k++) sg.append(song[k] >= 0 ? LETTERS.charAt(song[k]) : '-');
         o.put("song", sg.toString());
         o.put("swing", (double) swing);
+        if (Math.abs(squash - .5) > 1e-6) o.put("squash", squash);
+        if (Math.abs(level - 1) > 1e-6) o.put("level", level);
         o.put("mutes", new ArrayList<Object>(mutes));
         o.put("solos", new ArrayList<Object>(solos));
         o.put("scale", scale);
@@ -533,6 +576,14 @@ public final class Project {
                     for (int j = 0; j < f.length && j < a.length; j++) if (!f[j].isEmpty()) try { a[j] = Float.parseFloat(f[j]); } catch (NumberFormatException ignored) {}
                     P.motion.put(e.getKey(), a);
                 }
+                for (Map.Entry<String, Object> e : Json.map(x.get("locks")).entrySet()) {
+                    String k = e.getKey(); int at = k.lastIndexOf('@');
+                    if (at < 0) continue;
+                    int t = parseIntOr(k.substring(at + 1), -1);
+                    if (t < 0) continue;
+                    String[] f = Json.str(e.getValue(), "").split(",", -1);
+                    for (int j = 0; j < f.length && j < MAXSTEPS; j++) if (!f[j].isEmpty()) try { P.setLock(k.substring(0, at), t, j, Float.parseFloat(f[j])); } catch (NumberFormatException ignored) {}
+                }
                 for (Map.Entry<String, Object> e : Json.map(x.get("chance")).entrySet()) {
                     String[] f = Json.str(e.getValue(), "").split(",", -1);
                     for (int j = 0; j < f.length && j < MAXSTEPS; j++) if (!f[j].isEmpty()) P.setChance(e.getKey(), j, parseIntOr(f[j].trim(), 100));
@@ -559,6 +610,8 @@ public final class Project {
             P.notes.keySet().removeIf(k -> p.padOf(k) < 0);
         }
         p.swing = (int) SoundEdit.clamp(Json.num(q.get("swing"), 0), 0, 100);
+        p.squash = SoundEdit.clamp(Json.num(q.get("squash"), .5), 0, 1);
+        p.level = SoundEdit.clamp(Json.num(q.get("level"), 1), 0, 1.6);
         for (Object m : Json.list(q.get("mutes"))) if (m instanceof String) p.mutes.add((String) m);
         for (Object m : Json.list(q.get("solos"))) if (m instanceof String) p.solos.add((String) m);
         String sc = Json.str(q.get("scale"), "Chromatic");

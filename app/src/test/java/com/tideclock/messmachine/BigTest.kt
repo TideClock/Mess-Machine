@@ -125,11 +125,20 @@ class BigTest {
      * Open a pad's menu the way a player does since build 84: tap the pad, then Menu on the bottom dock. An empty pad
      * is picked through the menu's target instead (a tap on it would record or open the jars).
      */
-    private fun padMenuOf(d: Int) {
+    /**
+     * Edit (Menu in Classic), then the pad. In the new layouts a loaded pad opens the Edit tray: drawer picks which of
+     * its five drawers (sound, fx, keys, mod, more) to open, so the item asked for is on screen.
+     */
+    private fun padMenuOf(d: Int, drawer: String? = null) {
+        if (state.tray != null) { state.tray = null; settle() }
         if (state.project.kit[state.bank * 16 + d].isEmpty()) { state.selectPad(state.bank * 16 + d, false); settle() }
         else { tapPad(d); rule.mainClock.advanceTimeBy(300); settle() }
         menuThenTap("pad-$d")
+        if (drawer != null && state.tray?.startsWith("edit:") == true) { at("edit-tab-$drawer").performClick(); settle() }
     }
+
+    /** Pad d's menu (Classic) or its Edit tray (the new layouts) is open. */
+    private fun editOpen(d: Int) = state.padMenu == state.bank * 16 + d || state.tray == "edit:${state.bank * 16 + d}"
 
     /** Menu, then tap: arm Menu on the bottom bar, then tap a control through the clear layer (Nov 18). */
     private fun menuThenTap(tag: String) {
@@ -178,13 +187,13 @@ class BigTest {
         state.putOnPad(13, "samples/wheezy-organ.wav")
         waitFor("the new pads to load") { state.lib.loaded("samples/glass-harp.wav") && state.lib.loaded("samples/wheezy-organ.wav") }
         for (d in listOf(1, 5, 8, 13)) {
-            padMenuOf(d)
-            if (state.padMenu != d) {
+            padMenuOf(d, "keys")
+            if (!editOpen(d)) {
                 val b = rule.onNodeWithTag("pad-$d").fetchSemanticsNode().boundsInRoot
                 println("DEBUG pad $d menu=${state.padMenu} toast=${state.toast} overlay=${state.overlay} bounds=$b keyboards=${state.keyboards.toList()} sel=${state.project.sel}")
                 shot("debug-menu-$d")
             }
-            assertEquals("Menu opens pad ${d + 1}'s menu", d, state.padMenu)
+            assertTrue("Edit opens pad ${d + 1}'s tray", editOpen(d))
             if (d == 1) shot("02-pad-menu")
             rule.onNodeWithTag("menu-piano").performClick()
             // let the menu finish closing before the next press
@@ -241,7 +250,7 @@ class BigTest {
         shot("03b-pianos-under-rows-bottom")
 
         // one piano per row: opening pad 1's piano swaps out pad 2's in the same row
-        padMenuOf(0)
+        padMenuOf(0, "keys")
         rule.onNodeWithTag("menu-piano").performClick()
         settle()
         assertTrue(0 in state.keyboards && 1 !in state.keyboards)
@@ -520,6 +529,55 @@ class BigTest {
         state.midiDown(80); state.midiUp(80); settle()
         assertTrue("one at a time: the map waits for the next tap (map on: ${state.midiMapOn}, cursor ${state.midiCursor}, says ${state.midiLast})", state.midiCursor == null)
         state.switchMidiMap(false); settle()
+    }
+
+    @Test fun theEditTrayHasEveryDrawer() {
+        // the overhaul's last build: Edit, then a pad, opens its tray with five drawers
+        assertEquals("new", state.layout)
+        padMenuOf(2)
+        assertEquals("Edit then a loaded pad opens its tray", "edit:2", state.tray)
+        assertEquals("not the old menu", -1, state.padMenu)
+        val want = mapOf("sound" to "menu-hear", "fx" to "fxstrip-2", "keys" to "menu-levels", "mod" to "lfostrip-2", "more" to "menu-route")
+        for ((drawer, tag) in want) {
+            at("edit-tab-$drawer").performClick(); settle()
+            assertEquals(drawer, state.editTab)
+            assertTrue("the $drawer drawer shows $tag", rule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty())
+            shot("99-edit-$drawer")
+        }
+        at("menu-solo-2").performClick(); settle()
+        assertTrue("Solo from the More drawer", state.project.solos.contains(state.project.kit[2]))
+        assertEquals("and the tray stays open", "edit:2", state.tray)
+        at("menu-solo-2").performClick(); settle()
+        at("open-padmenu").performClick(); settle()
+        assertEquals("Edit again closes it", null, state.tray)
+        // Classic keeps the menu
+        state.pickLayout("classic"); settle()
+        padMenuOf(2)
+        assertEquals(2, state.padMenu)
+        state.padMenu = -1; settle()
+    }
+
+    @Test fun stepLocksAndTheMasterBus() {
+        // the overhaul's last build: a filter for one step only, and the master bus on the Tempo sheet
+        val k = state.project.kit[0]
+        state.edit { pat().clear() }
+        state.openStepSheet(k, 2)
+        tab("Steps"); settle()
+        at("lock-${com.tideclock.messmachine.engine.Engine.T_FILTER}-75").performClick(); settle()
+        assertEquals(.75f, state.project.pat().lock(k, com.tideclock.messmachine.engine.Engine.T_FILTER, 2), .001f)
+        shot("100-step-lock")
+        at("lock-${com.tideclock.messmachine.engine.Engine.T_FILTER}-off").performClick(); settle()
+        assertTrue(state.project.pat().lock(k, com.tideclock.messmachine.engine.Engine.T_FILTER, 2).isNaN())
+        state.stepSheet = null
+        tab("Pads"); settle()
+        state.overlay = Overlay.Tempo; settle()
+        at("master-bus").assertExists()
+        state.setMaster(squash = .9, level = 1.1); settle()
+        assertEquals(.9, state.project.squash, 1e-9); assertEquals(1.1, state.project.level, 1e-9)
+        shot("101-master-bus")
+        at("master-reset").performClick(); settle()
+        assertEquals(.5, state.project.squash, 1e-9)
+        state.overlay = null; settle()
     }
 
     @Test fun newLayoutEditRepeatAndPerformRow() {
@@ -1226,12 +1284,12 @@ class BigTest {
     }
 
     @Test fun routingAndPadXy() {
-        padMenuOf(7)
+        padMenuOf(7, "more")
         rule.onNodeWithTag("menu-route").performClick()
         settle()
         assertEquals(1, state.routeOf(7))
         rule.mainClock.advanceTimeBy(1000); settle()
-        padMenuOf(7)
+        padMenuOf(7, "mod")
         rule.onNodeWithTag("menu-xy").performClick()
         settle()
         assertEquals(Overlay.Xy(7), state.overlay)
@@ -1433,7 +1491,7 @@ class BigTest {
         val menu = rule.onAllNodes(androidx.compose.ui.test.hasTestTag("padmenu")).fetchSemanticsNodes().let { it.size }
         val menuItems = rule.onAllNodes(androidx.compose.ui.test.hasClickAction()).fetchSemanticsNodes()
             .count { n -> n.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.TestTag)?.startsWith("menu-") == true }
-        state.padMenu = -1; settle()
+        state.padMenu = -1; state.tray = null; settle()
         val tabs = rule.onAllNodes(androidx.compose.ui.test.hasClickAction()).fetchSemanticsNodes()
             .count { n -> n.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.TestTag)?.startsWith("tab-") == true }
 
@@ -1919,7 +1977,7 @@ class BigTest {
         val a = state.project.kit[4]
         val b = state.project.kit[5]
         assertTrue(a.isNotEmpty() && b.isNotEmpty())
-        padMenuOf(4)
+        padMenuOf(4, "more")
         rule.onNodeWithTag("menu-move").performClick(); settle()
         assertEquals(4, state.swapFrom)
         tapPad(5)

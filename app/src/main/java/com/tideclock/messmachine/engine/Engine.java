@@ -71,6 +71,9 @@ public final class Engine {
         float[] gain;
         /** Build 6 of the overhaul: each step's chance or loop condition (null when every step always plays). */
         byte[] chance;
+        /** Step locks: which controls are locked on some step (lockT), and per control the value on each step (NaN none). */
+        int[] lockT;
+        float[][] lockV;
         Track(PadSlot pad, boolean[] steps, int[] gap, int[][] notes) { this.pad = pad; this.steps = steps; this.gap = gap; this.notes = notes; }
     }
 
@@ -85,6 +88,8 @@ public final class Engine {
     public static final class Snapshot {
         final int bpm, swing, cur, songLen;
         final boolean songMode;
+        /** the master bus: how hard the mix is squashed (0 to 1) and its level after */
+        float squash = .5f, level = 1f;
         final int[] song;
         final PadSlot[] pads;
         final Pat[] pats;
@@ -133,6 +138,15 @@ public final class Engine {
                     tk.gain = gn;
                     byte[] ch = P.chance.get(ps.key);
                     if (ch != null) tk.chance = java.util.Arrays.copyOf(ch, len);
+                    List<Integer> lt = new ArrayList<>(); List<float[]> lv = new ArrayList<>();
+                    for (Map.Entry<String, float[]> le : P.locks.entrySet()) {
+                        String lk = le.getKey(); int at = lk.lastIndexOf('@');
+                        if (at < 0 || !lk.substring(0, at).equals(ps.key)) continue;
+                        int t = Project.parseIntOr(lk.substring(at + 1), -1);
+                        if (t < 0 || t >= NT) continue;
+                        lt.add(t); lv.add(java.util.Arrays.copyOf(le.getValue(), len));
+                    }
+                    if (!lt.isEmpty()) { tk.lockT = new int[lt.size()]; tk.lockV = new float[lt.size()][]; for (int q = 0; q < lt.size(); q++) { tk.lockT[q] = lt.get(q); tk.lockV[q] = lv.get(q); } }
                     List<Integer> ol = P.offs.get(ps.key);
                     if (ol != null && !ol.isEmpty()) {
                         int[] cnt = new int[len];
@@ -156,7 +170,9 @@ public final class Engine {
                 pats[pi] = new Pat(len, tr.toArray(new Track[0]), lp, lt, vals.toArray(new float[0][]));
             }
             int sl = p.songLen();
-            return new Snapshot(p.bpm, p.swing, p.cur, sl, p.songMode && sl > 0, p.song.clone(), pads, pats, live == null ? new Live() : live.copy());
+            Snapshot sn = new Snapshot(p.bpm, p.swing, p.cur, sl, p.songMode && sl > 0, p.song.clone(), pads, pats, live == null ? new Live() : live.copy());
+            sn.squash = (float) p.squash; sn.level = (float) p.level;
+            return sn;
         }
     }
 
@@ -564,6 +580,7 @@ public final class Engine {
                 fxStut = false; fxTape = false;
                 playing = false; paused = false; step = 0; songPos = 0; freeOn = !held.isEmpty() && S.live.nr;
                 hHead = -1;
+                dropLocks();
                 break;
             case "panic":
                 for (Voice v : pool) v.active = false;
@@ -571,6 +588,7 @@ public final class Engine {
                 for (float[] m : pHome) java.util.Arrays.fill(m, 0f);
                 for (boolean[] m : laneHeld) java.util.Arrays.fill(m, false);
                 for (boolean[] m : handOn) java.util.Arrays.fill(m, false);
+                for (boolean[] m : lockOn) java.util.Arrays.fill(m, false);
                 for (float[] m : tFx) java.util.Arrays.fill(m, 0f);
                 restHomes(S);
                 held.clear(); freeOn = false; beatOn = false;
@@ -870,6 +888,12 @@ public final class Engine {
                 if (!t.pad.audible) continue;
                 int ti = t.pad.index, ts = s0;
                 if (ti >= 0 && ti < 64 && padStut[ti] && !fxStut) { ts = pStutA[ti] + Math.floorMod(step - pStutB[ti], 2); if (ts >= len) ts = 0; }
+                // step locks: the locked controls take this step's value, and let go again on a step without one
+                if (t.lockT != null && ti >= 0 && ti < 64) for (int q = 0; q < t.lockT.length; q++) {
+                    int lt = t.lockT[q]; float lv = ts < t.lockV[q].length ? t.lockV[q][ts] : Float.NaN;
+                    boolean on = !Float.isNaN(lv) && t.steps[ts];
+                    if (on || lockOn[ti][lt]) { lockOn[ti][lt] = on; if (on) lockVal[ti][lt] = lv; combine(ti, lt); }
+                }
                 if (t.steps[ts] && (t.chance == null || plays(t.chance[ts]))) trigger(t.pad, rateMul, t.gap[ts] * spb / rate, false, t.gain[ts], delay, false);
                 // hits between the sixteenths, at their tick inside this step
                 if (t.offs != null && ts < t.offs.length) for (int tk : t.offs[ts]) trigger(t.pad, rateMul, spb / rate, false, .85f, delay + Math.round(tk * spb / Project.TICKS), false);
@@ -1571,8 +1595,18 @@ public final class Engine {
     private final float[][] pHome = new float[64][NT], pHand = new float[64][NT], laneVal = new float[64][NT];
     private final boolean[][] handOn = new boolean[64][NT];
 
+    /** Step locks: on for one step at a time, while the loop plays. */
+    private final boolean[][] lockOn = new boolean[64][NT];
+    private final float[][] lockVal = new float[64][NT];
+
+    /** Who wins a control: a hand on it, then a step lock, then a recorded lane, then where it rests. */
     private void combine(int p, int t) {
-        pMod[p][t] = handOn[p][t] ? pHand[p][t] : laneHeld[p][t] ? laneVal[p][t] : pHome[p][t];
+        pMod[p][t] = handOn[p][t] ? pHand[p][t] : lockOn[p][t] ? lockVal[p][t] : laneHeld[p][t] ? laneVal[p][t] : pHome[p][t];
+    }
+
+    /** Let go of every step lock (stop, panic). */
+    private void dropLocks() {
+        for (int p = 0; p < 64; p++) for (int t = 0; t < NT; t++) if (lockOn[p][t]) { lockOn[p][t] = false; combine(p, t); }
     }
 
     /** Every pad's controls rest where the mess says (each new snapshot, a bounce, panic). */
@@ -1765,14 +1799,17 @@ public final class Engine {
 
     /** A gentle compressor (about where the site's sits) and a soft clip, so stacked pads do not crack. */
     private void master(float[] out, int frames) {
-        final float thr = .316f, ratio = 4f;
+        // squash .5 is where the bus always sat: -10 dB, 4 to 1, 1.25 makeup. 0 is no squash, 1 is -20 dB, 7 to 1
+        Snapshot S0 = snap;
+        float sq = S0 == null ? .5f : Math.max(0, Math.min(1, S0.squash)), lvl = S0 == null ? 1f : S0.level;
+        final float thr = (float) Math.pow(10, -sq), ratio = 1 + 6 * sq, makeup = (1 + .5f * sq) * lvl;
         for (int k = 0; k < frames; k++) {
             float l = out[k * 2], r = out[k * 2 + 1];
             float x = Math.max(Math.abs(l), Math.abs(r));
             compEnv += (x - compEnv) * (x > compEnv ? compAtk : compRel);
             float g = 1f;
-            if (compEnv > thr) g = (float) (thr * Math.pow(compEnv / thr, 1 / ratio) / compEnv);
-            g *= 1.25f;
+            if (compEnv > thr && ratio > 1.001f) g = (float) (thr * Math.pow(compEnv / thr, 1 / ratio) / compEnv);
+            g *= makeup;
             out[k * 2] = soft(l * g);
             out[k * 2 + 1] = soft(r * g);
         }
@@ -1820,7 +1857,6 @@ public final class Engine {
         return Sample.fromStereo(key, cut, s.rate);
     }
 
-    /** exact = stop right at the loop's end with no tail, for resampling a loop into a sound. */
     /**
      * Build 7 of the overhaul: stems. Each sound bounced alone (soloed, with its own effects and tails), all padded to
      * the same length so they line up from zero in a DAW. Keys are the sounds' keys in kit order; silent sounds are left out.
@@ -1846,6 +1882,7 @@ public final class Engine {
         return out;
     }
 
+    /** exact = stop right at the loop's end with no tail, for resampling a loop into a sound. */
     public static float[] bounce(Project p, SampleSource src, int rate, boolean song, int loops, boolean exact) {
         Project q = p.copy();
         q.songMode = song && q.songLen() > 0;

@@ -794,6 +794,54 @@ public class EngineTest {
       check(new String(mb, 0, 4).equals("MThd") && tracks == 3, "the MIDI file has a tempo track and one per sound: " + tracks);
       check(ons == 6 && loud == 2, "two loops of three hits, the accents at full velocity: " + ons + " notes, " + loud + " loud");
     }
+    // ---- the last build of the overhaul: step locks and the master bus
+    {
+      // a hat on steps 1 and 5; step 1 locks the filter nearly shut, step 5 should be bright again
+      double[] hfA = new double[2], hfB = new double[2];
+      for (int lk = 0; lk < 2; lk++) {
+        Project lp = Project.starter(); Project.Pattern lq = lp.pats[lp.cur];
+        for (int j9 = 0; j9 < lq.len; j9++) for (String k9 : lp.kit) if (!k9.isEmpty()) lq.setStep(k9, j9, false);
+        String hk = lp.kit[2];
+        lq.setStep(hk, 0, true); lq.setStep(hk, 4, true);
+        if (lk == 1) lq.setLock(hk, Engine.T_FILTER, 0, .92f);
+        float[] wl = Engine.bounce(lp, lib, rate, false, 1);
+        int stepF = (int) Math.round(rate * 60.0 / lp.bpm / 4);
+        double[] hf = lk == 0 ? hfA : hfB;
+        for (int h = 0; h < 2; h++) {
+          int from = h * 4 * stepF, to = Math.min(from + stepF, wl.length / 2 - 1);
+          for (int i = from + 1; i < to; i++) { double d = wl[i * 2] - wl[(i - 1) * 2]; hf[h] += d * d; }
+        }
+      }
+      check(hfB[0] < hfA[0] * .5, String.format("a filter lock on step 1 darkens that hit: %.4f vs %.4f unlocked", hfB[0], hfA[0]));
+      check(hfB[1] > hfA[1] * .7, String.format("and step 5 is bright again (it snaps back): %.4f vs %.4f", hfB[1], hfA[1]));
+      Project lp2 = Project.starter(); lp2.pats[0].setStep(lp2.kit[2], 3, true); lp2.pats[0].setLock(lp2.kit[2], Engine.T_RVB, 3, .6f);
+      Project lb = Project.fromJson(lp2.toJson(), null).project;
+      check(Math.abs(lb.pats[0].lock(lb.kit[2], Engine.T_RVB, 3) - .6f) < 1e-3 && Float.isNaN(lb.pats[0].lock(lb.kit[2], Engine.T_RVB, 2)) && lb.pats[0].hasLock(lb.kit[2], 3),
+        "step locks save with the mess");
+      lb.pats[0].setLock(lb.kit[2], Engine.T_RVB, 3, Float.NaN);
+      check(lb.pats[0].locks.isEmpty(), "taking the last lock off leaves nothing behind");
+      // the master bus: squash .5 and level 1 sound exactly like before; level halves; squash evens out peaks
+      float[] m5 = Engine.bounce(p, lib, rate, false, 1);
+      Project pq = p.copy(); pq.level = .5;
+      float[] mh = Engine.bounce(pq, lib, rate, false, 1);
+      double r5 = 0, rh = 0; for (int i = 0; i < Math.min(m5.length, mh.length); i++) { r5 += m5[i] * m5[i]; rh += mh[i] * mh[i]; }
+      check(rh < r5 * .4 && rh > r5 * .15, String.format("master level .5 is about a quarter of the power: %.2f", rh / r5));
+      // squash evens the loop out: the spread between its loud and quiet moments (50 ms windows) shrinks
+      double[] spread = new double[2];
+      for (int c9 = 0; c9 < 2; c9++) {
+        Project pc = p.copy(); pc.squash = c9 == 0 ? 0 : 1;
+        float[] wc = Engine.bounce(pc, lib, rate, false, 1, true);
+        int win = rate / 20, nw = wc.length / 2 / win;
+        double[] rw = new double[nw];
+        for (int w9 = 0; w9 < nw; w9++) { double e9 = 0; for (int i = w9 * win; i < (w9 + 1) * win; i++) e9 += wc[i * 2] * wc[i * 2]; rw[w9] = Math.sqrt(e9 / win) + 1e-6; }
+        java.util.Arrays.sort(rw);
+        spread[c9] = rw[(int) (nw * .9)] / rw[(int) (nw * .3)];
+      }
+      check(spread[1] < spread[0] * .8, String.format("more squash evens out the loop: loud to quiet %.2f (squash 1) vs %.2f (off)", spread[1], spread[0]));
+      Project ps9 = p.copy(); ps9.squash = .8; ps9.level = 1.2;
+      Project pb9 = Project.fromJson(ps9.toJson(), null).project;
+      check(Math.abs(pb9.squash - .8) < 1e-9 && Math.abs(pb9.level - 1.2) < 1e-9 && !p.toJson().contains("squash"), "the master bus saves with the mess, and only when changed");
+    }
     // ---- workbench tools
     Sample hat = lib.get(p.kit[2]);
     SoundEdit tr = new SoundEdit(); tr.st = .1; tr.en = .6; tr.tune = 12;
