@@ -471,7 +471,8 @@ class AppState(private val app: Context) {
         prefs.edit().putInt("guideSeen", BuildConfig.VERSION_CODE).apply()
         commitUndo()
         rebuild()
-        restFx()
+        // the saved FX faders go back on once every field below this block exists
+        main.post { restFx() }
         loadKit()
         refreshFiles()
         // a few seconds after start, ask GitHub quietly whether a newer build is out (the Update bar shows if so)
