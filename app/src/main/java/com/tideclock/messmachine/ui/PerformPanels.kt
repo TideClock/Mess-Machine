@@ -301,7 +301,7 @@ fun GlideTray(state: AppState, pad: Int) {
 
 @Composable
 fun PadianoSettings(state: AppState) {
-    Column(Modifier.fillMaxWidth().padding(bottom = 8.dp).sticker(C.Black, shadow = 0.dp, border = 2.dp, borderColor = C.Teal).padding(8.dp)) {
+    Column(Modifier.fillMaxWidth().padding(bottom = 8.dp).sticker(C.Well, shadow = 0.dp, border = 2.dp, borderColor = C.Teal).padding(8.dp)) {
         Wrap(gap = 6.dp) {
             Btn("Squares", { state.switchPadianoKeys(false) }, on = !state.padianoKeys, onColor = C.Teal, small = true, tag = "pset-squares")
             Btn("Keyboard", { state.switchPadianoKeys(true) }, on = state.padianoKeys, onColor = C.Teal, small = true, tag = "pset-keys")
@@ -624,7 +624,7 @@ fun PadFilterStrip(state: AppState, pad: Int, modifier: Modifier = Modifier, hei
                 .fillMaxWidth()
                 .height(height)
                 .padding(end = 6.dp, bottom = 5.dp)
-                .sticker(C.Black, shadow = 5.dp, shadowColor = col)
+                .sticker(C.Well, shadow = 5.dp, shadowColor = col)
                 .tagged("pfilt-$pad")
                 .pointerInput(pad) {
                     awaitEachGesture {

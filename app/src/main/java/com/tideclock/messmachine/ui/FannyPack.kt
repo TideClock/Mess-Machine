@@ -153,7 +153,7 @@ fun Fader(value: Float, color: Color, tag: String, height: androidx.compose.ui.u
     Canvas(
         Modifier
             .size(width = 30.dp, height = height)
-            .background(C.Black)
+            .background(C.Well)
             .tagged(tag)
             .pointerInput(tag) {
                 awaitEachGesture {
@@ -212,7 +212,7 @@ fun LfoStrip(state: AppState, pad: Int, col: Color) {
     fun set(commit: Boolean = true, f: com.tideclock.messmachine.engine.PadOpts.() -> Unit) = state.setPadOpt(pad, commit, f)
     // Nov 18 (Tyler): what you change live sits on the strip (rate, depth, cutoff, res); the wave, filter type, target and
     // restart moved into the settings tray (Menu, then tap the strip, or the wave button here)
-    Column(Modifier.fillMaxWidth().padding(bottom = 8.dp).sticker(C.Black, shadow = 0.dp, border = 2.dp, borderColor = col).padding(8.dp).tagged("lfostrip-$pad")) {
+    Column(Modifier.fillMaxWidth().padding(bottom = 8.dp).sticker(C.Well, shadow = 0.dp, border = 2.dp, borderColor = col).padding(8.dp).tagged("lfostrip-$pad")) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             T("LFO", size = 12.sp, color = C.Yellow, spacing = .1.em)
             Btn(if (o.lfoOn) "On" else "Off", { set { lfoOn = !lfoOn } }, on = o.lfoOn, onColor = C.Teal, small = true, tight = true, tag = "lfo-on-$pad")

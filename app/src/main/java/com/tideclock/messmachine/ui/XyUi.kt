@@ -105,7 +105,7 @@ fun FxEditor(state: AppState) {
     val id = state.fxEditing ?: return
     val name = FX_NAMES.firstOrNull { it.first == id }?.second ?: id
     val s = state.fxSet(id)
-    Column(Modifier.fillMaxWidth().padding(bottom = 10.dp).sticker(C.Black, shadow = 0.dp, border = 2.dp, borderColor = C.Yellow).padding(10.dp).tagged("fx-editor")) {
+    Column(Modifier.fillMaxWidth().padding(bottom = 10.dp).sticker(C.Well, shadow = 0.dp, border = 2.dp, borderColor = C.Yellow).padding(10.dp).tagged("fx-editor")) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             T("EDIT ${name.uppercase()}", size = 12.sp, color = C.Yellow, spacing = .08.em, modifier = Modifier.weight(1f))
             Btn("Done", { state.fxEditing = null }, small = true, tag = "fx-editor-done")

@@ -4,7 +4,7 @@
     "Edit, then a pad, now opens the Edit tray: everything about that pad in five drawers. Sound, FX (its faders and filter), Keys (Padiano, 16 Levels, glide), Mod (the LFO, the XY square, lanes) and More (mute, solo, route, move, clear). It opens on the drawer you used last.",
     "Step locks: hold a step, then This step only. Shut the filter or send reverb or echo for that one hit; the next step snaps back. A teal corner marks a locked step.",
     "The master bus: tap the BPM box. Squash presses the whole mix together (off, light, as it was, pressed, flattened) and Level sets its volume. Both save with the mess and go into bounces and stems.",
-    "Fixes: the perform row could crash the app when it closed; the MIDI map covered the first row of pads in the new layout (it now sits under them); Stage pads have an edge in their colour."
+    "Fixes: Back now closes the Edit tray, the step sheet and menus instead of leaving the app; on Felt and Paper the BPM box and the fader wells are light instead of black (the BPM was unreadable); the Edit tray keeps one height, so its drawer tabs stay put; the perform row could crash on closing; the MIDI map sits under the pads in the new layout."
   ],
   "watch": [
     "Edit a pad from the tray for a few minutes: is any drawer missing something you reach for?",
@@ -14,6 +14,7 @@
   "limits": [
     "Classic layout keeps the old pad menu list; the tray is in New and Side.",
     "Step locks cover filter, reverb and echo for now; a step's pitch is still set from the pitch strip.",
-    "A MIDI file has no dice, and stems each go through the master squash on their own."
+    "A MIDI file has no dice, and stems each go through the master squash on their own.",
+    "On Felt and Paper, the Pro dark Look keeps its dark bars; pick Pro light under Look for a fully light screen."
   ]
 }

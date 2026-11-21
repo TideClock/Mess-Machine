@@ -140,6 +140,8 @@ object C {
     val Purple get() = Color(skin.purple)
     val Lime get() = Color(skin.lime)
     val Black = Color(0xFF000000)
+    /** The deepest panels (the BPM box, fader wells, lane strips): black on the dark skins, a darker paper on a light one */
+    val Well get() = if (skin.light) Color(0xFFCFC5AE) else Black
     val Letters get() = listOf(Pink, Teal, Yellow, Purple, Color(skin.sky), Color(skin.orange), Lime, Riot)
 }
 

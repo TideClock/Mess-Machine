@@ -279,7 +279,7 @@ private fun PitchWheel(state: AppState) {
         Canvas(
             Modifier
                 .size(width = 26.dp, height = 130.dp)
-                .background(C.Black)
+                .background(C.Well)
                 .tagged("dock-pitch")
                 .pointerInput(Unit) {
                     awaitEachGesture {
@@ -334,7 +334,7 @@ private fun UpSlider(value: Float, color: androidx.compose.ui.graphics.Color, ta
     Canvas(
         Modifier
             .size(width = 20.dp, height = 150.dp)
-            .background(C.Black)
+            .background(C.Well)
             .tagged(tag)
             .pointerInput(tag) {
                 awaitEachGesture {
@@ -425,7 +425,7 @@ fun RepeatPatternPicker(state: AppState) {
     // the strip shows the pattern playing (or yours, when every repeat plays); tap a step to flip it
     val shown = cur.ifEmpty { state.ownPattern }
     Canvas(
-        Modifier.fillMaxWidth().height(30.dp).background(C.Black).tagged("pattern-strip")
+        Modifier.fillMaxWidth().height(30.dp).background(C.Well).tagged("pattern-strip")
             .pointerInput(shown) {
                 awaitEachGesture {
                     val d = awaitFirstDown(requireUnconsumed = false)

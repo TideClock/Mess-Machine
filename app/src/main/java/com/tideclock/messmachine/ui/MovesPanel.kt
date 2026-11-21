@@ -72,7 +72,7 @@ fun MovesPanel(state: AppState) {
                 .fillMaxWidth()
                 .height(130.dp)
                 .padding(top = 8.dp)
-                .background(C.Black)
+                .background(C.Well)
                 .tagged("moves-lane-canvas")
                 .pointerInput(lane, n, erase) {
                     awaitEachGesture {

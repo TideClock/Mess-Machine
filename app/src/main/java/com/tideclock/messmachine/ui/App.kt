@@ -287,7 +287,7 @@ fun Transport(state: AppState) {
         BarBtn(state, "↶", "Undo", { state.undo() }, enabled = state.canUndo && free, tag = "undo", word = "Undo", modifier = Modifier.weight(.55f))
         // tempo and where the music is; the loop letter is its own button now (Nov 18), for loops from every page
         Box(
-            Modifier.weight(.8f).height(36.dp).sticker(C.Black, shadow = 2.dp, border = 2.dp)
+            Modifier.weight(.8f).height(36.dp).sticker(C.Well, shadow = 2.dp, border = 2.dp)
                 .clickable(enabled = free) { if (state.midiMapOn) state.midiAim(com.tideclock.messmachine.MidiTarget("tempo", 0)) else state.overlay = Overlay.Tempo }.tagged("bpm"),
             contentAlignment = Alignment.Center,
         ) {
@@ -480,7 +480,7 @@ fun Modifier.recGlow(state: AppState, pulse: Animatable<Float, AnimationVector1D
 
 @Composable
 fun PositionText(state: AppState) {
-    Box(Modifier.width(80.dp).height(34.dp).background(C.Black).border(2.dp, C.Cream), contentAlignment = Alignment.Center) {
+    Box(Modifier.width(80.dp).height(34.dp).background(C.Well).border(2.dp, C.Cream), contentAlignment = Alignment.Center) {
         T(position(state), size = 13.sp, color = C.Yellow, lines = 1, family = Mono, weight = FontWeight.Bold)
     }
 }
@@ -655,7 +655,7 @@ fun SettingsTray(state: AppState, kind: String, modifier: Modifier = Modifier) {
     }
     Column(
         modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, bottom = if (dockUp) 100.dp else 52.dp).sticker(C.Ink, shadow = 5.dp, border = 3.dp, borderColor = C.Yellow)
-            .heightIn(max = if (kind.startsWith("edit:")) 470.dp else 380.dp).verticalScroll(rememberScrollState()).padding(12.dp).tagged("tray"),
+            .heightIn(min = if (kind.startsWith("edit:")) 430.dp else 0.dp, max = if (kind.startsWith("edit:")) 470.dp else 380.dp).verticalScroll(rememberScrollState()).padding(12.dp).tagged("tray"),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             T(title, size = 12.sp, color = C.Yellow, spacing = .1.em, lines = 1, modifier = Modifier.weight(1f))

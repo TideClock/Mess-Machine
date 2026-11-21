@@ -433,7 +433,7 @@ fun HoldBar(state: AppState, modifier: Modifier = Modifier) {
     Wrap(modifier.padding(top = 8.dp), gap = 6.dp) {
         T("HOLD", size = 11.sp, color = if (state.holdOn) C.Yellow else C.Dim, spacing = .1.em)
         Btn("−", { state.changeHoldCount(state.holdCount - 1) }, small = true, enabled = state.holdCount > 0, tag = "hold-down", modifier = Modifier.widthIn(min = 40.dp))
-        Box(Modifier.size(width = 54.dp, height = 34.dp).background(C.Black).border(2.dp, if (state.holdOn) C.Yellow else C.Cream), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(width = 54.dp, height = 34.dp).background(C.Well).border(2.dp, if (state.holdOn) C.Yellow else C.Cream), contentAlignment = Alignment.Center) {
             val n = if (state.holdCount == 0) "LAST" else "${state.holdCount}"
             T(if (state.holdOn && state.holdCount > 0) "${state.latched.size}/$n" else n, size = 13.sp, color = if (state.holdOn) C.Yellow else C.Dim, family = Mono, weight = FontWeight.Bold)
         }

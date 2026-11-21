@@ -164,6 +164,11 @@ class AuditTest {
         state.showFx = true; settle(); audit(width, "Play FX"); state.showFx = false; settle()
         state.switchDockOpen(true); settle(); audit(width, "Play dock open"); state.switchDockOpen(false); settle()
         state.padMenu = 0; settle(); audit(width, "Pad menu", "padmenu"); state.padMenu = -1; step()
+        // the overhaul: the perform row, the Edit tray's five drawers, the step sheet
+        state.switchPerform(true); settle(); audit(width, "Play perform row"); state.switchPerform(false); settle()
+        for (dr in listOf("sound", "fx", "keys", "mod", "more")) { state.pickEditTab(dr); state.openTray("edit:0"); settle(); audit(width, "Edit tray $dr", "tray") }
+        state.tray = null; state.pickEditTab("sound"); settle()
+        state.tab = Tab.Steps; settle(); state.openStepSheet(state.project.kit[0], 0); settle(); audit(width, "Step sheet", "stepsheet"); state.stepSheet = null; state.tab = Tab.Pads; settle()
         state.tab = Tab.Console; settle(); audit(width, "My Desk")
         // the other tabs
         for (t in listOf(Tab.Steps, Tab.Roll, Tab.Song, Tab.Sounds)) { state.tab = t; settle(); audit(width, t.label) }
@@ -205,7 +210,7 @@ class AuditTest {
         assertTrue("the audit walked the whole app (${pages.size} pages)", pages.size >= 35)
         // the words a player steers by must never be cut off, at any width a phone in use has (344 is reported only:
         // narrower than any phone these builds have run on)
-        if (mustFit) for (m in listOf("▶ PLAY", "● REC", "PADS", "KEYS", "MY DESK", "SAMPLE", "MENU", "○ HOLD", "○ CHORDS", "PLAY", "SYNTH", "STEPS", "ROLL", "SONG", "SOUNDS", "TRIM", "SHAPE", "TOOLS", "BY TYPE", "BY JAR", "★ STARRED", "PACKS")) {
+        if (mustFit) for (m in listOf("▶ PLAY", "● REC", "PADS", "KEYS", "MY DESK", "SAMPLE", "MENU", "○ HOLD", "○ CHORDS", "PLAY", "SYNTH", "STEPS", "ROLL", "SONG", "SOUNDS", "TRIM", "SHAPE", "TOOLS", "BY TYPE", "BY JAR", "★ STARRED", "PACKS", "EDIT", "SOUND", "FX", "MOD", "MORE", "LOUD", "QUIET", "NORMAL")) {
             val where = found["cut off text | \"$m\""]
             assertTrue("\"$m\" is cut off at $width on ${where?.joinToString(", ")}", where == null)
         }
