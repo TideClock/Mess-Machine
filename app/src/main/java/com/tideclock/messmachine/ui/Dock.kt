@@ -78,7 +78,8 @@ fun PerformRow(state: AppState) {
         ) {
             T(if (state.performOpen) "▾ PERFORM ROW" else "▴ PERFORM ROW", size = 10.sp, color = C.Dim, family = Mono, spacing = .12.em)
         }
-        if (!state.performOpen) return
+        // an early return inside Column breaks Compose's bookkeeping when the row closes (a crash on switching layouts): wrap instead
+        if (state.performOpen) {
         Row(
             Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(start = 8.dp, end = 8.dp, bottom = 8.dp).heightIn(max = 190.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -99,6 +100,7 @@ fun PerformRow(state: AppState) {
                     }
                 }
             }
+        }
         }
     }
 }

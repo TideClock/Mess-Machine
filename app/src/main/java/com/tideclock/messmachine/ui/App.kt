@@ -174,7 +174,10 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
             }
             SphereOverlay(state)
             // the MIDI map floats under the top bar, over the page's own header, so the pads, keys and knobs you aim at stay in view and live
-            if (state.midiMapOn) MidiMapPanel(state, Modifier.align(Alignment.TopCenter).padding(start = 22.dp, end = 12.dp, top = 56.dp))
+            // in the new layouts the map sits low, in the space under the pads, so it never covers the pads you are teaching
+            // (at the top it covered the first row: a tap on pad 1 landed on Run)
+            if (state.midiMapOn) MidiMapPanel(state, if (state.layout == "classic") Modifier.align(Alignment.TopCenter).padding(start = 22.dp, end = 12.dp, top = 56.dp)
+                else Modifier.align(Alignment.BottomCenter).padding(start = 12.dp, end = 12.dp, bottom = 196.dp))
             // a lesson sits over everything, sheets included; its ring lets taps through
             TutorOverlay(state)
             SpeedGuideOverlay(state)
