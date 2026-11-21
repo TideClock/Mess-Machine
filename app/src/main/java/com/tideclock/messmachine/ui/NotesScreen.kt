@@ -40,7 +40,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private val catColor = mapOf("bug" to C.Riot, "tuning" to C.Yellow, "feature" to C.Teal, "question" to C.Purple, "discuss" to C.Pink, "wishlist" to C.Lime)
+private val catColor get() = mapOf("bug" to C.Riot, "tuning" to C.Yellow, "feature" to C.Teal, "question" to C.Purple, "discuss" to C.Pink, "wishlist" to C.Lime)
 
 @Composable
 fun NotesScreen(state: AppState) {

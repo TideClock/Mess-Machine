@@ -86,23 +86,53 @@ import com.tideclock.messmachine.R
 /** Set by the test suite so screens skip their endless timers. */
 object UiFlags { @JvmField var testing = false }
 
-/** Neat Shit and Dye's night palette. */
+/**
+ * Colour skins (build 5 of the overhaul). A skin is only colour, grit and shadow; the Look (Classic words or the Pro
+ * icon tiles) is the button skin and stays separate, so any skin works with any Look.
+ */
+class Skin(
+    val id: String, val name: String,
+    val ink: Long, val paper: Long, val card: Long, val card2: Long, val empty: Long, val cream: Long, val dim: Long,
+    val pink: Long, val teal: Long, val yellow: Long, val riot: Long, val purple: Long, val lime: Long, val sky: Long, val orange: Long,
+    /** how strong the grit is over the background (1 = Classic) */
+    val grit: Float = 1f,
+    /** sticker shadows: null keeps each sticker's own colour, otherwise this one (Stage turns them off with alpha 0) */
+    val shadow: Long? = null,
+    /** how a loaded pad is painted: "jar" (Classic), "glass" (Specimen, a glow), "band" (Stage, black with a colour band) */
+    val pad: String = "jar",
+)
+
+object Skins {
+    val classic = Skin("classic", "Classic", 0xFF18161A, 0xFF141215, 0xFF1E1B21, 0xFF2E2833, 0xFF3A3440, 0xFFFFF4E2, 0xFFBDB2BD,
+        0xFFFF4FA3, 0xFF00BEB4, 0xFFFFD23F, 0xFFFF4A2E, 0xFFC4A1FF, 0xFFB6FF3B, 0xFF7FD1FF, 0xFFFF7A1A)
+    /** Specimen: a lab notebook at night. Green black glass, bone white, colours with the shine taken off */
+    val specimen = Skin("specimen", "Specimen", 0xFF151D1A, 0xFF0E0F0C, 0xFF1A2320, 0xFF24302B, 0xFF3A4440, 0xFFE6DFCB, 0xFFA39D8C,
+        0xFFE0409A, 0xFF2FB8A6, 0xFFD9B54A, 0xFFC4552B, 0xFFB79CFF, 0xFFB7E23A, 0xFF6FB8D9, 0xFFD9772E, grit = 1.8f, shadow = 0xCC000000, pad = "glass")
+    /** Stage: for dark rooms. Pure black, white text, loud colours, no grit and no shadows */
+    val stage = Skin("stage", "Stage", 0xFF0D0D0D, 0xFF000000, 0xFF000000, 0xFF1A1A1A, 0xFF4A4A4A, 0xFFFFFFFF, 0xFFC8C8C8,
+        0xFFFF2FA0, 0xFF00E5FF, 0xFFFFE600, 0xFFFF6A00, 0xFFB48CFF, 0xFFA6FF00, 0xFF5AC8FF, 0xFFFF8A00, grit = 0f, shadow = 0x00000000, pad = "band")
+    val all = listOf(classic, specimen, stage)
+    fun byId(id: String?) = all.firstOrNull { it.id == id } ?: classic
+}
+
+/** The colours of the chosen skin. Every screen reads these, so a new skin changes the whole app at once. */
 object C {
-    val Ink = Color(0xFF18161A)
-    val Paper = Color(0xFF141215)
-    val Card = Color(0xFF1E1B21)
-    val Card2 = Color(0xFF2E2833)
-    val Empty = Color(0xFF3A3440)
-    val Cream = Color(0xFFFFF4E2)
-    val Dim = Color(0xFFBDB2BD)
-    val Pink = Color(0xFFFF4FA3)
-    val Teal = Color(0xFF00BEB4)
-    val Yellow = Color(0xFFFFD23F)
-    val Riot = Color(0xFFFF4A2E)
-    val Purple = Color(0xFFC4A1FF)
-    val Lime = Color(0xFFB6FF3B)
+    var skin by mutableStateOf(Skins.classic)
+    val Ink get() = Color(skin.ink)
+    val Paper get() = Color(skin.paper)
+    val Card get() = Color(skin.card)
+    val Card2 get() = Color(skin.card2)
+    val Empty get() = Color(skin.empty)
+    val Cream get() = Color(skin.cream)
+    val Dim get() = Color(skin.dim)
+    val Pink get() = Color(skin.pink)
+    val Teal get() = Color(skin.teal)
+    val Yellow get() = Color(skin.yellow)
+    val Riot get() = Color(skin.riot)
+    val Purple get() = Color(skin.purple)
+    val Lime get() = Color(skin.lime)
     val Black = Color(0xFF000000)
-    val Letters = listOf(Pink, Teal, Yellow, Purple, Color(0xFF7FD1FF), Color(0xFFFF7A1A), Lime, Riot)
+    val Letters get() = listOf(Pink, Teal, Yellow, Purple, Color(skin.sky), Color(skin.orange), Lime, Riot)
 }
 
 val Archivo = FontFamily(
@@ -141,7 +171,8 @@ fun Modifier.sticker(
 ): Modifier =
     this
         .drawBehind {
-            if (shadow > 0.dp) drawRoundRect(shadowColor, topLeft = Offset(shadow.toPx(), shadow.toPx()), size = size, cornerRadius = CornerRadius(radius.toPx()))
+            val sc = C.skin.shadow?.let { Color(it) } ?: shadowColor
+            if (shadow > 0.dp && sc.alpha > 0f) drawRoundRect(sc, topLeft = Offset(shadow.toPx(), shadow.toPx()), size = size, cornerRadius = CornerRadius(radius.toPx()))
         }
         .background(color, RoundedCornerShape(radius))
         .then(if (border > 0.dp) Modifier.border(border, borderColor, RoundedCornerShape(radius)) else Modifier)
@@ -163,7 +194,7 @@ fun gritBrush(): ShaderBrush {
     return ShaderBrush(ImageShader(t, TileMode.Repeated, TileMode.Repeated))
 }
 
-fun Modifier.grit(): Modifier = this.drawBehind { drawRect(gritBrush()) }
+fun Modifier.grit(): Modifier = this.drawBehind { val g = C.skin.grit; if (g > 0f) drawRect(gritBrush(), alpha = g.coerceAtMost(1f)); if (g > 1f) drawRect(gritBrush(), topLeft = Offset(48f, 31f), alpha = g - 1f) }
 
 @Composable
 fun T(

@@ -162,10 +162,23 @@ fun SettingsScreen(state: AppState) {
                 }
             }
         }
+        // build 5 of the overhaul: colour skins. The Look below is the button skin; any skin goes with any Look
+        Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
+            Column {
+                T("SKIN", size = 12.sp, color = C.Yellow, spacing = .1.em)
+                if (LocalHelp.current) T("The colours of the whole machine. Specimen is a lab notebook at night; Stage is black and loud, for dark rooms.", size = 11.sp, color = C.Dim, weight = FontWeight.Medium,
+                    modifier = Modifier.padding(top = 4.dp))
+                Wrap(Modifier.padding(top = 6.dp).tagged("skin-chips")) {
+                    Skins.all.forEach { k ->
+                        Btn(k.name, { state.pickSkin(k.id) }, on = state.skin == k.id, onColor = androidx.compose.ui.graphics.Color(k.pink), small = true, tag = "skin-${k.id}")
+                    }
+                }
+            }
+        }
         // the looks (Nov 18): Classic, or the Pro looks with icon tiles on printed rails, dark or light
         Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
             Column {
-                T("LOOK", size = 12.sp, color = C.Yellow, spacing = .1.em)
+                T("LOOK (BUTTONS)", size = 12.sp, color = C.Yellow, spacing = .1.em)
                 Wrap(Modifier.padding(top = 6.dp).tagged("look-chips")) {
                     Btn("Classic", { state.pickLook("classic") }, on = state.look == "classic", small = true, tag = "look-classic")
                     Btn("Pro dark", { state.pickLook("dark") }, on = state.look == "dark", onColor = C.Teal, small = true, tag = "look-dark")

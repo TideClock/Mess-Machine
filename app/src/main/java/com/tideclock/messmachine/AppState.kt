@@ -1984,6 +1984,14 @@ class AppState(private val app: Context) {
     var look by mutableStateOf(prefs.getString("look", "classic") ?: "classic")
         private set
     fun pickLook(v: String) { look = v; prefs.edit().putString("look", v).apply(); notes.trail("look $v") }
+    /** build 5 of the overhaul: the colour skin, separate from the Look (the button skin) */
+    var skin by mutableStateOf(com.tideclock.messmachine.ui.Skins.byId(prefs.getString("skin", "classic")).id)
+    init { com.tideclock.messmachine.ui.C.skin = com.tideclock.messmachine.ui.Skins.byId(skin) }
+    fun pickSkin(v: String) {
+        val k = com.tideclock.messmachine.ui.Skins.byId(v)
+        skin = k.id; com.tideclock.messmachine.ui.C.skin = k
+        prefs.edit().putString("skin", k.id).apply(); notes.trail("skin ${k.id}")
+    }
     /** In the Pro looks, a small word under each bar icon (on until you know them). */
     var proWords by mutableStateOf(prefs.getBoolean("proWords", true))
         private set

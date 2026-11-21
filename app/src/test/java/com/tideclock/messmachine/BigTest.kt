@@ -434,6 +434,30 @@ class BigTest {
         state.midiDown(36, 20); loudest(1024); state.midiUp(36)
     }
 
+    @Test fun skinsChangeColoursNotButtons() {
+        // build 5 of the overhaul: a colour skin is separate from the Look (the button skin)
+        assertEquals("classic", state.skin)
+        state.overlay = Overlay.Settings; settle()
+        at("skin-stage").performClick(); settle()
+        assertEquals("stage", state.skin)
+        assertEquals("Stage is pure black", androidx.compose.ui.graphics.Color(0xFF000000), com.tideclock.messmachine.ui.C.Paper)
+        assertEquals("the Look did not change", "classic", state.look)
+        state.overlay = null; settle()
+        shot("91-skin-stage-pads")
+        tab("Steps"); settle(); shot("92-skin-stage-steps")
+        tab("Pads"); settle()
+        state.overlay = Overlay.Settings; settle()
+        at("skin-specimen").performClick(); settle()
+        at("look-dark").performClick(); settle()
+        state.overlay = null; settle()
+        assertEquals("specimen", state.skin); assertEquals("dark", state.look)
+        shot("93-skin-specimen-pro-dark")
+        // the skin is kept for the next launch
+        assertEquals("specimen", ApplicationProvider.getApplicationContext<Context>().getSharedPreferences("mess", 0).getString("skin", null))
+        state.pickSkin("nonsense"); settle()
+        assertEquals("an unknown skin falls back to Classic", "classic", state.skin)
+    }
+
     @Test fun newLayoutEditRepeatAndPerformRow() {
         // build 107: Edit (was Menu) and Repeat on the bottom bar, no side dock, the perform row swipes up
         assertEquals("new", state.layout)

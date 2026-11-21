@@ -279,6 +279,9 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
         main = if (empty) "+" else state.lib.titleOf(key).uppercase()
     }
     val fill = if (pressed) lerp(base, C.Cream, .55f) else base
+    // words on the pad: on the jar they take the pad's colour; on Specimen glass and the Stage body they are light
+    val onPad = if (C.skin.pad == "jar") ink(fill) else C.Cream
+    val onTop = if (C.skin.pad == "band") ink(fill) else onPad
     Box(
         modifier
             .aspectRatio(1f)
@@ -297,10 +300,28 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
                     }
                 } else {
                     val sh = if (pressed) 0f else 4.dp.toPx()
-                    drawRoundRect(if (sel) C.Pink else C.Black, topLeft = Offset(sh, sh), size = size, cornerRadius = r)
-                    drawRoundRect(Brush.verticalGradient(listOf(lerp(fill, C.Cream, .12f), lerp(fill, C.Ink, .18f))), cornerRadius = r)
-                    // a hard highlight along the top, the "oomph"
-                    drawRoundRect(Color.White.copy(alpha = .16f), topLeft = Offset(5.dp.toPx(), 4.dp.toPx()), size = androidx.compose.ui.geometry.Size(size.width - 10.dp.toPx(), 4.dp.toPx()), cornerRadius = CornerRadius(2.dp.toPx()))
+                    when (C.skin.pad) {
+                        // Specimen: dark glass with the sound's colour glowing up from inside
+                        "glass" -> {
+                            drawRoundRect(C.Black.copy(alpha = .7f), topLeft = Offset(sh * .6f, sh * .6f), size = size, cornerRadius = r)
+                            drawRoundRect(lerp(fill, C.Ink, .78f), cornerRadius = r)
+                            drawRoundRect(Brush.radialGradient(listOf(fill.copy(alpha = if (pressed) .95f else .7f), fill.copy(alpha = 0f)),
+                                center = Offset(size.width * .5f, size.height * .62f), radius = size.minDimension * .62f), cornerRadius = r)
+                            drawRoundRect(Color.White.copy(alpha = .08f), topLeft = Offset(4.dp.toPx(), 3.dp.toPx()), size = androidx.compose.ui.geometry.Size(size.width - 8.dp.toPx(), size.height * .34f), cornerRadius = CornerRadius(5.dp.toPx()))
+                        }
+                        // Stage: black, with a thick band of the sound's colour on top, readable from across a room
+                        "band" -> {
+                            drawRoundRect(if (pressed) fill.copy(alpha = .35f) else C.Paper, cornerRadius = r)
+                            drawRoundRect(fill, size = androidx.compose.ui.geometry.Size(size.width, size.height * .22f), cornerRadius = r)
+                            drawRect(fill, topLeft = Offset(0f, size.height * .11f), size = androidx.compose.ui.geometry.Size(size.width, size.height * .11f))
+                        }
+                        else -> {
+                            drawRoundRect(if (sel) C.Pink else C.Black, topLeft = Offset(sh, sh), size = size, cornerRadius = r)
+                            drawRoundRect(Brush.verticalGradient(listOf(lerp(fill, C.Cream, .12f), lerp(fill, C.Ink, .18f))), cornerRadius = r)
+                            // a hard highlight along the top, the "oomph"
+                            drawRoundRect(Color.White.copy(alpha = .16f), topLeft = Offset(5.dp.toPx(), 4.dp.toPx()), size = androidx.compose.ui.geometry.Size(size.width - 10.dp.toPx(), 4.dp.toPx()), cornerRadius = CornerRadius(2.dp.toPx()))
+                        }
+                    }
                     if (pressed) drawRoundRect(C.Pink, cornerRadius = r, style = Stroke(width = 6.dp.toPx()))
                     if (state.swapFrom == i) drawRoundRect(C.Yellow, cornerRadius = r, style = Stroke(width = 5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 8f))))
                     if (!hasKeys && P.opt(i).pack.isNotEmpty()) {
@@ -369,18 +390,18 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
             }
             .padding(8.dp),
     ) {
-        T(top, size = 11.sp, color = if (empty) C.Empty else ink(fill).copy(alpha = .75f), modifier = Modifier.align(Alignment.TopStart))
+        T(top, size = 11.sp, color = if (empty) C.Empty else onTop.copy(alpha = .75f), modifier = Modifier.align(Alignment.TopStart))
         if (state.midiMapOn) {
             // the MIDI map is up: the controller key on this pad, and a ? on the pad the next key lands on
             val here = com.tideclock.messmachine.MidiTarget("pad", d)
             val txt = if (state.midiCursor == here) "♪ ?" else state.midiMappedTo(here).let { if (it.isEmpty()) "" else "♪ $it" }
-            if (txt.isNotEmpty()) T(txt, size = 11.sp, color = if (empty) C.Yellow else ink(fill), family = Mono, weight = FontWeight.Black, modifier = Modifier.align(Alignment.TopEnd))
-        } else if (!keys && !empty && P.edits.containsKey(key)) T("✂", size = 12.sp, color = ink(fill), modifier = Modifier.align(Alignment.TopEnd))
-        if (!keys && !empty && P.opt(i).route > 0) T("B${P.opt(i).route}", size = 10.sp, color = ink(fill), family = Mono, modifier = Modifier.align(Alignment.TopCenter))
+            if (txt.isNotEmpty()) T(txt, size = 11.sp, color = if (empty) C.Yellow else onTop, family = Mono, weight = FontWeight.Black, modifier = Modifier.align(Alignment.TopEnd))
+        } else if (!keys && !empty && P.edits.containsKey(key)) T("✂", size = 12.sp, color = onTop, modifier = Modifier.align(Alignment.TopEnd))
+        if (!keys && !empty && P.opt(i).route > 0) T("B${P.opt(i).route}", size = 10.sp, color = onTop, family = Mono, modifier = Modifier.align(Alignment.TopCenter))
         // held by Hold: an H in the corner, so you can see what is still playing on its own
-        if (!keys && (1000 + i) in state.latched) T("H", size = 12.sp, color = ink(fill), family = Mono, weight = FontWeight.Black, modifier = Modifier.align(Alignment.BottomEnd))
+        if (!keys && (1000 + i) in state.latched) T("H", size = 12.sp, color = onPad, family = Mono, weight = FontWeight.Black, modifier = Modifier.align(Alignment.BottomEnd))
         if (empty && !keys) T("+", size = 22.sp, color = C.Empty, weight = FontWeight.Black, modifier = Modifier.align(Alignment.BottomEnd).tagged("pad-pick-$d"))
-        else T(main, size = if (keys) 18.sp else padFont(main, state.dockOpen, padDp), color = if (empty) C.Empty else ink(fill), weight = FontWeight.Black, lines = 3, modifier = Modifier.align(Alignment.BottomStart))
+        else T(main, size = if (keys) 18.sp else padFont(main, state.dockOpen, padDp), color = if (empty) C.Empty else onPad, weight = FontWeight.Black, lines = 3, modifier = Modifier.align(Alignment.BottomStart))
     }
 }
 
