@@ -2063,8 +2063,8 @@ class AppState(private val app: Context) {
         if (!prefs.getBoolean("panelLook", false)) prefs.edit().putBoolean("panelLook", true).putString("look", "panel").apply()
         prefs.getString("look", "panel") ?: "panel"
     })
-    init { com.tideclock.messmachine.ui.UiLook.id = look }
         private set
+    init { com.tideclock.messmachine.ui.UiLook.id = look }
     fun pickLook(v: String) { look = v; com.tideclock.messmachine.ui.UiLook.id = v; prefs.edit().putString("look", v).apply(); notes.trail("look $v") }
     /** build 5 of the overhaul: the colour skin, separate from the Look (the button skin) */
     var skin by mutableStateOf(com.tideclock.messmachine.ui.Skins.byId(prefs.getString("skin", "classic")).id)
