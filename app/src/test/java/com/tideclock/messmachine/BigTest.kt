@@ -870,7 +870,7 @@ class BigTest {
         settle()
         assertFalse(state.live.nr)
         // Repeat's rate lives under RPT now (it left the top bar)
-        rule.onNodeWithTag("dock-rate").performClick()
+        at("dock-rate").performClick()
         settle()
         rule.onNodeWithTag("rate-r2").performClick()
         settle()
@@ -2331,7 +2331,7 @@ class BigTest {
         shot("57-midi-map")
         // a Padiano key: open one, touch a key, and the next controller key is that key
         state.toggleKeyboard(0); settle()
-        at("piano-keys-0").performTouchInput { down(Offset(width * .05f, height * .5f)); up() }
+        at("piano-keys-0").performTouchInput { down(Offset(width * .05f, height * .2f)); up() }
         settle()
         val aimed = state.midiCursor
         assertTrue("touching a Padiano key aims at it ($aimed)", aimed != null && aimed.kind == "key" && aimed.a == 0)
