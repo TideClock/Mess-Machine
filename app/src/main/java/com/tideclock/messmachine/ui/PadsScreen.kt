@@ -180,7 +180,8 @@ fun BottomDock(state: AppState) {
     }.tagged("bottomdock")) {
         if (state.keysBarOpen) KeysPanel(state)
         Row(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-            Box {
+            // every key shares the row (Nov 21: with MUTE and DROP added, fixed widths left the key readout no room on a phone)
+            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 // Edit (Menu before build 107), then tap anything: its settings. Edit twice: what you touched last (Nov 18)
                 val ed = if (state.layout == "classic") "Menu" else "Edit"
                 BarBtn(state, if (state.menuArmed) "$ed ●" else ed, ed, { state.menuTap() }, on = state.menuArmed || state.padMenu >= 0 || state.tray != null, onColor = C.Yellow,
@@ -189,31 +190,31 @@ fun BottomDock(state: AppState) {
             }
             // the picked pad's FannyPack: one tap zips it open under its row, or shut
             if (state.tab != com.tideclock.messmachine.Tab.Synth) BarBtn(state, "Pack", "Pack", { state.togglePack(state.project.sel) }, on = state.project.sel in state.keyboards, onColor = C.Teal,
-                enabled = !state.locked && !state.keysMode && state.project.kit.getOrNull(state.project.sel).orEmpty().isNotEmpty(), tag = "pack-toggle", word = "Pack")
+                enabled = !state.locked && !state.keysMode && state.project.kit.getOrNull(state.project.sel).orEmpty().isNotEmpty(), tag = "pack-toggle", word = "Pack", modifier = Modifier.weight(1f))
             BarBtn(state, if (!state.holdOn) "○ Hold" else if (state.holdCount == 0) "● Last" else "● ${state.latched.size}/${state.holdCount}", "Hold", { state.switchHold() },
-                on = state.holdOn, onColor = C.Yellow, tag = "hold-toggle", word = if (!state.holdOn) "Hold" else if (state.holdCount == 0) "Last" else "${state.latched.size}/${state.holdCount}")
-            BarBtn(state, if (state.chordMode == "off") "○ Chords" else "● Chords", "Chords", { state.toggleChords() }, on = state.chordMode != "off", onColor = C.Teal, tag = "chords-toggle", word = "Chords")
+                on = state.holdOn, onColor = C.Yellow, tag = "hold-toggle", word = if (!state.holdOn) "Hold" else if (state.holdCount == 0) "Last" else "${state.latched.size}/${state.holdCount}", modifier = Modifier.weight(1f))
+            BarBtn(state, if (state.chordMode == "off") "○ Chords" else "● Chords", "Chords", { state.toggleChords() }, on = state.chordMode != "off", onColor = C.Teal, tag = "chords-toggle", word = "Chords", modifier = Modifier.weight(1f))
             // the perform effects (stutter, echo throw, tape stop...), moved down from the view row (Nov 18)
-            if (state.layout == "classic") { if (state.tab == com.tideclock.messmachine.Tab.Pads) BarBtn(state, "FX", "FX", { state.showFx = !state.showFx }, on = state.showFx, onColor = C.Pink, tag = "fx-toggle", word = "FX") }
+            if (state.layout == "classic") { if (state.tab == com.tideclock.messmachine.Tab.Pads) BarBtn(state, "FX", "FX", { state.showFx = !state.showFx }, on = state.showFx, onColor = C.Pink, tag = "fx-toggle", word = "FX", modifier = Modifier.weight(1f)) }
             // build 107: Repeat sits beside Hold (the throws moved into the perform row); Edit, then Repeat, for its rate
-            else BarBtn(state, if (state.live.nr) "● Repeat" else "○ Repeat", "Repeat", { state.switchRepeat() }, on = state.live.nr, onColor = C.Pink, tag = "repeat-toggle", word = "Repeat")
+            else BarBtn(state, if (state.live.nr) "● Repeat" else "○ Repeat", "Repeat", { state.switchRepeat() }, on = state.live.nr, onColor = C.Pink, tag = "repeat-toggle", word = "Repeat", modifier = Modifier.weight(1f))
             // Nov 21 (second video): MUTE turns the pads into mute switches (hold it, or tap it to stay on); DROP, held,
             // leaves only the pads you touch
-            PressKey({ down, quick -> if (down) state.muteHeld = true else { state.muteHeld = false; if (quick) state.switchMuteMode() } }) {
+            PressKey({ down, quick -> if (down) state.muteHeld = true else { state.muteHeld = false; if (quick) state.switchMuteMode() } }, Modifier.weight(1f)) {
                 BarBtn(state, "Mute", "Mute", {}, on = state.muting, onColor = Hw.Oxblood, enabled = !state.locked, tag = "mute-key", word = "Mute")
             }
-            PressKey({ down, _ -> state.drop(down) }) {
+            PressKey({ down, _ -> state.drop(down) }, Modifier.weight(1f)) {
                 BarBtn(state, "Drop", "Drop", {}, on = state.dropOn, onColor = C.Pink, enabled = !state.locked, tag = "drop-key", word = "Drop")
             }
             // Nov 21 fix: the chord shows only while Chords is on (it used to show the last one with Chords off)
             val keyText = "${Theory.NN[P.root]} ${P.scale.lowercase()}" + (if (state.chordMode != "off") " · " + chordName(state.chordMode).lowercase() else "") + if (state.keysBarOpen) " ▾" else " ▴"
-            if (state.look == "classic") Btn(keyText, { state.switchKeysBar() }, small = true, tight = true, tier = Tier.Quiet, tag = "keysbar-open", modifier = Modifier.weight(1f))
+            if (state.look == "classic") Btn(keyText, { state.switchKeysBar() }, small = true, tight = true, tier = Tier.Quiet, tag = "keysbar-open", modifier = Modifier.weight(1.8f))
             // Nov 21 video: in the panel Look the key reads out on an amber LCD like BPM and Loop (the pink key tile was left over)
-            else if (UiLook.panel) Box(Modifier.weight(1f).padding(start = 4.dp, end = 2.dp).heightIn(min = 40.dp).lcd().clickable { state.switchKeysBar() }.tagged("keysbar-open")
+            else if (UiLook.panel) Box(Modifier.weight(1.8f).padding(start = 4.dp, end = 2.dp).heightIn(min = 40.dp).lcd().clickable { state.switchKeysBar() }.tagged("keysbar-open")
                 .padding(horizontal = 8.dp, vertical = 6.dp), contentAlignment = Alignment.CenterStart) {
                 T(keyText.uppercase(), size = 13.sp, color = Hw.Amber, lines = 1, family = Lcd, weight = androidx.compose.ui.text.font.FontWeight.Normal)
             }
-            else Row(Modifier.weight(1f).clickable { state.switchKeysBar() }.tagged("keysbar-open"), verticalAlignment = Alignment.CenterVertically) {
+            else Row(Modifier.weight(1.8f).clickable { state.switchKeysBar() }.tagged("keysbar-open"), verticalAlignment = Alignment.CenterVertically) {
                 PixIcon("Key and scale", 30.dp)
                 T(keyText.uppercase(), size = 11.sp, color = railText(state), lines = 1, modifier = Modifier.padding(start = 6.dp))
             }
@@ -565,16 +566,16 @@ fun Swatch(c: Color, modifier: Modifier = Modifier) {
 
 /** A key that knows when it goes down and comes up: quick is a tap under 300 ms. The key inside still draws as pressed. */
 @Composable
-fun PressKey(onPress: (down: Boolean, quick: Boolean) -> Unit, content: @Composable () -> Unit) {
+fun PressKey(onPress: (down: Boolean, quick: Boolean) -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val cb by androidx.compose.runtime.rememberUpdatedState(onPress)
-    Box(Modifier.pointerInput(Unit) {
+    Box(modifier.pointerInput(Unit) {
         awaitEachGesture {
             val d = awaitFirstDown(requireUnconsumed = false, pass = androidx.compose.ui.input.pointer.PointerEventPass.Initial)
             cb(true, false)
             val up = waitForUpOrCancellation(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
             cb(false, up != null && up.uptimeMillis - d.uptimeMillis < 300)
         }
-    }) { content() }
+    }, contentAlignment = Alignment.Center) { content() }
 }
 
 /** Hold for half a second: onHold (the tap underneath still happens when the finger lifts). */
