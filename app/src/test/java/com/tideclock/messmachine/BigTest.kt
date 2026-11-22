@@ -160,6 +160,8 @@ class BigTest {
     private fun tab(label: String) {
         if (label == "Console") { state.pickPlayLayout(true); rule.onNodeWithTag("tab-Pads").performClick(); settle(); return }
         if (label == "Pads") state.pickPlayLayout(false)
+        // Nov 21: Roll lives inside the Sequence tab (tab-Steps), behind the Steps or Roll switch
+        if (label == "Roll") { rule.onNodeWithTag("tab-Steps").performClick(); settle(); rule.onNodeWithTag("seq-roll").performClick(); settle(); return }
         rule.onNodeWithTag("tab-$label").performClick(); settle()
     }
 
@@ -453,7 +455,7 @@ class BigTest {
         at("skin-stage").performClick(); settle()
         assertEquals("stage", state.skin)
         assertEquals("Stage is pure black", androidx.compose.ui.graphics.Color(0xFF000000), com.tideclock.messmachine.ui.C.Paper)
-        assertEquals("the Look did not change", "classic", state.look)
+        assertEquals("the Look did not change", "panel", state.look)
         state.overlay = null; settle()
         shot("91-skin-stage-pads")
         tab("Steps"); settle(); shot("92-skin-stage-steps")
@@ -581,6 +583,78 @@ class BigTest {
         at("master-reset").performClick(); settle()
         assertEquals(.5, state.project.squash, 1e-9)
         state.overlay = null; settle()
+    }
+
+    @Test fun nov21NotesPanelScrewsSequenceAndPerform() {
+        // the hardware panel is the Look, and every panel has a screw (and Back) to take it off
+        assertEquals("panel", state.look)
+        shot("102-panel-play")
+        // Steps and Roll are one Sequence tab
+        tab("Steps")
+        at("seq-roll").performClick(); settle()
+        assertEquals(Tab.Roll, state.tab)
+        rule.onNodeWithTag("seq-switch").assertExists()
+        at("seq-steps").performClick(); settle()
+        assertEquals(Tab.Steps, state.tab)
+        // the lanes: a screw, and Back
+        at("moves-open").performClick(); settle()
+        assertTrue(state.movesOpen)
+        at("moves-close").performClick(); settle()
+        assertFalse("the screw takes the lanes off", state.movesOpen)
+        at("moves-open").performClick(); settle()
+        rule.runOnUiThread { rule.activity.onBackPressedDispatcher.onBackPressed() }; settle()
+        assertFalse("Back takes the lanes off", state.movesOpen)
+        assertFalse(rule.activity.isFinishing)
+        shot("103-panel-steps")
+        // the Perform tab
+        tab("Perform")
+        rule.onNodeWithTag("screen-Perform").assertExists()
+        rule.onNodeWithTag("perform-pad").assertExists()
+        shot("104-perform-tab")
+        // Repeat: the rate and the pattern are two words, two menus
+        tab("Pads")
+        state.switchPerform(true); settle()
+        state.setLive { arp = "updown"; nr = true }; settle()
+        assertTrue("the pattern word shows the order", com.tideclock.messmachine.ui.repeatPatternWord(state) != "EVEN")
+        if (rule.onAllNodesWithTag("dock-pattern").fetchSemanticsNodes().isNotEmpty()) {
+            at("dock-pattern").performClick(); settle()
+            rule.onNodeWithTag("rate-aup").performClick(); settle()
+            assertEquals("up", state.live.arp)
+        }
+        state.setLive { arp = "rep"; nr = false }
+        state.switchPerform(false); settle()
+        // an empty pad acts on a still tap's lift, never on touch-down
+        val empty = (0 until 16).firstOrNull { state.project.kit[it].isEmpty() }
+        if (empty != null) {
+            at("pad-$empty").performTouchInput { down(Offset(width * .2f, height * .2f)) }
+            settle()
+            assertFalse("touching the top of an empty pad does not start the mic", state.micOn)
+            rule.onNodeWithTag("pad-$empty").performTouchInput { moveBy(Offset(0f, height * .9f)); up() }
+            settle()
+            assertFalse("a slide off an empty pad does nothing", state.micOn)
+            assertEquals(null, state.overlay)
+        }
+        // a flick up off a pad opens its Edit tray
+        assertTrue(state.padFlick)
+        rule.onNodeWithTag("pad-0").performTouchInput { down(center); moveBy(Offset(0f, -height * 1.2f)); up() }
+        settle()
+        assertEquals("a flick up opens pad 1's tray", "edit:0", state.tray)
+        at("tray-done").performClick(); settle()
+        assertEquals(null, state.tray)
+    }
+
+    @Test fun notesSentLateSayWhenTheyWereWritten() {
+        // Nov 21: Send all without the key puts every waiting note on one GitHub page, newest first
+        state.notes.add(com.tideclock.messmachine.MNote("aaa1", "bug", "", "old one", System.currentTimeMillis() - 10L * 86400000, "0.1.60 (ef6ac77)", "Pads"))
+        state.notes.add(com.tideclock.messmachine.MNote("aaa2", "bug", "", "new one", System.currentTimeMillis(), "0.1.120 (7c3098d)", "Pads"))
+        settle()
+        assertTrue(state.waitingNotes.size >= 2)
+        state.sendAllNotes(); settle()
+        val opened = org.robolectric.Shadows.shadowOf(rule.activity.application).nextStartedActivity
+        val url = java.net.URLDecoder.decode(opened.data.toString(), "UTF-8")
+        assertTrue("one page carries both notes: $url", url.contains("old one") && url.contains("new one"))
+        assertTrue("newest first", url.indexOf("new one") < url.indexOf("old one"))
+        assertTrue("both are marked opened, not sent", state.notes.notes.filter { it.id.startsWith("aaa") }.all { it.status == com.tideclock.messmachine.OPENED })
     }
 
     @Test fun newLayoutEditRepeatAndPerformRow() {
@@ -1167,7 +1241,7 @@ class BigTest {
         state.changePadianoSize(1); state.changePadianoRows(1); settle()
         // Repeat patterns, from the dock's Repeat panel
         state.switchDockOpen(true); settle()
-        at("dock-rate").performClick(); settle()
+        at("dock-pattern").performClick(); settle()
         rule.onNodeWithTag("pat-xxo").performClick(); settle()
         assertEquals("2 on, 1 off is hit, hit, skip", "xx.", state.live.nrPat)
         assertTrue("picking a pattern turns Repeat on", state.live.nr)

@@ -39,6 +39,14 @@ Rewritten at the end of every session and at each step of a long job (BT-2). Rea
   NaN for none, saved as "locks"; Engine.combine is hand, then lock, then lane, then rest; a lock holds for its step and
   lets go on the next step, Stop or panic. Master bus: Project.squash (default .5) and level (default 1), saved only
   when changed; thr 10^-squash, ratio 1 + 6 squash, makeup (1 + .5 squash) level, so the defaults are the old bus.
+  Nov 21 (Tyler's notes, all approved): the panel Look (UiLook.id "panel", default for everyone once via pref
+  panelLook; Btn draws Modifier.bakelite, BarBtn draws PanelKey with the Pro icons tinted to one colour; keys keep a
+  40 dp real hit area at any view size). CloseScrew replaces every Done (tags kept); lanes, row tools, loops strip and
+  key panel got one; Back closes every panel. padFlick (default on): a flick up off a pad opens its Edit tray. Repeat
+  rate and pattern are two DockWords (dock-rate, dock-pattern) and two Selects in the tray. BAR_TABS: Pads, Synth,
+  Steps (Seq, with SeqSwitch to Roll), Song, Perform (PerformScreen), Sounds. Empty pads act on a still tap's lift
+  (emptyActsOnLift). Lessons use dock(tag) targets per layout. Notes: late notes say when they were written; a page
+  opened without the key is OPENED until Check for replies finds it; Send all without the key = one bundled page.
 - **Live before the overhaul:** build 104 (green, 2026-11-18). The final plan (builds 96 to 101) shipped as runs 97, 98, 101, 102, 103 and 104
   (runs 96, 99 and 100 failed on tests or a compile error and were fixed; run 98's phone test was rerun after an
   emulator download broke). Notes 20, 21, 22 closed. Plan doc: https://claude.ai/artifact/SMmt7Jz3BfDsP7xUqLLEqq .

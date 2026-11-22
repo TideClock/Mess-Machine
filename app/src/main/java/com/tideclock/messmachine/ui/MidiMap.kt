@@ -35,7 +35,7 @@ fun MidiMapPanel(state: AppState, modifier: Modifier = Modifier) {
             T("MIDI MAP", size = 12.sp, color = C.Yellow, spacing = .1.em, lines = 1, modifier = Modifier.weight(1f))
             Btn("Skip", { state.midiSkip() }, small = true, enabled = c != null, tag = "midimap-skip")
             Btn("Clear", { state.midiClearAll() }, small = true, tier = Tier.Danger, enabled = state.midiNotes.isNotEmpty() || state.midiKnobs.isNotEmpty(), tag = "midimap-clear")
-            Btn("Done", { state.switchMidiMap(false) }, small = true, on = true, onColor = C.Teal, tag = "midimap-done")
+            CloseScrew({ state.switchMidiMap(false) }, tag = "midimap-done")
         }
         T(
             if (c == null) "Tap a pad, a Padiano key or chord box, or touch a knob, fader, the pitch wheel or the tempo. Buttons maps Play, Rec and more."

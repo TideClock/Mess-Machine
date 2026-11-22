@@ -11,6 +11,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.draw.alpha
+import androidx.compose.runtime.getValue
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 
 /** The pixel icons (tools/icons, 32 x 32 art with an ink outline and a white glow). Written by tools/icons/export.py. */
 object Icons {
@@ -126,6 +131,28 @@ val PRO_LIGHT_RAIL = androidx.compose.ui.graphics.Color(0xFFFAF0E0)
 /** A bar's background: Classic is flat ink; the Pro looks are printed rails with a dot texture. */
 fun androidx.compose.ui.Modifier.rail(state: com.tideclock.messmachine.AppState, classic: androidx.compose.ui.graphics.Color = C.Ink): androidx.compose.ui.Modifier = when (state.look) {
     "classic" -> this.background(classic)
+    // the hardware panel (Nov 21): a strip of worn gunmetal, brushed sideways, scratched, held on by two screws
+    "panel" -> this.drawBehind {
+        drawRect(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Hw.PlateTop, Hw.Plate, androidx.compose.ui.graphics.Color(0xFF151311))))
+        val rnd = java.util.Random(7L + size.width.toLong())
+        var y = 1f
+        while (y < size.height) {
+            drawLine(androidx.compose.ui.graphics.Color.White.copy(alpha = .015f + rnd.nextFloat() * .03f), androidx.compose.ui.geometry.Offset(0f, y), androidx.compose.ui.geometry.Offset(size.width, y), 1f)
+            y += 2f + rnd.nextFloat() * 3f
+        }
+        repeat((size.width / 90f).toInt().coerceAtMost(14)) {
+            val x = rnd.nextFloat() * size.width; val yy = rnd.nextFloat() * size.height
+            drawLine(androidx.compose.ui.graphics.Color.White.copy(alpha = .08f), androidx.compose.ui.geometry.Offset(x, yy), androidx.compose.ui.geometry.Offset(x + 10f + rnd.nextFloat() * 30f, yy + (rnd.nextFloat() - .5f) * 6f), 1f)
+        }
+        drawLine(androidx.compose.ui.graphics.Color.White.copy(alpha = .12f), androidx.compose.ui.geometry.Offset(0f, 0f), androidx.compose.ui.geometry.Offset(size.width, 0f), 1.5f)
+        drawLine(androidx.compose.ui.graphics.Color.Black.copy(alpha = .6f), androidx.compose.ui.geometry.Offset(0f, size.height - 1f), androidx.compose.ui.geometry.Offset(size.width, size.height - 1f), 2f)
+        val sr = 3.dp.toPx()
+        for (sx in listOf(7.dp.toPx(), size.width - 7.dp.toPx())) {
+            val c = androidx.compose.ui.geometry.Offset(sx, size.height / 2)
+            drawCircle(Hw.MetalLow, sr, c); drawCircle(Hw.Metal, sr * .8f, c)
+            drawLine(androidx.compose.ui.graphics.Color(0xFF1A1613), androidx.compose.ui.geometry.Offset(c.x - sr * .6f, c.y - sr * .3f), androidx.compose.ui.geometry.Offset(c.x + sr * .6f, c.y + sr * .3f), 1.5f)
+        }
+    }
     else -> {
         val light = state.look == "light"
         val base = if (light) PRO_LIGHT_RAIL else PRO_DARK_RAIL
@@ -143,7 +170,7 @@ fun androidx.compose.ui.Modifier.rail(state: com.tideclock.messmachine.AppState,
 }
 
 /** Words on a rail: cream on dark, ink on the light rail. */
-fun railText(state: com.tideclock.messmachine.AppState): androidx.compose.ui.graphics.Color = if (state.look == "light") C.Ink else C.Cream
+fun railText(state: com.tideclock.messmachine.AppState): androidx.compose.ui.graphics.Color = when (state.look) { "light" -> C.Ink; "panel" -> Hw.Engrave; else -> C.Cream }
 
 /**
  * A button on a bar: words in Classic, an icon tile (with an optional small word under it) in the Pro looks.
@@ -156,6 +183,7 @@ fun BarBtn(
     tier: Tier = Tier.Normal, color: androidx.compose.ui.graphics.Color = C.Ink,
 ) {
     if (state.look == "classic") { Btn(text, onClick, modifier, color = color, on = on, onColor = onColor, enabled = enabled, small = true, tight = true, tag = tag, tier = tier); return }
+    if (state.look == "panel") { PanelKey(state, text, icon, onClick, modifier, on, onColor, enabled, tag, word, tier); return }
     val ring = if (state.look == "light") C.Ink else C.Cream
     androidx.compose.foundation.layout.Column(
         modifier.clickable(enabled = enabled) { onClick() }.let { if (tag != null) it.tagged(tag) else it }.padding(vertical = 2.dp),
@@ -165,5 +193,41 @@ fun BarBtn(
             androidx.compose.ui.Modifier.border(if (on) 3.dp else 0.dp, if (on) ring else androidx.compose.ui.graphics.Color.Transparent, androidx.compose.foundation.shape.RoundedCornerShape(6.dp)).padding(2.dp),
         ) { PixIcon(icon, 30.dp, dim = !enabled) }
         if (state.proWords && word != null) T(word.uppercase(), size = 8.sp, color = if (on) onColor.takeIf { state.look != "light" } ?: C.Ink else railText(state), lines = 1, spacing = .04.em)
+    }
+}
+
+
+/**
+ * A bar button in the hardware panel Look: a square bakelite key with a glyph from Tyler's own drawings engraved into
+ * it (the Pro icons, cut to one colour), a lamp that lights when it is on, and the word stamped under it.
+ */
+@androidx.compose.runtime.Composable
+fun PanelKey(
+    state: com.tideclock.messmachine.AppState, text: String, icon: String, onClick: () -> Unit, modifier: androidx.compose.ui.Modifier,
+    on: Boolean, onColor: androidx.compose.ui.graphics.Color, enabled: Boolean, tag: String?, word: String?, tier: Tier,
+) {
+    val src = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val pressed by src.collectIsPressedAsState()
+    val res = Icons.all[icon]?.first
+    androidx.compose.foundation.layout.Column(
+        modifier.heightIn(min = (44f / UiLook.scale.coerceIn(.4f, 2f)).coerceAtLeast(40f).dp)
+            .clickable(src, indication = null, enabled = enabled) { onClick() }.let { if (tag != null) it.tagged(tag) else it }
+            .alpha(if (enabled) 1f else .4f).padding(vertical = 2.dp),
+        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+    ) {
+        androidx.compose.foundation.layout.Box(
+            androidx.compose.ui.Modifier.size(width = 44.dp, height = 34.dp).offset(0.dp, if (pressed) 2.dp else 0.dp)
+                .bakelite(on, onColor, pressed, danger = tier == Tier.Danger, brass = tier == Tier.Primary),
+            contentAlignment = androidx.compose.ui.Alignment.Center,
+        ) {
+            if (res != null) androidx.compose.foundation.Image(
+                androidx.compose.ui.graphics.ImageBitmap.imageResource(res), contentDescription = text,
+                modifier = androidx.compose.ui.Modifier.padding(start = 8.dp).size(24.dp),
+                filterQuality = androidx.compose.ui.graphics.FilterQuality.None,
+                colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(if (on) lerp(Hw.Engrave, onColor, .5f) else Hw.Engrave, androidx.compose.ui.graphics.BlendMode.SrcIn),
+            ) else T(text.take(3).uppercase(), size = 11.sp, color = Hw.Engrave, lines = 1, modifier = androidx.compose.ui.Modifier.padding(start = 8.dp))
+        }
+        if (state.proWords && word != null) T(word.uppercase(), size = 8.sp, color = if (on) onColor else Hw.Engrave.copy(alpha = .8f), lines = 1, spacing = .08.em,
+            modifier = androidx.compose.ui.Modifier.padding(top = 2.dp))
     }
 }

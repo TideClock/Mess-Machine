@@ -28,7 +28,10 @@ import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.Executors
 
-enum class Tab(val label: String) { Pads("Pads"), Console("Console"), Synth("Synth"), Steps("Steps"), Roll("Roll"), Song("Song"), Sounds("Sounds") }
+enum class Tab(val label: String) { Pads("Pads"), Console("Console"), Synth("Synth"), Steps("Steps"), Roll("Roll"), Song("Song"), Perform("Perform"), Sounds("Sounds") }
+
+/** The tabs on the bar (Nov 21): Steps and Roll share one Sequence tab, and Perform sits next to Song. */
+val BAR_TABS = listOf(Tab.Pads, Tab.Synth, Tab.Steps, Tab.Song, Tab.Perform, Tab.Sounds)
 
 /**
  * One piece of Your Console. type picks what it is, pad which pad it plays (pianos, filters, a pad
@@ -951,6 +954,12 @@ class AppState(private val app: Context) {
         levelsPad = pad
         notes.trail("16 levels on pad ${pad + 1}")
         say("16 Levels: pad 1 is softest, pad 16 hits hardest.")
+    }
+
+    /** An empty pad waits for a still tap's lift (Nov 21), unless a mode uses the touch itself or a take is running on it. */
+    fun emptyActsOnLift(d: Int): Boolean {
+        val i = bank * Project.BANK + d
+        return project.kit[i].isEmpty() && !keysMode && !stepMode && levelsPad < 0 && swapFrom < 0 && !midiMapOn && !recordHold && !(micOn && micPad == i)
     }
 
     fun padUp(d: Int) {
@@ -1949,7 +1958,11 @@ class AppState(private val app: Context) {
     fun sendAllNotes() {
         val w = waitingNotes
         if (w.isEmpty()) { say("Nothing waiting."); return }
-        if (!notes.hasKey) { sendNote(w.last()); if (w.size > 1) say("Without the key each note opens its own GitHub page. ${w.size - 1} more after this one."); return }
+        if (!notes.hasKey) {
+            val k = notes.openBundle(w, noteDetails("bug", false))
+            say(if (k < w.size) "$k notes are on the GitHub page, newest first. Tap Submit there, then Send all again for the other ${w.size - k}." else "All $k notes are on one GitHub page, newest first. Tap Submit there.")
+            return
+        }
         for (n in w.reversed()) sendNote(n)
     }
 
@@ -2045,9 +2058,14 @@ class AppState(private val app: Context) {
 
     /** Menu was tapped: the next thing you touch opens its settings instead of playing. */
     /** The look (Nov 18): "classic" (today's), "dark" or "light" (the Pro looks: icon tiles on printed rails). */
-    var look by mutableStateOf(prefs.getString("look", "classic") ?: "classic")
+    // Nov 21: the hardware panel is the Look for everyone, once (Tyler's call); after that, whatever is picked stays
+    var look by mutableStateOf(run {
+        if (!prefs.getBoolean("panelLook", false)) prefs.edit().putBoolean("panelLook", true).putString("look", "panel").apply()
+        prefs.getString("look", "panel") ?: "panel"
+    })
+    init { com.tideclock.messmachine.ui.UiLook.id = look }
         private set
-    fun pickLook(v: String) { look = v; prefs.edit().putString("look", v).apply(); notes.trail("look $v") }
+    fun pickLook(v: String) { look = v; com.tideclock.messmachine.ui.UiLook.id = v; prefs.edit().putString("look", v).apply(); notes.trail("look $v") }
     /** build 5 of the overhaul: the colour skin, separate from the Look (the button skin) */
     var skin by mutableStateOf(com.tideclock.messmachine.ui.Skins.byId(prefs.getString("skin", "classic")).id)
     init { com.tideclock.messmachine.ui.C.skin = com.tideclock.messmachine.ui.Skins.byId(skin) }
@@ -2070,6 +2088,9 @@ class AppState(private val app: Context) {
     var flickOn by mutableStateOf(prefs.getBoolean("flickOn", false))
         private set
     fun switchFlick() { flickOn = !flickOn; prefs.edit().putBoolean("flickOn", flickOn).apply() }
+    /** Flick up off a pad: its Edit tray. On by default (Nov 21 note: pressing Edit every time felt limiting). */
+    var padFlick by mutableStateOf(prefs.getBoolean("padFlick", true))
+    fun switchPadFlick() { padFlick = !padFlick; prefs.edit().putBoolean("padFlick", padFlick).apply() }
 
     /** The Edit tray's open drawer (sound, fx, keys, mod, more); it stays where you left it. */
     var editTab by mutableStateOf(prefs.getString("editTab", "sound") ?: "sound")
@@ -2167,7 +2188,7 @@ class AppState(private val app: Context) {
     fun heldPadHint(pad: Int) {
         if (heldHintSaid) return
         heldHintSaid = true
-        say("Pad ${pad + 1} plays for as long as you hold it, so a hold opens no menu. Tap Menu, by the bank numbers.")
+        say("Pad ${pad + 1} plays for as long as you hold it, so a hold opens no menu. Flick it up, or tap Edit and then the pad.")
     }
 
     /** Pads with a synth on them, for the Synth tab's pad picker (note #12). */
@@ -2184,9 +2205,11 @@ class AppState(private val app: Context) {
     /** View size, so more fits on the screen. 1 = normal. */
     var uiScale by mutableFloatStateOf(prefs.getFloat("uiScale", 1f))
         private set
+    init { com.tideclock.messmachine.ui.UiLook.scale = uiScale }
 
     fun setViewSize(v: Float) {
         uiScale = v.coerceIn(.6f, 1.3f)
+        com.tideclock.messmachine.ui.UiLook.scale = uiScale
         prefs.edit().putFloat("uiScale", uiScale).apply()
     }
 

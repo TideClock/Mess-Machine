@@ -41,6 +41,7 @@ fun RollScreen(state: AppState) {
     val k = state.selKey()
     val loaded = (0 until Project.NPADS).filter { P.kit[it].isNotEmpty() }
     ScrollPane {
+        SeqSwitch(state)
         SlotBar(state)
         if (k.isNotEmpty()) Row(Modifier.padding(bottom = 8.dp).tapOrHold(P.sel, { state.preview(k) }, { if (!state.locked) state.padMenu = P.sel }).tagged("roll-name"), verticalAlignment = Alignment.CenterVertically) {
             Swatch(padColor(Color(state.lib.colorOf(k))))

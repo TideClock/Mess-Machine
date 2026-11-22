@@ -69,7 +69,7 @@ fun BoxScope.FaqOverlay(state: AppState) {
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 T("WHAT THE FAQ", size = 12.sp, color = C.Teal, spacing = .1.em, modifier = Modifier.weight(1f))
-                Btn("Done", { state.switchFaq(false) }, small = true, tag = "faq-done")
+                CloseScrew({ state.switchFaq(false) }, tag = "faq-done")
             }
             if (line == null) T("Tap anything on the screen: it says what it is instead of pressing it.", size = 15.sp, color = C.Cream, modifier = Modifier.padding(top = 4.dp))
             else {
@@ -93,9 +93,10 @@ val SPEED_STOPS = listOf(
     "tab-Pads" to "The tabs: Play, Synth, Steps, Roll, Song and Sounds.",
     "loop-open" to "The loop: where the music is. Tap it for loops A to H from any page; while playing, a pick waits for the bar line.",
     "pad-0" to "Pads: tap to play, hold to keep playing, draw a circle for the pad's XY. Empty pads: top corner records, bottom corner picks a sound.",
-    "open-padmenu" to "The bottom bar stays under the page. Menu, then tap anything: its settings. Then Pack, Hold, Chords, FX and the key.",
+    "open-padmenu" to "The bottom bar stays under the page. Edit, then tap anything: its settings (a pad opens its Edit tray; so does a flick up off it). Then Pack, Hold, Repeat, Chords and the key.",
     "pack-toggle" to "Pack opens the picked pad's FannyPack under its row: the Padiano, live FX faders, an LFO and XY, whichever you packed.",
-    "dock-open" to "The side dock: Lock, Hold, the pitch wheel, the filter, Repeat and whatever else you put on it.",
+    "dock-open" to "The side dock (Classic layout): Lock, Hold, the pitch wheel, the filter, Repeat and whatever else you put on it.",
+    "perform-handle" to "The perform row: swipe it up for Lock, the pitch wheel, the filter, Repeat's rate and pattern, Toss and whatever else you put on it. The Perform tab has the whole set.",
     "tab-Steps" to "Steps: tap or slide to paint steps; tap a sound's name for row tools; Auto shows recorded moves as lanes you can draw.",
     "notes" to "The bug: tap it, talk, tap it again, and a note for Claude waits on the phone. Notes and replies are in the menu.",
 )
@@ -138,7 +139,7 @@ fun BoxScope.SpeedGuideOverlay(state: AppState) {
                 Btn("Back", { state.speedStop = (i - 1).coerceAtLeast(0) }, small = true, tier = Tier.Quiet, enabled = i > 0, tag = "speed-back")
                 Btn(if (state.speedPaused) "Go on" else "Pause", { state.speedPaused = !state.speedPaused }, small = true, tier = Tier.Quiet, tag = "speed-pause")
                 Btn("Next", { state.speedStop = if (i + 1 >= SPEED_STOPS.size) -1 else i + 1 }, small = true, tag = "speed-next")
-                Btn("Done", { state.speedStop = -1 }, small = true, tag = "speed-done")
+                CloseScrew({ state.speedStop = -1 }, tag = "speed-done")
             }
         }
     }

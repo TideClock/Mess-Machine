@@ -112,6 +112,7 @@ fun StepsScreen(state: AppState) {
     val pat = P.pat()
     val off = state.page.coerceIn(0, pat.len / 16 - 1) * 16
     ScrollPane {
+        SeqSwitch(state)
         SlotBar(state, tools = true)
         if (state.movesOpen) MovesPanel(state)
         Row(Modifier.fillMaxWidth().padding(bottom = 12.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -282,7 +283,7 @@ fun StepSheet(state: AppState, k: String, j: Int) {
     Column(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 6.dp).sticker(C.Card, radius = 6.dp, shadow = 3.dp, border = 2.dp, borderColor = C.Teal, shadowColor = C.Teal).padding(10.dp).tagged("stepsheet")) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             T("STEP ${j + 1}", size = 12.sp, color = C.Teal, spacing = .1.em, modifier = Modifier.weight(1f))
-            Btn("Done", { state.stepSheet = null }, small = true, tag = "stepsheet-done")
+            CloseScrew({ state.stepSheet = null }, tag = "stepsheet-done")
         }
         T("HOW OFTEN", size = 10.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 6.dp))
         Wrap(Modifier.padding(top = 4.dp)) {
@@ -336,6 +337,7 @@ fun RowTools(state: AppState, pad: Int) {
             Btn("Copy", { state.rowTool(pad, "copy") }, small = true, tight = true, tag = "row-copy")
             Btn("Paste", { state.rowTool(pad, "paste") }, small = true, tight = true, enabled = state.rowClip != null, tag = "row-paste")
             Btn("Clear", { state.rowTool(pad, "clear") }, small = true, tight = true, tier = Tier.Danger, tag = "row-clear")
+            CloseScrew({ state.stepStrip = -1 }, tag = "rowtools-close", label = "Close the row tools")
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             T("SPREAD", size = 11.sp, color = C.Dim, spacing = .1.em)

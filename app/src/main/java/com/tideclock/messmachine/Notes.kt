@@ -23,6 +23,9 @@ import java.util.concurrent.Executors
  * the issue comments. Categories match the bug-testing skill: Bug, Tuning, Feature, Question,
  * Discuss (Note and discuss, grouped by topic) and Wishlist.
  */
+/** A note whose GitHub page was opened, not yet seen on GitHub (Submit may not have been tapped). */
+const val OPENED = "opened on GitHub, not seen there yet"
+
 data class MNote(
     val id: String, val cat: String, val topic: String, val text: String, val at: Long, val build: String, val screen: String,
     val extra: String = "", val sent: Boolean = false, val issue: Int = 0, val status: String = "", val replies: List<String> = emptyList(),
@@ -139,10 +142,17 @@ class NotesBook(private val app: Context) {
     }
 
     private fun titleOf(n: MNote) = (if (n.cat == "discuss") "[Discuss: ${n.topic.ifEmpty { "general" }}] " else "[${catLabel(n.cat)}] ") +
+        (if (late(n)) "(written ${day(n.at)}) " else "") +
         n.text.lineSequence().firstOrNull().orEmpty().take(70).ifEmpty { "(no text)" }
+
+    /** Nov 21 fix: a note sent long after it was written says so, so an old note can't pass for a new one. */
+    private fun late(n: MNote) = System.currentTimeMillis() - n.at > 30 * 60 * 1000L
+    private fun day(t: Long) = java.text.SimpleDateFormat("MMM d", java.util.Locale.US).format(java.util.Date(t))
+    private fun stamp(t: Long) = java.text.SimpleDateFormat("MMM d, h:mm a", java.util.Locale.US).format(java.util.Date(t))
 
     private fun bodyOf(n: MNote, details: String, trailLines: Int, extraChars: Int): String = buildString {
         append(n.text.ifEmpty { "(no text)" })
+        if (late(n)) append("\n\n**Written ${stamp(n.at)} on build ${n.build}, sent ${stamp(System.currentTimeMillis())}.**")
         append("\n\n---\n")
         append("**Category:** ${catLabel(n.cat)}")
         if (n.cat == "discuss") append(" · **Topic:** ${n.topic.ifEmpty { "general" }}")
@@ -219,7 +229,36 @@ class NotesBook(private val app: Context) {
             u = url(body(lines.coerceAtLeast(0), extra.coerceAtLeast(0)))
         }
         app.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(u)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-        replace(n.copy(sent = true, status = if (n.status.isEmpty()) "sent" else n.status))
+        // Nov 21 fix: opening the page is not sending it; Check for replies marks it sent once GitHub has it
+        replace(n.copy(sent = true, status = if (n.status.isEmpty() || n.status == "sent") OPENED else n.status))
+    }
+
+    /**
+     * Send all without the key (Nov 21 fix): every waiting note on ONE GitHub page, newest first, each with when it
+     * was written, so one Submit sends them all. Notes that don't fit the page wait for the next Send all.
+     */
+    fun openBundle(waiting: List<MNote>, details: String): Int {
+        if (waiting.isEmpty()) return 0
+        val list = waiting.sortedByDescending { it.at }
+        fun bodyFor(k: Int): String = buildString {
+            append("${k} notes from the app, newest first.\n")
+            for (n in list.take(k)) {
+                append("\n### ")
+                append(if (n.cat == "discuss") "[Discuss: ${n.topic.ifEmpty { "general" }}]" else "[${catLabel(n.cat)}]")
+                append(" ${stamp(n.at)} · ${n.screen} · build ${n.build}\n\n")
+                append(n.text.ifEmpty { "(no text)" })
+                append("\n<!-- mm-note:${n.id} -->\n")
+            }
+            append("\n---\n")
+            append(details.lines().take(6).joinToString("\n"))
+        }
+        fun url(k: Int) = "https://github.com/$REPO/issues/new?title=" + enc("[Notes] ${k} notes from the app (${day(list.first().at)})") +
+            "&labels=" + enc((listOf("from-app") + list.take(k).map { it.cat }.distinct()).joinToString(",")) + "&body=" + enc(bodyFor(k))
+        var k = list.size
+        while (k > 1 && url(k).length > 7600) k--
+        app.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url(k))).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        for (n in list.take(k)) replace(n.copy(sent = true, status = OPENED))
+        return k
     }
 
     private fun enc(s: String) = URLEncoder.encode(s, "UTF-8").replace("+", "%20")
@@ -237,7 +276,9 @@ class NotesBook(private val app: Context) {
                 for (o in issues) {
                     val m = Json.map(o)
                     val body = Json.str(m["body"], "")
-                    val id = Regex("mm-note:([A-Za-z0-9]+)").find(body)?.groupValues?.get(1) ?: continue
+                    // a bundle (Send all without the key) carries several notes: each one finds its issue
+                    val ids = Regex("mm-note:([A-Za-z0-9]+)").findAll(body).map { it.groupValues[1] }.toList()
+                    for (id in ids) {
                     val n = notes.firstOrNull { it.id == id } ?: continue
                     matched++
                     val labels = Json.list(m["labels"]).map { Json.str(Json.map(it)["name"], "") }
@@ -257,6 +298,7 @@ class NotesBook(private val app: Context) {
                         } else emptyList()
                     if (replies.size > n.replies.size) newReplies += replies.size - n.replies.size
                     updates.add(n.copy(issue = Json.num(m["number"], 0.0).toInt(), status = status, replies = replies, sent = true))
+                    }
                 }
                 main.post { for (u in updates) replace(u) }
                 when {

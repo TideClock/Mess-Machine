@@ -30,44 +30,58 @@ class Tutorial(val id: String, val group: String, val title: String, val blurb: 
 
 object Tutorials {
     private fun t(tag: String?): (AppState) -> String? = { tag }
+    /**
+     * A control that lives on the side dock in Classic. In the New and Side layouts (Nov 21 fix): Hold and Repeat are
+     * on the bottom bar, and the rest are in the perform row, which the ring opens first.
+     */
+    private fun dock(tag: String): (AppState) -> String? = { s ->
+        when {
+            s.layout == "classic" -> tag
+            tag == "dock-hold" -> "hold-toggle"
+            tag == "dock-repeat" -> "repeat-toggle"
+            !s.performOpen -> "perform-handle"
+            else -> tag
+        }
+    }
+    private fun editOpen(s: AppState) = s.padMenu >= 0 || s.tray?.startsWith("edit:") == true
     private fun played(s: AppState, c: TutCtx, n: Int = 1) = s.engine.triggers >= c.trig0 + n
     private fun selKey(s: AppState) = s.project.kit[s.project.sel]
     private fun selEdit(s: AppState) = s.project.edit(selKey(s))
     private fun cut(s: AppState) = s.synthOn(s.project.sel)?.get("cut") ?: 0.0
 
     private val openSample = TutStep("Tap Sample, by the bank numbers. It opens the selected pad's Sample sheet.", t("open-sample")) { s, _ -> s.overlay is Overlay.Doctor }
-    private val closeSheet = TutStep("Close the sheet with Done.", t("done")) { s, _ -> s.overlay == null }
+    private val closeSheet = TutStep("Take the sheet off: tap the screw in its corner.", t("done")) { s, _ -> s.overlay == null }
 
     val all: List<Tutorial> = listOf(
         Tutorial("pads", "Start here", "Pads and banks", "Play pads, switch banks, find a pad's menu.", listOf(
             TutStep("Tap a few pads.", t("pad-0")) { s, c -> played(s, c, 3) },
             TutStep("Tap 2 under BANK: a second set of 16 pads.", t("bank-1")) { s, _ -> s.bank == 1 },
             TutStep("Back to bank 1.", t("bank-0")) { s, _ -> s.bank == 0 },
-            TutStep("Tap Edit on the bar at the bottom, then tap a pad: its menu opens instead of it playing. Edit, then tap works on strips and perform row buttons too.", { s -> if (s.menuArmed) "pad-0" else "open-padmenu" }) { s, _ -> s.padMenu >= 0 },
-            TutStep("Close the menu by tapping outside it.") { s, _ -> s.padMenu < 0 },
+            TutStep("Tap Edit on the bar at the bottom, then tap a pad: its Edit tray opens instead of it playing. Edit, then tap works on strips and perform row buttons too. A flick up off a pad does the same.", { s -> if (s.menuArmed) "pad-0" else "open-padmenu" }) { s, _ -> editOpen(s) },
+            TutStep("Close it: the screw in its corner, or Back.", { s -> if (s.tray != null) "tray-done" else null }) { s, _ -> !editOpen(s) },
         )),
         Tutorial("hold", "Playing", "Hold", "Latch pads so they keep playing while your hands do something else.", listOf(
-            TutStep("Tap H in the dock to turn Hold on.", t("dock-hold")) { s, _ -> s.holdOn },
+            TutStep("Tap Hold (on the bottom bar; H on the side dock in Classic) to turn it on.", dock("dock-hold")) { s, _ -> s.holdOn },
             TutStep("Tap a pad. It keeps playing on its own, and an H shows in its corner.", t("pad-2")) { s, _ -> s.latched.isNotEmpty() },
             TutStep("Tap a second pad. It holds too: Hold keeps as many as the number under H (3 to start; at Last, the newest takes over).", t("pad-3")) { s, c -> played(s, c, 1) },
             TutStep("Tap each held pad again to let them go.") { s, _ -> s.latched.isEmpty() },
-            TutStep("Tap H again to turn Hold off.", t("dock-hold")) { s, _ -> !s.holdOn },
+            TutStep("Tap Hold again to turn it off.", dock("dock-hold")) { s, _ -> !s.holdOn },
         )),
         Tutorial("beat", "Playing", "On the beat", "A held pad that starts again on every beat, in time.", listOf(
             openSample,
             TutStep("Under When it is held, pick On the beat.", t("held-beat")) { s, _ -> selEdit(s).held == "beat" },
             TutStep("Pick 2 beats.", t("beat-2")) { s, _ -> selEdit(s).beatN == 2 },
             closeSheet,
-            TutStep("Turn Hold on with H.", t("dock-hold")) { s, _ -> s.holdOn },
+            TutStep("Turn Hold on.", dock("dock-hold")) { s, _ -> s.holdOn },
             TutStep("Tap the selected pad. It starts again every 2 beats, in time.", { s -> "pad-${s.project.sel % Project.BANK}" }) { s, _ -> s.latched.isNotEmpty() },
-            TutStep("Tap it again, then turn Hold off.", t("dock-hold")) { s, _ -> s.latched.isEmpty() && !s.holdOn },
+            TutStep("Tap it again, then turn Hold off.", dock("dock-hold")) { s, _ -> s.latched.isEmpty() && !s.holdOn },
         )),
         Tutorial("repeat", "Playing", "Note repeat", "Hold a pad and it repeats in time; pick how the repeats sound.", listOf(
-            TutStep("Tap RPT in the dock.", t("dock-repeat")) { s, _ -> s.live.nr },
-            TutStep("Press and hold a pad: it repeats at the rate shown under RPT.", t("pad-0")) { s, c -> played(s, c, 4) },
-            TutStep("Tap the rate under RPT and pick Flow (hold and pulse).", t("dock-rate")) { s, _ -> s.live.nrStyle == "flow" },
+            TutStep("Turn Repeat on (on the bottom bar; RPT on the side dock in Classic).", dock("dock-repeat")) { s, _ -> s.live.nr },
+            TutStep("Press and hold a pad: it repeats at Repeat's rate.", t("pad-0")) { s, c -> played(s, c, 4) },
+            TutStep("Open the perform row and tap the rate under RPT, then pick Flow (hold and pulse).", dock("dock-rate")) { s, _ -> s.live.nrStyle == "flow" },
             TutStep("Hold a pad again: one note that breathes with the rate.", t("pad-0")) { s, c -> played(s, c, 1) },
-            TutStep("Tap the rate, pick Cut each repeat, then turn RPT off.", t("dock-rate")) { s, _ -> s.live.nrStyle == "cut" && !s.live.nr },
+            TutStep("Tap the rate, pick Cut, then turn Repeat off.", { st -> if (st.live.nrStyle == "cut") dock("dock-repeat")(st) else dock("dock-rate")(st) }) { s, _ -> s.live.nrStyle == "cut" && !s.live.nr },
         )),
         Tutorial("padiano", "Playing", "Padiano", "Any pad's sound as a keyboard, dropped right under its row.", listOf(
             TutStep("Tap the first pad, then Pack on the bar at the bottom: its FannyPack opens with the Padiano in it.", { s -> if (s.project.sel == 0) "pack-toggle" else "pad-0" }) { s, _ -> s.keyboards.isNotEmpty() },
@@ -126,7 +140,7 @@ object Tutorials {
             TutStep("Press Stop.", t("stop")) { s, _ -> !s.playing },
         )),
         Tutorial("roll", "Writing", "Roll", "Draw notes with lengths for any pad, synths included.", listOf(
-            TutStep("Tap ROLL.", t("tab-Roll")) { s, _ -> s.tab == Tab.Roll },
+            TutStep("Tap SEQ, then Roll at the top.", { s -> if (s.tab == Tab.Steps) "seq-roll" else "tab-Steps" }) { s, _ -> s.tab == Tab.Roll },
             TutStep("Tap in the grid to draw a few notes.", t("roll")) { s, c -> s.version >= c.v0 + 3 },
             TutStep("Press Play.", t("play")) { s, _ -> s.playing },
             TutStep("Press Stop.", t("stop")) { s, _ -> !s.playing },
@@ -143,14 +157,14 @@ object Tutorials {
             TutStep("Tap Check for packs. Install any that are there.", t("packs-refresh")) { s, _ -> s.packOffers != null && s.packNote != "Looking for packs…" },
             closeSheet,
         )),
-        Tutorial("filter", "Playing", "Dock filter", "Sweep a filter over the whole mix, or one pad.", listOf(
-            TutStep("Tap a pad, then drag the filter slider in the dock down.", t("dock-cut")) { s, _ -> s.dockCut < .8f },
-            TutStep("Let go: it springs back open.", t("dock-cut")) { s, _ -> s.dockCut > .95f },
+        Tutorial("filter", "Playing", "The filter strip", "Sweep a filter over the whole mix, or one pad.", listOf(
+            TutStep("Tap a pad, then drag the filter in the perform row (the side dock in Classic) down.", dock("dock-cut")) { s, _ -> s.dockCut < .8f },
+            TutStep("Let go: it springs back open.", dock("dock-cut")) { s, _ -> s.dockCut > .95f },
         )),
         Tutorial("lock", "Playing", "Lock", "Lock the screen so only pads play: no menus, no accidents mid-set.", listOf(
-            TutStep("Tap the lock in the dock.", t("dock-lock")) { s, _ -> s.locked },
+            TutStep("Tap the lock in the perform row (the side dock in Classic).", dock("dock-lock")) { s, _ -> s.locked },
             TutStep("Play some pads. Tabs and menus stay shut while it's locked.", t("pad-1")) { s, c -> played(s, c, 3) },
-            TutStep("Unlock it the same way.", t("dock-lock")) { s, _ -> !s.locked },
+            TutStep("Unlock it the same way.", dock("dock-lock")) { s, _ -> !s.locked },
         )),
         Tutorial("chords", "Playing", "Chords and key", "Pick the mess's key and scale, and play chords from one finger.", listOf(
             TutStep("Tap Pack on the bottom bar: the sound's Padiano opens under its row.", t("pack-toggle")) { s, _ -> s.project.sel in s.keyboards },
@@ -199,7 +213,7 @@ object Tutorials {
             TutStep("Draw a circle on that pad and push the ball around: hear the new setup.", t("pad-0")) { s, c -> if (s.sphere != null) c.seen.add("sphere"); "sphere" in c.seen && s.sphere == null },
         )),
         Tutorial("desk", "Playing", "My Desk", "Build your own playing surface from pieces: pads, keys, XY, effects.", listOf(
-            TutStep("Open the menu at the top right, then Settings. Pick My Desk under Play layout, then Done.", { s -> if (s.overlay == Overlay.Settings) (if (s.tab == Tab.Console) "done" else "layout-desk") else "menu" }) { s, c -> (s.tab == Tab.Console && s.overlay == null).also { if (it) c.con0 = s.console.size } },
+            TutStep("Open the menu at the top right, then Settings. Pick My Desk under Play layout, then the screw in the corner.", { s -> if (s.overlay == Overlay.Settings) (if (s.tab == Tab.Console) "done" else "layout-desk") else "menu" }) { s, c -> (s.tab == Tab.Console && s.overlay == null).also { if (it) c.con0 = s.console.size } },
             TutStep("Tap + Add and pick a piece.", t("console-add")) { s, c -> s.console.size > c.con0 },
             TutStep("Play the piece you added.") { s, c -> played(s, c, 2) },
             TutStep("Back to the pads: menu, Settings, Play layout, Pads.", { s -> if (s.overlay == Overlay.Settings) (if (s.tab == Tab.Pads) "done" else "layout-pads") else "menu" }) { s, _ -> s.tab == Tab.Pads },
@@ -214,7 +228,7 @@ object Tutorials {
         Tutorial("acid", "Synths", "Acid slides", "Notes that touch in Roll slide into each other on an Acid synth.", listOf(
             TutStep("Tap SYNTH, then On empty pad.", t("tab-Synth")) { s, _ -> s.synthOn(s.project.sel) != null },
             TutStep("Pick Acid.", t("synthmode-2")) { s, _ -> s.synthOn(s.project.sel)?.get("mode") == 2.0 },
-            TutStep("Tap ROLL and draw a few notes, some touching end to start.", t("tab-Roll")) { s, c -> s.tab == Tab.Roll && s.version >= c.v0 + 3 },
+            TutStep("Tap SEQ, then Roll at the top, and draw a few notes, some touching end to start.", { s -> if (s.tab == Tab.Roll) null else if (s.tab == Tab.Steps) "seq-roll" else "tab-Steps" }) { s, c -> s.tab == Tab.Roll && s.version >= c.v0 + 3 },
             TutStep("Press Play and listen for the slides.", t("play")) { s, _ -> s.playing },
             TutStep("Press Stop.", t("stop")) { s, _ -> !s.playing },
         )),

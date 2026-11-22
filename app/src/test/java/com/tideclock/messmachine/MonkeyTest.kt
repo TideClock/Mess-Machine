@@ -135,7 +135,7 @@ class MonkeyTest {
         // a long seeded run of random taps, holds, slides and circles on every page, with the loop
         // starting and stopping, sheets opening and Lock going on and off; any crash fails the test
         val rnd = java.util.Random(20261110)
-        val tabs = Tab.entries.map { it.label }
+        val tabs = com.tideclock.messmachine.BAR_TABS.map { it.label }
         fun mainRoot(): androidx.compose.ui.test.SemanticsNodeInteraction {
             val roots = rule.onAllNodes(androidx.compose.ui.test.isRoot()).fetchSemanticsNodes()
             val big = roots.indices.maxByOrNull { roots[it].size.width * roots[it].size.height } ?: 0

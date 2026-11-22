@@ -61,6 +61,9 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.ImageShader
@@ -121,6 +124,84 @@ object Skins {
         0xFFD9572B, 0xFF4FA392, 0xFFD9A441, 0xFFB8361E, 0xFFB08BC9, 0xFF9FBF4A, 0xFF6FA3B8, 0xFFE07B2E, grit = 2f, shadow = 0xFF5A2A14, pad = "jar")
     val all = listOf(classic, specimen, stage, felt, rust)
     fun byId(id: String?) = all.firstOrNull { it.id == id } ?: classic
+}
+
+/**
+ * The button skin (the Look) for widgets that have no AppState at hand: classic, dark, light, or panel (the hardware
+ * panel: bakelite keys in worn metal, Nov 21). AppState keeps it in step with its own look.
+ */
+object UiLook {
+    var id by mutableStateOf("panel")
+    val panel get() = id == "panel"
+    /** the view size (70% and so on): panel keys keep a real 40 dp hit area at any view size */
+    var scale by mutableStateOf(1f)
+}
+
+/** Bakelite and worn metal, for the panel Look. */
+object Hw {
+    val Bake = Color(0xFF2B211C); val BakeTop = Color(0xFF3E3129); val BakeLow = Color(0xFF17110E)
+    val Metal = Color(0xFF8E877D); val MetalHi = Color(0xFFC9C0B2); val MetalLow = Color(0xFF4E4943)
+    val Engrave = Color(0xFFE6D8BC); val Brass = Color(0xFFC9A04A); val Oxblood = Color(0xFFA8321F)
+    val Plate = Color(0xFF24211F); val PlateTop = Color(0xFF34302C)
+}
+
+/** A bakelite key in a worn metal bezel, with a lamp that lights in the key's colour when it is on. */
+fun Modifier.bakelite(on: Boolean, lamp: Color, pressed: Boolean, danger: Boolean = false, brass: Boolean = false): Modifier = this.drawBehind {
+    val r = CornerRadius(7.dp.toPx())
+    val bez = 2.5.dp.toPx()
+    // shadow under the key, gone while pressed
+    if (!pressed) drawRoundRect(Color.Black.copy(alpha = .55f), topLeft = Offset(0f, 2.5.dp.toPx()), size = size, cornerRadius = r)
+    // the bezel: worn metal, brighter on the top edge, brass for the main key, oxblood for danger
+    val rim = when { danger -> listOf(Color(0xFFC4573F), Hw.Oxblood, Color(0xFF5A1A10)); brass -> listOf(Color(0xFFE8C877), Hw.Brass, Color(0xFF6E5420)); else -> listOf(Hw.MetalHi, Hw.Metal, Hw.MetalLow) }
+    drawRoundRect(Brush.verticalGradient(rim), cornerRadius = r)
+    // the cap: bakelite, a soft dome of light from above, darker when pushed in
+    val capR = CornerRadius(5.dp.toPx())
+    drawRoundRect(Brush.verticalGradient(if (pressed) listOf(Hw.BakeLow, Hw.Bake) else listOf(Hw.BakeTop, Hw.Bake, Hw.BakeLow)),
+        topLeft = Offset(bez, bez), size = Size(size.width - bez * 2, size.height - bez * 2), cornerRadius = capR)
+    // wear: a few pale scuffs on the cap, the same on every redraw for a given size
+    val rnd = java.util.Random((size.width * 31 + size.height).toLong())
+    repeat(3) {
+        val x = bez + rnd.nextFloat() * (size.width - bez * 2 - 8f); val y = bez + rnd.nextFloat() * (size.height - bez * 2 - 4f)
+        drawLine(Color.White.copy(alpha = .05f + rnd.nextFloat() * .05f), Offset(x, y), Offset(x + 4f + rnd.nextFloat() * 14f, y + rnd.nextFloat() * 3f), strokeWidth = 1f)
+    }
+    // the lamp: a small glass bead on the left that glows when on
+    val lr = 3.dp.toPx(); val lc = Offset(bez + 7.dp.toPx(), size.height / 2)
+    if (on) drawCircle(Brush.radialGradient(listOf(lamp.copy(alpha = .55f), Color.Transparent), center = lc, radius = lr * 4f), radius = lr * 4f, center = lc)
+    drawCircle(if (on) lamp else Color(0xFF0E0B09), radius = lr, center = lc)
+    drawCircle(Color.White.copy(alpha = if (on) .55f else .18f), radius = lr * .35f, center = Offset(lc.x - lr * .3f, lc.y - lr * .35f))
+}
+
+/**
+ * The close control: a cross-head screw in the corner of the panel. Tap it and the screw turns out a quarter, and
+ * the panel comes off. An X with a reason to be there.
+ */
+@Composable
+fun CloseScrew(onClick: () -> Unit, tag: String, modifier: Modifier = Modifier, label: String = "Close") {
+    val src = remember { MutableInteractionSource() }
+    val pressed by src.collectIsPressedAsState()
+    val turn by androidx.compose.animation.core.animateFloatAsState(if (pressed) 90f else 0f, androidx.compose.animation.core.tween(160), label = "screw")
+    Box(
+        modifier.size((44f / UiLook.scale.coerceIn(.5f, 1.5f)).coerceAtLeast(36f).dp)
+            .clickable(src, indication = null, enabled = true, onClickLabel = label) { onClick() }
+            .tagged(tag)
+            .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(Modifier.size(30.dp)) {
+            val c = center; val rad = size.minDimension / 2
+            drawCircle(Color.Black.copy(alpha = .5f), rad, Offset(c.x + 1.5f, c.y + 2.5f))
+            drawCircle(Brush.radialGradient(listOf(Hw.MetalHi, Hw.Metal, Hw.MetalLow), center = Offset(c.x - rad * .35f, c.y - rad * .4f), radius = rad * 1.6f), rad, c)
+            drawCircle(Hw.MetalLow, rad, c, style = Stroke(1.5f))
+            // the cross slot, set at 45 degrees so it reads as an X, turning as you press
+            val a = Math.toRadians((45f + turn).toDouble()); val len = rad * .62f; val w = rad * .26f
+            for (k in 0..1) {
+                val ang = a + k * Math.PI / 2
+                val dx = (Math.cos(ang) * len).toFloat(); val dy = (Math.sin(ang) * len).toFloat()
+                drawLine(Color(0xFF1A1613), Offset(c.x - dx, c.y - dy), Offset(c.x + dx, c.y + dy), strokeWidth = w, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                drawLine(Color.White.copy(alpha = .25f), Offset(c.x - dx + 1f, c.y - dy + 1.5f), Offset(c.x + dx + 1f, c.y + dy + 1.5f), strokeWidth = 1f)
+            }
+        }
+    }
 }
 
 /** The colours of the chosen skin. Every screen reads these, so a new skin changes the whole app at once. */
@@ -276,6 +357,26 @@ fun Btn(
 ) {
     val src = remember { MutableInteractionSource() }
     val pressed by src.collectIsPressedAsState()
+    if (UiLook.panel) {
+        // the hardware panel: a bakelite key, engraved words, a lamp for on. At least 40 real dp tall at any view size
+        val minH = maxOf(if (small) 34f else 44f, 40f / UiLook.scale.coerceIn(.4f, 2f))
+        Box(
+            modifier
+                .heightIn(min = minH.dp)
+                .offset(0.dp, if (pressed && enabled) 2.dp else 0.dp)
+                .bakelite(on, if (tier == Tier.Danger) Hw.Oxblood else onColor, pressed && enabled, danger = tier == Tier.Danger, brass = tier == Tier.Primary)
+                .alpha(if (enabled) 1f else .4f)
+                .clickable(src, indication = null, enabled = enabled) { onClick() }
+                .then(if (tag != null) Modifier.tagged(tag) else Modifier)
+                .semantics { selected = on }
+                .padding(start = if (tight) 13.dp else 20.dp, end = if (tight) 5.dp else if (small) 10.dp else 14.dp, top = if (small) 6.dp else 9.dp, bottom = if (small) 6.dp else 9.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            T(text.uppercase(), color = when { tier == Tier.Quiet -> Hw.Engrave.copy(alpha = .6f); on -> lerp(Hw.Engrave, onColor, .35f); else -> Hw.Engrave },
+                size = if (small) 12.sp else 13.sp, lines = 1, spacing = .1.em, weight = if (tier == Tier.Primary) FontWeight.Black else FontWeight.ExtraBold)
+        }
+        return
+    }
     val bg = if (on) onColor else color
     val sh = when (tier) { Tier.Primary -> if (small) 4.dp else 5.dp; Tier.Quiet -> 0.dp; else -> if (small) 3.dp else 4.dp }
     val sink = if (pressed && enabled) (if (tier == Tier.Quiet) 1.dp else sh) else if (on && tier != Tier.Quiet) 1.dp else 0.dp

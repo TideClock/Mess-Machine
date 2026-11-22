@@ -189,6 +189,7 @@ fun SettingsScreen(state: AppState) {
             Column {
                 T("LOOK (BUTTONS)", size = 12.sp, color = C.Yellow, spacing = .1.em)
                 Wrap(Modifier.padding(top = 6.dp).tagged("look-chips")) {
+                    Btn("Panel", { state.pickLook("panel") }, on = state.look == "panel", onColor = C.Yellow, small = true, tag = "look-panel")
                     Btn("Classic", { state.pickLook("classic") }, on = state.look == "classic", small = true, tag = "look-classic")
                     Btn("Pro dark", { state.pickLook("dark") }, on = state.look == "dark", onColor = C.Teal, small = true, tag = "look-dark")
                     Btn("Pro light", { state.pickLook("light") }, on = state.look == "light", onColor = C.Pink, small = true, tag = "look-light")
@@ -241,6 +242,7 @@ fun SettingsScreen(state: AppState) {
                 Btn(if (state.live.recExact) "Recording: exactly where you hit" else "Recording: snapped to 16ths", { state.switchRecExact() }, on = state.live.recExact, onColor = C.Teal, small = true, tag = "set-recexact",
                     modifier = Modifier.padding(top = 8.dp))
                 // Nov 18: a quick flick up off a button opens its settings, like Menu then tap (try it; off by default)
+                Btn(if (state.padFlick) "Flick a pad up to edit it: on" else "Flick a pad up to edit it: off", { state.switchPadFlick() }, on = state.padFlick, onColor = C.Teal, small = true, tag = "set-padflick")
                 Btn(if (state.flickOn) "Flick up for settings: on" else "Flick up for settings: off", { state.switchFlick() }, on = state.flickOn, onColor = C.Teal, small = true, tag = "set-flick",
                     modifier = Modifier.padding(top = 8.dp))
                 Note("Beat glow behind everything.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))

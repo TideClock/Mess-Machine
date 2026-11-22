@@ -97,12 +97,25 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
         }
         // Back closes the tray, the step sheet or a pad's menu before it ever leaves the app (a sheet over them wins: it is
         // registered after this one)
-        BackHandler(enabled = state.tray != null || state.stepSheet != null || state.padMenu >= 0 || state.performOpen) {
-            when { state.tray != null -> state.tray = null; state.padMenu >= 0 -> state.padMenu = -1; state.stepSheet != null -> state.stepSheet = null; else -> state.switchPerform(false) }
+        // Nov 21 (note: things without a clear exit): every panel that opens, Back closes, top one first
+        BackHandler(enabled = state.tray != null || state.stepSheet != null || state.padMenu >= 0 || state.performOpen || state.menuArmed || state.midiMapOn
+                || state.keysBarOpen || state.loopStripOpen || state.movesOpen || state.stepStrip >= 0) {
+            when {
+                state.menuArmed -> state.menuArmed = false
+                state.tray != null -> state.tray = null
+                state.padMenu >= 0 -> state.padMenu = -1
+                state.stepSheet != null -> state.stepSheet = null
+                state.stepStrip >= 0 -> state.stepStrip = -1
+                state.movesOpen -> state.movesOpen = false
+                state.midiMapOn -> state.switchMidiMap(false)
+                state.keysBarOpen -> state.switchKeysBar(false)
+                state.loopStripOpen -> state.loopStripOpen = false
+                else -> state.switchPerform(false)
+            }
         }
         BackHandler(enabled = state.overlay != null) { state.overlay = null }
         // Lock: back does nothing but remind you how to unlock; the screen is pinned if you chose that
-        BackHandler(enabled = state.locked) { state.say("Locked. Hold the lock on the dock for a second to unlock.") }
+        BackHandler(enabled = state.locked) { state.say(if (state.layout == "classic") "Locked. Hold the lock on the dock for a second to unlock." else "Locked. Hold the lock in the perform row for a second to unlock.") }
         val act = androidx.compose.ui.platform.LocalContext.current as? android.app.Activity
         var pinned by remember { mutableStateOf(false) }
         LaunchedEffect(state.locked) {
@@ -144,6 +157,7 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
                             Tab.Steps -> StepsScreen(state)
                             Tab.Roll -> RollScreen(state)
                             Tab.Song -> SongScreen(state)
+                            Tab.Perform -> PerformScreen(state)
                             Tab.Sounds -> SoundsScreen(state, null)
                         }
                     }
@@ -225,7 +239,7 @@ fun StartScreen(state: AppState) {
         for ((n, line) in listOf(
             "Tap a pad. It plays. Tap a few at once.",
             "Press Play. The beat starts looping.",
-            "Pick a pad, then tap Edit for its settings.",
+            "Flick a pad up (or tap Edit, then the pad) for its settings.",
         ).withIndex()) {
             Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 T("${n + 1}", size = 26.sp, color = C.Yellow, family = Bungee, modifier = Modifier.padding(end = 12.dp))
@@ -257,7 +271,7 @@ private fun SheetBody(state: AppState, title: String, content: @Composable () ->
         }.tagged("sheet")) {
             Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 14.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Heading(title, size = 20.sp, modifier = Modifier.weight(1f))
-                Btn("Done", { state.overlay = null }, color = C.Pink, small = true, tag = "done")
+                CloseScrew({ state.overlay = null }, tag = "done")
             }
             Box(Modifier.weight(1f).fillMaxWidth()) { content() }
         }
@@ -352,15 +366,19 @@ fun styleShort(s: String): String = when (s) { "ring" -> " RNG"; "flow" -> " FLO
 @Composable
 fun RepeatControls(state: AppState, tag: String = "repeat") {
     Btn("Repeat", { state.setLive { nr = !nr } }, on = state.live.nr, onColor = C.Pink, small = true, tag = tag)
+    // Nov 21 note: the rate and the pattern are two choices, not one list
     Select(
-        rateName(state.live.nrRate) + (if (state.live.arp != "rep") " " + arpShort(state.live.arp) else "") + styleShort(state.live.nrStyle),
-        listOf(4.0, 2.0, 1.0, .5).flatMap { b -> listOf(1.0, 2.0 / 3, 1.5).map { m -> "r${b * m}" to "Every " + rateName(b * m) } } + listOf("rep", "up", "down", "updown", "rand").map { "a$it" to arpName(it) } +
+        "Rate " + rateName(state.live.nrRate) + styleShort(state.live.nrStyle),
+        listOf(4.0, 2.0, 1.0, .5).flatMap { b -> listOf(1.0, 2.0 / 3, 1.5).map { m -> "r${b * m}" to "Every " + rateName(b * m) } } +
             REPEAT_STYLES.map { (s, n) -> "s$s" to (if (state.live.nrStyle == s) "✓ " else "") + n },
-        { v ->
-            if (v.startsWith("s")) state.setLive { nrStyle = v.substring(1) }
-            else if (v.startsWith("r")) state.setLive { nrRate = v.substring(1).toDouble() }
-            else { val a = v.substring(1); state.setLive { arp = a; if (a != "rep") nr = true } }
-        },
+        { v -> if (v.startsWith("s")) state.setLive { nrStyle = v.substring(1) } else state.setLive { nrRate = v.substring(1).toDouble() } },
+        tag = "$tag-rate",
+    )
+    Select(
+        "Pattern " + repeatPatternWord(state),
+        listOf("rep", "up", "down", "updown", "rand").map { "a$it" to arpName(it) } + REPEAT_PATTERNS.map { (p, n) -> "p$p" to "Rests: $n" },
+        { v -> if (v.startsWith("a")) { val a = v.substring(1); state.setLive { arp = a; if (a != "rep") nr = true } } else { val p = v.substring(1); state.setLive { nrPat = p; if (p.isNotEmpty()) nr = true } } },
+        tag = "$tag-pattern",
     )
 }
 
@@ -509,11 +527,11 @@ fun Tabs(state: AppState) {
         if (state.look != "classic") {
             // the Pro looks: icon tiles (the bug is red while listening or when a crash waits)
             BarBtn(state, "🐞", "Notes (bug)", { state.bugTap() }, on = hot, onColor = C.Riot, enabled = !state.locked || state.quickText != null, tag = "notes", word = if (state.quickText != null) "Talk" else "Note")
-            for (t in Tab.entries.filter { it != Tab.Console }) {
+            for (t in com.tideclock.messmachine.BAR_TABS) {
                 val play = t == Tab.Pads
-                val on = state.tab == t || (play && state.tab == Tab.Console)
-                val icon = when (t) { Tab.Pads -> "Play tab"; Tab.Synth -> "Synth"; Tab.Steps -> "Steps"; Tab.Roll -> "Roll"; Tab.Song -> "Song"; else -> "Sounds" }
-                BarBtn(state, t.label, icon, { if (play) state.openPlay() else state.tab = t }, on = on, enabled = !state.locked, tag = "tab-${t.label}", word = if (play) "Play" else t.label, modifier = Modifier.weight(1f))
+                val on = state.tab == t || (play && state.tab == Tab.Console) || (t == Tab.Steps && state.tab == Tab.Roll)
+                val icon = when (t) { Tab.Pads -> "Play tab"; Tab.Synth -> "Synth"; Tab.Steps -> "Steps"; Tab.Roll -> "Roll"; Tab.Song -> "Song"; Tab.Perform -> "FX"; else -> "Sounds" }
+                BarBtn(state, t.label, icon, { if (play) state.openPlay() else state.tab = t }, on = on, enabled = !state.locked, tag = "tab-${t.label}", word = if (play) "Play" else if (t == Tab.Steps) "Seq" else t.label, modifier = Modifier.weight(1f))
             }
             return@Row
         }
@@ -523,9 +541,9 @@ fun Tabs(state: AppState) {
             contentAlignment = Alignment.Center,
         ) { T(if (state.quickText != null) "●" else "🐞", size = 16.sp, color = C.Cream) }
         // Pads and Desk share one Play tab: its views (Pads, Keys, My Desk) switch at the top of the page
-        for (t in Tab.entries.filter { it != Tab.Console }) {
+        for (t in com.tideclock.messmachine.BAR_TABS) {
             val play = t == Tab.Pads
-            val on = state.tab == t || (play && state.tab == Tab.Console)
+            val on = state.tab == t || (play && state.tab == Tab.Console) || (t == Tab.Steps && state.tab == Tab.Roll)
             Box(
                 Modifier
                     .weight(1f)
@@ -536,7 +554,7 @@ fun Tabs(state: AppState) {
                     .tagged("tab-${t.label}"),
                 contentAlignment = Alignment.Center,
             ) {
-                T(if (play) "PLAY" else t.label.uppercase(), size = 11.sp, color = if (on) C.Ink else if (state.locked) C.Empty else C.Dim, spacing = .02.em, lines = 1)
+                T(if (play) "PLAY" else if (t == Tab.Steps) "SEQ" else t.label.uppercase(), size = 11.sp, color = if (on) C.Ink else if (state.locked) C.Empty else C.Dim, spacing = .02.em, lines = 1)
             }
         }
     }
@@ -584,6 +602,7 @@ fun LoopStrip(state: AppState) {
                 color = if (used) C.Card2 else C.Ink, small = true, tight = true, tag = "loop-$i", modifier = Modifier.weight(1f))
         }
         Btn(if (state.loopAtBar) "Bar" else "Now", { state.switchLoopAtBar() }, small = true, tight = true, tier = Tier.Quiet, tag = "loop-when")
+        CloseScrew({ state.loopStripOpen = false }, tag = "loop-close", label = "Close the loops")
     }
 }
 
@@ -609,6 +628,8 @@ fun Modifier.watchTouches(state: AppState): Modifier = composed {
                         val dy = downAt.y - c.position.y; val dx = kotlin.math.abs(c.position.x - downAt.x)
                         val far = with(dens) { 44.dp.toPx() }
                         if (state.flickOn && downTag != null && !downTag!!.startsWith("pad-") && c.uptimeMillis - downT < 300 && dy > far && dx < dy / 2) state.openSettingsFor(downTag!!)
+                        // Nov 21 note: flick up off a pad opens its Edit tray (on unless switched off in Settings, Playing)
+                        else if (state.padFlick && downTag?.startsWith("pad-") == true && c.uptimeMillis - downT < 300 && dy > far && dx < dy / 2) state.openSettingsFor(downTag!!)
                     }
                 }
             }
@@ -634,7 +655,7 @@ fun BoxScope.MenuLayer(state: AppState) {
                     val menu = TutHi.rects["open-padmenu"]
                     if (menu != null && menu.contains(p)) { state.menuTap(); return@detectTapGestures }
                     val tag = settingsTagAt(p, state)
-                    if (tag == null || !state.openSettingsFor(tag)) { state.menuArmed = false; state.say("That has no settings. Menu, then tap a pad, a strip, a fader or a dock button.") }
+                    if (tag == null || !state.openSettingsFor(tag)) { state.menuArmed = false; state.say("That has no settings. Edit, then tap a pad, a strip, a fader or a perform row button.") }
                 }
             },
     ) {
@@ -663,7 +684,7 @@ fun SettingsTray(state: AppState, kind: String, modifier: Modifier = Modifier) {
             if (kind.startsWith("fx:") && state.project.kit.getOrNull(pad).orEmpty().isNotEmpty()) Btn("More", {
                 state.tray = null; state.overlay = Overlay.Doctor(state.project.kit[pad])
             }, small = true, tight = true, tier = Tier.Quiet, tag = "tray-more")
-            Btn("Done", { state.tray = null }, small = true, tight = true, tag = "tray-done", modifier = Modifier.padding(start = 6.dp))
+            CloseScrew({ state.tray = null }, tag = "tray-done", modifier = Modifier.padding(start = 6.dp))
         }
         Column(Modifier.padding(top = 8.dp)) {
             when (kind.substringBefore(':')) {

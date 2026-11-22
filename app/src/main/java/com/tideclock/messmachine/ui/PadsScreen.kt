@@ -88,7 +88,7 @@ fun PadsScreen(state: AppState) {
         if (!state.keysMode && state.keyboards.isEmpty()) {
             Help(
                 "Tap a pad to play it. On an empty pad, the top corner records and the bottom corner picks a sound. Edit, on the bar at the bottom, is the picked pad's menu. Pack opens its FannyPack under its row (one per row): the Padiano, live FX faders and XY, whichever you put in it. " +
-                    "Keys turns the grid into a scale. Repeat on the dock rolls whatever you hold, and with Rec on while playing, every hit lands in the loop.",
+                    "The key, by the bank numbers, sets the scale and chords. Repeat rolls whatever you hold, and with Rec on while playing, every hit lands in the loop.",
                 modifier = Modifier.padding(top = 14.dp),
             )
         }
@@ -194,7 +194,8 @@ fun BottomDock(state: AppState) {
             if (state.layout == "classic") { if (state.tab == com.tideclock.messmachine.Tab.Pads) BarBtn(state, "FX", "FX", { state.showFx = !state.showFx }, on = state.showFx, onColor = C.Pink, tag = "fx-toggle", word = "FX") }
             // build 107: Repeat sits beside Hold (the throws moved into the perform row); Edit, then Repeat, for its rate
             else BarBtn(state, if (state.live.nr) "● Repeat" else "○ Repeat", "Repeat", { state.switchRepeat() }, on = state.live.nr, onColor = C.Pink, tag = "repeat-toggle", word = "Repeat")
-            val keyText = "${Theory.NN[P.root]} ${P.scale.lowercase()} · ${chordName(if (state.chordMode == "off") state.lastChordMode else state.chordMode).lowercase()} " + if (state.keysBarOpen) "▾" else "▴"
+            // Nov 21 fix: the chord shows only while Chords is on (it used to show the last one with Chords off)
+            val keyText = "${Theory.NN[P.root]} ${P.scale.lowercase()}" + (if (state.chordMode != "off") " · " + chordName(state.chordMode).lowercase() else "") + if (state.keysBarOpen) " ▾" else " ▴"
             if (state.look == "classic") Btn(keyText, { state.switchKeysBar() }, small = true, tight = true, tier = Tier.Quiet, tag = "keysbar-open", modifier = Modifier.weight(1f))
             else Row(Modifier.weight(1f).clickable { state.switchKeysBar() }.tagged("keysbar-open"), verticalAlignment = Alignment.CenterVertically) {
                 PixIcon("Key and scale", 30.dp)
@@ -209,6 +210,10 @@ fun BottomDock(state: AppState) {
 fun KeysPanel(state: AppState) {
     val P = state.project
     Column(Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 8.dp).tagged("keys-panel")) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            T("THE KEY", size = 11.sp, color = C.Yellow, spacing = .1.em, modifier = Modifier.weight(1f))
+            CloseScrew({ state.switchKeysBar(false) }, tag = "keys-close", label = "Close the key")
+        }
         Wrap(Modifier.padding(bottom = 4.dp)) {
             Select(Theory.NN[P.root], Theory.NN.mapIndexed { i, n -> i to n }, { state.setRoot(it) }, tag = "pick-root")
             Select(P.scale, Theory.SCALES.keys.map { it to it }, { state.setScale(it) }, tag = "pick-scale")
@@ -369,7 +374,12 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
                     state.noteTouch(down.uptimeMillis)
                     // on an empty pad, which side of the slash: clearly above it records, the rest picks a sound (note #14).
                     // A touch on the slash itself picks: a stray tap should never start the mic
-                    state.padDown(d, emptyTop = down.position.y < size.height * (.92f - down.position.x / size.width.coerceAtLeast(1)))
+                    val top = down.position.y < size.height * (.92f - down.position.x / size.width.coerceAtLeast(1))
+                    // Nov 21 fix: an empty pad acts on lift, and only for a still tap, so a brushed or scrolled pad never
+                    // starts the mic or throws the picker over the page (hold-to-record and stopping a take stay on touch)
+                    val deferEmpty = state.emptyActsOnLift(d)
+                    var movedFar = false
+                    if (!deferEmpty) state.padDown(d, emptyTop = top)
                     if (state.buzz && state.project.kit[state.bank * Project.BANK + d].isNotEmpty()) view.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
                     val pi = state.bank * Project.BANK + d
                     val det = CircleDetector(40.dp.toPx())
@@ -380,6 +390,7 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
                     while (true) {
                         val e = awaitPointerEvent()
                         val c = e.changes.firstOrNull { it.id == down.id } ?: break
+                        if ((c.position - down.position).getDistance() > viewConfiguration.touchSlop) movedFar = true
                         if (!c.pressed) { c.consume(); break }
                         val s0 = sph
                         if (s0 != null) {
@@ -394,7 +405,8 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
                         c.consume()
                     }
                     pressed = false
-                    state.padUp(d)
+                    if (deferEmpty) { if (!movedFar) state.padDown(d, emptyTop = top) }
+                    else state.padUp(d)
                     sph?.let { s0 -> state.xyMove(pi, lastXy.first, lastXy.second, false); if (state.sphere == s0) state.sphere = null }
                 }
             }

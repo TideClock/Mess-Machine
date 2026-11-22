@@ -108,7 +108,7 @@ fun FxEditor(state: AppState) {
     Column(Modifier.fillMaxWidth().padding(bottom = 10.dp).sticker(C.Well, shadow = 0.dp, border = 2.dp, borderColor = C.Yellow).padding(10.dp).tagged("fx-editor")) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             T("EDIT ${name.uppercase()}", size = 12.sp, color = C.Yellow, spacing = .08.em, modifier = Modifier.weight(1f))
-            Btn("Done", { state.fxEditing = null }, small = true, tag = "fx-editor-done")
+            CloseScrew({ state.fxEditing = null }, tag = "fx-editor-done")
         }
         SliderRow("Amount", s.amount, 0f..1f, { "${(it * 100).toInt()}%" }, { v -> state.changeFx(id, s.copy(amount = v)) }, {})
         Note("How it plays", modifier = Modifier.padding(top = 4.dp, bottom = 6.dp))

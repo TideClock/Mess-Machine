@@ -199,13 +199,16 @@ private fun DockItem(state: AppState, t: String) {
         "repeat" -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
             // Repeat's one home: tap RPT to turn it on, tap the rate under it for 1/8, 1/16, 1/32 or an arp
             var rates by remember { mutableStateOf(false) }
+            var pats by remember { mutableStateOf(false) }
             DockBtn("RPT", { state.setLive { nr = !nr } }, tag = "dock-repeat", on = state.live.nr, onColor = C.Pink)
+            // two words under RPT: the rate (how fast) and the pattern (up, down, gallop...), each its own menu
             Box {
-                DockWord(
-                    rateName(state.live.nrRate) + (if (state.live.arp != "rep") " " + arpShort(state.live.arp) else "") + styleShort(state.live.nrStyle) + (if (state.live.nrPat.isNotEmpty()) " P" else ""),
-                    if (state.live.nr) C.Pink else C.Dim, "dock-rate",
-                ) { rates = true }
-                RepeatMenu(state, rates) { rates = false }
+                DockWord(rateName(state.live.nrRate) + styleShort(state.live.nrStyle), if (state.live.nr) C.Pink else C.Dim, "dock-rate") { rates = true }
+                RepeatMenu(state, rates, "rate") { rates = false }
+            }
+            Box {
+                DockWord(repeatPatternWord(state), if (state.live.nr && (state.live.arp != "rep" || state.live.nrPat.isNotEmpty())) C.Teal else C.Dim, "dock-pattern") { pats = true }
+                RepeatMenu(state, pats, "pattern") { pats = false }
             }
         }
         "rec" -> { val pulse = beatPulse(state); DockBtn("●", { state.setLive { rec = !rec } }, tag = "dock-rec", on = state.live.rec, onColor = C.Riot, modifier = Modifier.recGlow(state, pulse)) }
@@ -364,11 +367,22 @@ private fun UpSlider(value: Float, color: androidx.compose.ui.graphics.Color, ta
  * sound) in place of a list of eleven rows. Picking one closes it, as before.
  */
 @Composable
-private fun RepeatMenu(state: AppState, open: Boolean, onClose: () -> Unit) {
+private fun RepeatMenu(state: AppState, open: Boolean, part: String = "rate", onClose: () -> Unit) {
     @Suppress("UNUSED_VARIABLE") val lv = state.liveV
     DropdownMenu(expanded = open, onDismissRequest = onClose, modifier = Modifier.background(C.Ink)) {
         Column(Modifier.width(268.dp).padding(horizontal = 12.dp, vertical = 4.dp)) {
-            T("REPEAT", size = 12.sp, color = C.Yellow, lines = 1, spacing = .06.em, modifier = Modifier.padding(bottom = 8.dp))
+          // Nov 21 note: how fast (the rate) and what pattern are two separate controls, each with its own menu
+          if (part == "pattern") {
+            T("REPEAT PATTERN", size = 12.sp, color = C.Yellow, lines = 1, spacing = .06.em, modifier = Modifier.padding(bottom = 8.dp))
+            T("PLAYS", size = 10.sp, color = C.Dim, spacing = .12.em, modifier = Modifier.padding(bottom = 4.dp))
+            Wrap(Modifier.padding(bottom = 10.dp).testTag("arp-chips"), gap = 6.dp) {
+                for ((a, n) in listOf("rep" to "Repeat", "up" to "Up", "down" to "Down", "updown" to "Up-down", "rand" to "Random")) {
+                    Btn(n, { onClose(); state.setLive { arp = a; if (a != "rep") nr = true } }, on = state.live.arp == a, onColor = C.Teal, small = true, tag = "rate-a$a")
+                }
+            }
+            RepeatPatternPicker(state)
+          } else {
+            T("REPEAT RATE", size = 12.sp, color = C.Yellow, lines = 1, spacing = .06.em, modifier = Modifier.padding(bottom = 8.dp))
             T("EVERY", size = 10.sp, color = C.Dim, spacing = .12.em, modifier = Modifier.padding(bottom = 4.dp))
             Wrap(Modifier.padding(bottom = 10.dp).testTag("rate-chips"), gap = 6.dp) {
                 val (rb, rm) = repeatParts(state.live.nrRate)
@@ -383,21 +397,22 @@ private fun RepeatMenu(state: AppState, open: Boolean, onClose: () -> Unit) {
                     Btn(n, { onClose(); state.setLive { nrRate = rb * m } }, on = kotlin.math.abs(rm - m) < 1e-6, onColor = C.Yellow, small = true, tag = tag)
                 }
             }
-            T("PLAYS", size = 10.sp, color = C.Dim, spacing = .12.em, modifier = Modifier.padding(bottom = 4.dp))
-            Wrap(Modifier.padding(bottom = 10.dp).testTag("arp-chips"), gap = 6.dp) {
-                for ((a, n) in listOf("rep" to "Repeat", "up" to "Up", "down" to "Down", "updown" to "Up-down", "rand" to "Random")) {
-                    Btn(n, { onClose(); state.setLive { arp = a; if (a != "rep") nr = true } }, on = state.live.arp == a, onColor = C.Teal, small = true, tag = "rate-a$a")
-                }
-            }
             T("EACH REPEAT", size = 10.sp, color = C.Dim, spacing = .12.em, modifier = Modifier.padding(bottom = 4.dp))
             Wrap(Modifier.padding(bottom = 6.dp).testTag("style-chips"), gap = 6.dp) {
                 for ((st, n) in listOf("cut" to "Cut", "ring" to "Ring", "flow" to "Flow")) {
                     Btn(n, { onClose(); state.setLive { nrStyle = st } }, on = state.live.nrStyle == st, onColor = C.Yellow, small = true, tag = "rate-s$st")
                 }
             }
-            RepeatPatternPicker(state)
+          }
         }
     }
+}
+
+/** The pattern word under RPT: the arp order, or the rest pattern's name, or EVEN when it is plain repeats. */
+fun repeatPatternWord(state: AppState): String = when {
+    state.live.arp != "rep" -> arpShort(state.live.arp)
+    state.live.nrPat.isNotEmpty() -> (REPEAT_PATTERNS.firstOrNull { it.first == state.live.nrPat }?.second ?: "pattern").uppercase().take(7)
+    else -> "EVEN"
 }
 
 /** Ready patterns for Repeat: x plays, . rests. */
