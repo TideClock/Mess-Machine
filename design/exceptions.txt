@@ -15,4 +15,5 @@ screen: Sample: tools | 13 | Three tools share the tab (fit to tempo, chop to pa
 label: ○ HOLD | Hold's settings sit by the keys on the Play tab and on the Synth tab (note #11): Hold plays the same on both
 label: LET GO | Lets go of what Hold keeps, next to Hold's settings on the Play tab and the Synth tab (note #11)
 label: [picker: keysbar-open] | The key button on the bottom dock (Play, My Desk and Synth) opens the same key panel everywhere (Tyler, 2026-11-17)
-screen: Settings | 13 | Skin (colours) and Look (buttons) are separate cards because Tyler asked for skins and button skins apart (2026-11-21)
+screen: Settings | 14 | The flick settings share one row (Nov 21); Skin (colours) and Look (buttons) are separate cards because Tyler asked for skins and button skins apart (2026-11-21)
+label: Close | The screw in the corner of every sheet (Tyler asked for something with meaning instead of Done, 2026-11-21); every sheet needs its own

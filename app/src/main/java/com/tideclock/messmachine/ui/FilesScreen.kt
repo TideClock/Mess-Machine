@@ -242,9 +242,12 @@ fun SettingsScreen(state: AppState) {
                 Btn(if (state.live.recExact) "Recording: exactly where you hit" else "Recording: snapped to 16ths", { state.switchRecExact() }, on = state.live.recExact, onColor = C.Teal, small = true, tag = "set-recexact",
                     modifier = Modifier.padding(top = 8.dp))
                 // Nov 18: a quick flick up off a button opens its settings, like Menu then tap (try it; off by default)
-                Btn(if (state.padFlick) "Flick a pad up to edit it: on" else "Flick a pad up to edit it: off", { state.switchPadFlick() }, on = state.padFlick, onColor = C.Teal, small = true, tag = "set-padflick")
-                Btn(if (state.flickOn) "Flick up for settings: on" else "Flick up for settings: off", { state.switchFlick() }, on = state.flickOn, onColor = C.Teal, small = true, tag = "set-flick",
-                    modifier = Modifier.padding(top = 8.dp))
+                // Nov 21: flicks in one row: a flick up off a pad opens its Edit tray (on), off a button its settings (off)
+                Note("Flick up for settings.", modifier = Modifier.padding(top = 12.dp, bottom = 6.dp))
+                Wrap(Modifier.tagged("flick-chips")) {
+                    Btn("Pads: " + (if (state.padFlick) "on" else "off"), { state.switchPadFlick() }, on = state.padFlick, onColor = C.Teal, small = true, tag = "set-padflick")
+                    Btn("Buttons: " + (if (state.flickOn) "on" else "off"), { state.switchFlick() }, on = state.flickOn, onColor = C.Teal, small = true, tag = "set-flick")
+                }
                 Note("Beat glow behind everything.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
                 Wrap(Modifier.tagged("glow-chips")) {
                     for ((v, n) in listOf(0 to "Off", 1 to "Soft", 2 to "Full")) Btn(n, { state.setPulse(v) }, on = state.pulseLevel == v, small = true, tag = "set-pulse-$v")

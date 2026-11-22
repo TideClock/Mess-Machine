@@ -12,6 +12,9 @@ import androidx.compose.foundation.border
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.draw.alpha
 import androidx.compose.runtime.getValue
@@ -216,7 +219,7 @@ fun PanelKey(
         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
     ) {
         androidx.compose.foundation.layout.Box(
-            androidx.compose.ui.Modifier.size(width = 44.dp, height = 34.dp).offset(0.dp, if (pressed) 2.dp else 0.dp)
+            androidx.compose.ui.Modifier.widthIn(max = 44.dp).fillMaxWidth().height(32.dp).offset(0.dp, if (pressed) 2.dp else 0.dp)
                 .bakelite(on, onColor, pressed, danger = tier == Tier.Danger, brass = tier == Tier.Primary),
             contentAlignment = androidx.compose.ui.Alignment.Center,
         ) {

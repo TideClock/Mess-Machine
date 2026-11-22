@@ -991,7 +991,7 @@ class BigTest {
         settle()
         assertFalse(pad in state.padFilt)
         // add Rec to the dock
-        rule.onNodeWithTag("dock-edit").performClick()
+        at("dock-edit").performClick()
         settle()
         rule.onNodeWithTag("dock-pick-rec").performClick()
         settle()
@@ -1639,7 +1639,7 @@ class BigTest {
         state.overlay = null; settle()
         assertEquals("dark", state.look)
         // every control on the bars is an icon tile now (its icon carries the control's name)
-        for (n in listOf("Play", "Stop", "Rec", "Undo", "What the FAQ", "Settings", "Menu", "Pack", "Hold", "Chords", "FX", "Notes (bug)", "Play tab", "Synth", "Steps", "Roll", "Song", "Sounds"))
+        for (n in listOf("Play", "Stop", "Rec", "Undo", "What the FAQ", "Settings", "Menu", "Pack", "Hold", "Chords", "FX", "Notes (bug)", "Play tab", "Synth", "Steps", "Song", "Perform", "Sounds"))
             assertTrue("$n has its icon", rule.onAllNodesWithContentDescription(n).fetchSemanticsNodes().isNotEmpty())
         // the new layout's bar: Edit has its icon too
         state.pickLayout("new"); settle()
@@ -2673,7 +2673,7 @@ class BigTest {
         assertEquals("tapping an empty pad opens the jars for it", Overlay.Picker(12), state.overlay)
         rule.onNodeWithTag("sheet", useUnmergedTree = true).assertExists()
         shot("19-picker")
-        rule.onNodeWithText("DONE").performClick()
+        rule.onNodeWithTag("done").performClick()
         settle()
         assertEquals(null, state.overlay)
         assertTrue(Project.LETTERS.length == 8 && Engine.Live().nrRate == 1.0)
