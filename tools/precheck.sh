@@ -91,5 +91,10 @@ if command -v gh >/dev/null 2>&1; then
   else echo "precheck: last published build not found here, guide check skipped"; fi
 else echo "precheck: gh missing, guide check skipped"; fi
 
+# a Java class used as a value ("val E = ...engine.Engine"): Kotlin can't, and it cost builds 131 and 142
+if grep -rnE "val [A-Za-z]+ = (com\.tideclock\.messmachine\.engine\.)?(Engine|Project|Synth)$" app/src --include=*.kt; then
+  echo "PRECHECK a Java class assigned to a val (no companion object): name its members directly"; fail=1
+fi
+
 [ $fail = 0 ] && echo "precheck: all clear" || echo "precheck: fix the lines above before pushing"
 exit $fail

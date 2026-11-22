@@ -252,16 +252,15 @@ fun VialStrip(state: AppState, pad: Int) {
 fun FxSettingsCard(state: AppState, pad: Int, t: Int, name: String) {
     val k = state.project.kit.getOrNull(pad).orEmpty()
     val e = state.project.edit(k)
-    val E = com.tideclock.messmachine.engine.Engine
     Column(Modifier.fillMaxWidth().padding(bottom = 8.dp).sticker(C.Well, shadow = 0.dp, border = 2.dp, borderColor = vialColor(t)).padding(10.dp).tagged("fx-settings")) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             T("${name.uppercase()} · PAD ${pad + 1}", size = 12.sp, color = vialColor(t), spacing = .08.em, modifier = Modifier.weight(1f))
             CloseScrew({ state.fxEdit = null }, tag = "fx-settings-close", label = "Close the settings")
         }
-        SliderRow(if (t == E.T_FILTER) "How much it cuts" else "Amount", state.fxSend["$pad:$t"] ?: 0f, 0f..1f, { "${(it * 100).toInt()}%" }, { v -> state.fxSendTo(pad, t, v, true) }, { state.fxSendTo(pad, t, state.fxSend["$pad:$t"] ?: 0f, false) }, accent = vialColor(t))
-        if (k.isNotEmpty() && t == E.T_RVB) SliderRow("Space", e.rvbSize.toFloat(), 0f..1f, { if (it < .33f) "small room" else if (it < .66f) "hall" else "cave" },
+        SliderRow(if (t == com.tideclock.messmachine.engine.Engine.T_FILTER) "How much it cuts" else "Amount", state.fxSend["$pad:$t"] ?: 0f, 0f..1f, { "${(it * 100).toInt()}%" }, { v -> state.fxSendTo(pad, t, v, true) }, { state.fxSendTo(pad, t, state.fxSend["$pad:$t"] ?: 0f, false) }, accent = vialColor(t))
+        if (k.isNotEmpty() && t == com.tideclock.messmachine.engine.Engine.T_RVB) SliderRow("Space", e.rvbSize.toFloat(), 0f..1f, { if (it < .33f) "small room" else if (it < .66f) "hall" else "cave" },
             { v -> state.setEdit(k, e.copy().also { it.rvbSize = v.toDouble() }, false) }, { state.setEdit(k, state.project.edit(k).copy(), true) }, accent = vialColor(t))
-        if (k.isNotEmpty() && t == E.T_ECHO) Wrap(Modifier.padding(top = 4.dp, bottom = 4.dp), gap = 6.dp) {
+        if (k.isNotEmpty() && t == com.tideclock.messmachine.engine.Engine.T_ECHO) Wrap(Modifier.padding(top = 4.dp, bottom = 4.dp), gap = 6.dp) {
             T("TIME", size = 11.sp, color = C.Dim, spacing = .1.em)
             for ((ti, n) in listOf(0 to "1/16", 1 to "1/8", 2 to "3/16", 3 to "1/4")) Btn(n, { state.setEdit(k, e.copy().also { it.echoT = ti }, true) }, on = e.echoT == ti, small = true, tag = "fx-echo-$ti")
         }
