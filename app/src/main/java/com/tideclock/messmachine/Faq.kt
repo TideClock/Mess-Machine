@@ -96,7 +96,7 @@ object Faq {
         Line("pick-root", "Root", "The mess's key note. Keys, the Padiano and the Roll follow it."),
         Line("pick-scale", "Scale", "Which notes are in the key. In key only and the keys grid follow it."),
         Line("chord-smooth", "Smooth moves", "On (out of the box): each chord picks the inversion nearest the last one you played, so changes glide instead of jumping. Off: every chord from its root, as written. The Roll always writes chords from the root.", "scales"),
-        Line("pick-chord", "Chord type", "Triads, 7ths, 1-4-5 and power chords built from the scale, octaves, or a chord set: twelve chords, one rooted on every key of the octave, the same in every octave. Sets follow the key's root only."),
+        Line("pick-chord", "Chord type", "Triads, 7ths, 1-4-5 and power chords built from the scale, octaves, or a chord set: twelve chords, all in key. Keys in the scale play the chord on their own note; the keys between play the set's five colour chords. Picking a set written in another scale moves the scale to it."),
         Line("chord-play", "Play chord", "Each key plays its whole chord."),
         Line("chord-show", "Show chord", "Each key plays one note and lights the rest of its chord, so you can play it yourself."),
         Line("hold-up", "Hold more", "Hold keeps one more note."),

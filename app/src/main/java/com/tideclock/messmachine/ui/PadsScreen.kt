@@ -265,8 +265,10 @@ fun chordName(m: String) = when {
 
 fun chordOptions(scale: String, root: Int): List<Pair<String, String>> {
     val out = mutableListOf("off" to "Off", "triad" to "Triads from the scale", "seventh" to "7ths from the scale", "sus" to "1-4-5 from the scale (sus)", "power" to "Power chords", "octave" to "Octaves")
-    // Nov 22: twelve chords a set, one rooted on every key; sets follow the root only, so none moves the scale
-    for (name in Theory.CHORDSETS.keys) out += ("set:$name") to "$name (12)"
+    // Nov 22: twelve chords a set, all in key; a set written in another scale moves the scale to it
+    for ((name, set) in Theory.CHORDSETS) {
+        out += ("set:$name") to (name + if (Theory.setFits(set, scale)) "" else " (moves the scale)")
+    }
     return out
 }
 

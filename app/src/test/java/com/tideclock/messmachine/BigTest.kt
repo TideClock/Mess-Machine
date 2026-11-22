@@ -1985,7 +1985,7 @@ class BigTest {
         assertTrue("an octave up, slot 1 is C an octave up (${state.lastChord})", state.lastChord.startsWith("C ·") && state.lastChord.contains("C5"))
         // Smooth (Nov 22): C then F on the slots plays C F A, the hand barely moves
         state.switchChordSmooth(true)
-        state.slotDown(0, 0, 0); state.slotUp(0, 0); state.slotDown(0, 5, 0); state.slotUp(0, 5)
+        state.slotDown(0, 0, 0); state.slotUp(0, 0); state.slotDown(0, 3, 0); state.slotUp(0, 3)
         assertTrue("smooth: F after C keeps the C (${state.lastChord})", state.lastChord.startsWith("F ·") && state.lastChord.contains("C4"))
         state.toggleKeyboard(0); state.pickChordMode("off"); settle()
         // the Roll reaches C1 to C6, two octaves at a time

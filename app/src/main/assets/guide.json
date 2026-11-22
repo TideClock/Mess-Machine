@@ -1,18 +1,18 @@
 {
-  "title": "Chord sets of twelve, with smooth changes",
+  "title": "Chord sets back in key, still twelve and smooth",
   "thisBuild": [
-    "Every chord set now has 12 chords, one rooted on every key of the octave: press E and you get an E chord, in every octave. The Padiano's chord boxes show all 12.",
-    "Smooth moves (on out of the box): each chord picks the inversion nearest the last one you played, so a change glides instead of jumping up and down. The Key tray has the switch (Smooth moves or From the root).",
-    "Four new sets: Plain Major, Plain Minor, Lo-fi Jazz and Cinematic. The old eight are rewritten to twelve chords each, with no doubled roots.",
-    "Picking a set no longer moves your scale: sets follow the key's root only."
+    "Chord sets stay in key again. Every set still has 12 chords: the seven chords of its scale, then five colour chords (sus, add9, sevenths) that are in key too.",
+    "Keys in the scale play their own chord: press A in C major and you get A minor. The five keys between play the colour chords, so every key does something and nothing is out of key.",
+    "Picking a set written in another scale moves the scale to it again, and the menu says so.",
+    "Smooth moves stays on: each chord picks the inversion nearest the last one, so changes glide."
   ],
   "watch": [
-    "Play Sunday Pop or Neo Soul on the chord boxes: do the changes feel smoother now?",
-    "Any set where a chord on a black key sounds wrong to you? Tell me which set and key.",
-    "Switch to From the root and back: is Smooth the right default?"
+    "Play Sunday Pop or Neo Soul on the chord boxes: in key and smooth now?",
+    "Do the colour chords on the black keys feel useful, or would you rather those keys stay quiet?",
+    "Any set that still feels off? Tell me which set and which chord."
   ],
   "limits": [
-    "The Roll still writes chords from their root, so what it draws matches the rows you tap.",
+    "The Roll still writes chords from their root.",
     "Making your own sets isn't in yet.",
     "The cut and look changes are still proposals: nothing moved on screen in this build."
   ]

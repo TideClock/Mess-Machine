@@ -49,40 +49,42 @@ public final class Theory {
     }
 
     /**
-     * A chord set (Nov 22, Tyler): twelve chords, one rooted on every key of the octave, so the key you press is the
-     * chord's root. Roots are semitones above the mess's root; sets follow the root only, never the scale. home is
-     * the scale a set was written around, shown as a hint.
+     * A chord set (Nov 22, Tyler: twelve chords, all in key, smooth changes). Each chord is a root (semitones above
+     * the mess's root, inside the set's home scale) and a quality that stays in that scale. The first seven are one
+     * chord on each degree of the scale, in order, so a key in the scale plays the chord rooted on itself; the last
+     * five are colour chords (sevenths, sus, add9) that the keys outside the scale play. Picking a set whose home is
+     * not the mess's scale moves the scale to it, so every chord stays in key.
      */
     public static final class ChordSet {
         public final String name, home;
         public final int[] roots;
         public final String[] quals;
-        ChordSet(String name, String home, String... quals12) {
-            this.name = name; this.home = home;
-            roots = new int[quals12.length]; quals = quals12.clone();
-            for (int k = 0; k < roots.length; k++) roots[k] = k;
-        }
+        ChordSet(String name, String home, int[] roots, String[] quals) { this.name = name; this.home = home; this.roots = roots; this.quals = quals; }
     }
 
     public static final Map<String, ChordSet> CHORDSETS = new LinkedHashMap<>();
-    private static void cs(String n, String home, String... q12) {
-        if (q12.length != 12) throw new IllegalArgumentException(n + " needs 12 chords");
-        CHORDSETS.put(n, new ChordSet(n, home, q12));
+    /** spec: twelve "root quality" pairs, e.g. "0 maj, 2 min, ..." */
+    private static void cs(String n, String home, String spec) {
+        String[] parts = spec.split(",");
+        if (parts.length != 12) throw new IllegalArgumentException(n + " needs 12 chords");
+        int[] r = new int[12]; String[] q = new String[12];
+        for (int k = 0; k < 12; k++) { String[] rq = parts[k].trim().split(" "); r[k] = Integer.parseInt(rq[0]); q[k] = rq[1]; }
+        CHORDSETS.put(n, new ChordSet(n, home, r, q));
     }
     static {
-        //                            C      C#      D       D#      E       F       F#      G       G#      A       A#      B
-        cs("Plain Major", "Major",    "maj", "dim7", "min",  "maj",  "min",  "maj",  "dim",  "maj",  "maj",  "min",  "maj",  "dim");
-        cs("Plain Minor", "Minor",    "min", "maj",  "dim",  "maj",  "dim7", "min",  "dim",  "maj",  "maj",  "dim",  "maj",  "dim7");
-        cs("Sunday Pop", "Major",     "maj", "dim",  "min",  "maj",  "min",  "maj",  "m7b5", "maj",  "maj",  "min",  "maj",  "m7b5");
-        cs("Dreamy Sus", "Major",     "sus2", "maj7", "m7",  "maj7", "m7",   "add9", "m7b5", "sus4", "maj7", "m7",   "add9", "m7b5");
-        cs("Gospel Drip", "Major",    "maj9", "dim7", "m9",  "7",    "m7",   "maj7", "dim7", "9",    "7",    "m9",   "9",    "m7b5");
-        cs("Lo-fi Jazz", "Major",     "maj7", "7",   "m7",   "dim7", "m7",   "maj7", "m7b5", "7",    "7",    "m7",   "7",    "m7b5");
-        cs("Basement Minor", "Minor", "min", "maj",  "dim",  "maj",  "dim7", "min",  "dim",  "min",  "maj",  "m7b5", "maj",  "dim");
-        cs("Neo Soul", "Dorian",      "m9",  "maj7", "m7",   "maj7", "7",    "9",    "dim7", "m7",   "maj7", "m7b5", "maj7", "m7b5");
-        cs("Cinematic", "Minor",      "min", "maj",  "sus2", "maj",  "maj",  "min",  "dim",  "sus4", "maj",  "min",  "maj",  "dim");
-        cs("Haunted", "Harmonic minor", "mMaj7", "maj", "dim", "aug", "dim7", "min",  "dim7", "7",    "maj",  "dim",  "maj",  "dim7");
-        cs("Trap Dread", "Phrygian",  "min", "maj",  "dim",  "maj",  "dim",  "min",  "maj",  "dim",  "maj",  "dim",  "min",  "dim7");
-        cs("Power Stabs", "Minor",    "5",   "5",    "5",    "5",    "5",    "5",    "5",    "5",    "5",    "5",    "5",    "5");
+        //  degrees 1 to 7 of the home scale, then 5 colour chords
+        cs("Plain Major", "Major", "0 maj, 2 min, 4 min, 5 maj, 7 maj, 9 min, 11 dim, 0 maj7, 2 m7, 5 maj7, 7 7, 9 m7");
+        cs("Plain Minor", "Minor", "0 min, 2 dim, 3 maj, 5 min, 7 min, 8 maj, 10 maj, 0 m7, 3 maj7, 5 m7, 8 maj7, 10 7");
+        cs("Sunday Pop", "Major", "0 maj, 2 min, 4 min, 5 maj, 7 maj, 9 min, 11 m7b5, 0 sus2, 5 add9, 7 sus4, 7 7, 9 m7");
+        cs("Dreamy Sus", "Major", "0 sus2, 2 m7, 4 m7, 5 maj7, 7 sus4, 9 m7, 11 m7b5, 0 add9, 2 sus2, 5 sus2, 7 add9, 9 sus4");
+        cs("Gospel Drip", "Major", "0 maj9, 2 m9, 4 m7, 5 maj7, 7 9, 9 m9, 11 m7b5, 0 6, 2 7sus4, 5 6, 7 7sus4, 0 add9");
+        cs("Lo-fi Jazz", "Major", "0 maj7, 2 m7, 4 m7, 5 maj7, 7 7, 9 m7, 11 m7b5, 0 maj9, 2 m9, 5 maj9, 7 9, 9 m9");
+        cs("Basement Minor", "Minor", "0 min, 2 dim, 3 maj, 5 min, 7 min, 8 maj, 10 maj, 0 sus2, 0 m7, 5 m7, 8 maj7, 10 sus2");
+        cs("Neo Soul", "Dorian", "0 m9, 2 m7, 3 maj7, 5 9, 7 m7, 9 m7b5, 10 maj7, 0 m7, 3 maj9, 5 7, 7 m9, 10 maj9");
+        cs("Cinematic", "Minor", "0 min, 2 dim, 3 maj, 5 min, 7 sus4, 8 maj, 10 maj, 0 sus2, 3 add9, 5 sus2, 8 maj7, 10 sus2");
+        cs("Haunted", "Harmonic minor", "0 mMaj7, 2 m7b5, 3 aug, 5 m7, 7 7, 8 maj7, 11 dim7, 0 min, 2 dim, 5 min, 7 maj, 8 maj");
+        cs("Trap Dread", "Phrygian", "0 min, 1 maj, 3 maj, 5 min, 7 dim, 8 maj, 10 min, 0 m7, 1 maj7, 5 m7, 8 maj7, 10 m7");
+        cs("Power Stabs", "Minor", "0 5, 2 dim, 3 5, 5 5, 7 5, 8 5, 10 5, 0 sus4, 3 sus2, 5 sus2, 7 sus4, 10 sus2");
     }
 
     public static int pcOf(int p) { return ((p % 12) + 12) % 12; }
@@ -192,16 +194,24 @@ public final class Theory {
     }
 
     /**
-     * A piano key's slot in a chord set (Nov 22): the chord rooted on that key, plus whole sets per octave. The same
-     * key in every octave plays the same chord, an octave apart. Integer.MIN_VALUE when the set has no such chord.
+     * A piano key's slot in a chord set (Nov 22): a key in the scale plays its degree's chord (rooted on the key), a
+     * key outside the scale plays one of the colour chords. The same key in every octave plays the same chord, an
+     * octave apart. Integer.MIN_VALUE when the set has no such slot.
      */
     public static int setIndexOfKey(int p, String mode, String scale, int root) {
         int n = setSize(mode);
         if (n == 0) return Integer.MIN_VALUE;
-        ChordSet set = CHORDSETS.get(mode.substring(4));
+        // keys in the scale take the first slots in scale order (each plays the chord on its own degree); keys
+        // outside the scale take the colour slots after them, low to high, so every one of the 12 keys plays
         int rel = pcOf(p - root);
-        for (int j = 0; j < n; j++) if (pcOf(set.roots[j]) == rel) return j + n * Math.floorDiv(p - rootBase(root), 12);
-        return Integer.MIN_VALUE;
+        int[] sc = stripScale(scale);
+        boolean[] in = new boolean[12];
+        for (int iv : sc) in[pcOf(iv)] = true;
+        int slot = 0;
+        if (in[rel]) { for (int k = 0; k < rel; k++) if (in[k]) slot++; }
+        else { for (int k = 0; k < 12; k++) if (in[k]) slot++; for (int k = 0; k < rel; k++) if (!in[k]) slot++; }
+        if (slot >= n) return Integer.MIN_VALUE;
+        return slot + n * Math.floorDiv(p - rootBase(root), 12);
     }
 
     /**

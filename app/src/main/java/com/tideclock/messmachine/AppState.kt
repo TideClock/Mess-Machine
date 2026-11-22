@@ -1375,6 +1375,14 @@ class AppState(private val app: Context) {
     }
 
     fun pickChordMode(m: String) {
+        // Nov 22 (Tyler: chord sets stay in key): a set written in another scale moves the scale to it
+        if (m.startsWith("set:")) {
+            val set = Theory.CHORDSETS[m.substring(4)]
+            if (set != null && !Theory.setFits(set, project.scale)) {
+                edit { scale = set.home }
+                say("${m.substring(4)} was written in ${set.home.lowercase()}, so the scale moved to ${Theory.NN[project.root]} ${set.home.lowercase()}.")
+            }
+        }
         notes.trail("chords $m")
         chordMode = m
         prefs.edit().putString("chord", m).apply()
@@ -2494,7 +2502,8 @@ class AppState(private val app: Context) {
 
     /**
      * The notes the chord mode builds on a key: root on the bottom, never folded note by note (build 84, note #18).
-     * With a chord set, the chord rooted on that key (Nov 22). Live playing smooths it (voiced); the Roll writes it as is.
+     * With a chord set (Nov 22): a key in the scale plays its degree's chord, a key outside it a colour chord, all in
+     * key. Live playing smooths it (voiced); the Roll writes it as is.
      */
     fun chordFor(p: Int): IntArray {
         if (chordMode == "off") return intArrayOf(p)

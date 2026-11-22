@@ -136,8 +136,10 @@ One line each, dated, with the reason and who decided (BT-2). Older decisions li
   device bursts, grows a block per click run up to the Buffer cap, shrinks after ten clean seconds). A dead stream is
   reopened up to five times, then AudioTrack takes over. Settings, Playing, Sound out switches to the older path.
 - 2026-11-22 Chords (Tyler: 12 chords per set, smooth changes as the default, not Maschine's exact sets): every set
-  is 12 chords, one rooted on each key of the octave (slot = the key's pitch class from the root), following the
-  root only, so picking a set never moves the scale. Theory.smooth picks the inversion nearest the pad's last chord
+  is 12 chords, all in its home scale: the seven degree chords, then five colour chords. Revised the same day
+  (Tyler: sets stay in key): a key in the scale plays its own degree's chord, the five keys outside it play the
+  colour chords in order, and a set written in another scale moves the scale to it (the first build of the day
+  followed the root only and played chromatic chords). Theory.smooth picks the inversion nearest the pad's last chord
   within a fifth of where it was asked; live keys, grid Keys and chord boxes use it, the Roll writes root position.
   Sets: Plain Major, Plain Minor, Sunday Pop, Dreamy Sus, Gospel Drip, Lo-fi Jazz, Basement Minor, Neo Soul,
   Cinematic, Haunted, Trap Dread, Power Stabs.

@@ -38,7 +38,7 @@ public class EngineTest {
     // theory
     check(Theory.keyNote(12, "Major", 0) == 0 && Theory.keyNote(13, "Major", 0) == 2 && Theory.keyNote(8, "Major", 0) == 7, "keys mode note layout");
     check(Theory.chordLabel(0, 0, "triad", "Major", 0).equals("C") && Theory.chordLabel(2, 1, "triad", "Major", 0).equals("Dm"), "triad labels");
-    check(Theory.chordLabel(9, 9, "set:Sunday Pop", "Major", 0).equals("Am"), "chord set label");
+    check(Theory.chordLabel(9, 5, "set:Sunday Pop", "Major", 0).equals("Am"), "chord set label");
     check(Arrays.equals(Theory.chordOf(0, 0, "seventh", "Major", 0), new int[]{0, 4, 7, 11}), "seventh chord notes");
     {
         // Steps row tools (build 85): every n, repeat across, nudge, spread
@@ -83,20 +83,25 @@ public class EngineTest {
         check(Arrays.equals(Theory.chordOf(0, c4, sp, "Major", 0), new int[]{0, 4, 7}), "set: low C plays C");
         check(Arrays.equals(Theory.chordOf(12, c5, sp, "Major", 0), new int[]{12, 16, 19}) && Theory.chordLabel(12, c5, sp, "Major", 0).equals("C"), "set: the next C up plays C again, an octave up (was G7)");
         check(Arrays.equals(Theory.chordOf(-12, c3, sp, "Major", 0), new int[]{-12, -8, -5}), "set: C3 plays C an octave down");
-        check(Theory.setIndexOfKey(1, sp, "Major", 0) == 1 && Theory.slotName(sp, 1, 0).equals("C#°"), "set: a black key plays its own chord (C# dim)");
-        check(Theory.slotName(sp, 7, 0).equals("G") && Theory.slotName(sp, 9, 0).equals("Am") && Theory.setSize(sp) == 12, "set slot names");
-        // Nov 22: every set has 12 chords, and every key in every root plays a chord rooted on that key
-        boolean rooted = true; String bad = "";
-        for (String name : Theory.CHORDSETS.keySet()) {
-            String m = "set:" + name;
-            if (Theory.setSize(m) != 12) { rooted = false; bad = name + " has " + Theory.setSize(m); break; }
-            for (int root = 0; root < 12 && rooted; root++) for (int k = -24; k <= 12; k++) {
-                int ix = Theory.setIndexOfKey(k, m, "Major", root);
-                int[] ch = Theory.chordOf(k, ix, m, "Major", root);
-                if (ix == Integer.MIN_VALUE || ch.length < 2 || Theory.pcOf(ch[0]) != Theory.pcOf(k)) { rooted = false; bad = name + " root " + root + " key " + k; break; }
+        check(Theory.setIndexOfKey(9, sp, "Major", 0) == 5 && Theory.slotName(sp, 5, 0).equals("Am"), "set: A, in the scale, plays its own degree's chord (Am)");
+        check(Theory.setIndexOfKey(1, sp, "Major", 0) == 7 && Theory.slotName(sp, 7, 0).equals("Csus2"), "set: C#, outside the scale, plays the first colour chord (Csus2)");
+        check(Theory.slotName(sp, 4, 0).equals("G") && Theory.setSize(sp) == 12, "set slot names");
+        // Nov 22 (Tyler: in key): every set has 12 chords, all in its home scale; in its home scale every key of
+        // every root plays a slot, and keys in the scale play the chord rooted on themselves
+        boolean ok = true; String bad = "";
+        for (Theory.ChordSet set : Theory.CHORDSETS.values()) {
+            String m = "set:" + set.name;
+            if (Theory.setSize(m) != 12 || !Theory.setFits(set, set.home)) { ok = false; bad = set.name + " size or key"; break; }
+            int[] sc = Theory.scale(set.home);
+            for (int root = 0; root < 12 && ok; root++) for (int k = -24; k <= 12; k++) {
+                int ix = Theory.setIndexOfKey(k, m, set.home, root);
+                if (ix == Integer.MIN_VALUE) { ok = false; bad = set.name + " root " + root + " key " + k + " plays nothing"; break; }
+                boolean inScale = false; for (int iv : sc) if (Theory.pcOf(iv) == Theory.pcOf(k - root)) inScale = true;
+                int[] ch = Theory.chordOf(k, ix, m, set.home, root);
+                if (inScale && Theory.pcOf(ch[0]) != Theory.pcOf(k)) { ok = false; bad = set.name + " root " + root + " key " + k + " not rooted"; break; }
             }
         }
-        check(rooted, "12-chord sets: every key plays a chord rooted on it " + bad);
+        check(ok, "12-chord sets: all in key, every key plays, in-scale keys rooted on themselves " + bad);
         // smooth chord changes: C then F moves to C F A (one hand barely moves), not up to F A C
         int[] cMaj = {0, 4, 7}, fMaj = {5, 9, 12};
         check(Arrays.equals(Theory.smooth(fMaj, cMaj), new int[]{0, 5, 9}), "smooth: C to F keeps the C (" + Arrays.toString(Theory.smooth(fMaj, cMaj)) + ")");
