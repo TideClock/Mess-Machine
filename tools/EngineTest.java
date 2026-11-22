@@ -38,7 +38,7 @@ public class EngineTest {
     // theory
     check(Theory.keyNote(12, "Major", 0) == 0 && Theory.keyNote(13, "Major", 0) == 2 && Theory.keyNote(8, "Major", 0) == 7, "keys mode note layout");
     check(Theory.chordLabel(0, 0, "triad", "Major", 0).equals("C") && Theory.chordLabel(2, 1, "triad", "Major", 0).equals("Dm"), "triad labels");
-    check(Theory.chordLabel(0, 2, "set:Sunday Pop", "Major", 0).equals("Am"), "chord set label");
+    check(Theory.chordLabel(9, 9, "set:Sunday Pop", "Major", 0).equals("Am"), "chord set label");
     check(Arrays.equals(Theory.chordOf(0, 0, "seventh", "Major", 0), new int[]{0, 4, 7, 11}), "seventh chord notes");
     {
         // Steps row tools (build 85): every n, repeat across, nudge, spread
@@ -83,8 +83,27 @@ public class EngineTest {
         check(Arrays.equals(Theory.chordOf(0, c4, sp, "Major", 0), new int[]{0, 4, 7}), "set: low C plays C");
         check(Arrays.equals(Theory.chordOf(12, c5, sp, "Major", 0), new int[]{12, 16, 19}) && Theory.chordLabel(12, c5, sp, "Major", 0).equals("C"), "set: the next C up plays C again, an octave up (was G7)");
         check(Arrays.equals(Theory.chordOf(-12, c3, sp, "Major", 0), new int[]{-12, -8, -5}), "set: C3 plays C an octave down");
-        check(Theory.setIndexOfKey(1, sp, "Major", 0) == Integer.MIN_VALUE, "set: an out-of-key key plays no slot");
-        check(Theory.slotName(sp, 7, 0).equals("G7") && Theory.slotName(sp, 1, 0).equals("G") && Theory.setSize(sp) == 8, "set slot names");
+        check(Theory.setIndexOfKey(1, sp, "Major", 0) == 1 && Theory.slotName(sp, 1, 0).equals("C#°"), "set: a black key plays its own chord (C# dim)");
+        check(Theory.slotName(sp, 7, 0).equals("G") && Theory.slotName(sp, 9, 0).equals("Am") && Theory.setSize(sp) == 12, "set slot names");
+        // Nov 22: every set has 12 chords, and every key in every root plays a chord rooted on that key
+        boolean rooted = true; String bad = "";
+        for (String name : Theory.CHORDSETS.keySet()) {
+            String m = "set:" + name;
+            if (Theory.setSize(m) != 12) { rooted = false; bad = name + " has " + Theory.setSize(m); break; }
+            for (int root = 0; root < 12 && rooted; root++) for (int k = -24; k <= 12; k++) {
+                int ix = Theory.setIndexOfKey(k, m, "Major", root);
+                int[] ch = Theory.chordOf(k, ix, m, "Major", root);
+                if (ix == Integer.MIN_VALUE || ch.length < 2 || Theory.pcOf(ch[0]) != Theory.pcOf(k)) { rooted = false; bad = name + " root " + root + " key " + k; break; }
+            }
+        }
+        check(rooted, "12-chord sets: every key plays a chord rooted on it " + bad);
+        // smooth chord changes: C then F moves to C F A (one hand barely moves), not up to F A C
+        int[] cMaj = {0, 4, 7}, fMaj = {5, 9, 12};
+        check(Arrays.equals(Theory.smooth(fMaj, cMaj), new int[]{0, 5, 9}), "smooth: C to F keeps the C (" + Arrays.toString(Theory.smooth(fMaj, cMaj)) + ")");
+        check(Arrays.equals(Theory.smooth(cMaj, null), cMaj) && Arrays.equals(Theory.smooth(new int[]{0, 7}, cMaj), new int[]{0, 7}), "smooth: first chord and two-note chords stay as asked");
+        int[] g7 = Theory.smooth(new int[]{7, 11, 14, 17}, cMaj);
+        double gm = 0; for (int x : g7) gm += x; gm /= g7.length;
+        check(Math.abs(gm - 12.25) <= 7.5 && g7[0] >= Theory.ROLL_LO, "smooth: stays within a fifth of where it was asked (" + Arrays.toString(g7) + ")");
         for (int k = -36; k <= 12; k++) {
             int ka = Theory.setIndexOfKey(k, sp, "Major", 0), kb = Theory.setIndexOfKey(k + 12, sp, "Major", 0);
             if (ka == Integer.MIN_VALUE) continue;

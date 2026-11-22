@@ -1,23 +1,19 @@
 {
-  "title": "The synth gets its own pad, and the fast audio path",
+  "title": "Chord sets of twelve, with smooth changes",
   "thisBuild": [
-    "Sound now goes out through AAudio, Android's fast path (the part of the lag that wasn't the app). Settings, Playing, Sound out shows which path you got; Older switches back if AAudio ever clicks or goes quiet.",
-    "The Synth tab's scratch synth is now a real pad of its own, hidden past the 64 (in no bank). It plays through its own FX vials, Hold, Repeat, Chords and Glide like any pad, and it records into the loop.",
-    "A pad tile sits at the top left of the Synth tab. Tap it to play the synth's note. Swipe it like a grid pad: up for Edit, right for its FX vials, down folds the keys away. The same swipe again closes it.",
-    "One keyboard everywhere: the Synth tab uses the Padiano now. In the panel Look its Keyboard style is the synth's (cream keys, bakelite blacks, amber under your finger). Squares or Keyboard is the same setting on every screen.",
-    "Put on: Empty pad moves the scratch synth onto a pad, knobs and recorded notes and all, and a fresh copy stays on the Synth tab.",
-    "Picking a synth pad anywhere makes the Synth tab show that pad's synth.",
-    "The keys on the Synth tab say SCRATCH and the preset's name over them, not a pad number."
+    "Every chord set now has 12 chords, one rooted on every key of the octave: press E and you get an E chord, in every octave. The Padiano's chord boxes show all 12.",
+    "Smooth moves (on out of the box): each chord picks the inversion nearest the last one you played, so a change glides instead of jumping up and down. The Key tray has the switch (Smooth moves or From the root).",
+    "Four new sets: Plain Major, Plain Minor, Lo-fi Jazz and Cinematic. The old eight are rewritten to twelve chords each, with no doubled roots.",
+    "Picking a set no longer moves your scale: sets follow the key's root only."
   ],
   "watch": [
-    "The lag number beside the BPM: lower than the 81 ms in your last video? And any red clicks?",
-    "Swipe the synth tile right: do its FX vials open, and does a second right swipe close them?",
-    "Record a few scratch synth notes into a loop, then Put on a pad: do they keep playing from the pad?",
-    "The keyboard style on the Synth tab: does it feel the same as the Padiano on the pads now?"
+    "Play Sunday Pop or Neo Soul on the chord boxes: do the changes feel smoother now?",
+    "Any set where a chord on a black key sounds wrong to you? Tell me which set and key.",
+    "Switch to From the root and back: is Smooth the right default?"
   ],
   "limits": [
-    "If your phone won't give the app its exclusive AAudio stream, it uses the shared one: still faster than before, not the fastest. Settings shows which.",
-    "Notes you record with the scratch synth don't show on the Steps page until you put it on a pad.",
-    "Your saved FX live on the phone, not in the mess."
+    "The Roll still writes chords from their root, so what it draws matches the rows you tap.",
+    "Making your own sets isn't in yet.",
+    "The cut and look changes are still proposals: nothing moved on screen in this build."
   ]
 }

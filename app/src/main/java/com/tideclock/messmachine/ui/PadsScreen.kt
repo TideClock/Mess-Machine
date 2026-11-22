@@ -239,6 +239,8 @@ fun KeysPanel(state: AppState) {
             if (state.chordMode != "off") {
                 Btn("Play chord", { state.switchChordPlay(true) }, on = state.chordPlay, small = true, onColor = C.Teal, tag = "chord-play")
                 Btn("Show chord", { state.switchChordPlay(false) }, on = !state.chordPlay, small = true, onColor = C.Pink, tag = "chord-show")
+                // Nov 22: Smooth (the default) picks the inversion closest to the last chord; Root plays every chord from its root
+                Btn(if (state.chordSmooth) "Smooth moves" else "From the root", { state.switchChordSmooth(!state.chordSmooth) }, on = state.chordSmooth, small = true, onColor = C.Teal, tag = "chord-smooth")
             }
         }
         HoldBar(state)
@@ -263,9 +265,8 @@ fun chordName(m: String) = when {
 
 fun chordOptions(scale: String, root: Int): List<Pair<String, String>> {
     val out = mutableListOf("off" to "Off", "triad" to "Triads from the scale", "seventh" to "7ths from the scale", "sus" to "1-4-5 from the scale (sus)", "power" to "Power chords", "octave" to "Octaves")
-    for ((name, set) in Theory.CHORDSETS) {
-        out += ("set:$name") to (name + if (Theory.setFits(set, scale)) "" else " (moves the scale)")
-    }
+    // Nov 22: twelve chords a set, one rooted on every key; sets follow the root only, so none moves the scale
+    for (name in Theory.CHORDSETS.keys) out += ("set:$name") to "$name (12)"
     return out
 }
 

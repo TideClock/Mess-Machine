@@ -1966,6 +1966,8 @@ class BigTest {
         state.setLive { nr = false }; state.switchHold(false)
 
         // note #18: chords keep the root on the bottom (G4 was D4 G4 B4), and a set never drifts across octaves
+        // (Root voicing here: Smooth, the default since Nov 22, would pick inversions near the last chord)
+        state.switchChordSmooth(false)
         state.setScale("Major"); settle()
         assertEquals(listOf(7, 11, 14), state.chordFor(7).toList())
         state.pickChordMode("set:Sunday Pop"); settle()
@@ -1981,6 +1983,10 @@ class BigTest {
         at("piano-up-0").performClick(); settle()
         state.slotDown(0, 0, 1); state.slotUp(0, 0)
         assertTrue("an octave up, slot 1 is C an octave up (${state.lastChord})", state.lastChord.startsWith("C ·") && state.lastChord.contains("C5"))
+        // Smooth (Nov 22): C then F on the slots plays C F A, the hand barely moves
+        state.switchChordSmooth(true)
+        state.slotDown(0, 0, 0); state.slotUp(0, 0); state.slotDown(0, 5, 0); state.slotUp(0, 5)
+        assertTrue("smooth: F after C keeps the C (${state.lastChord})", state.lastChord.startsWith("F ·") && state.lastChord.contains("C4"))
         state.toggleKeyboard(0); state.pickChordMode("off"); settle()
         // the Roll reaches C1 to C6, two octaves at a time
         tab("Roll")

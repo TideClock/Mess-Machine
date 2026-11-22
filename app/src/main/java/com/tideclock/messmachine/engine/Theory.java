@@ -37,6 +37,8 @@ public final class Theory {
         q("5", "5", 0, 7, 12); q("sus2", "sus2", 0, 2, 7); q("sus4", "sus4", 0, 5, 7); q("add9", "add9", 0, 4, 7, 14);
         q("7", "7", 0, 4, 7, 10); q("maj7", "maj7", 0, 4, 7, 11); q("m7", "m7", 0, 3, 7, 10); q("m7b5", "m7♭5", 0, 3, 6, 10);
         q("mMaj7", "m(maj7)", 0, 3, 7, 11); q("m9", "m9", 0, 3, 7, 10, 14); q("9", "9", 0, 4, 7, 10, 14);
+        q("maj9", "maj9", 0, 4, 7, 11, 14); q("6", "6", 0, 4, 7, 9); q("m6", "m6", 0, 3, 7, 9); q("7sus4", "7sus4", 0, 5, 7, 10);
+        q("dim7", "°7", 0, 3, 6, 9);
     }
 
     private static final Map<String, String> IVSUF = new LinkedHashMap<>();
@@ -46,29 +48,41 @@ public final class Theory {
         IVSUF.put("0,3,7,11", "m(maj7)"); IVSUF.put("0,3,6,9", "°7"); IVSUF.put("0,4,8,11", "+maj7"); IVSUF.put("0,2,7", "sus2"); IVSUF.put("0,5,7", "sus4"); IVSUF.put("0,12", " oct"); IVSUF.put("0,6,7", "sus♯4");
     }
 
-    /** A chord set: eight chords, roots in semitones above the scale root, written in a home scale. */
+    /**
+     * A chord set (Nov 22, Tyler): twelve chords, one rooted on every key of the octave, so the key you press is the
+     * chord's root. Roots are semitones above the mess's root; sets follow the root only, never the scale. home is
+     * the scale a set was written around, shown as a hint.
+     */
     public static final class ChordSet {
         public final String name, home;
         public final int[] roots;
         public final String[] quals;
-        ChordSet(String name, String home, Object... rq) {
+        ChordSet(String name, String home, String... quals12) {
             this.name = name; this.home = home;
-            roots = new int[rq.length / 2]; quals = new String[rq.length / 2];
-            for (int k = 0; k < roots.length; k++) { roots[k] = (Integer) rq[k * 2]; quals[k] = (String) rq[k * 2 + 1]; }
+            roots = new int[quals12.length]; quals = quals12.clone();
+            for (int k = 0; k < roots.length; k++) roots[k] = k;
         }
     }
 
     public static final Map<String, ChordSet> CHORDSETS = new LinkedHashMap<>();
-    private static void cs(String n, String home, Object... rq) { CHORDSETS.put(n, new ChordSet(n, home, rq)); }
+    private static void cs(String n, String home, String... q12) {
+        if (q12.length != 12) throw new IllegalArgumentException(n + " needs 12 chords");
+        CHORDSETS.put(n, new ChordSet(n, home, q12));
+    }
     static {
-        cs("Sunday Pop", "Major", 0, "maj", 7, "maj", 9, "min", 5, "maj", 2, "min", 4, "min", 5, "maj7", 7, "7");
-        cs("Dreamy Sus", "Major", 0, "sus2", 5, "add9", 9, "m7", 7, "sus4", 0, "maj7", 4, "m7", 5, "maj7", 7, "sus2");
-        cs("Gospel Drip", "Major", 0, "add9", 4, "m7", 9, "m9", 2, "m9", 7, "9", 5, "maj7", 11, "m7b5", 0, "maj7");
-        cs("Basement Minor", "Minor", 0, "min", 8, "maj", 3, "maj", 10, "maj", 5, "min", 7, "min", 0, "m7", 8, "maj7");
-        cs("Neo Soul", "Dorian", 0, "m9", 5, "9", 10, "maj7", 3, "maj7", 7, "m7", 2, "m7", 9, "m7b5", 0, "m7");
-        cs("Haunted", "Harmonic minor", 0, "min", 7, "7", 8, "maj", 5, "min", 11, "dim", 2, "dim", 3, "aug", 0, "mMaj7");
-        cs("Trap Dread", "Phrygian", 0, "min", 1, "maj", 8, "maj", 5, "min", 3, "maj", 10, "min", 0, "m7", 1, "maj7");
-        cs("Power Stabs", "Minor", 0, "5", 3, "5", 5, "5", 7, "5", 8, "5", 10, "5", 12, "5", -2, "5");
+        //                            C      C#      D       D#      E       F       F#      G       G#      A       A#      B
+        cs("Plain Major", "Major",    "maj", "dim7", "min",  "maj",  "min",  "maj",  "dim",  "maj",  "maj",  "min",  "maj",  "dim");
+        cs("Plain Minor", "Minor",    "min", "maj",  "dim",  "maj",  "dim7", "min",  "dim",  "maj",  "maj",  "dim",  "maj",  "dim7");
+        cs("Sunday Pop", "Major",     "maj", "dim",  "min",  "maj",  "min",  "maj",  "m7b5", "maj",  "maj",  "min",  "maj",  "m7b5");
+        cs("Dreamy Sus", "Major",     "sus2", "maj7", "m7",  "maj7", "m7",   "add9", "m7b5", "sus4", "maj7", "m7",   "add9", "m7b5");
+        cs("Gospel Drip", "Major",    "maj9", "dim7", "m9",  "7",    "m7",   "maj7", "dim7", "9",    "7",    "m9",   "9",    "m7b5");
+        cs("Lo-fi Jazz", "Major",     "maj7", "7",   "m7",   "dim7", "m7",   "maj7", "m7b5", "7",    "7",    "m7",   "7",    "m7b5");
+        cs("Basement Minor", "Minor", "min", "maj",  "dim",  "maj",  "dim7", "min",  "dim",  "min",  "maj",  "m7b5", "maj",  "dim");
+        cs("Neo Soul", "Dorian",      "m9",  "maj7", "m7",   "maj7", "7",    "9",    "dim7", "m7",   "maj7", "m7b5", "maj7", "m7b5");
+        cs("Cinematic", "Minor",      "min", "maj",  "sus2", "maj",  "maj",  "min",  "dim",  "sus4", "maj",  "min",  "maj",  "dim");
+        cs("Haunted", "Harmonic minor", "mMaj7", "maj", "dim", "aug", "dim7", "min",  "dim7", "7",    "maj",  "dim",  "maj",  "dim7");
+        cs("Trap Dread", "Phrygian",  "min", "maj",  "dim",  "maj",  "dim",  "min",  "maj",  "dim",  "maj",  "dim",  "min",  "dim7");
+        cs("Power Stabs", "Minor",    "5",   "5",    "5",    "5",    "5",    "5",    "5",    "5",    "5",    "5",    "5",    "5");
     }
 
     public static int pcOf(int p) { return ((p % 12) + 12) % 12; }
@@ -178,18 +192,52 @@ public final class Theory {
     }
 
     /**
-     * A piano key's slot in a chord set: its place in the scale (first note of the scale is slot 1) plus whole
-     * sets per octave. The same key in every octave plays the same chord, an octave apart. Integer.MIN_VALUE for
-     * a key outside the scale or past the set's last chord.
+     * A piano key's slot in a chord set (Nov 22): the chord rooted on that key, plus whole sets per octave. The same
+     * key in every octave plays the same chord, an octave apart. Integer.MIN_VALUE when the set has no such chord.
      */
     public static int setIndexOfKey(int p, String mode, String scale, int root) {
         int n = setSize(mode);
         if (n == 0) return Integer.MIN_VALUE;
-        int[] sc = stripScale(scale);
-        int rel = pcOf(p - root), deg = -1;
-        for (int k = 0; k < sc.length; k++) if (sc[k] == rel) deg = k;
-        if (deg < 0 || deg >= n) return Integer.MIN_VALUE;
-        return deg + n * Math.floorDiv(p - rootBase(root), 12);
+        ChordSet set = CHORDSETS.get(mode.substring(4));
+        int rel = pcOf(p - root);
+        for (int j = 0; j < n; j++) if (pcOf(set.roots[j]) == rel) return j + n * Math.floorDiv(p - rootBase(root), 12);
+        return Integer.MIN_VALUE;
+    }
+
+    /**
+     * Smooth chord changes (Nov 22, the default): the inversion of a chord that moves the fewest semitones from the
+     * last chord played, kept within a fifth of where the chord was asked for, so the keys' octaves still count.
+     * With no last chord, the chord as asked. Chords of one or two notes are left alone.
+     */
+    public static int[] smooth(int[] chord, int[] prev) {
+        int n = chord.length;
+        if (n < 3) return chord;
+        int[] c = chord.clone();
+        Arrays.sort(c);
+        if (prev == null || prev.length == 0) return c;
+        double target = mean(c), bestCost = Double.MAX_VALUE;
+        int[] best = c;
+        for (int r = 0; r < n; r++) for (int sh = -2; sh <= 1; sh++) {
+            int[] v = new int[n];
+            for (int k = 0; k < n; k++) v[k] = c[k] + (k < r ? 12 : 0) + 12 * sh;
+            Arrays.sort(v);
+            if (v[0] < ROLL_LO || v[n - 1] > ROLL_HI) continue;
+            double m = mean(v);
+            if (Math.abs(m - target) > 7.5) continue;
+            double cost = move(v, prev) + .25 * Math.abs(m - target);
+            if (cost < bestCost - 1e-9) { bestCost = cost; best = v; }
+        }
+        return best;
+    }
+
+    private static double mean(int[] v) { double t = 0; for (int x : v) t += x; return t / v.length; }
+
+    /** How far a hand moves from one chord to the next: each note to the nearest note of the other chord, both ways. */
+    private static double move(int[] a, int[] b) {
+        double d = 0;
+        for (int x : a) { int m = Integer.MAX_VALUE; for (int y : b) m = Math.min(m, Math.abs(x - y)); d += m; }
+        for (int y : b) { int m = Integer.MAX_VALUE; for (int x : a) m = Math.min(m, Math.abs(x - y)); d += m; }
+        return d;
     }
 
     /** The name of slot j of a set, in the mess's root. */

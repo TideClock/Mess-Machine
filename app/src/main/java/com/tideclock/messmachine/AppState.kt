@@ -971,7 +971,7 @@ class AppState(private val app: Context) {
             val pad = project.sel
             if (project.kit[pad].isEmpty()) { say("Pick a pad with a sound first. The keys play whichever pad you picked last."); return }
             val p = Theory.keyNote(d, project.scale, project.root)
-            val ps = Theory.chordOf(p, keyIdx(d), chordMode, project.scale, project.root)
+            val ps = voiced(pad, Theory.chordOf(p, keyIdx(d), chordMode, project.scale, project.root))
             lastChord = if (ps.size > 1) Theory.chordLabel(p, keyIdx(d), chordMode, project.scale, project.root) + " · " + Theory.chordNotes(ps) else Theory.noteName(p)
             val kid = 2000 + pad * 32 + (p + 12)
             downIds[d] = kid
@@ -1375,13 +1375,6 @@ class AppState(private val app: Context) {
     }
 
     fun pickChordMode(m: String) {
-        if (m.startsWith("set:")) {
-            val set = Theory.CHORDSETS[m.substring(4)]
-            if (set != null && !Theory.setFits(set, project.scale)) {
-                edit { scale = set.home }
-                say("${m.substring(4)} was written in ${set.home.lowercase()}, so the scale moved to ${Theory.NN[project.root]} ${set.home.lowercase()}.")
-            }
-        }
         notes.trail("chords $m")
         chordMode = m
         prefs.edit().putString("chord", m).apply()
@@ -2487,9 +2480,21 @@ class AppState(private val app: Context) {
 
     fun switchChordPlay(v: Boolean) { chordPlay = v; prefs.edit().putBoolean("chordPlay", v).apply() }
 
+    /** Nov 22 (Tyler: smooth chord changes as the default): each chord takes the inversion nearest the last one. */
+    var chordSmooth by mutableStateOf(prefs.getBoolean("chordSmooth", true))
+        private set
+    fun switchChordSmooth(v: Boolean) { chordSmooth = v; prefs.edit().putBoolean("chordSmooth", v).apply(); lastVoiced.clear(); notes.trail("chords ${if (v) "smooth" else "root"}") }
+    /** The last chord each pad played, for smooth changes. */
+    private val lastVoiced = HashMap<Int, IntArray>()
+    /** A chord as played live: smoothed against the pad's last chord when Smooth is on. */
+    fun voiced(pad: Int, ps: IntArray): IntArray {
+        if (!chordSmooth || ps.size < 3) return ps
+        return Theory.smooth(ps, lastVoiced[pad]).also { lastVoiced[pad] = it }
+    }
+
     /**
      * The notes the chord mode builds on a key: root on the bottom, never folded note by note (build 84, note #18).
-     * With a chord set, the key's place in the scale picks the slot, the same in every octave.
+     * With a chord set, the chord rooted on that key (Nov 22). Live playing smooths it (voiced); the Roll writes it as is.
      */
     fun chordFor(p: Int): IntArray {
         if (chordMode == "off") return intArrayOf(p)
@@ -2523,7 +2528,7 @@ class AppState(private val app: Context) {
         val n = Theory.setSize(chordMode)
         if (n == 0 || j !in 0 until n) return
         val idx = j + n * oct
-        val ps = Theory.chordOf(0, idx, chordMode, project.scale, project.root)
+        val ps = if (chordPlay) voiced(pad, Theory.chordOf(0, idx, chordMode, project.scale, project.root)) else Theory.chordOf(0, idx, chordMode, project.scale, project.root)
         lastChord = Theory.slotName(chordMode, j, project.root) + " · " + Theory.chordNotes(ps) + (if (!chordPlay) " (showing)" else "")
         notes.trail("slot ${pad + 1} ${j + 1}")
         melodicDown(pianoId(pad, SLOT_P + j), pad, if (chordPlay) ps else intArrayOf(ps.first()))
@@ -2715,7 +2720,7 @@ class AppState(private val app: Context) {
     fun pianoDown(pad: Int, p: Int) {
         if (project.kit[pad].isEmpty()) return
         if (midiMapOn) midiAim(MidiTarget("key", pad, p))
-        val ps = chordFor(p)
+        val ps = if (chordPlay) voiced(pad, chordFor(p)) else chordFor(p)
         val idx = chordIdx(p)
         lastChord = if (ps.size > 1) Theory.chordLabel(p, idx, chordMode, project.scale, project.root) + " · " + Theory.chordNotes(ps) +
             (if (!chordPlay) " (showing)" else "") else Theory.noteName(p)

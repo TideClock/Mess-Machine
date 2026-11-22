@@ -135,6 +135,12 @@ One line each, dated, with the reason and who decided (BT-2). Older decisions li
   engine keeps rendering on its own thread and writes blocks into the ring (fill starts at one engine block plus two
   device bursts, grows a block per click run up to the Buffer cap, shrinks after ten clean seconds). A dead stream is
   reopened up to five times, then AudioTrack takes over. Settings, Playing, Sound out switches to the older path.
+- 2026-11-22 Chords (Tyler: 12 chords per set, smooth changes as the default, not Maschine's exact sets): every set
+  is 12 chords, one rooted on each key of the octave (slot = the key's pitch class from the root), following the
+  root only, so picking a set never moves the scale. Theory.smooth picks the inversion nearest the pad's last chord
+  within a fifth of where it was asked; live keys, grid Keys and chord boxes use it, the Roll writes root position.
+  Sets: Plain Major, Plain Minor, Sunday Pop, Dreamy Sus, Gospel Drip, Lo-fi Jazz, Basement Minor, Neo Soul,
+  Cinematic, Haunted, Trap Dread, Power Stabs.
 - 2026-11-21 Dock plan, not built yet (Tyler): the app needs one cohesive dock idea, so mutes and the other live
   controls can be brought up on any screen the same way. Pad things and master things (docks, FX) must look clearly
   different. Today's step toward it: the master plate (brass trim) for whole-mix controls, pad colour for pad ones.
@@ -518,9 +524,7 @@ Ideas Tyler tags "wishlist" go here, not into the build.
   with view size (Tyler plays at 70 to 80 percent, so every button is 20 to 30 percent smaller in real size).
 - 2026-11-17 (build 83) A finer time grid than 16th steps, so triplet repeats record as plain hits and fast wubs in
   the automation view are exact. A deep engine change; it sits behind several notes.
-- 2026-11-17 (build 83) Chord sets of 12 slots and sets you build yourself (Maschine's User Chords).
-- 2026-11-17 (build 83) An effects chain per sound you can reorder and add to (if "online FX" ever means more than
-  the inline FX strip).
+- 2026-11-17 (build 83) Sets you build yourself (Maschine's User Chords). The 12-slot sets shipped Nov 22.
 
 - 2026-11-03 (site) Mess Machine as a standalone Android app: done, this repo (builds 1 to 56).
 - 2026-11-10 (build 68) Jam station brain: Mess Machine as the hub of a jam setup (Tyler's jam idea). Many MIDI
@@ -541,6 +545,11 @@ Ideas Tyler tags "wishlist" go here, not into the build.
 Ideas Tyler has cancelled. Never propose these again.
 
 - 2026-11-22 Hold a pad to sample (EP-133's Sample switch). Cancelled by Tyler.
+- 2026-11-22 Scenes with a crossfade. Cancelled by Tyler (XY and the throws sweep many things at once).
+- 2026-11-22 Four colored macros per screen (OP-1). Cancelled by Tyler (a second mapping system on top of MIDI map).
+- 2026-11-22 Follow actions on loop letters (Ableton). Cancelled by Tyler (the Song lane chains loops).
+- 2026-11-22 Ableton Link. Cancelled by Tyler (MIDI clock covers his gear).
+- 2026-11-22 A reorderable FX chain per sound. Cancelled by Tyler (saved FX sets and the vials cover it).
 
 ## Plan agreed 2026-11-09 (builds after 30)
 
