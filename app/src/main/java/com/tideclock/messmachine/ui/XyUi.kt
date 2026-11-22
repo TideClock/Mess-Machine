@@ -111,7 +111,7 @@ fun ThrowVial(state: AppState, id: String, label: String, color: Color, modifier
     val lit = held || id in state.fxOn
     val shown = if (held) level else if (id in state.fxOn) (state.fxLive[id] ?: s.amount) else 0f
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Vial(shown, color, true, "fx-$id", height = 128.dp) { pos, on ->
+        Vial(shown, color, true, "fx-$id", height = 140.dp, label = label.uppercase()) { pos, on ->
             val amt = pos.coerceIn(.05f, 1f)
             if (on && !held) {
                 held = true; level = amt
@@ -125,16 +125,18 @@ fun ThrowVial(state: AppState, id: String, label: String, color: Color, modifier
                 if (s.behave == "held") state.fxPress(id, false)
             }
         }
-        // the lamp: lit while it acts
-        Canvas(Modifier.padding(top = 5.dp).size(12.dp)) {
-            val r = size.minDimension / 2
-            drawCircle(Color.Black.copy(alpha = .6f), r, center)
-            if (lit) drawCircle(androidx.compose.ui.graphics.Brush.radialGradient(listOf(color.copy(alpha = .6f), Color.Transparent), center, r * 2.4f), r * 2.4f, center)
-            drawCircle(if (lit) color else Color(0xFF3A3530), r * .7f, center)
-        }
-        Box(Modifier.padding(top = 2.dp).clickable { state.fxEditing = if (state.fxEditing == id) null else id }.tagged("fxedit-$id").padding(vertical = 4.dp, horizontal = 2.dp), contentAlignment = Alignment.Center) {
-            T(label.uppercase().replace(" ", "\n") + (if (s.behave == "stays") " ●" else if (s.behave == "slider") " ═" else ""),
-                size = if (label.split(" ").maxOf { it.length } > 5) 7.5.sp else 9.sp, color = if (lit) color else Hw.Engrave, lines = 2, spacing = (-.02).em, family = Stencil, weight = androidx.compose.ui.text.font.FontWeight.Normal)
+        // the lamp (lit while it acts) and how it plays; tap either for its settings
+        Column(Modifier.padding(top = 4.dp).clickable { state.fxEditing = if (state.fxEditing == id) null else id }.tagged("fxedit-$id").padding(horizontal = 2.dp, vertical = 3.dp),
+            horizontalAlignment = Alignment.CenterHorizontally) {
+            Canvas(Modifier.size(12.dp)) {
+                val r = size.minDimension / 2
+                drawCircle(Color.Black.copy(alpha = .6f), r, center)
+                if (lit) drawCircle(androidx.compose.ui.graphics.Brush.radialGradient(listOf(color.copy(alpha = .6f), Color.Transparent), center, r * 2.4f), r * 2.4f, center)
+                drawCircle(if (lit) color else Color(0xFF3A3530), r * .7f, center)
+            }
+            T(when (s.behave) { "stays" -> "STAYS"; "slider" -> "SLIDE"; else -> "HOLD" },
+                size = 7.5.sp, color = if (lit) color else Hw.Engrave.copy(alpha = .7f), lines = 1, spacing = 0.em, family = Stencil, weight = androidx.compose.ui.text.font.FontWeight.Normal,
+                modifier = Modifier.padding(top = 3.dp))
         }
     }
 }

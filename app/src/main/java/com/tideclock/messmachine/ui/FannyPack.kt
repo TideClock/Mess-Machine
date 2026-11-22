@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.Composable
@@ -214,13 +215,15 @@ fun VialStrip(state: AppState, pad: Int) {
 
 /** A glass vial with a metal cap, filled from the bottom: drag anywhere on it. Out (bypassed): the liquid goes grey. */
 @Composable
-fun Vial(value: Float, color: Color, live: Boolean, tag: String, height: androidx.compose.ui.unit.Dp = 112.dp, onChange: (Float, Boolean) -> Unit) {
+fun Vial(value: Float, color: Color, live: Boolean, tag: String, height: androidx.compose.ui.unit.Dp = 112.dp, label: String? = null, onChange: (Float, Boolean) -> Unit) {
+    val tm = androidx.compose.ui.text.rememberTextMeasurer()
     Canvas(
         Modifier
             .fillMaxWidth()
             .widthIn(max = 44.dp)
             .height(height)
             .tagged(tag)
+            .then(if (label != null) Modifier.semantics { contentDescription = label } else Modifier)
             .pointerInput(tag) {
                 awaitEachGesture {
                     val d = awaitFirstDown(requireUnconsumed = false)
@@ -268,6 +271,14 @@ fun Vial(value: Float, color: Color, live: Boolean, tag: String, height: android
         for (i in 1..4) { val y = glassTop + glassH * (1f - i / 5f); drawLine(Hw.Engrave.copy(alpha = .3f), Offset(x0 + 2f, y), Offset(x0 + w * .3f, y), 1f) }
         drawPath(tube, Hw.Engrave.copy(alpha = .55f), style = Stroke(1.5.dp.toPx()))
         drawLine(Color.White.copy(alpha = .22f), Offset(x0 + w * .72f, glassTop + 4f), Offset(x0 + w * .72f, size.height - bot - r), 2.5f)
+        // a name written up the glass, like a specimen label (the throws: their names are too long to sit under a vial)
+        if (label != null) {
+            val lay = tm.measure(label, androidx.compose.ui.text.TextStyle(fontFamily = Stencil, fontSize = 10.sp, color = Hw.Engrave.copy(alpha = .9f), letterSpacing = .08.em))
+            val mid = Offset(size.width / 2, glassTop + glassH / 2)
+            androidx.compose.ui.graphics.drawscope.rotate(-90f, mid) {
+                drawText(lay, topLeft = Offset(mid.x - lay.size.width / 2f, mid.y - lay.size.height / 2f))
+            }
+        }
     }
 }
 
