@@ -295,37 +295,38 @@ fun Transport(state: AppState) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
-        BarBtn(state, if (state.playing) "❚❚" else "▶ Play", "Play", { state.togglePlay() }, color = C.Teal, on = state.playing, onColor = C.Yellow, tag = "play", tier = Tier.Primary, word = if (state.playing) "Pause" else "Play", modifier = Modifier.weight(1.25f))
-        BarBtn(state, "■", "Stop", { state.stop() }, tag = "stop", word = "Stop", modifier = Modifier.weight(.55f))
-        RecBtn(state, Modifier.weight(1.05f))
-        BarBtn(state, "↶", "Undo", { state.undo() }, enabled = state.canUndo && free, tag = "undo", word = "Undo", modifier = Modifier.weight(.55f))
+        BarBtn(state, if (state.playing) "❚❚" else "▶ Play", "Play", { state.togglePlay() }, color = C.Teal, on = state.playing, onColor = C.Yellow, tag = "play", tier = Tier.Primary, word = if (state.playing) "Pause" else "Play", modifier = Modifier.weight(if (state.look == "panel") 1f else 1.25f))
+        BarBtn(state, "■", "Stop", { state.stop() }, tag = "stop", word = "Stop", modifier = Modifier.weight(if (state.look == "panel") 1f else .55f))
+        // the panel Look (Nov 21): every key gets the same slot, so the caps come out one size
+        RecBtn(state, Modifier.weight(if (state.look == "panel") 1f else 1.05f))
+        BarBtn(state, "↶", "Undo", { state.undo() }, enabled = state.canUndo && free, tag = "undo", word = "Undo", modifier = Modifier.weight(if (state.look == "panel") 1f else .55f))
         // tempo and where the music is; the loop letter is its own button now (Nov 18), for loops from every page
         Box(
-            Modifier.weight(.8f).height(36.dp).let { if (state.look == "panel") it.lcd() else it.sticker(C.Well, shadow = 2.dp, border = 2.dp) }
+            Modifier.weight(if (state.look == "panel") 1.5f else .8f).height(36.dp).let { if (state.look == "panel") it.lcd() else it.sticker(C.Well, shadow = 2.dp, border = 2.dp) }
                 .clickable(enabled = free) { if (state.midiMapOn) state.midiAim(com.tideclock.messmachine.MidiTarget("tempo", 0)) else state.overlay = Overlay.Tempo }.tagged("bpm"),
             contentAlignment = Alignment.Center,
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                T("${P.bpm}", size = 12.sp, color = if (state.look == "panel") Hw.Amber else C.Cream, lines = 1, family = Mono, weight = FontWeight.Bold)
+                T("${P.bpm}", size = if (state.look == "panel") 14.sp else 12.sp, color = if (state.look == "panel") Hw.Amber else C.Cream, lines = 1, family = if (state.look == "panel") Lcd else Mono, weight = FontWeight.Bold)
                 // the Pro looks show the lag here (Nov 18), so a creep is visible as it happens
                 if (state.look == "classic") T("BPM", size = 9.sp, color = C.Dim, lines = 1, family = Mono, weight = FontWeight.Bold)
                 else {
                     val lag by androidx.compose.runtime.produceState(state.audio.outputMs) { while (true) { value = state.audio.outputMs; if (UiFlags.testing) break; kotlinx.coroutines.delay(1000) } }
-                    T(if (lag >= 0) "${lag.toInt()} MS" else "BPM", size = 9.sp, color = C.Dim, lines = 1, family = Mono, weight = FontWeight.Bold, modifier = Modifier.tagged("lag"))
+                    T(if (lag >= 0) "${lag.toInt()} MS" else "BPM", size = 9.sp, color = if (state.look == "panel") Hw.Amber.copy(alpha = .6f) else C.Dim, lines = 1, family = if (state.look == "panel") Lcd else Mono, weight = FontWeight.Bold, modifier = Modifier.tagged("lag"))
                 }
             }
         }
         // the loop: where the music is; tap for the row of loops A to H (a pick waits for the bar line while playing)
         Box(
-            Modifier.weight(.9f).height(36.dp).let { if (state.look == "panel") it.lcd(lit = state.loopStripOpen || state.pendingSlot >= 0) else it.sticker(if (state.loopStripOpen) C.Card2 else C.Black, shadow = 2.dp, border = 2.dp, borderColor = if (state.pendingSlot >= 0) C.Yellow else C.Cream) }
+            Modifier.weight(if (state.look == "panel") 1.7f else .9f).height(36.dp).let { if (state.look == "panel") it.lcd(lit = state.loopStripOpen || state.pendingSlot >= 0) else it.sticker(if (state.loopStripOpen) C.Card2 else C.Black, shadow = 2.dp, border = 2.dp, borderColor = if (state.pendingSlot >= 0) C.Yellow else C.Cream) }
                 .clickable(enabled = free) { state.loopStripOpen = !state.loopStripOpen }.tagged("loop-open"),
             contentAlignment = Alignment.Center,
         ) {
-            T(if (state.pendingSlot >= 0) "→ " + com.tideclock.messmachine.engine.Project.LETTERS[state.pendingSlot] else position(state), size = 10.sp, color = if (state.look == "panel") Hw.Amber else C.Yellow, lines = 1, family = Mono, weight = FontWeight.Bold, modifier = Modifier.tagged("position"))
+            T(if (state.pendingSlot >= 0) "→ " + com.tideclock.messmachine.engine.Project.LETTERS[state.pendingSlot] else position(state), size = if (state.look == "panel") 12.sp else 10.sp, color = if (state.look == "panel") Hw.Amber else C.Yellow, lines = 1, family = if (state.look == "panel") Lcd else Mono, weight = FontWeight.Bold, modifier = Modifier.tagged("position"))
         }
         // What the FAQ (Tyler's name): tap it, then tap anything to learn what it is. Page help moved onto its card
-        BarBtn(state, "?", "What the FAQ", { state.switchFaq() }, on = state.faqOn, onColor = C.Teal, tag = "help-toggle", tier = Tier.Quiet, word = "FAQ", modifier = Modifier.weight(.55f))
-        TopMenu(state, Modifier.weight(.55f))
+        BarBtn(state, "?", "What the FAQ", { state.switchFaq() }, on = state.faqOn, onColor = C.Teal, tag = "help-toggle", tier = Tier.Quiet, word = "FAQ", modifier = Modifier.weight(if (state.look == "panel") 1f else .55f))
+        TopMenu(state, Modifier.weight(if (state.look == "panel") 1f else .55f))
     }
 }
 

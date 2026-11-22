@@ -47,6 +47,11 @@ Rewritten at the end of every session and at each step of a long job (BT-2). Rea
   Steps (Seq, with SeqSwitch to Roll), Song, Perform (PerformScreen), Sounds. Empty pads act on a still tap's lift
   (emptyActsOnLift). Lessons use dock(tag) targets per layout. Notes: late notes say when they were written; a page
   opened without the key is OPENED until Check for replies finds it; Send all without the key = one bundled page.
+  Panel, sharper (Nov 21 evening, Tyler: icons and scaling looked weird; wanted a worn font, text plus icon, more
+  defined icons): fonts Worn (Rubik Distressed) on keys, Stencil (Black Ops One) for stamped words, Lcd (Share Tech
+  Mono) on readouts, all OFL from Google Fonts via npm. InlayIcon draws the 40 px icons at a whole multiple, in their
+  own colours through enamel() (less saturation, warmer) with a dark offset shadow. Btn shows Icons.forLabel(text)
+  beside the word when not tight. Top bar keys share equal weights in the panel Look.
 - **Live before the overhaul:** build 104 (green, 2026-11-18). The final plan (builds 96 to 101) shipped as runs 97, 98, 101, 102, 103 and 104
   (runs 96, 99 and 100 failed on tests or a compile error and were fixed; run 98's phone test was rerun after an
   emulator download broke). Notes 20, 21, 22 closed. Plan doc: https://claude.ai/artifact/SMmt7Jz3BfDsP7xUqLLEqq .

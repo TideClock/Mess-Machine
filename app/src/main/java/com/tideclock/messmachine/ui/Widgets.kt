@@ -62,6 +62,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.res.imageResource
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.graphics.Color
@@ -244,6 +245,41 @@ val Archivo = FontFamily(
 )
 val Bungee = FontFamily(Font(R.font.bungee))
 val Mono = FontFamily(Font(R.font.plexmono_400, FontWeight.Normal), Font(R.font.plexmono_700, FontWeight.Bold))
+/** The panel Look's type (Nov 21): worn rubber-stamp letters on the keys, a stencil for the tiny stamped words, an LCD face for readouts */
+val Worn = FontFamily(Font(R.font.rubik_distressed))
+val Stencil = FontFamily(Font(R.font.black_ops_one))
+val Lcd = FontFamily(Font(R.font.share_tech_mono))
+
+/** An aged enamel look for the inlaid icons: a little less colour, a little warmer, unless the key is lit. */
+fun enamel(lit: Boolean): androidx.compose.ui.graphics.ColorFilter {
+    val s = if (lit) 1.1f else .78f
+    val lr = .2126f; val lg = .7152f; val lb = .0722f
+    val m = floatArrayOf(
+        lr * (1 - s) + s, lg * (1 - s), lb * (1 - s), 0f, if (lit) 10f else 6f,
+        lr * (1 - s), lg * (1 - s) + s, lb * (1 - s), 0f, if (lit) 6f else 0f,
+        lr * (1 - s), lg * (1 - s), lb * (1 - s) + s, 0f, if (lit) 0f else -12f,
+        0f, 0f, 0f, 1f, 0f,
+    )
+    return androidx.compose.ui.graphics.ColorFilter.colorMatrix(androidx.compose.ui.graphics.ColorMatrix(m))
+}
+
+/**
+ * An icon from Tyler's drawings, inlaid in a key: drawn at a whole-number multiple of its 40 pixels so the pixel art
+ * stays crisp (no uneven pixels), with a dark engraved shadow under it for depth.
+ */
+@Composable
+fun InlayIcon(res: Int, maxDp: androidx.compose.ui.unit.Dp, lit: Boolean, label: String, modifier: Modifier = Modifier) {
+    val dens = androidx.compose.ui.platform.LocalDensity.current
+    val px = with(dens) { maxDp.toPx() }
+    val k = maxOf(1, (px / 40f).toInt())
+    val side = with(dens) { (40f * k).toDp() }
+    val img = androidx.compose.ui.graphics.ImageBitmap.imageResource(res)
+    Box(modifier.size(side)) {
+        androidx.compose.foundation.Image(img, null, Modifier.size(side).offset(1.dp, 1.5.dp), filterQuality = androidx.compose.ui.graphics.FilterQuality.None,
+            colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.Black.copy(alpha = .7f), androidx.compose.ui.graphics.BlendMode.SrcIn))
+        androidx.compose.foundation.Image(img, label, Modifier.size(side), filterQuality = androidx.compose.ui.graphics.FilterQuality.None, colorFilter = enamel(lit))
+    }
+}
 
 /** Words on a colour: whichever of the skin's dark and light reads better on it (on a light skin, Cream is the dark one). */
 fun ink(on: Color): Color {
@@ -383,8 +419,13 @@ fun Btn(
                 .padding(start = if (tight) 12.dp else 20.dp, end = if (tight) 3.dp else if (small) 10.dp else 14.dp, top = if (small) 6.dp else 9.dp, bottom = if (small) 6.dp else 9.dp),
             contentAlignment = Alignment.Center,
         ) {
-            T(text.uppercase(), color = when { tier == Tier.Quiet -> Hw.Engrave.copy(alpha = .6f); on -> lerp(Hw.Engrave, onColor, .35f); else -> Hw.Engrave },
-                size = if (small) 12.sp else 13.sp, lines = 1, spacing = if (tight) .02.em else .1.em, weight = if (tier == Tier.Primary) FontWeight.Black else FontWeight.ExtraBold)
+            // Nov 21: worn rubber-stamp letters, and the icon from Tyler's drawings beside the word when the word has one
+            val icon = if (tight) null else Icons.forLabel(text)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (icon != null) InlayIcon(icon, if (small) 20.dp else 22.dp, on, text, Modifier.padding(end = 6.dp))
+                T(text.uppercase(), color = when { tier == Tier.Quiet -> Hw.Engrave.copy(alpha = .6f); on -> lerp(Hw.Engrave, onColor, .35f); else -> Hw.Engrave },
+                    size = if (small) 12.sp else 13.sp, lines = 1, spacing = if (tight) 0.em else .03.em, family = Worn, weight = FontWeight.Normal)
+            }
         }
         return
     }

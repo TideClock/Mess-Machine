@@ -22,6 +22,14 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 
 /** The pixel icons (tools/icons, 32 x 32 art with an ink outline and a white glow). Written by tools/icons/export.py. */
 object Icons {
+    /** The icon for a button's words (Nov 21): "✂ Sample" finds Sample, "☆ Star" finds Star; null when there is none. */
+    fun forLabel(text: String): Int? {
+        val w = text.replace(Regex("[^A-Za-z ]"), " ").trim().replace(Regex("\\s+"), " ")
+        if (w.isEmpty()) return null
+        all[w]?.let { return it.first }
+        return all.entries.firstOrNull { it.key.equals(w, ignoreCase = true) }?.value?.first
+    }
+
     /** Icon name to drawable, and the tile color group it belongs to. */
     val all: Map<String, Pair<Int, String>> = mapOf(
         "Play" to (R.drawable.ic_play to "transport"),
@@ -219,18 +227,15 @@ fun PanelKey(
         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
     ) {
         androidx.compose.foundation.layout.Box(
-            androidx.compose.ui.Modifier.widthIn(max = 44.dp).fillMaxWidth().height(32.dp).offset(0.dp, if (pressed) 2.dp else 0.dp)
+            androidx.compose.ui.Modifier.widthIn(max = 42.dp).fillMaxWidth().height(34.dp).offset(0.dp, if (pressed) 2.dp else 0.dp)
                 .bakelite(on, onColor, pressed, danger = tier == Tier.Danger, brass = tier == Tier.Primary),
             contentAlignment = androidx.compose.ui.Alignment.Center,
         ) {
-            if (res != null) androidx.compose.foundation.Image(
-                androidx.compose.ui.graphics.ImageBitmap.imageResource(res), contentDescription = text,
-                modifier = androidx.compose.ui.Modifier.padding(start = 8.dp).size(24.dp),
-                filterQuality = androidx.compose.ui.graphics.FilterQuality.None,
-                colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(if (on) lerp(Hw.Engrave, onColor, .5f) else Hw.Engrave, androidx.compose.ui.graphics.BlendMode.SrcIn),
-            ) else T(text.take(3).uppercase(), size = 11.sp, color = Hw.Engrave, lines = 1, modifier = androidx.compose.ui.Modifier.padding(start = 8.dp))
+            // the icon in its own colours (aged, crisp whole pixels), inlaid beside the lamp
+            if (res != null) InlayIcon(res, 26.dp, on, text, androidx.compose.ui.Modifier.padding(start = 9.dp))
+            else T(text.take(3).uppercase(), size = 11.sp, color = Hw.Engrave, lines = 1, family = Worn, weight = androidx.compose.ui.text.font.FontWeight.Normal, modifier = androidx.compose.ui.Modifier.padding(start = 8.dp))
         }
-        if (state.proWords && word != null) T(word.uppercase(), size = 8.sp, color = if (on) onColor else Hw.Engrave.copy(alpha = .8f), lines = 1, spacing = 0.em,
+        if (state.proWords && word != null) T(word.uppercase(), size = 8.sp, color = if (on) onColor else Hw.Engrave.copy(alpha = .8f), lines = 1, spacing = 0.em, family = Stencil, weight = androidx.compose.ui.text.font.FontWeight.Normal,
             modifier = androidx.compose.ui.Modifier.padding(top = 2.dp))
     }
 }
