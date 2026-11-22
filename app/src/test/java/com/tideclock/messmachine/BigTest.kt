@@ -645,7 +645,6 @@ class BigTest {
 
     /** Nov 21 video: HotKeys swipes, the FX vials and Bypass, mutes from the loops strip, the scratch synth, chords. */
     @Test fun nov21VideoSwipesVialsMutesScratch() {
-        val E = com.tideclock.messmachine.engine.Engine
         // HotKeys: down the Padiano, right FX, left Sample, out of the box; each one can change
         assertEquals("padiano", state.swipe["down"])
         rule.onNodeWithTag("pad-1").performTouchInput { down(center); moveBy(Offset(0f, height * 1.2f)); up() }
@@ -658,17 +657,17 @@ class BigTest {
         assertEquals("fx", state.editTab)
         shot("105-fx-vials")
         // the vials: a lamp takes one effect out and back, Bypass takes them all out and brings them back
-        state.fxSendTo(1, E.T_RVB, .6f, false); state.fxSendTo(1, E.T_ECHO, .4f, false); settle()
-        at("fxin-${E.T_RVB}-1").performClick(); settle()
-        assertFalse("reverb out", state.fxIn(1, E.T_RVB))
-        assertEquals("its level is kept", .6f, state.fxSend["1:${E.T_RVB}"]!!, 1e-4f)
-        at("fxin-${E.T_RVB}-1").performClick(); settle()
-        assertTrue("and back in", state.fxIn(1, E.T_RVB))
+        state.fxSendTo(1, Engine.T_RVB, .6f, false); state.fxSendTo(1, Engine.T_ECHO, .4f, false); settle()
+        at("fxin-${Engine.T_RVB}-1").performClick(); settle()
+        assertFalse("reverb out", state.fxIn(1, Engine.T_RVB))
+        assertEquals("its level is kept", .6f, state.fxSend["1:${Engine.T_RVB}"]!!, 1e-4f)
+        at("fxin-${Engine.T_RVB}-1").performClick(); settle()
+        assertTrue("and back in", state.fxIn(1, Engine.T_RVB))
         at("fxstrip-off-1").performClick(); settle()
-        assertTrue("Bypass takes everything out", !state.fxIn(1, E.T_RVB) && !state.fxIn(1, E.T_ECHO))
+        assertTrue("Bypass takes everything out", !state.fxIn(1, Engine.T_RVB) && !state.fxIn(1, Engine.T_ECHO))
         at("fxstrip-off-1").performClick(); settle()
-        assertTrue("and brings it back", state.fxIn(1, E.T_RVB) && state.fxIn(1, E.T_ECHO))
-        assertEquals(.4f, state.fxSend["1:${E.T_ECHO}"]!!, 1e-4f)
+        assertTrue("and brings it back", state.fxIn(1, Engine.T_RVB) && state.fxIn(1, Engine.T_ECHO))
+        assertEquals(.4f, state.fxSend["1:${Engine.T_ECHO}"]!!, 1e-4f)
         at("tray-done").performClick(); settle()
         rule.onNodeWithTag("pad-1").performTouchInput { down(center); moveBy(Offset(-width * 1.2f, 0f)); up() }
         settle()
