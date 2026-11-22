@@ -113,7 +113,8 @@ if [ -z "$xy" ]; then note "pad 6: NOT FOUND"; fail=1; else
   [ -n "$mxy" ] && { adb shell input tap $mxy; sleep 1; adb shell input tap $mxy; sleep 1; }; shot 05-pad-menu
   # menus open in their own popup window, which carries no test names: look for the menu's words
   centre padmenu >/dev/null
-  grep -q -e "✂ SAMPLE" -e "&#9986; SAMPLE" $OUT/ui-now.xml && note "pad menu: opened" || { note "pad menu: DID NOT OPEN"; fail=1; }
+  # the Edit tray (New layout) has test names; the old popup menu (Classic) only its words
+  grep -q -e 'resource-id="menu-hear"' -e 'resource-id="edit-tabs"' -e "✂ SAMPLE" -e "&#9986; SAMPLE" $OUT/ui-now.xml && note "pad menu: opened" || { note "pad menu: DID NOT OPEN"; fail=1; }
   adb shell input keyevent KEYCODE_BACK; sleep 1
   infront "after pad menu"
   cx=$1; cy=$2; r=$(( W / 30 ))
