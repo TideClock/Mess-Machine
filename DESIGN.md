@@ -536,6 +536,12 @@ Ideas Tyler tags "wishlist" go here, not into the build.
   while drums still play; plus the keystroke and touch handling work that multi-layer live play needs. Tyler sees
   the circle-to-XY sphere and layered Padianos with drums as the most unusual part of the app.
 
+## Cancelled
+
+Ideas Tyler has cancelled. Never propose these again.
+
+- 2026-11-22 Hold a pad to sample (EP-133's Sample switch). Cancelled by Tyler.
+
 ## Plan agreed 2026-11-09 (builds after 30)
 
 The proposal doc (claude.ai artifact 7DvA8tAeAYSUofSab1sWFG) is the short version; this is the full spec. Tyler's notes #1 to #6 are on GitHub.
