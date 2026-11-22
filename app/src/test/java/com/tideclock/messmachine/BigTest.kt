@@ -10,13 +10,13 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.swipe
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.swipeUp
-import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
@@ -734,24 +734,25 @@ class BigTest {
         assertTrue("the scratch slot always holds a synth", state.synthOn(SC) != null)
         at("synth-tile").assertExists()
         at("piano-keys-$SC").assertExists()
+        fun tail() = state.notes.trailText().lines().takeLast(6).joinToString(" | ")
         rule.onNodeWithTag("synth-tile").performTouchInput { down(center) }
         settle(); loudest(1024)
-        assertTrue("tapping the synth's pad sounds a note", state.engine.activeVoices() >= 1)
+        assertTrue("tapping the synth's pad plays it (${tail()})", state.notes.trailText().contains("piano ${SC + 1}"))
         rule.onNodeWithTag("synth-tile").performTouchInput { up() }
         settle(); loudest(1024)
         // swipe up on the tile: its Edit tray; the same swipe again closes it
-        rule.onNodeWithTag("synth-tile").performTouchInput { swipeUp() }; settle()
-        assertEquals("edit:$SC", state.tray)
+        rule.onNodeWithTag("synth-tile").performTouchInput { down(center); moveBy(Offset(0f, -height * .45f)); up() }; settle()
+        assertEquals("swipe up on the tile (${tail()})", "edit:$SC", state.tray)
         at("edit-tabs").assertExists()
         at("menu-swap").assertDoesNotExist()
         shot("108b-scratch-edit")
-        rule.onNodeWithTag("synth-tile").performTouchInput { swipeUp() }; settle()
+        rule.onNodeWithTag("synth-tile").performTouchInput { down(center); moveBy(Offset(0f, -height * .45f)); up() }; settle()
         assertEquals(null, state.tray)
         // down folds the keys away and brings them back
         if (state.swipe["down"] == "padiano") {
-            rule.onNodeWithTag("synth-tile").performTouchInput { swipeDown() }; settle()
+            rule.onNodeWithTag("synth-tile").performTouchInput { down(center); moveBy(Offset(0f, height * .45f)); up() }; settle()
             at("piano-keys-$SC").assertDoesNotExist()
-            rule.onNodeWithTag("synth-tile").performTouchInput { swipeDown() }; settle()
+            rule.onNodeWithTag("synth-tile").performTouchInput { down(center); moveBy(Offset(0f, height * .45f)); up() }; settle()
             at("piano-keys-$SC").assertExists()
         }
         at("scratchkind-fm").performClick(); settle()
@@ -2480,7 +2481,9 @@ class BigTest {
         tab("Pads")
         tapPad(0)
         tab("Synth")
-        rule.onNodeWithTag("synth-go-$pad").performClick(); settle()
+        // video 2: the scratch synth shows; the Which synth picker lists the mess's synth pads
+        at("synth-pad").performClick(); settle()
+        rule.onAllNodesWithText("Pad ${pad + 1} ·", substring = true).onFirst().performClick(); settle()
         assertEquals("one tap from a pad with no synth to the synth this mess has", pad, state.project.sel)
         state.midiClearAll()
     }
