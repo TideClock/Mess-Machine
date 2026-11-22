@@ -143,6 +143,17 @@ object Hw {
     val Metal = Color(0xFF8E877D); val MetalHi = Color(0xFFC9C0B2); val MetalLow = Color(0xFF4E4943)
     val Engrave = Color(0xFFE6D8BC); val Brass = Color(0xFFC9A04A); val Oxblood = Color(0xFFA8321F)
     val Plate = Color(0xFF24211F); val PlateTop = Color(0xFF34302C)
+    val Amber = Color(0xFFFFB347); val Glass = Color(0xFF10140F)
+}
+
+/** A readout window for the panel Look: dark glass sunk into a metal bezel, with a faint scanline glow. */
+fun Modifier.lcd(lit: Boolean = false): Modifier = this.drawBehind {
+    val r = CornerRadius(5.dp.toPx()); val bez = 2.5.dp.toPx()
+    drawRoundRect(Brush.verticalGradient(listOf(Hw.MetalLow, Hw.Metal, Hw.MetalHi)), cornerRadius = r)
+    drawRoundRect(if (lit) Color(0xFF1C2416) else Hw.Glass, topLeft = Offset(bez, bez), size = Size(size.width - bez * 2, size.height - bez * 2), cornerRadius = CornerRadius(3.dp.toPx()))
+    var y = bez + 1f
+    while (y < size.height - bez) { drawLine(Hw.Amber.copy(alpha = .035f), Offset(bez, y), Offset(size.width - bez, y), 1f); y += 3f }
+    drawLine(Color.White.copy(alpha = .10f), Offset(bez + 2f, bez + 1.5f), Offset(size.width - bez - 2f, bez + 1.5f), 1.5f)
 }
 
 /** A bakelite key in a worn metal bezel, with a lamp that lights in the key's colour when it is on. */

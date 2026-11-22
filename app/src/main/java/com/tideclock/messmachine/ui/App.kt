@@ -301,12 +301,12 @@ fun Transport(state: AppState) {
         BarBtn(state, "↶", "Undo", { state.undo() }, enabled = state.canUndo && free, tag = "undo", word = "Undo", modifier = Modifier.weight(.55f))
         // tempo and where the music is; the loop letter is its own button now (Nov 18), for loops from every page
         Box(
-            Modifier.weight(.8f).height(36.dp).sticker(C.Well, shadow = 2.dp, border = 2.dp)
+            Modifier.weight(.8f).height(36.dp).let { if (state.look == "panel") it.lcd() else it.sticker(C.Well, shadow = 2.dp, border = 2.dp) }
                 .clickable(enabled = free) { if (state.midiMapOn) state.midiAim(com.tideclock.messmachine.MidiTarget("tempo", 0)) else state.overlay = Overlay.Tempo }.tagged("bpm"),
             contentAlignment = Alignment.Center,
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                T("${P.bpm}", size = 12.sp, color = C.Cream, lines = 1, family = Mono, weight = FontWeight.Bold)
+                T("${P.bpm}", size = 12.sp, color = if (state.look == "panel") Hw.Amber else C.Cream, lines = 1, family = Mono, weight = FontWeight.Bold)
                 // the Pro looks show the lag here (Nov 18), so a creep is visible as it happens
                 if (state.look == "classic") T("BPM", size = 9.sp, color = C.Dim, lines = 1, family = Mono, weight = FontWeight.Bold)
                 else {
@@ -317,11 +317,11 @@ fun Transport(state: AppState) {
         }
         // the loop: where the music is; tap for the row of loops A to H (a pick waits for the bar line while playing)
         Box(
-            Modifier.weight(.9f).height(36.dp).sticker(if (state.loopStripOpen) C.Card2 else C.Black, shadow = 2.dp, border = 2.dp, borderColor = if (state.pendingSlot >= 0) C.Yellow else C.Cream)
+            Modifier.weight(.9f).height(36.dp).let { if (state.look == "panel") it.lcd(lit = state.loopStripOpen || state.pendingSlot >= 0) else it.sticker(if (state.loopStripOpen) C.Card2 else C.Black, shadow = 2.dp, border = 2.dp, borderColor = if (state.pendingSlot >= 0) C.Yellow else C.Cream) }
                 .clickable(enabled = free) { state.loopStripOpen = !state.loopStripOpen }.tagged("loop-open"),
             contentAlignment = Alignment.Center,
         ) {
-            T(if (state.pendingSlot >= 0) "→ " + com.tideclock.messmachine.engine.Project.LETTERS[state.pendingSlot] else position(state), size = 10.sp, color = C.Yellow, lines = 1, family = Mono, weight = FontWeight.Bold, modifier = Modifier.tagged("position"))
+            T(if (state.pendingSlot >= 0) "→ " + com.tideclock.messmachine.engine.Project.LETTERS[state.pendingSlot] else position(state), size = 10.sp, color = if (state.look == "panel") Hw.Amber else C.Yellow, lines = 1, family = Mono, weight = FontWeight.Bold, modifier = Modifier.tagged("position"))
         }
         // What the FAQ (Tyler's name): tap it, then tap anything to learn what it is. Page help moved onto its card
         BarBtn(state, "?", "What the FAQ", { state.switchFaq() }, on = state.faqOn, onColor = C.Teal, tag = "help-toggle", tier = Tier.Quiet, word = "FAQ", modifier = Modifier.weight(.55f))

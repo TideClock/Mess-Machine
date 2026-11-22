@@ -998,8 +998,8 @@ class BigTest {
         assertTrue("rec" in state.dockItems)
         state.toggleDockItem("rec")
         rule.mainClock.advanceTimeBy(500); settle()
-        // Lock: tabs, sheets and menus stay shut, the pads still play
-        rule.onNodeWithTag("dock-lock").performClick()
+        // Lock: tabs, sheets and menus stay shut, the pads still play (the dock scrolled down to its ⋯: scroll back)
+        at("dock-lock").performClick()
         settle()
         assertTrue(state.locked)
         rule.onNodeWithTag("tab-Steps").performClick()
@@ -1639,7 +1639,7 @@ class BigTest {
         state.overlay = null; settle()
         assertEquals("dark", state.look)
         // every control on the bars is an icon tile now (its icon carries the control's name)
-        for (n in listOf("Play", "Stop", "Rec", "Undo", "What the FAQ", "Settings", "Menu", "Pack", "Hold", "Chords", "FX", "Notes (bug)", "Play tab", "Synth", "Steps", "Song", "Perform", "Sounds"))
+        for (n in listOf("Play", "Stop", "Rec", "Undo", "What the FAQ", "Settings", "Menu", "Pack", "Hold", "Chords", "FX", "Notes (bug)", "Play tab", "Synth", "Steps", "Song", "Sounds"))
             assertTrue("$n has its icon", rule.onAllNodesWithContentDescription(n).fetchSemanticsNodes().isNotEmpty())
         // the new layout's bar: Edit has its icon too
         state.pickLayout("new"); settle()

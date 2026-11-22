@@ -230,7 +230,7 @@ fun PanelKey(
                 colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(if (on) lerp(Hw.Engrave, onColor, .5f) else Hw.Engrave, androidx.compose.ui.graphics.BlendMode.SrcIn),
             ) else T(text.take(3).uppercase(), size = 11.sp, color = Hw.Engrave, lines = 1, modifier = androidx.compose.ui.Modifier.padding(start = 8.dp))
         }
-        if (state.proWords && word != null) T(word.uppercase(), size = 8.sp, color = if (on) onColor else Hw.Engrave.copy(alpha = .8f), lines = 1, spacing = .08.em,
+        if (state.proWords && word != null) T(word.uppercase(), size = 8.sp, color = if (on) onColor else Hw.Engrave.copy(alpha = .8f), lines = 1, spacing = 0.em,
             modifier = androidx.compose.ui.Modifier.padding(top = 2.dp))
     }
 }
