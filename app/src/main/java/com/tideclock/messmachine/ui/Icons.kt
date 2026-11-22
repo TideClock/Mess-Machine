@@ -227,12 +227,12 @@ fun PanelKey(
         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
     ) {
         androidx.compose.foundation.layout.Box(
-            androidx.compose.ui.Modifier.widthIn(max = 42.dp).fillMaxWidth().height(34.dp).offset(0.dp, if (pressed) 2.dp else 0.dp)
+            androidx.compose.ui.Modifier.widthIn(max = 44.dp).fillMaxWidth().height(38.dp).offset(0.dp, if (pressed) 2.dp else 0.dp)
                 .bakelite(on, onColor, pressed, danger = tier == Tier.Danger, brass = tier == Tier.Primary),
             contentAlignment = androidx.compose.ui.Alignment.Center,
         ) {
             // the icon in its own colours (aged, crisp whole pixels), inlaid beside the lamp
-            if (res != null) InlayIcon(res, 26.dp, on, text, androidx.compose.ui.Modifier.padding(start = 9.dp))
+            if (res != null) InlayIcon(res, 28.dp, on, text, androidx.compose.ui.Modifier.padding(start = 9.dp))
             else T(text.take(3).uppercase(), size = 11.sp, color = Hw.Engrave, lines = 1, family = Worn, weight = androidx.compose.ui.text.font.FontWeight.Normal, modifier = androidx.compose.ui.Modifier.padding(start = 8.dp))
         }
         if (state.proWords && word != null) T(word.uppercase(), size = 8.sp, color = if (on) onColor else Hw.Engrave.copy(alpha = .8f), lines = 1, spacing = 0.em, family = Stencil, weight = androidx.compose.ui.text.font.FontWeight.Normal,

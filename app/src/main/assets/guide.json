@@ -16,6 +16,7 @@
   ],
   "limits": [
     "The glyphs are your Pro icons cut to one colour; a few may read better redrawn bigger.",
-    "Not built yet: the pad grid filling the screen at 70% view, a tap that only turns a step on or off, a shorter Edit tray for faders. They are in the proposal doc waiting for your call."
+    "Not built yet: the pad grid filling the screen at 70% view, a tap that only turns a step on or off, a shorter Edit tray for faders. They are in the proposal doc waiting for your call.",
+    "Icons are drawn at whole-pixel sizes, so they can look a touch bigger or smaller than each other from one phone to the next."
   ]
 }

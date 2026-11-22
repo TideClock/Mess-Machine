@@ -271,7 +271,8 @@ fun enamel(lit: Boolean): androidx.compose.ui.graphics.ColorFilter {
 fun InlayIcon(res: Int, maxDp: androidx.compose.ui.unit.Dp, lit: Boolean, label: String, modifier: Modifier = Modifier) {
     val dens = androidx.compose.ui.platform.LocalDensity.current
     val px = with(dens) { maxDp.toPx() }
-    val k = maxOf(1, (px / 40f).toInt())
+    // the nearest whole multiple (a 26 dp icon on a 2.6x screen is 68 px: 2x, 80 px, not 1x and half the size)
+    val k = maxOf(1, Math.round(px / 40f))
     val side = with(dens) { (40f * k).toDp() }
     val img = androidx.compose.ui.graphics.ImageBitmap.imageResource(res)
     Box(modifier.size(side)) {
@@ -421,9 +422,11 @@ fun Btn(
         ) {
             // Nov 21: worn rubber-stamp letters, and the icon from Tyler's drawings beside the word when the word has one
             val icon = if (tight) null else Icons.forLabel(text)
+            // with the icon showing, the little symbol in the words (✂, ☆) goes: the icon says it better
+            val words = if (icon != null) text.replace(Regex("^[^A-Za-z0-9]+"), "") else text
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (icon != null) InlayIcon(icon, if (small) 20.dp else 22.dp, on, text, Modifier.padding(end = 6.dp))
-                T(text.uppercase(), color = when { tier == Tier.Quiet -> Hw.Engrave.copy(alpha = .6f); on -> lerp(Hw.Engrave, onColor, .35f); else -> Hw.Engrave },
+                if (icon != null) InlayIcon(icon, if (small) 21.dp else 24.dp, on, text, Modifier.padding(end = 6.dp))
+                T(words.uppercase(), color = when { tier == Tier.Quiet -> Hw.Engrave.copy(alpha = .6f); on -> lerp(Hw.Engrave, onColor, .35f); else -> Hw.Engrave },
                     size = if (small) 12.sp else 13.sp, lines = 1, spacing = if (tight) 0.em else .03.em, family = Worn, weight = FontWeight.Normal)
             }
         }
