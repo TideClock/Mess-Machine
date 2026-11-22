@@ -735,24 +735,25 @@ class BigTest {
         at("synth-tile").assertExists()
         at("piano-keys-$SC").assertExists()
         fun tail() = state.notes.trailText().lines().takeLast(6).joinToString(" | ")
-        rule.onNodeWithTag("synth-tile").performTouchInput { down(center) }
+        at("synth-tile").performTouchInput { down(center) }
         settle(); loudest(1024)
         assertTrue("tapping the synth's pad plays it (${tail()})", state.notes.trailText().contains("piano ${SC + 1}"))
         rule.onNodeWithTag("synth-tile").performTouchInput { up() }
         settle(); loudest(1024)
-        // swipe up on the tile: its Edit tray; the same swipe again closes it
-        rule.onNodeWithTag("synth-tile").performTouchInput { down(center); moveBy(Offset(0f, -height * .9f)); up() }; settle()
+        // swipe up on the tile: its Edit tray; the same swipe again closes it (at() scrolls the tile back into view:
+        // checking the keys scrolled the page down, and a touch on a sliver of the tile has no room to swipe)
+        at("synth-tile").performTouchInput { down(center); moveBy(Offset(0f, -height * .9f)); up() }; settle()
         assertEquals("swipe up on the tile (${tail()})", "edit:$SC", state.tray)
         at("edit-tabs").assertExists()
         at("menu-swap").assertDoesNotExist()
         shot("108b-scratch-edit")
-        rule.onNodeWithTag("synth-tile").performTouchInput { down(center); moveBy(Offset(0f, -height * .9f)); up() }; settle()
+        at("synth-tile").performTouchInput { down(center); moveBy(Offset(0f, -height * .9f)); up() }; settle()
         assertEquals(null, state.tray)
         // down folds the keys away and brings them back
         if (state.swipe["down"] == "padiano") {
-            rule.onNodeWithTag("synth-tile").performTouchInput { down(center); moveBy(Offset(0f, height * .9f)); up() }; settle()
+            at("synth-tile").performTouchInput { down(center); moveBy(Offset(0f, height * .9f)); up() }; settle()
             at("piano-keys-$SC").assertDoesNotExist()
-            rule.onNodeWithTag("synth-tile").performTouchInput { down(center); moveBy(Offset(0f, height * .9f)); up() }; settle()
+            at("synth-tile").performTouchInput { down(center); moveBy(Offset(0f, height * .9f)); up() }; settle()
             at("piano-keys-$SC").assertExists()
         }
         at("scratchkind-fm").performClick(); settle()
