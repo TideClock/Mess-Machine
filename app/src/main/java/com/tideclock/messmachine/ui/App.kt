@@ -658,7 +658,7 @@ fun Modifier.watchTouches(state: AppState): Modifier = composed {
                         if (state.flickOn && downTag != null && !downTag!!.startsWith("pad-") && quick && dy > far && dx < dy / 2) state.openSettingsFor(downTag!!)
                         // Nov 21: a quick swipe off a pad does what HotKeys (Settings) says for that direction:
                         // up the Edit tray, down the Padiano, left Sample, right FX, out of the box
-                        else if (state.padFlick && downTag?.startsWith("pad-") == true && quick) {
+                        else if (state.padFlick && (downTag?.startsWith("pad-") == true || downTag == "synth-tile") && quick) {
                             val dir = when {
                                 dy > far && dx < dy / 2 -> "up"
                                 -dy > far && dx < ady / 2 -> "down"
@@ -666,7 +666,8 @@ fun Modifier.watchTouches(state: AppState): Modifier = composed {
                                 sx > far && ady < dx / 2 -> "right"
                                 else -> null
                             }
-                            if (dir != null) state.padSwipe(downTag!!, dir)
+                            if (dir != null && downTag == "synth-tile") state.padSwipeAt(state.synthTilePad, dir, null)
+                            else if (dir != null) state.padSwipe(downTag!!, dir)
                         }
                     }
                 }

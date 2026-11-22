@@ -144,37 +144,28 @@ private fun SynthPadTile(state: AppState, pad: Int, sp: Synth.Patch) {
     val k = state.project.kit.getOrNull(pad).orEmpty()
     val col = padColor(Color(state.lib.colorOf(k)))
     var down by remember { mutableStateOf(false) }
+    androidx.compose.runtime.SideEffect { state.synthTilePad = pad }
     val muted = k in state.project.mutes
     Box(
         Modifier
             .size((76 * UiLook.big).dp)
             .bakelite(on = down, lamp = col, pressed = down, tint = col.copy(alpha = if (down) .9f else .55f))
             .tagged("synth-tile")
+            // tap plays the synth's own note; a quick swipe is read by the app's touch watcher (watchTouches), the same
+            // way as a grid pad's, and does what HotKeys says
             .pointerInput(pad) {
                 awaitEachGesture {
                     val d = awaitFirstDown()
                     d.consume()
                     down = true
                     state.pianoDown(pad, 0)
-                    val slop = 26.dp.toPx()
-                    var swiped = false
                     while (true) {
                         val e = awaitPointerEvent()
                         val c = e.changes.firstOrNull { it.id == d.id } ?: break
-                        if (!swiped) {
-                            val dv = c.position - d.position
-                            if (kotlin.math.abs(dv.x) > slop || kotlin.math.abs(dv.y) > slop) {
-                                swiped = true
-                                state.pianoUp(pad, 0)
-                                down = false
-                                val dir = if (kotlin.math.abs(dv.x) > kotlin.math.abs(dv.y)) (if (dv.x > 0) "right" else "left") else (if (dv.y > 0) "down" else "up")
-                                state.padSwipeAt(pad, dir, null)
-                            }
-                        }
                         c.consume()
                         if (!c.pressed) break
                     }
-                    if (!swiped) state.pianoUp(pad, 0)
+                    state.pianoUp(pad, 0)
                     down = false
                 }
             },

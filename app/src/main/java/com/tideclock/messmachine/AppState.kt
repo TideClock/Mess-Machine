@@ -595,6 +595,8 @@ class AppState(private val app: Context) {
      */
     /** Show the scratch synth even when the picked pad has a synth of its own. */
     var synthScratch by mutableStateOf(false)
+    /** Which synth the Synth page's pad tile plays right now (the scratch slot or a pad). */
+    var synthTilePad = Project.SCRATCH
     /** The Synth page's keyboard, folded away by the tile's Padiano swipe. */
     var synthKeysHidden by mutableStateOf(false)
     /** The scratch slot always holds a synth: a mess without one gets the first Analog preset. */
@@ -2366,6 +2368,8 @@ class AppState(private val app: Context) {
             tag == "dock-cut" || tag == "dock-res" || tag == "dock-target" || tag == "dock-stay" -> "dockfilter"
             tag == "bpm" -> "tempo"
             tag == "loop-open" || tag == "position" -> "loops"
+            // the Synth tab's pad tile: its Edit tray (Edit, then tap; and how its swipes are found)
+            tag == "synth-tile" -> "edit:$synthTilePad"
             else -> null
         }
     }

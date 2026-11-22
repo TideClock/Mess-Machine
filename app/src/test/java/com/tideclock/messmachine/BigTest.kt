@@ -741,18 +741,18 @@ class BigTest {
         rule.onNodeWithTag("synth-tile").performTouchInput { up() }
         settle(); loudest(1024)
         // swipe up on the tile: its Edit tray; the same swipe again closes it
-        rule.onNodeWithTag("synth-tile").performTouchInput { down(center); moveBy(Offset(0f, -height * .45f)); up() }; settle()
+        rule.onNodeWithTag("synth-tile").performTouchInput { down(center); moveBy(Offset(0f, -height * .9f)); up() }; settle()
         assertEquals("swipe up on the tile (${tail()})", "edit:$SC", state.tray)
         at("edit-tabs").assertExists()
         at("menu-swap").assertDoesNotExist()
         shot("108b-scratch-edit")
-        rule.onNodeWithTag("synth-tile").performTouchInput { down(center); moveBy(Offset(0f, -height * .45f)); up() }; settle()
+        rule.onNodeWithTag("synth-tile").performTouchInput { down(center); moveBy(Offset(0f, -height * .9f)); up() }; settle()
         assertEquals(null, state.tray)
         // down folds the keys away and brings them back
         if (state.swipe["down"] == "padiano") {
-            rule.onNodeWithTag("synth-tile").performTouchInput { down(center); moveBy(Offset(0f, height * .45f)); up() }; settle()
+            rule.onNodeWithTag("synth-tile").performTouchInput { down(center); moveBy(Offset(0f, height * .9f)); up() }; settle()
             at("piano-keys-$SC").assertDoesNotExist()
-            rule.onNodeWithTag("synth-tile").performTouchInput { down(center); moveBy(Offset(0f, height * .45f)); up() }; settle()
+            rule.onNodeWithTag("synth-tile").performTouchInput { down(center); moveBy(Offset(0f, height * .9f)); up() }; settle()
             at("piano-keys-$SC").assertExists()
         }
         at("scratchkind-fm").performClick(); settle()
