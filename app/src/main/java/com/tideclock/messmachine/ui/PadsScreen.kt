@@ -12,6 +12,7 @@ import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Column
@@ -197,6 +198,11 @@ fun BottomDock(state: AppState) {
             // Nov 21 fix: the chord shows only while Chords is on (it used to show the last one with Chords off)
             val keyText = "${Theory.NN[P.root]} ${P.scale.lowercase()}" + (if (state.chordMode != "off") " · " + chordName(state.chordMode).lowercase() else "") + if (state.keysBarOpen) " ▾" else " ▴"
             if (state.look == "classic") Btn(keyText, { state.switchKeysBar() }, small = true, tight = true, tier = Tier.Quiet, tag = "keysbar-open", modifier = Modifier.weight(1f))
+            // Nov 21 video: in the panel Look the key reads out on an amber LCD like BPM and Loop (the pink key tile was left over)
+            else if (UiLook.panel) Box(Modifier.weight(1f).padding(start = 4.dp, end = 2.dp).heightIn(min = 40.dp).lcd().clickable { state.switchKeysBar() }.tagged("keysbar-open")
+                .padding(horizontal = 8.dp, vertical = 6.dp), contentAlignment = Alignment.CenterStart) {
+                T(keyText.uppercase(), size = 13.sp, color = Hw.Amber, lines = 1, family = Lcd, weight = androidx.compose.ui.text.font.FontWeight.Normal)
+            }
             else Row(Modifier.weight(1f).clickable { state.switchKeysBar() }.tagged("keysbar-open"), verticalAlignment = Alignment.CenterVertically) {
                 PixIcon("Key and scale", 30.dp)
                 T(keyText.uppercase(), size = 11.sp, color = railText(state), lines = 1, modifier = Modifier.padding(start = 6.dp))
@@ -209,7 +215,8 @@ fun BottomDock(state: AppState) {
 @Composable
 fun KeysPanel(state: AppState) {
     val P = state.project
-    Column(Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 8.dp).tagged("keys-panel")) {
+    // clear of the rail's screws at the edges (the HOLD word sat on one)
+    Column(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 8.dp).tagged("keys-panel")) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             T("THE KEY", size = 11.sp, color = C.Yellow, spacing = .1.em, modifier = Modifier.weight(1f))
             CloseScrew({ state.switchKeysBar(false) }, tag = "keys-close", label = "Close the key")
@@ -224,11 +231,11 @@ fun KeysPanel(state: AppState) {
             }
         }
         HoldBar(state)
-        Note(
-            if (state.lastChord.isNotEmpty()) state.lastChord else "${Theory.NN[P.root]} ${P.scale.lowercase()}" +
-                if (state.keysMode) " · the grid plays ${state.lib.titleOf(state.selKey()).ifEmpty { "the pad you picked" }}" else "",
-            color = C.Yellow, size = 13.sp, modifier = Modifier.padding(top = 6.dp),
-        )
+        val readout = if (state.lastChord.isNotEmpty()) state.lastChord else "${Theory.NN[P.root]} ${P.scale.lowercase()}" +
+            if (state.keysMode) " · the grid plays ${state.lib.titleOf(state.selKey()).ifEmpty { "the pad you picked" }}" else ""
+        if (UiLook.panel) Box(Modifier.padding(top = 8.dp).lcd().padding(horizontal = 10.dp, vertical = 6.dp)) {
+            T(readout.uppercase(), size = 14.sp, color = Hw.Amber, family = Lcd, weight = androidx.compose.ui.text.font.FontWeight.Normal)
+        } else Note(readout, color = C.Yellow, size = 13.sp, modifier = Modifier.padding(top = 6.dp))
     }
 }
 
@@ -423,7 +430,9 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
         // held by Hold: an H in the corner, so you can see what is still playing on its own
         if (!keys && (1000 + i) in state.latched) T("H", size = 12.sp, color = onPad, family = Mono, weight = FontWeight.Black, modifier = Modifier.align(Alignment.BottomEnd))
         if (empty && !keys) T("+", size = 22.sp, color = C.Empty, weight = FontWeight.Black, modifier = Modifier.align(Alignment.BottomEnd).tagged("pad-pick-$d"))
-        else T(main, size = if (keys) 18.sp else padFont(main, state.dockOpen, padDp), color = if (empty) C.Empty else onPad, weight = FontWeight.Black, lines = 3, modifier = Modifier.align(Alignment.BottomStart))
+        // Nov 21 video: with a sheet over the bottom of the grid (the key, a tray) the names go to the top, where they still show
+        else T(main, size = if (keys) 18.sp else padFont(main, state.dockOpen, padDp), color = if (empty) C.Empty else onPad, weight = FontWeight.Black, lines = 3,
+            modifier = if (!keys && !empty && (state.keysBarOpen || state.tray != null)) Modifier.align(Alignment.TopStart).padding(top = 18.dp) else Modifier.align(Alignment.BottomStart))
     }
 }
 
@@ -445,9 +454,11 @@ fun HoldBar(state: AppState, modifier: Modifier = Modifier) {
     Wrap(modifier.padding(top = 8.dp), gap = 6.dp) {
         T("HOLD", size = 11.sp, color = if (state.holdOn) C.Yellow else C.Dim, spacing = .1.em)
         Btn("−", { state.changeHoldCount(state.holdCount - 1) }, small = true, enabled = state.holdCount > 0, tag = "hold-down", modifier = Modifier.widthIn(min = 40.dp))
-        Box(Modifier.size(width = 54.dp, height = 34.dp).background(C.Well).border(2.dp, if (state.holdOn) C.Yellow else C.Cream), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(width = 58.dp, height = if (UiLook.panel) 42.dp else 34.dp).then(if (UiLook.panel) Modifier.lcd() else Modifier.background(C.Well).border(2.dp, if (state.holdOn) C.Yellow else C.Cream)), contentAlignment = Alignment.Center) {
             val n = if (state.holdCount == 0) "LAST" else "${state.holdCount}"
-            T(if (state.holdOn && state.holdCount > 0) "${state.latched.size}/$n" else n, size = 13.sp, color = if (state.holdOn) C.Yellow else C.Dim, family = Mono, weight = FontWeight.Bold)
+            T(if (state.holdOn && state.holdCount > 0) "${state.latched.size}/$n" else n, size = if (UiLook.panel) 16.sp else 13.sp,
+                color = if (UiLook.panel) Hw.Amber.copy(alpha = if (state.holdOn) 1f else .6f) else if (state.holdOn) C.Yellow else C.Dim,
+                family = if (UiLook.panel) Lcd else Mono, weight = if (UiLook.panel) FontWeight.Normal else FontWeight.Bold)
         }
         Btn("+", { state.changeHoldCount(state.holdCount + 1) }, small = true, enabled = state.holdCount < 8, tag = "hold-up", modifier = Modifier.widthIn(min = 40.dp))
         Btn("Let go", { state.releaseHolds() }, small = true, color = C.Riot, enabled = state.latched.isNotEmpty(), tag = "hold-release")

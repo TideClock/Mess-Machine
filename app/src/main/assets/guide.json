@@ -1,22 +1,24 @@
 {
-  "title": "The hardware panel, sharper",
+  "title": "Vials, HotKeys and a synth to play",
   "thisBuild": [
-    "New Look: the hardware panel. Bakelite keys in worn metal, a glass lamp that lights when a key is on, and glyphs cut from your own drawings. Settings, Look switches back to Classic or Pro any time.",
-    "Sharper panel (Nov 21 evening): the keys use worn rubber-stamp letters, the small words under icons are stencilled, and the BPM and loop read out on an amber LCD face. Icons are inlaid in their own colours, aged a little, at whole-pixel sizes so they stay crisp, with an engraved shadow. Buttons whose word has an icon show both. Every key on the top bar is the same size now.",
-    "Every sheet, tray and strip comes off with the screw in its corner (tap it and it turns out), and Back does the same. The lanes in Steps, the row tools, the loops strip and the key panel all have one now.",
-    "Flick a pad up to open its Edit tray. Edit, then the pad, still works.",
-    "Repeat's rate and pattern are two separate words under RPT, each with its own menu: how fast, and Up, Down, Up-down, Random or a rest pattern.",
-    "Steps and Roll are one tab, Seq, with a Steps or Roll switch at the top. Perform is a new tab: the throws, the Mud filter, and the picked pad's XY square and FX faders.",
-    "Fixes: an empty pad only records or opens the picker on a still tap's lift; lessons work in the new layout; help text no longer talks about Menu and the side dock; the key shows the chord only with Chords on; Send all without the key puts every waiting note on one GitHub page, newest first, each with when it was written."
+    "Keys: the lamp moved into the metal lip under each key, so the word and icon sit in the middle. Keys that only do something (Stop, Undo, plus, minus, Hear it) have no lamp. Icons are as big as the key allows, and keys grow with a wide screen.",
+    "HotKeys in Settings: what a quick swipe off a pad opens. Out of the box up is the Edit tray, down the Padiano, left Sample, right FX. Each direction can be anything, or nothing.",
+    "FX are glass vials now, every effect at once. Drag a vial to fill it. The lamp under it takes that effect out and puts it back where it was; hold the lamp for its Auto lane. Bypass takes them all out and brings them back exactly.",
+    "Perform: the throws are vials on a brass master plate. Where your finger lands is how much, slide to change it. Tap a name for its settings.",
+    "Mutes: tap LOOP on the top bar on any page. Under the loops: pad mutes (lit is heard) and the whole bank. Perform has loops and mutes at the top.",
+    "Synth opens on a scratch synth you can play right away, on no pad. Pick a kind and preset, turn the knobs, play the keys, then Put it on a pad.",
+    "Chords on with no Padiano out opens the picked pad's. The key reads out on an amber LCD. BAR on the loops is now Wait bar or Now (it never added bars: Seq, Steps, the 1 bar key does)."
   ],
   "watch": [
-    "Play for ten minutes on the panel Look: do the keys feel like hardware, and is every word readable?",
-    "Flick pads up while the loop plays: does the tray ever open when you only meant to play?",
-    "Close everything with the screw or Back: is anything still stuck open?"
+    "Play with swipes on: does down for the Padiano ever fire when you only meant to hit a pad?",
+    "Throw vials while the loop plays: does landing low feel like a little and the top like all of it?",
+    "On the Fold's inner screen: do the keys look full size now, not small and far apart?"
   ],
   "limits": [
-    "The glyphs are your Pro icons cut to one colour; a few may read better redrawn bigger.",
-    "Not built yet: the pad grid filling the screen at 70% view, a tap that only turns a step on or off, a shorter Edit tray for faders. They are in the proposal doc waiting for your call.",
-    "Icons are drawn at whole-pixel sizes, so they can look a touch bigger or smaller than each other from one phone to the next."
+    "Bypass and each vial's in or out are live only: a reload brings every effect back in.",
+    "Muting a sound mutes it on every pad that has it.",
+    "The scratch synth has no Granular (it reads a sound off a pad) and no Full knobs; put it on a pad for those.",
+    "A left swipe that starts right at the screen's edge is Android's Back, not Sample.",
+    "One dock idea for the whole app is planned, not built: today mutes ride under the loops strip."
   ]
 }

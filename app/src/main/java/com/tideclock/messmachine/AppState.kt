@@ -56,6 +56,10 @@ data class Module(
 /** What a FannyPack can hold, in the order the strips stack. */
 val PACK_STRIPS = listOf("keys" to "Keys", "fx" to "FX", "lfo" to "LFO", "xy" to "XY")
 
+/** HotKeys: swipe directions off a pad, with what each does out of the box (Nov 21 video). */
+val SWIPE_DEFAULTS = listOf("up" to "edit", "down" to "padiano", "left" to "sample", "right" to "fx")
+val SWIPE_ACTIONS = listOf("edit" to "Edit tray", "padiano" to "Padiano", "sample" to "Sample", "fx" to "FX", "pack" to "FannyPack", "off" to "Nothing")
+
 /** The FX strip's faders: live sends on the pad, the same targets XY and recorded moves use. */
 val FX_STRIP = listOf(
     Engine.T_RVB to "Verb", Engine.T_ECHO to "Echo", Engine.T_DIRT to "Dirt", Engine.T_CRUSH to "Crush",
@@ -64,6 +68,9 @@ val FX_STRIP = listOf(
 
 /** Every fader the FX strip can show; you pick which (Nov 18). Wobble moved into the LFO strip as a preset. */
 val FX_FADERS = FX_STRIP.map { it.second } + listOf("Cut", "Res")
+
+/** Every target the FX vials set, the filter's two included. */
+val FX_ALL_T = FX_STRIP.map { it.first } + listOf(Engine.T_FILTER, Engine.T_RES)
 
 /** A chord-set slot's place in the note ids (pianoId): above every real note (the highest is about 84). */
 const val SLOT_P = 92
@@ -561,6 +568,29 @@ class AppState(private val app: Context) {
 
     /** Simple, Full or Synthipad, for this session. */
     var synthView by mutableStateOf("simple")
+
+    /*
+     * The Synth tab's own synth (Nov 21 video): the tab opens on a synth you can play straight away, on no pad. Pick
+     * its kind and preset, turn its knobs, play its keys, then put it on a pad when it is worth keeping.
+     */
+    var scratch by mutableStateOf(Synth.ANALOG.presets.first().copy())
+        private set
+    var scratchV by mutableIntStateOf(0)
+        private set
+    var scratchOct by mutableIntStateOf(0)
+    /** Show the scratch synth even when the picked pad has a synth of its own. */
+    var synthScratch by mutableStateOf(false)
+    fun loadScratch(p: Synth.Patch) { scratch = p.copy(); scratchV++; engine.scratchPatch(scratch); notes.trail("scratch synth ${p.name}") }
+    fun turnScratch(id: String, x: Double) { scratch.set(id, x); scratchV++; engine.scratchPatch(scratch) }
+    fun scratchDown(id: Int, pitch: Int) { if (!locked) engine.scratchDown(id, scratch, pitch, -1f) }
+    fun scratchUp(id: Int) { engine.scratchUp(id) }
+    /** The scratch synth onto a pad (a copy: the scratch synth stays to keep playing with). */
+    fun scratchToPad(pad: Int) {
+        if (pad !in 0 until Project.NPADS) return
+        newSynth(pad, scratch)
+        synthScratch = false
+        say("${scratch.name} is on pad ${pad + 1}. Its knobs are here; Steps and the Padiano play it.")
+    }
 
     /** The synth on a pad, or null. */
     fun synthOn(pad: Int): Synth.Patch? = project.synth(project.kit.getOrNull(pad))
@@ -1468,6 +1498,25 @@ class AppState(private val app: Context) {
 
     fun toggleMute(key: String) = edit { if (!mutes.remove(key)) mutes.add(key) }
 
+    /*
+     * Mutes from anywhere (Nov 21 video): the mute rows under the loops strip (tap LOOP on the top bar) and on
+     * Perform. A pad mutes its sound; a bank mutes every sound on it, and unmutes them all when they are all muted.
+     */
+    var muteBankView by mutableIntStateOf(-1)
+    fun padAudible(pad: Int): Boolean { val k = project.kit.getOrNull(pad).orEmpty(); return k.isNotEmpty() && project.audible(k) }
+    fun togglePadMute(pad: Int) {
+        val k = project.kit.getOrNull(pad).orEmpty(); if (k.isEmpty()) return
+        toggleMute(k); notes.trail("mute pad ${pad + 1} ${k in project.mutes}")
+    }
+    private fun bankKeys(b: Int): List<String> = (b * Project.BANK until (b + 1) * Project.BANK).map { project.kit[it] }.filter { it.isNotEmpty() }.distinct()
+    fun bankMuted(b: Int): Boolean { val ks = bankKeys(b); return ks.isNotEmpty() && ks.all { it in project.mutes } }
+    fun toggleBankMute(b: Int) {
+        val ks = bankKeys(b); if (ks.isEmpty()) return
+        val all = ks.all { it in project.mutes }
+        edit { if (all) mutes.removeAll(ks.toSet()) else mutes.addAll(ks) }
+        notes.trail("mute bank ${b + 1} ${!all}")
+    }
+
     /** Where each pad of the bank sits on screen, for carrying a sound onto another pad. */
     val padRects = HashMap<Int, androidx.compose.ui.geometry.Rect>()
 
@@ -2092,6 +2141,48 @@ class AppState(private val app: Context) {
     var padFlick by mutableStateOf(prefs.getBoolean("padFlick", true))
     fun switchPadFlick() { padFlick = !padFlick; prefs.edit().putBoolean("padFlick", padFlick).apply() }
 
+    /**
+     * HotKeys (Nov 21 video): what a quick swipe off a pad does, one action per direction, set in Settings. padFlick
+     * above is the on and off for all four. Up opens the Edit tray, down the Padiano, left Sample, right FX.
+     */
+    val swipe = mutableStateMapOf<String, String>().apply { for ((d, def) in SWIPE_DEFAULTS) put(d, prefs.getString("swipe-$d", def) ?: def) }
+    fun setSwipe(dir: String, act: String) { swipe[dir] = act; prefs.edit().putString("swipe-$dir", act).apply(); notes.trail("hotkey $dir $act") }
+
+    /** A swipe off pad d (on screen) toward dir: does whatever HotKeys says. */
+    fun padSwipe(tag: String, dir: String) {
+        if (!padFlick || sphere != null || locked) return
+        val d = tag.substringAfterLast('-').toIntOrNull() ?: return
+        val pad = bank * Project.BANK + d
+        val act = swipe[dir] ?: "off"
+        if (act == "off") return
+        val k = project.kit.getOrNull(pad).orEmpty()
+        if (k.isEmpty() && act != "edit") return
+        if (project.sel != pad) selectPad(pad, false)
+        notes.trail("swipe $dir $act ${pad + 1}")
+        when (act) {
+            "edit" -> openSettingsFor(tag)
+            "padiano" -> { tray = null; padMenu = -1; openPadiano(pad) }
+            "pack" -> { tray = null; padMenu = -1; togglePack(pad) }
+            "sample" -> { tray = null; padMenu = -1; if (Project.isSynth(k)) tab = Tab.Synth else overlay = Overlay.Doctor(k) }
+            "fx" -> {
+                padMenu = -1
+                if (layout == "classic") { if ("fx" !in packOf(pad)) togglePackStrip(pad, "fx"); packHidden[pad] = (packHidden[pad] ?: emptySet()) - "fx"; if (pad !in keyboards) toggleKeyboard(pad) }
+                else { pickEditTab("fx"); openTray("edit:$pad") }
+            }
+        }
+    }
+
+    /** Out from under the pad's row: its FannyPack with the Padiano in it (adds the Padiano when the pack has none). */
+    fun openPadiano(pad: Int) {
+        if (project.kit.getOrNull(pad).isNullOrEmpty()) { say("Put a sound on pad ${pad + 1} first."); return }
+        if ("keys" !in packOf(pad)) setPadOpt(pad, commit = false) { pack = (packOf(pad) + "keys").let { now -> PACK_STRIPS.map { it.first }.filter { it in now } }.joinToString(",") }
+        packHidden[pad] = (packHidden[pad] ?: emptySet()) - "keys"
+        if (pad !in keyboards) toggleKeyboard(pad)
+    }
+
+    /** Is any Padiano showing right now (chords come out of a Padiano). */
+    fun padianoOut(): Boolean = keyboards.any { "keys" in packOf(it) && "keys" !in (packHidden[it] ?: emptySet()) }
+
     /** The Edit tray's open drawer (sound, fx, keys, mod, more); it stays where you left it. */
     var editTab by mutableStateOf(prefs.getString("editTab", "sound") ?: "sound")
     fun pickEditTab(t: String) { editTab = t; prefs.edit().putString("editTab", t).apply() }
@@ -2265,7 +2356,13 @@ class AppState(private val app: Context) {
     /** One tap between chords and single notes (Tyler, Nov 17): Off remembers what was on. */
     fun toggleChords() {
         if (chordMode != "off") { lastChordMode = chordMode; prefs.edit().putString("chordLast", chordMode).apply(); pickChordMode("off") }
-        else pickChordMode(lastChordMode)
+        else {
+            pickChordMode(lastChordMode)
+            // Nov 21 video: chords come out of a Padiano, so turning them on with none out opens the picked pad's
+            if (!keysMode && !padianoOut() && tab == Tab.Pads && project.kit.getOrNull(project.sel).orEmpty().isNotEmpty()) {
+                openPadiano(project.sel); say("Chords play from the Padiano: pad ${project.sel + 1}'s is out.")
+            }
+        }
     }
 
     /** A chord set's slot played from the Padiano's slot row. j is the slot, oct whole octaves from the Padiano. */
@@ -3053,9 +3150,35 @@ class AppState(private val app: Context) {
         if (midiMapOn && on) midiAim(MidiTarget("fx", pad, t))
         val x = v.coerceIn(0f, 1f)
         fxSend["$pad:$t"] = x
+        // moving a bypassed vial brings that one effect back in; the rest stay out
+        if (!fxIn(pad, t)) {
+            if (pad in padBypass) { padBypass.remove(pad); for (o in FX_ALL_T) if (o != t) fxOut["$pad:$o"] = true }
+            fxOut.remove("$pad:$t")
+        }
         engine.home(pad, t, x)
         recordMoves(pad, mapOf(t to x), setOf(t), on)
         keepFxSoon()
+    }
+
+    /*
+     * Bypass (Nov 21 video): Off used to zero every fader. Now each vial's lamp takes its effect out and puts it back
+     * where it was, and Bypass takes them all out at once and brings back exactly what was in. Not saved: a reload
+     * comes back with everything in.
+     */
+    val fxOut = mutableStateMapOf<String, Boolean>()
+    val padBypass = mutableStateListOf<Int>()
+    fun fxIn(pad: Int, t: Int): Boolean = pad !in padBypass && fxOut["$pad:$t"] != true
+    private fun fxApply(pad: Int, t: Int) { engine.home(pad, t, if (fxIn(pad, t)) fxSend["$pad:$t"] ?: 0f else 0f) }
+    fun toggleFxIn(pad: Int, t: Int) {
+        if (pad in padBypass) { padBypass.remove(pad); for (o in FX_ALL_T) fxOut["$pad:$o"] = o != t || fxOut["$pad:$o"] == true; fxOut.remove("$pad:$t") }
+        else if (fxOut["$pad:$t"] == true) fxOut.remove("$pad:$t") else fxOut["$pad:$t"] = true
+        for (o in FX_ALL_T) fxApply(pad, o)
+        notes.trail("fx ${if (fxIn(pad, t)) "in" else "out"} $pad:$t")
+    }
+    fun toggleBypass(pad: Int) {
+        if (pad in padBypass) padBypass.remove(pad) else padBypass.add(pad)
+        for (o in FX_ALL_T) fxApply(pad, o)
+        notes.trail("fx bypass ${pad + 1} ${pad in padBypass}")
     }
 
     /** Every FX strip fader on a pad back to zero. */

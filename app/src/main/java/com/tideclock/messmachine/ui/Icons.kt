@@ -190,11 +190,13 @@ fun railText(state: com.tideclock.messmachine.AppState): androidx.compose.ui.gra
 @androidx.compose.runtime.Composable
 fun BarBtn(
     state: com.tideclock.messmachine.AppState, text: String, icon: String, onClick: () -> Unit, modifier: androidx.compose.ui.Modifier = androidx.compose.ui.Modifier,
-    on: Boolean = false, onColor: androidx.compose.ui.graphics.Color = C.Yellow, enabled: Boolean = true, tag: String? = null, word: String? = null,
+    on: Boolean? = null, onColor: androidx.compose.ui.graphics.Color = C.Yellow, enabled: Boolean = true, tag: String? = null, word: String? = null,
     tier: Tier = Tier.Normal, color: androidx.compose.ui.graphics.Color = C.Ink,
 ) {
-    if (state.look == "classic") { Btn(text, onClick, modifier, color = color, on = on, onColor = onColor, enabled = enabled, small = true, tight = true, tag = tag, tier = tier); return }
-    if (state.look == "panel") { PanelKey(state, text, icon, onClick, modifier, on, onColor, enabled, tag, word, tier); return }
+    val lamped = on != null
+    @Suppress("NAME_SHADOWING") val on = on == true
+    if (state.look == "classic") { Btn(text, onClick, modifier, color = color, on = if (lamped) on else null, onColor = onColor, enabled = enabled, small = true, tight = true, tag = tag, tier = tier); return }
+    if (state.look == "panel") { PanelKey(state, text, icon, onClick, modifier, on, onColor, enabled, tag, word, tier, lamped); return }
     val ring = if (state.look == "light") C.Ink else C.Cream
     androidx.compose.foundation.layout.Column(
         modifier.clickable(enabled = enabled) { onClick() }.let { if (tag != null) it.tagged(tag) else it }.padding(vertical = 2.dp),
@@ -215,8 +217,12 @@ fun BarBtn(
 @androidx.compose.runtime.Composable
 fun PanelKey(
     state: com.tideclock.messmachine.AppState, text: String, icon: String, onClick: () -> Unit, modifier: androidx.compose.ui.Modifier,
-    on: Boolean, onColor: androidx.compose.ui.graphics.Color, enabled: Boolean, tag: String?, word: String?, tier: Tier,
+    on: Boolean, onColor: androidx.compose.ui.graphics.Color, enabled: Boolean, tag: String?, word: String?, tier: Tier, lamped: Boolean = true,
 ) {
+    // Nov 21 video: keys grow with the screen up to a cap (a Fold's inner screen gets big keys, not small ones far apart),
+    // the glyph as big as the cap allows, and the lamp in the lip under the cap so the glyph sits in the middle
+    val capW = (UiLook.widthDp / 8f).coerceIn(44f, 80f)
+    val capH = (capW * .72f).coerceIn(38f, 54f)
     val src = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val pressed by src.collectIsPressedAsState()
     val res = Icons.all[icon]?.first
@@ -227,13 +233,14 @@ fun PanelKey(
         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
     ) {
         androidx.compose.foundation.layout.Box(
-            androidx.compose.ui.Modifier.widthIn(max = 44.dp).fillMaxWidth().height(38.dp).offset(0.dp, if (pressed) 2.dp else 0.dp)
-                .bakelite(on, onColor, pressed, danger = tier == Tier.Danger, brass = tier == Tier.Primary),
+            androidx.compose.ui.Modifier.widthIn(max = capW.dp).fillMaxWidth().height(capH.dp + UiLook.lip).offset(0.dp, if (pressed) 2.dp else 0.dp)
+                .bakelite(on, onColor, pressed, danger = tier == Tier.Danger, brass = tier == Tier.Primary, lamped = lamped)
+                .padding(bottom = UiLook.lip),
             contentAlignment = androidx.compose.ui.Alignment.Center,
         ) {
-            // the icon in its own colours (aged, crisp whole pixels), inlaid beside the lamp
-            if (res != null) InlayIcon(res, 28.dp, on, text, androidx.compose.ui.Modifier.padding(start = 9.dp))
-            else T(text.take(3).uppercase(), size = 11.sp, color = Hw.Engrave, lines = 1, family = Worn, weight = androidx.compose.ui.text.font.FontWeight.Normal, modifier = androidx.compose.ui.Modifier.padding(start = 8.dp))
+            // the icon in its own colours (aged, crisp whole pixels), centred on the cap
+            if (res != null) InlayIcon(res, (capH - 8f).dp, on, text)
+            else T(text.take(3).uppercase(), size = 11.sp, color = Hw.Engrave, lines = 1, family = Worn, weight = androidx.compose.ui.text.font.FontWeight.Normal)
         }
         if (state.proWords && word != null) T(word.uppercase(), size = 8.sp, color = if (on) onColor else Hw.Engrave.copy(alpha = .8f), lines = 1, spacing = 0.em, family = Stencil, weight = androidx.compose.ui.text.font.FontWeight.Normal,
             modifier = androidx.compose.ui.Modifier.padding(top = 2.dp))

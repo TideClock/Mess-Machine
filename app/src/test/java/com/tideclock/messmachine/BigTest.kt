@@ -643,6 +643,91 @@ class BigTest {
         assertEquals(null, state.tray)
     }
 
+    /** Nov 21 video: HotKeys swipes, the FX vials and Bypass, mutes from the loops strip, the scratch synth, chords. */
+    @Test fun nov21VideoSwipesVialsMutesScratch() {
+        val E = com.tideclock.messmachine.engine.Engine
+        // HotKeys: down the Padiano, right FX, left Sample, out of the box; each one can change
+        assertEquals("padiano", state.swipe["down"])
+        rule.onNodeWithTag("pad-1").performTouchInput { down(center); moveBy(Offset(0f, height * 1.2f)); up() }
+        settle()
+        assertTrue("a swipe down opens pad 2's Padiano", 1 in state.keyboards && "keys" in state.packOf(1))
+        state.toggleKeyboard(1); settle()
+        rule.onNodeWithTag("pad-1").performTouchInput { down(center); moveBy(Offset(width * 1.2f, 0f)); up() }
+        settle()
+        assertEquals("a swipe right opens the FX drawer", "edit:1", state.tray)
+        assertEquals("fx", state.editTab)
+        shot("105-fx-vials")
+        // the vials: a lamp takes one effect out and back, Bypass takes them all out and brings them back
+        state.fxSendTo(1, E.T_RVB, .6f, false); state.fxSendTo(1, E.T_ECHO, .4f, false); settle()
+        at("fxin-${E.T_RVB}-1").performClick(); settle()
+        assertFalse("reverb out", state.fxIn(1, E.T_RVB))
+        assertEquals("its level is kept", .6f, state.fxSend["1:${E.T_RVB}"]!!, 1e-4f)
+        at("fxin-${E.T_RVB}-1").performClick(); settle()
+        assertTrue("and back in", state.fxIn(1, E.T_RVB))
+        at("fxstrip-off-1").performClick(); settle()
+        assertTrue("Bypass takes everything out", !state.fxIn(1, E.T_RVB) && !state.fxIn(1, E.T_ECHO))
+        at("fxstrip-off-1").performClick(); settle()
+        assertTrue("and brings it back", state.fxIn(1, E.T_RVB) && state.fxIn(1, E.T_ECHO))
+        assertEquals(.4f, state.fxSend["1:${E.T_ECHO}"]!!, 1e-4f)
+        at("tray-done").performClick(); settle()
+        rule.onNodeWithTag("pad-1").performTouchInput { down(center); moveBy(Offset(-width * 1.2f, 0f)); up() }
+        settle()
+        assertTrue("a swipe left opens Sample", state.overlay is Overlay.Doctor)
+        state.overlay = null; settle()
+        state.setSwipe("left", "off")
+        rule.onNodeWithTag("pad-1").performTouchInput { down(center); moveBy(Offset(-width * 1.2f, 0f)); up() }
+        settle()
+        assertEquals("set to Nothing, a swipe left does nothing", null, state.overlay)
+        state.setSwipe("left", "sample")
+        state.overlay = Overlay.Settings; settle()
+        at("hotkeys").assertExists()
+        at("swipe-down").assertExists()
+        shot("106-hotkeys")
+        state.overlay = null; settle()
+        // mutes from the loops strip on any page
+        at("loop-open").performClick(); settle()
+        at("mute-rows").assertExists()
+        val k0 = state.project.kit[0]
+        at("mute-pad-0").performClick(); settle()
+        assertTrue("pad 1 muted", k0 in state.project.mutes)
+        at("mute-bank").performClick(); settle()
+        assertTrue("the whole bank muted", state.bankMuted(0))
+        shot("107-mutes")
+        at("mute-bank").performClick(); settle()
+        assertFalse("and back", state.bankMuted(0) || k0 in state.project.mutes)
+        at("loop-close").performClick(); settle()
+        // chords on with no Padiano out opens the picked pad's
+        state.keyboards.clear(); if (state.chordMode != "off") state.toggleChords(); settle()
+        state.selectPad(1, false); settle()
+        at("chords-toggle").performClick(); settle()
+        assertTrue("Chords on brings a Padiano out", state.padianoOut())
+        state.toggleChords(); state.keyboards.clear(); settle()
+        // the scratch synth: the Synth tab on a pad with no synth plays straight away
+        val plain = (0 until 16).first { !com.tideclock.messmachine.engine.Project.isSynth(state.project.kit[it]) }
+        state.selectPad(plain, false); settle()
+        tab("Synth")
+        at("scratch-keys").assertExists()
+        rule.onNodeWithTag("scratch-keys").performTouchInput { down(Offset(width * .05f, height * .9f)) }
+        settle(); loudest(1024)
+        assertEquals("a key down sounds a note", 1, state.engine.scratchCount())
+        rule.onNodeWithTag("scratch-keys").performTouchInput { up() }
+        settle(); loudest(1024)
+        assertEquals(0, state.engine.scratchCount())
+        at("scratchkind-fm").performClick(); settle()
+        assertEquals(com.tideclock.messmachine.engine.Synth.FM, state.scratch.kind)
+        shot("108-scratch-synth")
+        val empty = state.emptyPadInBank()
+        if (empty >= 0) {
+            at("synth-new-empty").performClick(); settle()
+            assertEquals("the scratch synth goes onto the pad", com.tideclock.messmachine.engine.Synth.FM, state.synthOn(empty)?.kind)
+        }
+        // Perform: loops and mutes at the top, the master throws as vials
+        tab("Perform")
+        at("perform-live").assertExists()
+        at("master-throws").assertExists()
+        shot("109-master-throws")
+    }
+
     @Test fun notesSentLateSayWhenTheyWereWritten() {
         // Nov 21: Send all without the key puts every waiting note on one GitHub page, newest first
         state.notes.add(com.tideclock.messmachine.MNote("aaa1", "bug", "", "old one", System.currentTimeMillis() - 10L * 86400000, "0.1.60 (ef6ac77)", "Pads"))
@@ -1056,8 +1141,9 @@ class BigTest {
         at("fx-crush").performTouchInput { down(Offset(width * .3f, height * .6f)); up() }
         settle()
         assertFalse("crush" in state.fxOn)
-        // slide along Echo while holding it: the amount follows the finger
-        at("fx-echo").performTouchInput { down(Offset(width * .2f, height * .6f)); moveTo(Offset(width * .85f, height * .6f)) }
+        // slide along Echo while holding it: the amount follows the finger (up the vial in the panel Look)
+        if (com.tideclock.messmachine.ui.UiLook.panel) at("fx-echo").performTouchInput { down(Offset(width * .5f, height * .7f)); moveTo(Offset(width * .5f, height * .12f)) }
+        else at("fx-echo").performTouchInput { down(Offset(width * .2f, height * .6f)); moveTo(Offset(width * .85f, height * .6f)) }
         settle()
         assertTrue("sliding sets how much (${state.fxLive["echo"]})", (state.fxLive["echo"] ?: 0f) > .6f)
         rule.onNodeWithTag("fx-echo").performTouchInput { up() }
@@ -1732,11 +1818,12 @@ class BigTest {
         assertEquals(.7f, x.values(.5f, 0f)[com.tideclock.messmachine.engine.Engine.T_RVB]!!, 1e-4f)
         assertEquals("min survives saving", .4f, com.tideclock.messmachine.XySetup.parse(x.code())!!.dirs[0].from, 1e-4f)
 
-        // the FX strip shows only the faders you pick
+        // the FX strip shows only the faders you pick (Classic and Pro: the panel's vials show every effect)
         state.toggleKeyboard(1); state.togglePackStrip(1, "fx"); settle()
         at("fx-${com.tideclock.messmachine.engine.Engine.T_DIRT}-1").assertExists()
         state.toggleFxShown("Dirt"); settle()
-        rule.onAllNodesWithTag("fx-${com.tideclock.messmachine.engine.Engine.T_DIRT}-1").fetchSemanticsNodes().let { assertTrue("Dirt hidden", it.isEmpty()) }
+        if (!com.tideclock.messmachine.ui.UiLook.panel) rule.onAllNodesWithTag("fx-${com.tideclock.messmachine.engine.Engine.T_DIRT}-1").fetchSemanticsNodes().let { assertTrue("Dirt hidden", it.isEmpty()) }
+        else at("fx-${com.tideclock.messmachine.engine.Engine.T_DIRT}-1").assertExists()
         state.toggleFxShown("Dirt")
         // Wobble lives in the LFO strip now
         state.togglePackStrip(1, "lfo"); settle()

@@ -55,8 +55,9 @@ fun SynthScreen(state: AppState) {
     val pad = P.sel
     val sp = state.synthOn(pad)
     ScrollPane(hPad = 12.dp, vPad = 0.dp) {
-        if (sp == null) {
-            NoSynth(state, pad)
+        // Nov 21 video: no synth on the picked pad (or Scratch picked): the tab's own synth, ready to play
+        if (sp == null || state.synthScratch) {
+            ScratchSynth(state, pad)
             return@ScrollPane
         }
         // header: which pad, the preset, the view
@@ -65,6 +66,7 @@ fun SynthScreen(state: AppState) {
             Select("Pad ${pad + 1}", state.synthPads().map { it to "Pad ${it + 1} · ${state.lib.titleOf(P.kit[it])}" }, { state.selectPad(it, false) }, tag = "synth-pad")
             // the same synth as a Padiano on the pad grid, next to your other pads (note #11)
             Btn("🎹 On pads", { state.padianoOnGrid(pad) }, small = true, tag = "synth-to-pads")
+            Btn("Scratch", { state.synthScratch = true }, small = true, tag = "synth-scratch")
             Select(
                 sp.name,
                 sp.kind.presets.map { it.name to it.name },
@@ -112,31 +114,122 @@ fun SynthScreen(state: AppState) {
     }
 }
 
-/** No synth on the selected pad yet: put one there, or on the first empty pad. */
+/**
+ * The scratch synth (Nov 21 video): the Synth tab opens on a synth you can play right away, on no pad. Pick a kind
+ * and a preset, turn its knobs, play its keys; Put on pad copies it onto an empty pad (or the picked one).
+ */
 @Composable
-private fun NoSynth(state: AppState, pad: Int) {
+private fun ScratchSynth(state: AppState, pad: Int) {
+    @Suppress("UNUSED_VARIABLE") val sv = state.scratchV
     val P = state.project
-    val all = remember { Synth.KINDS.flatMap { k -> k.presets.map { "${k.name}: ${it.name}" to it } } }
-    var preset by remember { mutableStateOf(Synth.ANALOG.presets.first()) }
+    val sp = state.scratch
+    Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        T("SCRATCH SYNTH", size = 13.sp, color = C.Yellow, spacing = .1.em, modifier = Modifier.weight(1f))
+    }
     // the synths this mess already has: one tap to each (note #12)
     val have = state.synthPads()
-    if (have.isNotEmpty()) {
-        T("SYNTHS IN THIS MESS", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
-        Wrap(Modifier.tagged("synthpads-chips"), gap = 6.dp) {
-            for (i in have) Btn("Pad ${i + 1} · ${state.lib.titleOf(P.kit[i])}", { state.selectPad(i, false) }, small = true, tag = "synth-go-$i")
+    if (have.isNotEmpty()) Wrap(Modifier.padding(bottom = 8.dp).tagged("synthpads-chips"), gap = 6.dp) {
+        for (i in have) Btn("Pad ${i + 1} · ${state.lib.titleOf(P.kit[i])}", { state.synthScratch = false; state.selectPad(i, false) }, small = true, tag = "synth-go-$i")
+    }
+    // what kind (the grain synth reads a sound off a pad, so it starts on a pad: Put on pad, then Grain)
+    Wrap(Modifier.padding(bottom = 8.dp).tagged("scratchkind-chips"), gap = 6.dp) {
+        for (k in Synth.KINDS) if (k != Synth.GRAIN) Btn(k.name, { if (sp.kind != k) state.loadScratch(k.presets.first()) }, on = sp.kind == k, onColor = C.Yellow, small = true, tag = "scratchkind-${k.id}")
+    }
+    Select(sp.name, sp.kind.presets.map { it.name to it.name }, { n -> sp.kind.presets.firstOrNull { it.name == n }?.let { state.loadScratch(it) } }, tag = "nosynth-preset")
+    Spacer(Modifier.height(10.dp))
+    sp.kind.params.firstOrNull { it.id == "mode" }?.let { mp ->
+        Row(Modifier.fillMaxWidth().padding(bottom = 10.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            for ((i, n) in mp.choices.withIndex()) Btn(n, { state.turnScratch("mode", i.toDouble()) }, on = sp.get("mode").toInt() == i, onColor = C.Pink, small = true, tag = "scratchmode-$i", modifier = Modifier.weight(1f))
         }
     }
-    Note("Pick where to put a synth.", modifier = Modifier.padding(top = 10.dp, bottom = 12.dp))
-    T("START FROM", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(bottom = 4.dp))
-    Select("${preset.kind.name}: ${preset.name}", all.map { it.first to it.first }, { n -> all.firstOrNull { it.first == n }?.let { preset = it.second } }, tag = "nosynth-preset")
-    Spacer(Modifier.height(12.dp))
-    val empty = state.emptyPadInBank()
-    if (empty >= 0) Btn("On empty pad ${empty + 1}", { state.newSynth(empty, preset) }, on = true, onColor = C.Teal, tag = "synth-new-empty")
-    Spacer(Modifier.height(8.dp))
+    val ps = sp.kind.params.filter { it.simple && it.id != "mode" && it.id != "model" }
+    Column(Modifier.fillMaxWidth().tagged("scratch-knobs")) {
+        for (row in ps.chunked(4)) {
+            Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+                for (pm in row) Knob(pm, sp.get(pm.id), { x, _ -> state.turnScratch(pm.id, x) }, Modifier.weight(1f), "sknob-${pm.id}")
+                repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
+    }
+    Row(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 6.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        T("KEYS", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.weight(1f))
+        Btn("Oct −", { state.scratchOct = (state.scratchOct - 1).coerceAtLeast(-3) }, small = true, enabled = state.scratchOct > -3, tag = "scratch-octdown")
+        T(if (state.scratchOct == 0) "C4" else "C${4 + state.scratchOct}", size = 13.sp, color = C.Yellow, family = Mono)
+        Btn("Oct +", { state.scratchOct = (state.scratchOct + 1).coerceAtMost(3) }, small = true, enabled = state.scratchOct < 3, tag = "scratch-octup")
+    }
+    ScratchKeys(state)
+    // keep it: onto a pad, where Steps, the Roll and the Padiano play it
+    T("PUT IT ON A PAD", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 14.dp, bottom = 6.dp))
+    Wrap(gap = 6.dp) {
+        val empty = state.emptyPadInBank()
+        if (empty >= 0) Btn("Empty pad ${empty + 1}", { state.scratchToPad(empty) }, tag = "synth-new-empty")
+        Btn("Pad ${pad + 1}", { state.scratchToPad(pad) }, tag = "synth-new-here")
+    }
     val k = P.kit.getOrNull(pad).orEmpty()
-    Btn("On pad ${pad + 1}", { state.newSynth(pad, preset) }, tag = "synth-new-here")
-    // said under the button: as part of its label it ran off the edge on a phone
-    if (k.isNotEmpty()) Note("Replaces ${state.lib.titleOf(k)} on pad ${pad + 1} (Undo brings it back)", modifier = Modifier.padding(top = 6.dp))
+    if (k.isNotEmpty()) Note("Pad ${pad + 1} replaces ${state.lib.titleOf(k)} (Undo brings it back)", modifier = Modifier.padding(top = 6.dp))
+}
+
+/** The scratch synth's keys: two octaves, any number of fingers, slide to change notes. Pitch 0 is middle C. */
+@Composable
+private fun ScratchKeys(state: AppState) {
+    val base = state.scratchOct * 12
+    val lit = remember { androidx.compose.runtime.mutableStateMapOf<Long, Int>() }
+    val whites = intArrayOf(0, 2, 4, 5, 7, 9, 11)
+    val blackAfter = intArrayOf(0, 1, 3, 4, 5)
+    val blackSemi = intArrayOf(1, 3, 6, 8, 10)
+    val nW = 14
+    fun keyAt(x: Float, y: Float, w: Float, h: Float): Int {
+        val ww = w / nW; val bw = ww * .62f
+        if (y < h * .6f) for (o in 0 until 2) for (b in blackAfter.indices) {
+            val cx = (o * 7 + blackAfter[b] + 1) * ww
+            if (x >= cx - bw / 2 && x <= cx + bw / 2) return o * 12 + blackSemi[b]
+        }
+        val wi = (x / ww).toInt().coerceIn(0, nW - 1)
+        return (wi / 7) * 12 + whites[wi % 7]
+    }
+    var nextId by remember { mutableStateOf(9000) }
+    Canvas(
+        Modifier.fillMaxWidth().height(150.dp).tagged("scratch-keys").pointerInput(base) {
+            awaitPointerEventScope {
+                val mine = HashMap<PointerId, Pair<Int, Int>>()
+                while (true) {
+                    val e = awaitPointerEvent()
+                    for (c in e.changes) {
+                        val now = mine[c.id]
+                        if (c.pressed && now == null) {
+                            val p = keyAt(c.position.x, c.position.y, size.width.toFloat(), size.height.toFloat())
+                            val id = nextId++; mine[c.id] = id to p; lit[c.id.value] = p
+                            state.scratchDown(id, base + p); c.consume()
+                        } else if (c.pressed && now != null) {
+                            val p = keyAt(c.position.x, c.position.y, size.width.toFloat(), size.height.toFloat())
+                            if (p != now.second) {
+                                state.scratchUp(now.first)
+                                val id = nextId++; mine[c.id] = id to p; lit[c.id.value] = p
+                                state.scratchDown(id, base + p)
+                            }
+                            c.consume()
+                        } else if (!c.pressed && now != null) {
+                            state.scratchUp(now.first); mine.remove(c.id); lit.remove(c.id.value); c.consume()
+                        }
+                    }
+                }
+            }
+        },
+    ) {
+        val ww = size.width / nW; val bw = ww * .62f
+        val on = lit.values.toSet()
+        for (i in 0 until nW) {
+            val semi = (i / 7) * 12 + whites[i % 7]
+            drawRect(if (semi in on) Hw.Amber else Hw.Engrave, topLeft = Offset(i * ww + 1f, 0f), size = Size(ww - 2f, size.height))
+            drawRect(Color.Black.copy(alpha = .35f), topLeft = Offset(i * ww + 1f, size.height - 5.dp.toPx()), size = Size(ww - 2f, 5.dp.toPx()))
+        }
+        for (o in 0 until 2) for (b in blackAfter.indices) {
+            val semi = o * 12 + blackSemi[b]
+            val cx = (o * 7 + blackAfter[b] + 1) * ww
+            drawRect(if (semi in on) Hw.Brass else Hw.Bake, topLeft = Offset(cx - bw / 2, 0f), size = Size(bw, size.height * .6f))
+            drawRect(Color.White.copy(alpha = .08f), topLeft = Offset(cx - bw / 2 + 2f, 2f), size = Size(bw - 4f, 3f))
+        }
+    }
 }
 
 /** Mode (Poly, Mono, Acid) and, for drums, the model: choices you pick, not knobs you turn. */

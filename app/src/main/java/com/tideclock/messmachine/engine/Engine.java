@@ -400,6 +400,20 @@ public final class Engine {
     public void padFilter(int pad, float cut, float res, boolean on) { cmds.add(new Object[]{"pf", pad, cut, res, on}); }
     public void stopPreviews() { cmds.add(new Object[]{"stopprev"}); }
 
+    /**
+     * The Synth tab's own synth (Nov 21 video): a synth you can play before it is on any pad. Its notes are held
+     * voices of their own, not on a pad, so nothing records them and no pad's effects touch them.
+     */
+    public static final int SCRATCH = -3;
+    private Synth.Patch scratchP;
+    private final java.util.HashMap<Integer, Voice> scratchHeld = new java.util.HashMap<>();
+    public void scratchDown(int id, Synth.Patch p, int pitch, float vel) { if (p != null) cmds.add(new Object[]{"sdown", id, p.copy(), pitch, vel}); }
+    public void scratchUp(int id) { cmds.add(new Object[]{"sup", id}); }
+    /** New knob settings for the scratch synth: notes already sounding follow them. */
+    public void scratchPatch(Synth.Patch p) { if (p != null) cmds.add(new Object[]{"spatch", p.copy()}); }
+    /** Scratch notes sounding now, for tests. */
+    public int scratchCount() { return scratchHeld.size(); }
+
     public RecEvent pollRec() { return recs.poll(); }
 
     public boolean isPlaying() { return uiPlaying; }
@@ -613,6 +627,20 @@ public final class Engine {
                 break;
             }
             case "stopprev": for (Voice v : pool) if (v.active && v.preview) startRelease(v, .03f); break;
+            case "sdown": {
+                int id = (Integer) c[1];
+                Synth.Patch sp = (Synth.Patch) c[2];
+                scratchP = sp;
+                Voice old = scratchHeld.remove(id);
+                if (old != null) startRelease(old, .02f);
+                float vel = (Float) c[4];
+                PadSlot ps = new PadSlot(SCRATCH, "scratch", clickHi, SoundEdit.DEFAULT, true, PadOpts.DEFAULT, sp, null);
+                Voice v = trigger(ps, oct() * Math.pow(2, (Integer) c[3] / 12.0), 0, false, .85f * (vel >= 0 ? velGain(vel) : 1f), 0, true);
+                if (v != null) scratchHeld.put(id, v);
+                break;
+            }
+            case "sup": { Voice v = scratchHeld.remove((Integer) c[1]); if (v != null && v.active) release(v); break; }
+            case "spatch": scratchP = (Synth.Patch) c[1]; break;
             case "fx": fxSet(S, (String) c[1], (Boolean) c[2]); break;
             case "mod": {
                 // a hand (finger, wheel, mouth, a knob) holds this control until it lets go (build 106)
@@ -1231,6 +1259,7 @@ public final class Engine {
                 PadSlot cp = SN.pads[v.pad];
                 if (cp != null && cp.synth != null && cp.synth.kind == v.sv.patch.kind) v.sv.read(cp.synth);
             }
+            else if (v.syn && v.pad == SCRATCH && scratchP != null && scratchP.kind == v.sv.patch.kind) v.sv.read(scratchP);
             int k = 0;
             if (v.delay > 0) {
                 long skip = Math.min(v.delay, n);

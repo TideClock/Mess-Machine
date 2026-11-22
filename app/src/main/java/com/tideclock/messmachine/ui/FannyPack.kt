@@ -15,6 +15,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.Composable
@@ -29,6 +32,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.drawText
@@ -107,6 +111,7 @@ fun FannyPack(state: AppState, pad: Int) {
  */
 @Composable
 fun FxStrip(state: AppState, pad: Int, col: Color) {
+    if (UiLook.panel) { VialStrip(state, pad); return }
     Column(Modifier.fillMaxWidth().padding(bottom = 6.dp).tagged("fxstrip-$pad")) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 4.dp)) {
             T("FX", size = 12.sp, color = C.Yellow, spacing = .1.em, modifier = Modifier.weight(1f))
@@ -144,6 +149,125 @@ fun FxStrip(state: AppState, pad: Int, col: Color) {
                 T("RES", size = 10.sp, color = C.Pink, lines = 1, modifier = Modifier.padding(top = 3.dp))
             }
         }
+    }
+}
+
+/** Each effect's liquid colour in its vial. */
+private fun vialColor(t: Int): Color = when (t) {
+    com.tideclock.messmachine.engine.Engine.T_RVB -> Color(0xFF6FC7C0)
+    com.tideclock.messmachine.engine.Engine.T_ECHO -> Color(0xFF6F9BE0)
+    com.tideclock.messmachine.engine.Engine.T_DIRT -> Color(0xFFE07A3C)
+    com.tideclock.messmachine.engine.Engine.T_CRUSH -> Color(0xFFE8C547)
+    com.tideclock.messmachine.engine.Engine.T_CHORUS -> Color(0xFFB08BE0)
+    com.tideclock.messmachine.engine.Engine.T_PUMP -> Color(0xFFE0609A)
+    com.tideclock.messmachine.engine.Engine.T_WARM -> Color(0xFFC08A52)
+    com.tideclock.messmachine.engine.Engine.T_PHASER -> Color(0xFF7FD068)
+    com.tideclock.messmachine.engine.Engine.T_FREEZE -> Color(0xFFBFE6F2)
+    com.tideclock.messmachine.engine.Engine.T_FILTER -> Color(0xFF3FB6A8)
+    else -> Color(0xFFE85A8A)
+}
+
+/**
+ * The FX vials (Nov 21 video): every effect on the pad as a glass vial filled to how much of it there is. Drag up or
+ * down on a vial to fill it. The lamp under it takes that effect out and puts it back where it was; hold the lamp
+ * for the effect's Auto lane. Bypass takes them all out at once. Cut is the pad's filter (full is open).
+ */
+@Composable
+fun VialStrip(state: AppState, pad: Int) {
+    Column(Modifier.fillMaxWidth().padding(bottom = 6.dp).tagged("fxstrip-$pad")) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 6.dp)) {
+            T("FX · PAD ${pad + 1}", size = 12.sp, color = C.Yellow, spacing = .1.em, modifier = Modifier.weight(1f))
+            Btn("Bypass", { state.toggleBypass(pad) }, on = pad in state.padBypass, onColor = Hw.Oxblood, small = true, tag = "fxstrip-off-$pad")
+        }
+        val ft = com.tideclock.messmachine.engine.Engine.T_FILTER
+        val rt = com.tideclock.messmachine.engine.Engine.T_RES
+        val all = FX_STRIP + listOf(ft to "Cut", rt to "Res")
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+            for ((t, name) in all) {
+                val raw = state.fxSend["$pad:$t"] ?: 0f
+                val v = if (t == ft) 1f - raw else raw
+                val inNow = state.fxIn(pad, t)
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                    Vial(v, vialColor(t), inNow, "fx-$t-$pad") { x, on -> state.fxSendTo(pad, t, if (t == ft) 1f - x else x, on) }
+                    // the lamp: in or out; hold it for this effect's Auto lane
+                    Box(
+                        Modifier.padding(top = 4.dp).size(26.dp).tagged("fxin-$t-$pad")
+                            .tapOrHold(t to pad, onTap = { state.toggleFxIn(pad, t) }, onHold = { if (t != ft && t != rt) { state.closeEdit(); state.tray = null; state.openAutoLane(pad, t) } })
+                            .semantics { selected = inNow },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Canvas(Modifier.size(14.dp)) {
+                            val r = size.minDimension / 2
+                            drawCircle(Color.Black.copy(alpha = .6f), r, center)
+                            if (inNow && v > .01f) drawCircle(androidx.compose.ui.graphics.Brush.radialGradient(listOf(vialColor(t).copy(alpha = .55f), Color.Transparent), center, r * 2.2f), r * 2.2f, center)
+                            drawCircle(if (inNow) (if (v > .01f) vialColor(t) else Color(0xFF3A3530)) else Hw.Oxblood.copy(alpha = .8f), r * .7f, center)
+                            drawCircle(Color.White.copy(alpha = .35f), r * .22f, Offset(center.x - r * .25f, center.y - r * .25f))
+                        }
+                    }
+                    T(name.uppercase(), size = 9.sp, color = if (inNow) Hw.Engrave else Hw.Engrave.copy(alpha = .45f), lines = 1, spacing = 0.em, family = Stencil,
+                        weight = FontWeight.Normal, modifier = Modifier.padding(top = 1.dp))
+                }
+            }
+        }
+    }
+}
+
+/** A glass vial with a metal cap, filled from the bottom: drag anywhere on it. Out (bypassed): the liquid goes grey. */
+@Composable
+fun Vial(value: Float, color: Color, live: Boolean, tag: String, height: androidx.compose.ui.unit.Dp = 112.dp, onChange: (Float, Boolean) -> Unit) {
+    Canvas(
+        Modifier
+            .fillMaxWidth()
+            .widthIn(max = 44.dp)
+            .height(height)
+            .tagged(tag)
+            .pointerInput(tag) {
+                awaitEachGesture {
+                    val d = awaitFirstDown(requireUnconsumed = false)
+                    val top = 14.dp.toPx(); val bot = 6.dp.toPx()
+                    fun at(y: Float) = (1f - (y - top) / (size.height - top - bot)).coerceIn(0f, 1f)
+                    d.consume()
+                    var last = at(d.position.y)
+                    onChange(last, true)
+                    while (true) {
+                        val e = awaitPointerEvent()
+                        val c = e.changes.firstOrNull { it.id == d.id } ?: break
+                        if (!c.pressed) { c.consume(); break }
+                        last = at(c.position.y)
+                        onChange(last, true)
+                        c.consume()
+                    }
+                    onChange(last, false)
+                }
+            },
+    ) {
+        val w = size.width.coerceAtMost(30.dp.toPx()); val x0 = (size.width - w) / 2
+        val capH = 10.dp.toPx(); val neck = 4.dp.toPx(); val bot = 6.dp.toPx()
+        val glassTop = capH + neck; val glassH = size.height - glassTop - bot
+        val r = w / 2
+        // the cap: worn metal, with a groove
+        drawRoundRect(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Hw.MetalHi, Hw.Metal, Hw.MetalLow)), topLeft = Offset(x0 - 2f, 0f), size = Size(w + 4f, capH), cornerRadius = androidx.compose.ui.geometry.CornerRadius(3.dp.toPx()))
+        drawLine(Color.Black.copy(alpha = .35f), Offset(x0, capH * .55f), Offset(x0 + w, capH * .55f), 1.5f)
+        // the glass: a tube with a round bottom
+        val tube = androidx.compose.ui.graphics.Path().apply {
+            addRoundRect(androidx.compose.ui.geometry.RoundRect(x0, capH, x0 + w, size.height - bot + r * .2f, topLeftCornerRadius = androidx.compose.ui.geometry.CornerRadius(3f), topRightCornerRadius = androidx.compose.ui.geometry.CornerRadius(3f),
+                bottomLeftCornerRadius = androidx.compose.ui.geometry.CornerRadius(r), bottomRightCornerRadius = androidx.compose.ui.geometry.CornerRadius(r)))
+        }
+        drawPath(tube, Color(0xFF0D0B0A).copy(alpha = .85f))
+        // the liquid, to the level, with a bright meniscus line
+        val liq = if (live) color else Color(0xFF6A6560)
+        val lvl = glassH * value.coerceIn(0f, 1f)
+        if (value > .005f) clipPath(tube) {
+            val y = glassTop + glassH - lvl
+            drawRect(androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(liq.copy(alpha = .75f), liq, liq.copy(alpha = .6f)), startX = x0, endX = x0 + w), topLeft = Offset(x0, y), size = Size(w, size.height - y))
+            drawLine(Color.White.copy(alpha = if (live) .55f else .25f), Offset(x0 + 2f, y + 1f), Offset(x0 + w - 2f, y + 1f), 2f)
+            // a few bubbles
+            if (live) for (i in 0 until 3) { val by = y + (size.height - y) * (.25f + i * .22f); if (by < size.height - bot) drawCircle(Color.White.copy(alpha = .22f), 1.6.dp.toPx() - i * .3f, Offset(x0 + w * (.3f + i * .2f), by)) }
+        }
+        // marks on the glass, and its shine
+        for (i in 1..4) { val y = glassTop + glassH * (1f - i / 5f); drawLine(Hw.Engrave.copy(alpha = .3f), Offset(x0 + 2f, y), Offset(x0 + w * .3f, y), 1f) }
+        drawPath(tube, Hw.Engrave.copy(alpha = .55f), style = Stroke(1.5.dp.toPx()))
+        drawLine(Color.White.copy(alpha = .22f), Offset(x0 + w * .72f, glassTop + 4f), Offset(x0 + w * .72f, size.height - bot - r), 2.5f)
     }
 }
 
@@ -314,9 +438,12 @@ fun RateStrip(stop: Double, col: Color, tag: String, onPick: (Double, Boolean) -
 /** The FX strip's settings in the tray: which faders show, and straight to a fader's automation lane (Auto). */
 @Composable
 fun FxTray(state: AppState, pad: Int) {
-    T("SHOW", size = 11.sp, color = C.Dim, spacing = .1.em)
-    Wrap(Modifier.padding(top = 4.dp), gap = 6.dp) {
-        for (name in com.tideclock.messmachine.FX_FADERS) Btn(name, { state.toggleFxShown(name) }, on = name in state.fxShown, onColor = C.Teal, small = true, tight = true, tag = "fxshow-$name")
+    // the vials (panel Look) show every effect, so there is nothing to pick
+    if (!UiLook.panel) {
+        T("SHOW", size = 11.sp, color = C.Dim, spacing = .1.em)
+        Wrap(Modifier.padding(top = 4.dp), gap = 6.dp) {
+            for (name in com.tideclock.messmachine.FX_FADERS) Btn(name, { state.toggleFxShown(name) }, on = name in state.fxShown, onColor = C.Teal, small = true, tight = true, tag = "fxshow-$name")
+        }
     }
     T("AUTO LANE", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 10.dp))
     Wrap(Modifier.padding(top = 4.dp), gap = 6.dp) {

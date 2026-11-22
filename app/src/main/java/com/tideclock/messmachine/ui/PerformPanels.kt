@@ -1,6 +1,7 @@
 package com.tideclock.messmachine.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
@@ -45,6 +46,7 @@ import kotlin.math.floor
 @Composable
 fun FxPanel(state: AppState) {
     val names = com.tideclock.messmachine.FX_NAMES
+    if (UiLook.panel) { MasterThrows(state); return }
     Card(Modifier.fillMaxWidth().padding(top = 18.dp)) {
         Column {
             Heading("Perform", size = 18.sp)
@@ -66,6 +68,45 @@ fun FxPanel(state: AppState) {
             XyPad(state)
             Help("Slide left and right for the cutoff, up for more resonance.", modifier = Modifier.padding(top = 8.dp))
         }
+    }
+}
+
+/**
+ * The throws in the panel Look (Nov 21 video): a brass-trimmed master plate, so it reads as the whole mix (pads get
+ * their own colour), with a row of vials and the Mud filter under glass.
+ */
+@Composable
+fun MasterThrows(state: AppState) {
+    val names = com.tideclock.messmachine.FX_NAMES
+    Column(Modifier.fillMaxWidth().padding(top = 14.dp).masterPlate().padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 14.dp).tagged("master-throws")) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            T("MASTER · THROWS", size = 13.sp, color = Hw.Brass, spacing = .12.em, family = Stencil, weight = androidx.compose.ui.text.font.FontWeight.Normal, modifier = Modifier.weight(1f))
+        }
+        Help("Hold a vial: where your finger lands is how much, slide to change it. Tap a name for its settings: stays on, slider, or aim it at a pad or a bus.", modifier = Modifier.padding(top = 4.dp, bottom = 8.dp))
+        FxEditor(state)
+        Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            for ((i, p) in names.withIndex()) ThrowVial(state, p.first, p.second, C.Letters[i % C.Letters.size], Modifier.weight(1f))
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp, bottom = 10.dp)) {
+            T(if (state.xyHP) "THIN FILTER" else "MUD FILTER", size = 13.sp, color = Hw.Brass, spacing = .1.em, family = Stencil, weight = androidx.compose.ui.text.font.FontWeight.Normal, modifier = Modifier.weight(1f))
+            Btn("Low pass", { state.switchXyHP(false) }, on = !state.xyHP, small = true, onColor = C.Teal)
+            Btn("High pass", { state.switchXyHP(true) }, on = state.xyHP, small = true, onColor = C.Teal)
+        }
+        XyPad(state)
+        Help("Slide left and right for the cutoff, up for more resonance.", modifier = Modifier.padding(top = 8.dp))
+    }
+}
+
+/** A worn metal plate with a brass trim and four screws: the master section's look. */
+fun Modifier.masterPlate(): Modifier = this.drawBehind {
+    val r = androidx.compose.ui.geometry.CornerRadius(8.dp.toPx())
+    drawRoundRect(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0xFF2E2A26), Color(0xFF221F1C))), cornerRadius = r)
+    drawRoundRect(Hw.Brass.copy(alpha = .85f), cornerRadius = r, style = androidx.compose.ui.graphics.drawscope.Stroke(2.5.dp.toPx()))
+    drawRoundRect(Color.Black.copy(alpha = .5f), topLeft = Offset(4.dp.toPx(), 4.dp.toPx()), size = androidx.compose.ui.geometry.Size(size.width - 8.dp.toPx(), size.height - 8.dp.toPx()), cornerRadius = r, style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
+    val sr = 3.5.dp.toPx(); val m = 9.dp.toPx()
+    for (c in listOf(Offset(m, m), Offset(size.width - m, m), Offset(m, size.height - m), Offset(size.width - m, size.height - m))) {
+        drawCircle(Hw.MetalLow, sr, c); drawCircle(Hw.Metal, sr * .8f, c)
+        drawLine(Color(0xFF1A1613), Offset(c.x - sr * .6f, c.y - sr * .3f), Offset(c.x + sr * .6f, c.y + sr * .3f), 1.5f)
     }
 }
 
@@ -103,8 +144,8 @@ fun XyPad(state: AppState, height: androidx.compose.ui.unit.Dp = 180.dp) {
         Modifier
             .fillMaxWidth()
             .height(height)
-            .padding(end = 6.dp, bottom = 6.dp)
-            .sticker(C.Paper, shadow = 6.dp, shadowColor = C.Teal)
+            .padding(end = if (UiLook.panel) 0.dp else 6.dp, bottom = if (UiLook.panel) 0.dp else 6.dp)
+            .then(if (UiLook.panel) Modifier.lcd() else Modifier.sticker(C.Paper, shadow = 6.dp, shadowColor = C.Teal))
             .tagged("xy")
             .pointerInput(Unit) {
                 awaitEachGesture {

@@ -37,6 +37,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -136,6 +137,10 @@ object UiLook {
     val panel get() = id == "panel"
     /** the view size (70% and so on): panel keys keep a real 40 dp hit area at any view size */
     var scale by mutableStateOf(1f)
+    /** the screen's width in the app's own dp (after the view size): keys grow with it and stop at a cap */
+    var widthDp by mutableStateOf(400f)
+    /** the lip under each key where its lamp sits */
+    val lip = 8.dp
 }
 
 /** Bakelite and worn metal, for the panel Look. */
@@ -157,30 +162,38 @@ fun Modifier.lcd(lit: Boolean = false): Modifier = this.drawBehind {
     drawLine(Color.White.copy(alpha = .10f), Offset(bez + 2f, bez + 1.5f), Offset(size.width - bez - 2f, bez + 1.5f), 1.5f)
 }
 
-/** A bakelite key in a worn metal bezel, with a lamp that lights in the key's colour when it is on. */
-fun Modifier.bakelite(on: Boolean, lamp: Color, pressed: Boolean, danger: Boolean = false, brass: Boolean = false): Modifier = this.drawBehind {
+/**
+ * A bakelite key in a worn metal bezel. Nov 21 video: the lamp sits in the metal lip under the cap, not on the cap, so
+ * the word and icon stay centred; keys that only do something (no on or off) have no lamp at all.
+ */
+fun Modifier.bakelite(on: Boolean, lamp: Color, pressed: Boolean, danger: Boolean = false, brass: Boolean = false, lamped: Boolean = true): Modifier = this.drawBehind {
     val r = CornerRadius(7.dp.toPx())
     val bez = 2.5.dp.toPx()
+    val lip = UiLook.lip.toPx()
     // shadow under the key, gone while pressed
     if (!pressed) drawRoundRect(Color.Black.copy(alpha = .55f), topLeft = Offset(0f, 2.5.dp.toPx()), size = size, cornerRadius = r)
     // the bezel: worn metal, brighter on the top edge, brass for the main key, oxblood for danger
     val rim = when { danger -> listOf(Color(0xFFC4573F), Hw.Oxblood, Color(0xFF5A1A10)); brass -> listOf(Color(0xFFE8C877), Hw.Brass, Color(0xFF6E5420)); else -> listOf(Hw.MetalHi, Hw.Metal, Hw.MetalLow) }
     drawRoundRect(Brush.verticalGradient(rim), cornerRadius = r)
-    // the cap: bakelite, a soft dome of light from above, darker when pushed in
+    // the cap: bakelite, a soft dome of light from above, darker when pushed in; the lip below it stays metal
     val capR = CornerRadius(5.dp.toPx())
+    val capH = size.height - bez - lip
     drawRoundRect(Brush.verticalGradient(if (pressed) listOf(Hw.BakeLow, Hw.Bake) else listOf(Hw.BakeTop, Hw.Bake, Hw.BakeLow)),
-        topLeft = Offset(bez, bez), size = Size(size.width - bez * 2, size.height - bez * 2), cornerRadius = capR)
+        topLeft = Offset(bez, bez), size = Size(size.width - bez * 2, capH), cornerRadius = capR)
     // wear: a few pale scuffs on the cap, the same on every redraw for a given size
     val rnd = java.util.Random((size.width * 31 + size.height).toLong())
     repeat(3) {
-        val x = bez + rnd.nextFloat() * (size.width - bez * 2 - 8f); val y = bez + rnd.nextFloat() * (size.height - bez * 2 - 4f)
+        val x = bez + rnd.nextFloat() * (size.width - bez * 2 - 8f); val y = bez + rnd.nextFloat() * (capH - 4f).coerceAtLeast(1f)
         drawLine(Color.White.copy(alpha = .05f + rnd.nextFloat() * .05f), Offset(x, y), Offset(x + 4f + rnd.nextFloat() * 14f, y + rnd.nextFloat() * 3f), strokeWidth = 1f)
     }
-    // the lamp: a small glass bead on the left that glows when on
-    val lr = 3.dp.toPx(); val lc = Offset(bez + 7.dp.toPx(), size.height / 2)
-    if (on) drawCircle(Brush.radialGradient(listOf(lamp.copy(alpha = .55f), Color.Transparent), center = lc, radius = lr * 4f), radius = lr * 4f, center = lc)
-    drawCircle(if (on) lamp else Color(0xFF0E0B09), radius = lr, center = lc)
-    drawCircle(Color.White.copy(alpha = if (on) .55f else .18f), radius = lr * .35f, center = Offset(lc.x - lr * .3f, lc.y - lr * .35f))
+    // the lamp: a small glass bead set in the lip, centred under the cap, that glows when on
+    if (lamped) {
+        val lr = 2.6.dp.toPx(); val lc = Offset(size.width / 2, size.height - lip / 2 - .5.dp.toPx())
+        if (on) drawCircle(Brush.radialGradient(listOf(lamp.copy(alpha = .6f), Color.Transparent), center = lc, radius = lr * 5f), radius = lr * 5f, center = lc)
+        drawCircle(Color.Black.copy(alpha = .5f), radius = lr * 1.35f, center = lc)
+        drawCircle(if (on) lamp else Color(0xFF0E0B09), radius = lr, center = lc)
+        drawCircle(Color.White.copy(alpha = if (on) .55f else .18f), radius = lr * .35f, center = Offset(lc.x - lr * .3f, lc.y - lr * .35f))
+    }
 }
 
 /**
@@ -272,7 +285,8 @@ fun InlayIcon(res: Int, maxDp: androidx.compose.ui.unit.Dp, lit: Boolean, label:
     val dens = androidx.compose.ui.platform.LocalDensity.current
     val px = with(dens) { maxDp.toPx() }
     // the nearest whole multiple (a 26 dp icon on a 2.6x screen is 68 px: 2x, 80 px, not 1x and half the size)
-    val k = maxOf(1, Math.round(px / 40f))
+    var k = maxOf(1, Math.round(px / 40f))
+    if (k > 1 && 40f * k > px * 1.15f) k--
     val side = with(dens) { (40f * k).toDp() }
     val img = androidx.compose.ui.graphics.ImageBitmap.imageResource(res)
     Box(modifier.size(side)) {
@@ -399,33 +413,41 @@ enum class Tier { Primary, Normal, Quiet, Danger }
 /** Square, uppercase, cream outline, pink shadow; it sinks into its shadow when pressed. */
 @Composable
 fun Btn(
-    text: String, onClick: () -> Unit, modifier: Modifier = Modifier, color: Color = C.Ink, on: Boolean = false,
+    text: String, onClick: () -> Unit, modifier: Modifier = Modifier, color: Color = C.Ink, on: Boolean? = null,
     onColor: Color = C.Yellow, enabled: Boolean = true, small: Boolean = false, tag: String? = null, tier: Tier = Tier.Normal,
     tight: Boolean = false,
 ) {
+    // on given (even false): a switch, with a lamp in the panel Look. Left out: a key that only does something, no lamp
+    val lamped = on != null
+    @Suppress("NAME_SHADOWING") val on = on == true
     val src = remember { MutableInteractionSource() }
     val pressed by src.collectIsPressedAsState()
     if (UiLook.panel) {
-        // the hardware panel: a bakelite key, engraved words, a lamp for on. At least 40 real dp tall at any view size
-        val minH = maxOf(if (small) 34f else 44f, 40f / UiLook.scale.coerceIn(.4f, 2f))
+        // the hardware panel: a bakelite key, engraved words, a lamp under it for on. At least 40 real dp tall at any view size.
+        // Keys widen with the screen and stop at a cap, so a wide screen has bigger keys, not lonely little ones
+        val minH = maxOf(if (small) 34f else 44f, 40f / UiLook.scale.coerceIn(.4f, 2f)) + UiLook.lip.value
+        val minW = if (tight) 0f else (UiLook.widthDp * (if (small) .14f else .18f)).coerceIn(if (small) 48f else 56f, if (small) 120f else 150f)
         Box(
             modifier
                 .heightIn(min = minH.dp)
+                .widthIn(min = minW.dp)
                 .offset(0.dp, if (pressed && enabled) 2.dp else 0.dp)
-                .bakelite(on, if (tier == Tier.Danger) Hw.Oxblood else onColor, pressed && enabled, danger = tier == Tier.Danger, brass = tier == Tier.Primary)
+                .bakelite(on, if (tier == Tier.Danger) Hw.Oxblood else onColor, pressed && enabled, danger = tier == Tier.Danger, brass = tier == Tier.Primary, lamped = lamped)
                 .alpha(if (enabled) 1f else .4f)
                 .clickable(src, indication = null, enabled = enabled) { onClick() }
                 .then(if (tag != null) Modifier.tagged(tag) else Modifier)
                 .semantics { selected = on }
-                .padding(start = if (tight) 12.dp else 20.dp, end = if (tight) 3.dp else if (small) 10.dp else 14.dp, top = if (small) 6.dp else 9.dp, bottom = if (small) 6.dp else 9.dp),
+                .padding(start = if (tight) 4.dp else 12.dp, end = if (tight) 4.dp else 12.dp, top = if (small) 5.dp else 7.dp, bottom = (if (small) 5.dp else 7.dp) + UiLook.lip),
             contentAlignment = Alignment.Center,
         ) {
-            // Nov 21: worn rubber-stamp letters, and the icon from Tyler's drawings beside the word when the word has one
+            // Nov 21: worn rubber-stamp letters, and the icon from Tyler's drawings beside the word when the word has one,
+            // as big as the cap allows
             val icon = if (tight) null else Icons.forLabel(text)
-            // with the icon showing, the little symbol in the words (✂, ☆) goes: the icon says it better
-            val words = if (icon != null) text.replace(Regex("^[^A-Za-z0-9]+"), "") else text
+            // with the icon showing, the little symbol in the words (✂, ☆, •) goes: the icon says it better
+            // (in the panel Look the old symbols go anyway: the worn letters have no ● or ✂, and the lamp says on)
+            val words = text.replace(Regex("^[^A-Za-z0-9\\s]+\\s+"), "").ifEmpty { text }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (icon != null) InlayIcon(icon, if (small) 21.dp else 24.dp, on, text, Modifier.padding(end = 6.dp))
+                if (icon != null) InlayIcon(icon, if (small) 28.dp else 32.dp, on, text, Modifier.padding(end = 7.dp))
                 T(words.uppercase(), color = when { tier == Tier.Quiet -> Hw.Engrave.copy(alpha = .6f); on -> lerp(Hw.Engrave, onColor, .35f); else -> Hw.Engrave },
                     size = if (small) 12.sp else 13.sp, lines = 1, spacing = if (tight) 0.em else .03.em, family = Worn, weight = FontWeight.Normal)
             }
@@ -462,7 +484,7 @@ fun <V> Select(
     small: Boolean = true, color: Color = C.Ink, tag: String? = null,
 ) {
     var open by remember { mutableStateOf(false) }
-    Box(modifier) {
+    Box(modifier, propagateMinConstraints = true) {
         Btn("$label ▾", { open = true }, small = small, color = color, enabled = !LocalLocked.current, tag = tag)
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.background(C.Ink).border(2.dp, C.Cream)) {
             for ((v, name) in options) {

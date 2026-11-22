@@ -135,6 +135,7 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
         LaunchedEffect(state.askMicFor) { if (state.askMicFor != -1) micPerm.launch(android.Manifest.permission.RECORD_AUDIO) }
         @Suppress("UNUSED_VARIABLE") val v = state.version
         val dn = LocalDensity.current
+        UiLook.widthDp = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp / state.uiScale
         CompositionLocalProvider(LocalDensity provides Density(dn.density * state.uiScale, dn.fontScale), LocalLocked provides state.locked, LocalHelp provides state.helpOn) {
         // test tags show up as view ids, so the phone test on the emulator can find things by name
         Box(Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }.background(C.Paper).grit().safeDrawingPadding().watchTouches(state)) {
@@ -592,18 +593,28 @@ fun UpdateBar(state: AppState) {
 }
 
 
-/** Loops A to H from any page (Nov 18). Lit letters have something in them; while playing a pick waits for the bar line. */
+/** Loops A to H from any page (Nov 18). Lit letters have something in them; while playing a pick waits for the bar line.
+ * Nov 21 video: the pad and bank mutes ride under them, so loops and mutes are one tap away on every page. */
 @Composable
 fun LoopStrip(state: AppState) {
+    Column(Modifier.fillMaxWidth().background(C.Ink).tagged("loopstrip").padding(horizontal = 8.dp, vertical = 6.dp)) {
+        LoopKeys(state, close = true)
+        MuteRows(state, Modifier.padding(top = 6.dp))
+    }
+}
+
+@Composable
+fun LoopKeys(state: AppState, close: Boolean) {
     val P = state.project
-    Row(Modifier.fillMaxWidth().background(C.Ink).tagged("loopstrip").padding(horizontal = 8.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
         for (i in 0 until com.tideclock.messmachine.engine.Project.NSLOTS) {
             val cur = P.cur == i; val used = P.pats[i].used(); val wait = state.pendingSlot == i
             Btn(com.tideclock.messmachine.engine.Project.LETTERS[i].toString(), { state.pickLoop(i) }, on = cur || wait, onColor = if (wait) C.Pink else C.Yellow,
                 color = if (used) C.Card2 else C.Ink, small = true, tight = true, tag = "loop-$i", modifier = Modifier.weight(1f))
         }
-        Btn(if (state.loopAtBar) "Bar" else "Now", { state.switchLoopAtBar() }, small = true, tight = true, tier = Tier.Quiet, tag = "loop-when")
-        CloseScrew({ state.loopStripOpen = false }, tag = "loop-close", label = "Close the loops")
+        // Nov 21: "Bar" read like a way to add bars; it says when a picked loop takes over: at the bar line, or now
+        Btn(if (state.loopAtBar) "Wait bar" else "Now", { state.switchLoopAtBar() }, small = true, on = state.loopAtBar, onColor = C.Teal, tag = "loop-when")
+        if (close) CloseScrew({ state.loopStripOpen = false }, tag = "loop-close", label = "Close the loops")
     }
 }
 
@@ -627,10 +638,22 @@ fun Modifier.watchTouches(state: AppState): Modifier = composed {
                         state.noteTouch(downTag)
                     } else if (!c.pressed && c.previousPressed) {
                         val dy = downAt.y - c.position.y; val dx = kotlin.math.abs(c.position.x - downAt.x)
+                        val sx = c.position.x - downAt.x; val ady = kotlin.math.abs(dy)
                         val far = with(dens) { 44.dp.toPx() }
-                        if (state.flickOn && downTag != null && !downTag!!.startsWith("pad-") && c.uptimeMillis - downT < 300 && dy > far && dx < dy / 2) state.openSettingsFor(downTag!!)
-                        // Nov 21 note: flick up off a pad opens its Edit tray (on unless switched off in Settings, Playing)
-                        else if (state.padFlick && downTag?.startsWith("pad-") == true && c.uptimeMillis - downT < 300 && dy > far && dx < dy / 2) state.openSettingsFor(downTag!!)
+                        val quick = c.uptimeMillis - downT < 300
+                        if (state.flickOn && downTag != null && !downTag!!.startsWith("pad-") && quick && dy > far && dx < dy / 2) state.openSettingsFor(downTag!!)
+                        // Nov 21: a quick swipe off a pad does what HotKeys (Settings) says for that direction:
+                        // up the Edit tray, down the Padiano, left Sample, right FX, out of the box
+                        else if (state.padFlick && downTag?.startsWith("pad-") == true && quick) {
+                            val dir = when {
+                                dy > far && dx < dy / 2 -> "up"
+                                -dy > far && dx < ady / 2 -> "down"
+                                sx < -far && ady < dx / 2 -> "left"
+                                sx > far && ady < dx / 2 -> "right"
+                                else -> null
+                            }
+                            if (dir != null) state.padSwipe(downTag!!, dir)
+                        }
                     }
                 }
             }

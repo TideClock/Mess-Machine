@@ -43,11 +43,11 @@ fun EditTray(state: AppState, pad: Int) {
                 // the panel Look: five drawer keys, the open drawer's lamp lit in the pad's colour; narrow words, so a Fold's cover fits them
                 val on = state.editTab == id
                 androidx.compose.foundation.layout.Box(
-                    Modifier.weight(1f).heightIn(min = (40f / UiLook.scale.coerceIn(.4f, 2f)).coerceAtLeast(36f).dp)
+                    Modifier.weight(1f).heightIn(min = (40f / UiLook.scale.coerceIn(.4f, 2f)).coerceAtLeast(36f).dp + UiLook.lip)
                         .bakelite(on, col, false).clickable { state.pickEditTab(id) }.tagged("edit-tab-$id")
-                        .semantics { selected = on }.padding(start = 11.dp, end = 2.dp),
+                        .semantics { selected = on }.padding(start = 2.dp, end = 2.dp, bottom = UiLook.lip),
                     contentAlignment = Alignment.Center,
-                ) { T(name.uppercase(), size = 11.sp, color = if (on) lerp(Hw.Engrave, col, .35f) else Hw.Engrave, lines = 1, weight = androidx.compose.ui.text.font.FontWeight.ExtraBold) }
+                ) { T(name.uppercase(), size = 12.sp, color = if (on) lerp(Hw.Engrave, col, .35f) else Hw.Engrave, lines = 1, spacing = 0.em, family = Worn, weight = androidx.compose.ui.text.font.FontWeight.Normal) }
             } else Btn(name, { state.pickEditTab(id) }, on = state.editTab == id, onColor = col, small = true, tight = true,
                 tag = "edit-tab-$id", modifier = Modifier.weight(1f))
         }
@@ -69,7 +69,9 @@ fun EditTray(state: AppState, pad: Int) {
             }
             "fx" -> {
                 FxStrip(state, pad, col)
-                FxTray(state, pad)
+                // the panel Look's vials carry their own lamps (in, out, hold for Auto): no rows of chips under them
+                if (!UiLook.panel) FxTray(state, pad)
+                else Help("Drag a vial to fill it. Its lamp takes the effect out and back; hold the lamp for its Auto lane.", Modifier.padding(top = 4.dp))
             }
             "keys" -> {
                 Wrap(gap = 6.dp) {

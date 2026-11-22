@@ -99,6 +99,46 @@ fun FxButton(state: AppState, id: String, label: String, modifier: Modifier, col
     }
 }
 
+/**
+ * A throw in the panel Look (Nov 21 video): a vial like the FX vials. Where your finger lands sets how much (low is a
+ * touch, the top is all of it) and sliding up and down while you hold changes it. Its name under it opens its settings.
+ */
+@Composable
+fun ThrowVial(state: AppState, id: String, label: String, color: Color, modifier: Modifier = Modifier) {
+    val s = state.fxSet(id)
+    var held by remember { mutableStateOf(false) }
+    var level by remember { mutableStateOf(0f) }
+    val lit = held || id in state.fxOn
+    val shown = if (held) level else if (id in state.fxOn) (state.fxLive[id] ?: s.amount) else 0f
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Vial(shown, color, true, "fx-$id", height = 128.dp) { pos, on ->
+            val amt = pos.coerceIn(.05f, 1f)
+            if (on && !held) {
+                held = true; level = amt
+                state.fxPress(id, true, amt)
+                if (s.behave != "stays") state.fxLive[id] = amt
+            } else if (on) {
+                level = amt
+                if (s.behave != "stays" || id in state.fxOn) state.fxSlide(id, amt)
+            } else {
+                held = false
+                if (s.behave == "held") state.fxPress(id, false)
+            }
+        }
+        // the lamp: lit while it acts
+        Canvas(Modifier.padding(top = 5.dp).size(12.dp)) {
+            val r = size.minDimension / 2
+            drawCircle(Color.Black.copy(alpha = .6f), r, center)
+            if (lit) drawCircle(androidx.compose.ui.graphics.Brush.radialGradient(listOf(color.copy(alpha = .6f), Color.Transparent), center, r * 2.4f), r * 2.4f, center)
+            drawCircle(if (lit) color else Color(0xFF3A3530), r * .7f, center)
+        }
+        Box(Modifier.padding(top = 2.dp).clickable { state.fxEditing = if (state.fxEditing == id) null else id }.tagged("fxedit-$id").padding(vertical = 4.dp, horizontal = 2.dp), contentAlignment = Alignment.Center) {
+            T(label.uppercase().replace(" ", "\n") + (if (s.behave == "stays") " ●" else if (s.behave == "slider") " ═" else ""),
+                size = 9.sp, color = if (lit) color else Hw.Engrave, lines = 2, spacing = 0.em, family = Stencil, weight = androidx.compose.ui.text.font.FontWeight.Normal)
+        }
+    }
+}
+
 /** Settings for the effect being edited: amount, how it behaves, where it acts, and the gate's length. */
 @Composable
 fun FxEditor(state: AppState) {

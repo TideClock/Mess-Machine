@@ -117,7 +117,7 @@ object Tutorials {
         )),
         Tutorial("synth", "Synths", "Make a synth", "A synth on a pad: knobs, modes, and the six kinds.", listOf(
             TutStep("Tap SYNTH.", t("tab-Synth")) { s, _ -> s.tab == Tab.Synth },
-            TutStep("Tap On empty pad: a Warm pad synth lands there.", t("synth-new-empty")) { s, c -> (s.synthOn(s.project.sel) != null).also { if (it) c.num0 = cut(s) } },
+            TutStep("Under Put it on a pad, tap Empty pad: the synth you see lands there.", t("synth-new-empty")) { s, c -> (s.synthOn(s.project.sel) != null).also { if (it) c.num0 = cut(s) } },
             TutStep("Play the keyboard under the knobs.", { s -> "piano-keys-${s.project.sel}" }) { s, c -> played(s, c, 2) },
             TutStep("Drag the Cutoff knob up or down. Hold a key while you do it.", t("knob-cut")) { s, c -> Math.abs(cut(s) - c.num0) > c.num0 * .15 },
             TutStep("Double tap the knob to put it back.", t("knob-cut")) { s, _ -> Math.abs(cut(s) - 2400) < 1 },

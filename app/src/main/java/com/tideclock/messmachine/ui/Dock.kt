@@ -168,7 +168,7 @@ fun Dock(state: AppState) {
 }
 
 @Composable
-private fun DockBtn(label: String, onClick: () -> Unit, tag: String, on: Boolean = false, color: androidx.compose.ui.graphics.Color = C.Ink, onColor: androidx.compose.ui.graphics.Color = C.Yellow, enabled: Boolean = true, modifier: Modifier = Modifier) {
+private fun DockBtn(label: String, onClick: () -> Unit, tag: String, on: Boolean? = null, color: androidx.compose.ui.graphics.Color = C.Ink, onColor: androidx.compose.ui.graphics.Color = C.Yellow, enabled: Boolean = true, modifier: Modifier = Modifier) {
     Btn(label, onClick, modifier = modifier.fillMaxWidth(), small = true, on = on, color = color, onColor = onColor, enabled = enabled, tag = tag)
 }
 

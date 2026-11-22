@@ -107,6 +107,17 @@ Rewritten at the end of every session and at each step of a long job (BT-2). Rea
 
 One line each, dated, with the reason and who decided (BT-2). Older decisions live in the plan sections below.
 
+- 2026-11-21 Video review (Tyler, build 130): lamps sit in a metal lip under each key, only on keys that switch
+  something; icons as big as the cap allows; keys widen with the screen up to a cap (UiLook.widthDp). Swipes off a
+  pad are HotKeys in Settings, one action per direction (defaults: up Edit, down Padiano, left Sample, right FX).
+  FX are glass vials with an in/out lamp each (hold: Auto lane) and Bypass that restores exactly; the master throws
+  are vials too, where the finger lands is how much, on a brass master plate. Mutes (pad, bank) ride under the loops
+  strip (LOOP on the top bar, any page) and on Perform. Chords on with no Padiano out opens one. The Synth tab opens
+  on a scratch synth (Engine.SCRATCH, on no pad) that Put on pad copies onto a pad.
+- 2026-11-21 Dock plan, not built yet (Tyler): the app needs one cohesive dock idea, so mutes and the other live
+  controls can be brought up on any screen the same way. Pad things and master things (docks, FX) must look clearly
+  different. Today's step toward it: the master plate (brass trim) for whole-mix controls, pad colour for pad ones.
+
 - 2026-11-20 Deep review (Tyler, doc https://claude.ai/artifact/PjAnmWrBStAqX9wNEc6ZHf): the design reference is
   Freakshow Industries (playful, ominous, mysterious controls, one hero XY per screen). Playful names stay and grow,
   each with a plain caption. Play Store is the goal. Velocity: 16 Levels across the pads plus an accent per step,

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.tideclock.messmachine.AppState
+import com.tideclock.messmachine.SWIPE_ACTIONS
 import com.tideclock.messmachine.engine.Project
 import kotlin.math.roundToInt
 
@@ -243,14 +245,28 @@ fun SettingsScreen(state: AppState) {
                     modifier = Modifier.padding(top = 8.dp))
                 // Nov 18: a quick flick up off a button opens its settings, like Menu then tap (try it; off by default)
                 // Nov 21: flicks in one row: a flick up off a pad opens its Edit tray (on), off a button its settings (off)
-                Note("Flick up for settings.", modifier = Modifier.padding(top = 12.dp, bottom = 6.dp))
+                Note("Flick a button up for its settings.", modifier = Modifier.padding(top = 12.dp, bottom = 6.dp))
                 Wrap(Modifier.tagged("flick-chips")) {
-                    Btn("Pads: " + (if (state.padFlick) "on" else "off"), { state.switchPadFlick() }, on = state.padFlick, onColor = C.Teal, small = true, tag = "set-padflick")
                     Btn("Buttons: " + (if (state.flickOn) "on" else "off"), { state.switchFlick() }, on = state.flickOn, onColor = C.Teal, small = true, tag = "set-flick")
                 }
                 Note("Beat glow behind everything.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
                 Wrap(Modifier.tagged("glow-chips")) {
                     for ((v, n) in listOf(0 to "Off", 1 to "Soft", 2 to "Full")) Btn(n, { state.setPulse(v) }, on = state.pulseLevel == v, small = true, tag = "set-pulse-$v")
+                }
+            }
+        }
+        // Nov 21 video: HotKeys, what a quick swipe off a pad does in each direction
+        Card(Modifier.fillMaxWidth().padding(bottom = 14.dp).tagged("hotkeys")) {
+            Column {
+                T("HOTKEYS", size = 12.sp, color = C.Yellow, spacing = .1.em)
+                Help("A quick swipe off a pad, about a finger's width, opens one of these. The pad still plays when you touch it.", Modifier.padding(top = 2.dp, bottom = 8.dp))
+                Btn("Pad swipes: " + (if (state.padFlick) "on" else "off"), { state.switchPadFlick() }, on = state.padFlick, onColor = C.Teal, small = true, tag = "set-padflick")
+                for ((dir, word) in listOf("up" to "Up", "down" to "Down", "left" to "Left", "right" to "Right")) {
+                    val now = SWIPE_ACTIONS.firstOrNull { it.first == state.swipe[dir] }?.second ?: "Nothing"
+                    Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        T(word.uppercase(), size = 12.sp, spacing = .08.em, color = if (state.padFlick) C.Cream else C.Dim, modifier = Modifier.width(64.dp))
+                        Select(now, SWIPE_ACTIONS, { state.setSwipe(dir, it) }, tag = "swipe-$dir")
+                    }
                 }
             }
         }

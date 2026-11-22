@@ -25,6 +25,12 @@ fun PerformScreen(state: AppState) {
     val pad = P.sel
     val k = P.kit.getOrNull(pad).orEmpty()
     ScrollPane {
+        // Nov 21 video: loops and mutes on Perform (the same rows ride under LOOP on every page)
+        Column(Modifier.fillMaxWidth().padding(top = 6.dp).tagged("perform-live")) {
+            T("LOOPS", size = 11.sp, color = C.Yellow, spacing = .1.em, modifier = Modifier.padding(bottom = 4.dp))
+            LoopKeys(state, close = false)
+            MuteRows(state, Modifier.padding(top = 8.dp))
+        }
         FxPanel(state)
         Card(Modifier.fillMaxWidth().padding(top = 14.dp).tagged("perform-pad")) {
             Column {
