@@ -134,7 +134,7 @@ fun ThrowVial(state: AppState, id: String, label: String, color: Color, modifier
         }
         Box(Modifier.padding(top = 2.dp).clickable { state.fxEditing = if (state.fxEditing == id) null else id }.tagged("fxedit-$id").padding(vertical = 4.dp, horizontal = 2.dp), contentAlignment = Alignment.Center) {
             T(label.uppercase().replace(" ", "\n") + (if (s.behave == "stays") " ●" else if (s.behave == "slider") " ═" else ""),
-                size = 9.sp, color = if (lit) color else Hw.Engrave, lines = 2, spacing = 0.em, family = Stencil, weight = androidx.compose.ui.text.font.FontWeight.Normal)
+                size = if (label.split(" ").maxOf { it.length } > 5) 7.5.sp else 9.sp, color = if (lit) color else Hw.Engrave, lines = 2, spacing = (-.02).em, family = Stencil, weight = androidx.compose.ui.text.font.FontWeight.Normal)
         }
     }
 }

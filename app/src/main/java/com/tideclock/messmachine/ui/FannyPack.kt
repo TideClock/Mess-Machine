@@ -204,7 +204,7 @@ fun VialStrip(state: AppState, pad: Int) {
                             drawCircle(Color.White.copy(alpha = .35f), r * .22f, Offset(center.x - r * .25f, center.y - r * .25f))
                         }
                     }
-                    T(name.uppercase(), size = 9.sp, color = if (inNow) Hw.Engrave else Hw.Engrave.copy(alpha = .45f), lines = 1, spacing = 0.em, family = Stencil,
+                    T(name.uppercase(), size = if (name.length > 4) 7.5.sp else 9.sp, color = if (inNow) Hw.Engrave else Hw.Engrave.copy(alpha = .45f), lines = 1, spacing = (-.02).em, family = Stencil,
                         weight = FontWeight.Normal, modifier = Modifier.padding(top = 1.dp))
                 }
             }
