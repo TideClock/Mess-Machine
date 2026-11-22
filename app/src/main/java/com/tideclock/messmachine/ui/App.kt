@@ -142,7 +142,8 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
             PulseBackdrop(state)
             Column(Modifier.fillMaxSize()) {
                 Transport(state)
-                if (state.loopStripOpen) LoopStrip(state)
+                // Perform has the loops and mutes on the page itself, so the strip stays out of the way there
+                if (state.loopStripOpen && state.tab != com.tideclock.messmachine.Tab.Perform) LoopStrip(state)
                 if (state.micOn) RecordingBanner(state)
                 if (state.updater.ready && !state.updater.later || state.updater.busy) UpdateBar(state)
                 if (state.cpuAsk) CpuBanner(state)
