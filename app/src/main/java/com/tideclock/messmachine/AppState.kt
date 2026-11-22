@@ -58,7 +58,7 @@ val PACK_STRIPS = listOf("keys" to "Keys", "fx" to "FX", "lfo" to "LFO", "xy" to
 
 /** HotKeys: swipe directions off a pad, with what each does out of the box (Nov 21 video). */
 val SWIPE_DEFAULTS = listOf("up" to "edit", "down" to "padiano", "left" to "sample", "right" to "fx")
-val SWIPE_ACTIONS = listOf("edit" to "Edit tray", "padiano" to "Padiano", "sample" to "Sample", "fx" to "FX", "pack" to "FannyPack", "off" to "Nothing")
+val SWIPE_ACTIONS = listOf("edit" to "Edit tray", "padiano" to "Padiano", "sample" to "Sample", "fx" to "FX", "pack" to "FannyPack", "mute" to "Mute", "off" to "Nothing")
 
 /** The FX strip's faders: live sends on the pad, the same targets XY and recorded moves use. */
 val FX_STRIP = listOf(
@@ -261,6 +261,14 @@ class AppState(private val app: Context) {
     var buzz by mutableStateOf(prefs.getBoolean("buzz", false))
         private set
     fun switchBuzz(v: Boolean) { buzz = v; prefs.edit().putBoolean("buzz", v).apply() }
+
+    /**
+     * Nov 21 (lag): the screen at 60 frames a second by default. A Fold redraws at 120, and every frame of drawing is
+     * time the sound thread has to share; Smooth puts it back to the phone's fastest.
+     */
+    var smoothScreen by mutableStateOf(prefs.getBoolean("smoothScreen", false))
+        private set
+    fun switchSmoothScreen(v: Boolean) { smoothScreen = v; prefs.edit().putBoolean("smoothScreen", v).apply(); notes.trail("screen ${if (v) "smooth" else "60"}") }
     /** Keep playing when you leave the app (MM-10). Off: leaving pauses the music. */
     var bgPlay by mutableStateOf(prefs.getBoolean("bgPlay", true))
         private set
@@ -944,6 +952,8 @@ class AppState(private val app: Context) {
             return
         }
         if (stepMode) { stepPadTap(d); downIds[d] = -1; return }
+        // Mute mode (Nov 21): the pads are mute switches while MUTE is held or on
+        if (muting) { togglePadMute(bank * Project.BANK + d); downIds[d] = -1; return }
         if (levelsPad >= 0) {
             val id = 4000 + d
             downIds[d] = id
@@ -962,6 +972,8 @@ class AppState(private val app: Context) {
             overlay = Overlay.Picker(i); return
         }
         notes.trail("pad ${i + 1}")
+        // Drop held: a pad you hit now stays in
+        project.dropKeep?.let { keep -> if (keep.add(project.kit[i])) rebuild() }
         // Hold latches grid pads too, under their own ids (1000 + pad), so a latch survives a bank switch
         if (holdOn) { val id = 1000 + i; downIds[d] = id; melodicDown(id, i, intArrayOf(0), mel = false); return }
         downIds[d] = d
@@ -1499,10 +1511,18 @@ class AppState(private val app: Context) {
     fun toggleMute(key: String) = edit { if (!mutes.remove(key)) mutes.add(key) }
 
     /*
-     * Mutes from anywhere (Nov 21 video): the mute rows under the loops strip (tap LOOP on the top bar) and on
-     * Perform. A pad mutes its sound; a bank mutes every sound on it, and unmutes them all when they are all muted.
+     * Mute mode (Nov 21, second video): MUTE on the dock turns the pads into mute switches. Hold it and tap pads, let go
+     * and they play again; tap it and it stays on until tapped again. Muted pads go dark with a slash. Hold a bank
+     * number to mute or unmute the whole bank. Drop: hold it and everything goes quiet but the pads you touch.
      */
-    var muteBankView by mutableIntStateOf(-1)
+    var muteMode by mutableStateOf(false)
+        private set
+    var muteHeld by mutableStateOf(false)
+    val muting: Boolean get() = muteMode || muteHeld
+    fun switchMuteMode(v: Boolean = !muteMode) {
+        muteMode = v; notes.trail("mute mode $v")
+        if (v) say("Mute: tap pads to mute or unmute them. Tap MUTE again to play.")
+    }
     fun padAudible(pad: Int): Boolean { val k = project.kit.getOrNull(pad).orEmpty(); return k.isNotEmpty() && project.audible(k) }
     fun togglePadMute(pad: Int) {
         val k = project.kit.getOrNull(pad).orEmpty(); if (k.isEmpty()) return
@@ -1515,6 +1535,23 @@ class AppState(private val app: Context) {
         val all = ks.all { it in project.mutes }
         edit { if (all) mutes.removeAll(ks.toSet()) else mutes.addAll(ks) }
         notes.trail("mute bank ${b + 1} ${!all}")
+        say(if (all) "Bank ${b + 1} is back in." else "Bank ${b + 1} muted. Hold its number again to bring it back.")
+    }
+
+    var dropOn by mutableStateOf(false)
+        private set
+    /** Drop: on, only the pads under a finger (and holding) stay in; off, everything comes back as it was. */
+    fun drop(on: Boolean) {
+        if (on == dropOn) return
+        dropOn = on
+        if (on) {
+            val keep = HashSet<String>()
+            for (d in 0 until 16) if (downIds[d] >= 0) project.kit[bank * Project.BANK + d].takeIf { it.isNotEmpty() }?.let { keep.add(it) }
+            for (id in latched) { val pad = if (id in 1000 until 2000) id - 1000 else if (id >= 2000) (id - 2000) / 32 else -1; project.kit.getOrNull(pad)?.takeIf { it.isNotEmpty() }?.let { keep.add(it) } }
+            project.dropKeep = keep
+        } else project.dropKeep = null
+        rebuild(); version++
+        notes.trail("drop $on")
     }
 
     /** Where each pad of the bank sits on screen, for carrying a sound onto another pad. */
@@ -1938,7 +1975,7 @@ class AppState(private val app: Context) {
         val touch = touchMs().let { if (it >= 0) "$it ms (${minOf(touchN, 32)} taps)" else "no taps yet" }
         val spk = if (speakerMs >= 0) "%.0f ms".format(speakerMs) else "not run"
         val buf = "%.1f".format(audio.ms(audio.bufferFrames))
-        return "output $out by Android's clock, buffer $buf ms, last hit waited $wait for a block, touch to app $touch, speaker test $spk, buffer grown ${audio.grown} and given back ${audio.shrunk}" + (if (audio.grown > 0) " (up to ${audio.growVoices} voices sounding at a growth)" else "") + ", voices cut at the limit ${engine.stolen}, steady CPU ${audio.cpuHint}"
+        return "output $out by Android's clock, buffer $buf ms, last hit waited $wait for a block, touch to app $touch, speaker test $spk, buffer grown ${audio.grown} and given back ${audio.shrunk}" + (if (audio.grown > 0) " (up to ${audio.growVoices} voices sounding at a growth)" else "") + ", voices cut at the limit ${engine.stolen}, steady CPU ${audio.cpuHint}, fast path ${audio.fastPath}, screen ${if (smoothScreen) "smooth" else "60"}"
     }
 
     /** A short click for the tap pad and the speaker test: 3 ms of 2 kHz, loud enough for the mic. */
@@ -2159,14 +2196,21 @@ class AppState(private val app: Context) {
         if (k.isEmpty() && act != "edit") return
         if (project.sel != pad) selectPad(pad, false)
         notes.trail("swipe $dir $act ${pad + 1}")
+        // Nov 21: the same swipe again closes what it opened
+        val packShows = { strip: String -> pad in keyboards && strip in packOf(pad) && strip !in (packHidden[pad] ?: emptySet()) }
         when (act) {
-            "edit" -> openSettingsFor(tag)
-            "padiano" -> { tray = null; padMenu = -1; openPadiano(pad) }
+            "edit" -> if (tray == "edit:$pad") tray = null else openSettingsFor(tag)
+            "padiano" -> { tray = null; padMenu = -1; if (packShows("keys")) toggleKeyboard(pad) else openPadiano(pad) }
             "pack" -> { tray = null; padMenu = -1; togglePack(pad) }
             "sample" -> { tray = null; padMenu = -1; if (Project.isSynth(k)) tab = Tab.Synth else overlay = Overlay.Doctor(k) }
+            "mute" -> togglePadMute(pad)
             "fx" -> {
                 padMenu = -1
-                if (layout == "classic") { if ("fx" !in packOf(pad)) togglePackStrip(pad, "fx"); packHidden[pad] = (packHidden[pad] ?: emptySet()) - "fx"; if (pad !in keyboards) toggleKeyboard(pad) }
+                if (layout == "classic") {
+                    if (packShows("fx")) toggleKeyboard(pad)
+                    else { if ("fx" !in packOf(pad)) togglePackStrip(pad, "fx"); packHidden[pad] = (packHidden[pad] ?: emptySet()) - "fx"; if (pad !in keyboards) toggleKeyboard(pad) }
+                }
+                else if (tray == "edit:$pad" && editTab == "fx") tray = null
                 else { pickEditTab("fx"); openTray("edit:$pad") }
             }
         }

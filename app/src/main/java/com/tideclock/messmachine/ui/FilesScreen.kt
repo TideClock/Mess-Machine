@@ -249,6 +249,9 @@ fun SettingsScreen(state: AppState) {
                 Wrap(Modifier.tagged("flick-chips")) {
                     Btn("Buttons: " + (if (state.flickOn) "on" else "off"), { state.switchFlick() }, on = state.flickOn, onColor = C.Teal, small = true, tag = "set-flick")
                 }
+                // Nov 21 (lag): the screen at 60 a second leaves more time for the sound
+                Note("Screen speed. 60 a second leaves the sound more room; Smooth is the phone's fastest.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
+                Btn(if (state.smoothScreen) "Screen: smooth" else "Screen: 60 a second", { state.switchSmoothScreen(!state.smoothScreen) }, on = state.smoothScreen, onColor = C.Teal, small = true, tag = "set-smooth")
                 Note("Beat glow behind everything.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
                 Wrap(Modifier.tagged("glow-chips")) {
                     for ((v, n) in listOf(0 to "Off", 1 to "Soft", 2 to "Full")) Btn(n, { state.setPulse(v) }, on = state.pulseLevel == v, small = true, tag = "set-pulse-$v")

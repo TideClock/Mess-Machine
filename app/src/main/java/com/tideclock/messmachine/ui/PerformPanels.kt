@@ -569,13 +569,14 @@ fun PadianoKeys(state: AppState, pad: Int, col: Color, keysHeight: Dp) {
                             val bh = size.height * .6f
                             if (at.x < 0 || at.x > size.width || at.y < 0 || at.y > size.height) null
                             else {
-                                val wi = floor(at.x / ww).toInt().coerceIn(0, visible - 1)
+                                // the top row can be shorter than the others near the highest note: never reach past its end
+                                val wi = floor(at.x / ww).toInt().coerceIn(0, shown.size - 1)
                                 val edge = (at.x / ww) - wi
                                 val left = shown[wi] - 1
                                 val right = shown[wi] + 1
                                 when {
                                     at.y < bh && edge < .3f && wi > 0 && isBlack(left) -> left
-                                    at.y < bh && edge > .7f && wi < visible - 1 && isBlack(right) -> right
+                                    at.y < bh && edge > .7f && wi < shown.size - 1 && isBlack(right) -> right
                                     else -> shown[wi]
                                 }
                             }

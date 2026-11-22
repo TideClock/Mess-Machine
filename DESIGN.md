@@ -114,6 +114,11 @@ One line each, dated, with the reason and who decided (BT-2). Older decisions li
   are vials too, where the finger lands is how much, on a brass master plate. Mutes (pad, bank) ride under the loops
   strip (LOOP on the top bar, any page) and on Perform. Chords on with no Padiano out opens one. The Synth tab opens
   on a scratch synth (Engine.SCRATCH, on no pad) that Put on pad copies onto a pad.
+- 2026-11-21 Mutes (Tyler, second video): the mute rows were a wall of keys. MUTE on the dock makes the pads the
+  switches (hold for a moment, tap to stay on), holding a bank number mutes the bank, DROP held leaves only touched pads
+  (Project.dropKeep, never saved). Mute is also a HotKeys swipe, and the same swipe again closes what it opened.
+- 2026-11-21 Lag, first half: 60 frames a second by default (Smooth screen setting), the beat glow and top bar flash in
+  their own layers, no Random made on every key redraw, the Latency screen shows the fast path Android granted.
 - 2026-11-21 Dock plan, not built yet (Tyler): the app needs one cohesive dock idea, so mutes and the other live
   controls can be brought up on any screen the same way. Pad things and master things (docks, FX) must look clearly
   different. Today's step toward it: the master plate (brass trim) for whole-mix controls, pad colour for pad ones.

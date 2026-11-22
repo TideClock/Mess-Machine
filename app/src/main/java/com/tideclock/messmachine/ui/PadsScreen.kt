@@ -12,6 +12,7 @@ import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.RowScope
@@ -142,7 +143,8 @@ fun StepPad(state: AppState, d: Int, modifier: Modifier) {
 private fun RowScope.BankButtons(state: AppState) {
     T("BANK", size = 11.sp, color = C.Dim, spacing = .1.em)
     for (b in 0 until 4) {
-        Btn("${b + 1}", modifier = Modifier.weight(1f), onClick = { state.bank = b }, on = state.bank == b && !state.keysMode, small = true, enabled = !state.keysMode, tag = "bank-$b")
+        // hold a bank number: the whole bank muted, or back in (Nov 21)
+        Btn("${b + 1}", modifier = Modifier.weight(1f).holdFor(b) { state.toggleBankMute(b) }, onClick = { state.bank = b }, on = state.bank == b && !state.keysMode, small = true, enabled = !state.keysMode, tag = "bank-$b")
     }
 }
 
@@ -195,6 +197,14 @@ fun BottomDock(state: AppState) {
             if (state.layout == "classic") { if (state.tab == com.tideclock.messmachine.Tab.Pads) BarBtn(state, "FX", "FX", { state.showFx = !state.showFx }, on = state.showFx, onColor = C.Pink, tag = "fx-toggle", word = "FX") }
             // build 107: Repeat sits beside Hold (the throws moved into the perform row); Edit, then Repeat, for its rate
             else BarBtn(state, if (state.live.nr) "● Repeat" else "○ Repeat", "Repeat", { state.switchRepeat() }, on = state.live.nr, onColor = C.Pink, tag = "repeat-toggle", word = "Repeat")
+            // Nov 21 (second video): MUTE turns the pads into mute switches (hold it, or tap it to stay on); DROP, held,
+            // leaves only the pads you touch
+            PressKey({ down, quick -> if (down) state.muteHeld = true else { state.muteHeld = false; if (quick) state.switchMuteMode() } }) {
+                BarBtn(state, "Mute", "Mute", {}, on = state.muting, onColor = Hw.Oxblood, enabled = !state.locked, tag = "mute-key", word = "Mute")
+            }
+            PressKey({ down, _ -> state.drop(down) }) {
+                BarBtn(state, "Drop", "Drop", {}, on = state.dropOn, onColor = C.Pink, enabled = !state.locked, tag = "drop-key", word = "Drop")
+            }
             // Nov 21 fix: the chord shows only while Chords is on (it used to show the last one with Chords off)
             val keyText = "${Theory.NN[P.root]} ${P.scale.lowercase()}" + (if (state.chordMode != "off") " · " + chordName(state.chordMode).lowercase() else "") + if (state.keysBarOpen) " ▾" else " ▴"
             if (state.look == "classic") Btn(keyText, { state.switchKeysBar() }, small = true, tight = true, tier = Tier.Quiet, tag = "keysbar-open", modifier = Modifier.weight(1f))
@@ -294,10 +304,21 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
     // words on the pad: on the jar they take the pad's colour; on Specimen glass and the Stage body they are light
     val onPad = if (C.skin.pad == "jar" || C.skin.pad == "felt") ink(fill) else C.Cream
     val onTop = if (C.skin.pad == "band") ink(fill) else onPad
+    // Nov 21: muted (or left out by Drop) pads go dark with a slash; in Mute mode every loaded pad gets a red rim
+    val muted = !keys && !lv && !empty && !state.padAudible(i)
+    val muteRim = !keys && !lv && !empty && state.muting
     Box(
         modifier
             .aspectRatio(1f)
             .scale(if (pressed) .93f else 1f)
+            .drawWithContent {
+                drawContent()
+                if (muted) {
+                    drawRect(Color.Black.copy(alpha = .6f))
+                    drawLine(Hw.Oxblood, Offset(size.width * .12f, size.height * .88f), Offset(size.width * .88f, size.height * .12f), strokeWidth = 5.dp.toPx())
+                }
+                if (muteRim) drawRect(Hw.Oxblood, style = androidx.compose.ui.graphics.drawscope.Stroke(4.dp.toPx()))
+            }
             .tagged("pad-$d")
             .drawBehind {
                 val r = CornerRadius(7.dp.toPx())
@@ -539,4 +560,28 @@ fun padFont(title: String, narrow: Boolean, padDp: Float = 0f): androidx.compose
 @Composable
 fun Swatch(c: Color, modifier: Modifier = Modifier) {
     Canvas(modifier.size(14.dp)) { drawRect(c); drawRect(C.Cream, style = Stroke(2.dp.toPx())) }
+}
+
+
+/** A key that knows when it goes down and comes up: quick is a tap under 300 ms. The key inside still draws as pressed. */
+@Composable
+fun PressKey(onPress: (down: Boolean, quick: Boolean) -> Unit, content: @Composable () -> Unit) {
+    val cb by androidx.compose.runtime.rememberUpdatedState(onPress)
+    Box(Modifier.pointerInput(Unit) {
+        awaitEachGesture {
+            val d = awaitFirstDown(requireUnconsumed = false, pass = androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+            cb(true, false)
+            val up = waitForUpOrCancellation(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+            cb(false, up != null && up.uptimeMillis - d.uptimeMillis < 300)
+        }
+    }) { content() }
+}
+
+/** Hold for half a second: onHold (the tap underneath still happens when the finger lifts). */
+fun Modifier.holdFor(key: Any?, ms: Long = 500, onHold: () -> Unit): Modifier = this.pointerInput(key) {
+    awaitEachGesture {
+        awaitFirstDown(requireUnconsumed = false, pass = androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+        val up = withTimeoutOrNull(ms) { waitForUpOrCancellation(androidx.compose.ui.input.pointer.PointerEventPass.Initial) }
+        if (up == null) onHold()
+    }
 }

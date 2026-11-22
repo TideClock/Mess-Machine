@@ -49,6 +49,8 @@ fun AudioCheckScreen(state: AppState) {
                 "Sound engine: ${a.loadText()}\n" +
                 "Dropouts: ${a.underruns}, buffer grown ${a.grown}, given back ${a.shrunk}\n" +
                 "Steady CPU: ${a.cpuHint}\n" +
+                "Fast audio path: ${a.fastPath}\n" +
+                "Screen: ${state.uiPerf.ifEmpty { "measuring" }}\n" +
                 "Long blocks: ${a.longBlocksText(3)}"
             if (!UiFlags.testing) delay(500)
         } while (!UiFlags.testing)

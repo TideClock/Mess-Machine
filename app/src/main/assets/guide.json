@@ -1,24 +1,21 @@
 {
-  "title": "Vials, HotKeys and a synth to play",
+  "title": "Mute mode, Drop, and a steadier screen",
   "thisBuild": [
-    "Keys: the lamp moved into the metal lip under each key, so the word and icon sit in the middle. Keys that only do something (Stop, Undo, plus, minus, Hear it) have no lamp. Icons are as big as the key allows, and keys grow with a wide screen.",
-    "HotKeys in Settings: what a quick swipe off a pad opens. Out of the box up is the Edit tray, down the Padiano, left Sample, right FX. Each direction can be anything, or nothing.",
-    "FX are glass vials now, every effect at once. Drag a vial to fill it. The lamp under it takes that effect out and puts it back where it was; hold the lamp for its Auto lane. Bypass takes them all out and brings them back exactly.",
-    "Perform: the throws are vials on a brass master plate. Where your finger lands is how much, slide to change it. Tap a name for its settings.",
-    "Mutes: tap LOOP on the top bar on any page. Under the loops: pad mutes (lit is heard) and the whole bank. Perform has loops and mutes on the page itself, so the strip stays off there.",
-    "Synth opens on a scratch synth you can play right away, on no pad. Pick a kind and preset, turn the knobs, play the keys, then Put it on a pad.",
-    "Chords on with no Padiano out opens the picked pad's. The key reads out on an amber LCD. BAR on the loops is now Wait bar or Now (it never added bars: Seq, Steps, the 1 bar key does)."
+    "MUTE on the dock: hold it and tap pads to mute or unmute them; let go and the pads play again. Tap MUTE instead and it stays on until you tap it again. Muted pads go dark with a slash, and every pad gets a red rim while Mute is on.",
+    "Hold a bank number (1 to 4) for half a second: the whole bank mutes, or comes back.",
+    "DROP on the dock: hold it and everything goes quiet but the pads you touch. Let go and it all comes back.",
+    "The wall of mute keys under LOOP is gone. LOOP is back to one row of loops.",
+    "HotKeys: Mute is a swipe choice now, and the same swipe again closes whatever it opened (Edit tray, Padiano, FX).",
+    "For the lag and crackle: the screen runs at 60 a second unless you turn on Settings, Playing, Screen: smooth. The beat glow no longer redraws the whole screen on every frame. The Latency screen now says whether Android gave the sound its fast path, and how the screen is keeping up."
   ],
   "watch": [
-    "Play with swipes on: does down for the Padiano ever fire when you only meant to hit a pad?",
-    "Throw vials while the loop plays: does landing low feel like a little and the top like all of it?",
-    "On the Fold's inner screen: do the keys look full size now, not small and far apart?"
+    "Play the same thing as in your video for five minutes: open Latency after. How many dropouts, and what does Fast audio path say?",
+    "Mute mode: hold MUTE and tap pads while the loop plays. Quick enough?",
+    "Drop on a fill, then let go on the one."
   ],
   "limits": [
-    "Bypass and each vial's in or out are live only: a reload brings every effect back in.",
-    "Muting a sound mutes it on every pad that has it.",
-    "The scratch synth has no Granular (it reads a sound off a pad) and no Full knobs; put it on a pad for those.",
-    "A left swipe that starts right at the screen's edge is Android's Back, not Sample.",
-    "One dock idea for the whole app is planned, not built: today mutes ride under the loops strip."
+    "This build is the first half of the lag work. The deeper fix (moving the sound onto Android's newer fast audio system) is in the proposal doc waiting for your call.",
+    "Drop leaves sounds that are already ringing to finish; it stops new hits.",
+    "Muting a sound mutes it on every pad that has it."
   ]
 }

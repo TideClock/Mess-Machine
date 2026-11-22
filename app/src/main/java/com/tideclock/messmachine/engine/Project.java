@@ -361,7 +361,9 @@ public final class Project {
     /** A new synth key no other synth in this mess uses. */
     public String newSynthKey() { int n = 1; while (synths.containsKey("synth:" + n)) n++; return "synth:" + n; }
 
-    public boolean audible(String k) { return solos.isEmpty() ? !mutes.contains(k) : solos.contains(k); }
+    /** Drop (Nov 21): while held, only these sounds are heard; null the rest of the time. Never saved. */
+    public transient java.util.Set<String> dropKeep;
+    public boolean audible(String k) { if (dropKeep != null) return dropKeep.contains(k); return solos.isEmpty() ? !mutes.contains(k) : solos.contains(k); }
 
     public int songLen() { int n = 0; for (int k = 0; k < MAXSONG; k++) if (song[k] >= 0) n = k + 1; return n; }
 

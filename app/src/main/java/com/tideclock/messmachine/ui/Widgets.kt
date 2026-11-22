@@ -181,10 +181,12 @@ fun Modifier.bakelite(on: Boolean, lamp: Color, pressed: Boolean, danger: Boolea
     drawRoundRect(Brush.verticalGradient(if (pressed) listOf(Hw.BakeLow, Hw.Bake) else listOf(Hw.BakeTop, Hw.Bake, Hw.BakeLow)),
         topLeft = Offset(bez, bez), size = Size(size.width - bez * 2, capH), cornerRadius = capR)
     // wear: a few pale scuffs on the cap, the same on every redraw for a given size
-    val rnd = java.util.Random((size.width * 31 + size.height).toLong())
+    // (Nov 21, lag: a tiny hash in place of a new Random on every redraw of every key)
+    var seed = (size.width * 31 + size.height).toInt() * 1103515245 + 12345
+    fun next(): Float { seed = seed * 1103515245 + 12345; return ((seed ushr 8) and 0xFFFF) / 65535f }
     repeat(3) {
-        val x = bez + rnd.nextFloat() * (size.width - bez * 2 - 8f); val y = bez + rnd.nextFloat() * (capH - 4f).coerceAtLeast(1f)
-        drawLine(Color.White.copy(alpha = .05f + rnd.nextFloat() * .05f), Offset(x, y), Offset(x + 4f + rnd.nextFloat() * 14f, y + rnd.nextFloat() * 3f), strokeWidth = 1f)
+        val x = bez + next() * (size.width - bez * 2 - 8f); val y = bez + next() * (capH - 4f).coerceAtLeast(1f)
+        drawLine(Color.White.copy(alpha = .05f + next() * .05f), Offset(x, y), Offset(x + 4f + next() * 14f, y + next() * 3f), strokeWidth = 1f)
     }
     // the lamp: a small glass bead set in the lip, centred under the cap, that glows when on
     if (lamped) {

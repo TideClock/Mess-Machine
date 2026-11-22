@@ -145,7 +145,8 @@ fun androidx.compose.ui.Modifier.rail(state: com.tideclock.messmachine.AppState,
     // the hardware panel (Nov 21): a strip of worn gunmetal, brushed sideways, scratched, held on by two screws
     "panel" -> this.drawBehind {
         drawRect(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Hw.PlateTop, Hw.Plate, androidx.compose.ui.graphics.Color(0xFF151311))))
-        val rnd = java.util.Random(7L + size.width.toLong())
+        // a tiny hash, not a new Random on every redraw (Nov 21, lag)
+        val rnd = object { var x = 7 + size.width.toInt(); fun nextFloat(): Float { x = x * 1103515245 + 12345; return ((x ushr 8) and 0xFFFF) / 65535f } }
         var y = 1f
         while (y < size.height) {
             drawLine(androidx.compose.ui.graphics.Color.White.copy(alpha = .015f + rnd.nextFloat() * .03f), androidx.compose.ui.geometry.Offset(0f, y), androidx.compose.ui.geometry.Offset(size.width, y), 1f)
@@ -240,7 +241,7 @@ fun PanelKey(
         ) {
             // the icon in its own colours (aged, crisp whole pixels), centred on the cap
             if (res != null) InlayIcon(res, (capH - 8f).dp, on, text)
-            else T(text.take(3).uppercase(), size = 11.sp, color = Hw.Engrave, lines = 1, family = Worn, weight = androidx.compose.ui.text.font.FontWeight.Normal)
+            else T((if (text.length <= 5) text else text.take(3)).uppercase(), size = 12.sp, color = if (on) lerp(Hw.Engrave, onColor, .5f) else Hw.Engrave, lines = 1, spacing = 0.em, family = Worn, weight = androidx.compose.ui.text.font.FontWeight.Normal)
         }
         if (state.proWords && word != null) T(word.uppercase(), size = 8.sp, color = if (on) onColor else Hw.Engrave.copy(alpha = .8f), lines = 1, spacing = 0.em, family = Stencil, weight = androidx.compose.ui.text.font.FontWeight.Normal,
             modifier = androidx.compose.ui.Modifier.padding(top = 2.dp))

@@ -32,6 +32,9 @@ class AudioOut(private val engine: Engine, private val rate: Int, framesPerBurst
     /** Time from a block being written to it leaving the speaker, from Android's own clock (MM-1). -1 until known. */
     @Volatile var outputMs = -1.0
         private set
+    /** Nov 21 (lag): did Android give this track its fast (low latency) path, or put it through the slower mixer. */
+    @Volatile var fastPath = "not known yet"
+        private set
     /** Steady CPU (MM-6): "on", "not on this phone" or "off" before audio starts. */
     @Volatile var cpuHint = "off"
         private set
@@ -119,6 +122,7 @@ class AudioOut(private val engine: Engine, private val rate: Int, framesPerBurst
             running = false
             return
         }
+        fastPath = if (Build.VERSION.SDK_INT >= 26) (if (track.performanceMode == AudioTrack.PERFORMANCE_MODE_LOW_LATENCY) "yes" else "no, Android chose the slower path") else "not on this phone"
         var size = track.setBufferSizeInFrames(burst * 3)
         if (size <= 0) size = track.bufferSizeInFrames
         val startSize = size

@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.text.font.FontWeight
@@ -85,6 +86,11 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
             if (w != null) androidx.core.view.WindowCompat.getInsetsController(w, rootView).apply {
                 isAppearanceLightStatusBars = lightSkin; isAppearanceLightNavigationBars = lightSkin
             }
+        }
+        // Nov 21 (lag): 60 frames a second unless Smooth screen is on (Settings, Playing)
+        LaunchedEffect(state.smoothScreen) {
+            val act = rootView.context as? android.app.Activity
+            if (act != null) try { setScreenRate(act, state.smoothScreen) } catch (_: Throwable) {}
         }
         if (ticker) LaunchedEffect(Unit) {
             while (true) {
@@ -142,7 +148,7 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
             PulseBackdrop(state)
             Column(Modifier.fillMaxSize()) {
                 Transport(state)
-                // Perform has the loops and mutes on the page itself, so the strip stays out of the way there
+                // Perform has the loops on the page itself, so the strip stays out of the way there
                 if (state.loopStripOpen && state.tab != com.tideclock.messmachine.Tab.Perform) LoopStrip(state)
                 if (state.micOn) RecordingBanner(state)
                 if (state.updater.ready && !state.updater.later || state.updater.busy) UpdateBar(state)
@@ -287,7 +293,8 @@ fun Transport(state: AppState) {
     val pulse = beatPulse(state)
     val free = !state.locked
     Row(
-        Modifier.fillMaxWidth().rail(state).drawBehind {
+        // its own layer (Nov 21, lag): the beat flash redraws the top bar only, not the screen under it
+        Modifier.fillMaxWidth().graphicsLayer().rail(state).drawBehind {
             // the line under the top bar flashes on every beat, brighter on the one
             val v = pulse.value
             val down = state.heardStep >= 0 && state.heardStep % 16 < 4
@@ -419,13 +426,13 @@ fun PulseBackdrop(state: AppState) {
     if (state.pulseLevel == 0) return
     val pulse = beatPulse(state)
     val strength = if (state.pulseLevel == 2) .30f else .14f
-    Box(Modifier.fillMaxSize().tagged("pulse").drawBehind {
-        val v = pulse.value
-        if (v < .01f) return@drawBehind
+    // Nov 21 (lag): the glow lives in its own layer and only its see-through changes each frame. Drawn the old way, every
+    // frame of every beat redrew the whole screen behind it (every key, pad and vial), 120 times a second on a Fold
+    Box(Modifier.fillMaxSize().tagged("pulse").graphicsLayer { alpha = pulse.value.coerceIn(0f, 1f) }.drawBehind {
         val down = state.heardStep >= 0 && state.heardStep % 16 < 4
         val c = if (down) C.Pink else C.Yellow
-        drawRect(c.copy(alpha = strength * .35f * v))
-        drawRect(Brush.radialGradient(listOf(c.copy(alpha = strength * v), Color.Transparent), center = center, radius = size.maxDimension * .7f))
+        drawRect(c.copy(alpha = strength * .35f))
+        drawRect(Brush.radialGradient(listOf(c.copy(alpha = strength), Color.Transparent), center = center, radius = size.maxDimension * .7f))
     })
 }
 
@@ -460,7 +467,7 @@ fun beatPulse(state: AppState): Animatable<Float, AnimationVector1D> {
 /** A round light that thumps with the beat: pink on the one, yellow on the others. */
 @Composable
 fun BeatLight(state: AppState, pulse: Animatable<Float, AnimationVector1D>) {
-    Canvas(Modifier.size(26.dp).tagged("beatlight")) {
+    Canvas(Modifier.size(26.dp).graphicsLayer().tagged("beatlight")) {
         val v = pulse.value
         val down = state.heardStep >= 0 && state.heardStep % 16 < 4
         val c = if (down) C.Pink else C.Yellow
@@ -484,6 +491,7 @@ fun RecBtn(state: AppState, modifier: Modifier = Modifier) {
  * moment as the beat light and the glow (brighter on the one), with a red halo around it.
  */
 fun Modifier.recGlow(state: AppState, pulse: Animatable<Float, AnimationVector1D>): Modifier = this
+    .graphicsLayer()
     .drawBehind {
         if (!state.live.rec) return@drawBehind
         val v = if (state.playing) pulse.value else .35f
@@ -595,12 +603,12 @@ fun UpdateBar(state: AppState) {
 
 
 /** Loops A to H from any page (Nov 18). Lit letters have something in them; while playing a pick waits for the bar line.
- * Nov 21 video: the pad and bank mutes ride under them, so loops and mutes are one tap away on every page. */
+ */
 @Composable
 fun LoopStrip(state: AppState) {
-    Column(Modifier.fillMaxWidth().background(C.Ink).tagged("loopstrip").padding(horizontal = 8.dp, vertical = 6.dp)) {
+    // Nov 21: the mute rows that rode here were a wall of keys; mutes are MUTE on the dock (the pads become the switches)
+    Box(Modifier.fillMaxWidth().background(C.Ink).tagged("loopstrip").padding(horizontal = 8.dp, vertical = 6.dp)) {
         LoopKeys(state, close = true)
-        MuteRows(state, Modifier.padding(top = 6.dp))
     }
 }
 
@@ -731,4 +739,20 @@ fun SettingsTray(state: AppState, kind: String, modifier: Modifier = Modifier) {
             }
         }
     }
+}
+
+
+/** Ask for 60 frames a second (or the fastest the screen has) at the screen's own size. A hint: the phone may still choose. */
+fun setScreenRate(act: android.app.Activity, smooth: Boolean) {
+    val w = act.window
+    val lp = w.attributes
+    if (android.os.Build.VERSION.SDK_INT >= 30) {
+        val d = act.display
+        val cur = d?.mode
+        val same = d?.supportedModes?.filter { cur == null || (it.physicalWidth == cur.physicalWidth && it.physicalHeight == cur.physicalHeight) }.orEmpty()
+        val want = if (smooth) same.maxByOrNull { it.refreshRate } else same.minByOrNull { kotlin.math.abs(it.refreshRate - 60f) }
+        if (want != null) lp.preferredDisplayModeId = want.modeId
+    }
+    lp.preferredRefreshRate = if (smooth) 0f else 60f
+    w.attributes = lp
 }

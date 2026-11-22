@@ -668,7 +668,10 @@ class BigTest {
         at("fxstrip-off-1").performClick(); settle()
         assertTrue("and brings it back", state.fxIn(1, Engine.T_RVB) && state.fxIn(1, Engine.T_ECHO))
         assertEquals(.4f, state.fxSend["1:${Engine.T_ECHO}"]!!, 1e-4f)
-        at("tray-done").performClick(); settle()
+        // the same swipe again closes what it opened
+        rule.onNodeWithTag("pad-1").performTouchInput { down(center); moveBy(Offset(width * 1.2f, 0f)); up() }
+        settle()
+        assertEquals("swiping right again closes the FX drawer", null, state.tray)
         rule.onNodeWithTag("pad-1").performTouchInput { down(center); moveBy(Offset(-width * 1.2f, 0f)); up() }
         settle()
         assertTrue("a swipe left opens Sample", state.overlay is Overlay.Doctor)
@@ -683,18 +686,39 @@ class BigTest {
         at("swipe-down").assertExists()
         shot("106-hotkeys")
         state.overlay = null; settle()
-        // mutes from the loops strip on any page
-        at("loop-open").performClick(); settle()
-        at("mute-rows").assertExists()
+        // MUTE on the dock: tapped on, the pads are mute switches; tapped again, they play
         val k0 = state.project.kit[0]
-        at("mute-pad-0").performClick(); settle()
+        at("mute-key").performClick(); settle()
+        assertTrue("a tap keeps Mute on", state.muteMode)
+        tapPad(0)
         assertTrue("pad 1 muted", k0 in state.project.mutes)
-        at("mute-bank").performClick(); settle()
-        assertTrue("the whole bank muted", state.bankMuted(0))
-        shot("107-mutes")
-        at("mute-bank").performClick(); settle()
-        assertFalse("and back", state.bankMuted(0) || k0 in state.project.mutes)
-        at("loop-close").performClick(); settle()
+        shot("107-mute-mode")
+        tapPad(0)
+        assertFalse("and back", k0 in state.project.mutes)
+        at("mute-key").performClick(); settle()
+        assertFalse(state.muting)
+        // hold a bank number: the whole bank
+        rule.onNodeWithTag("bank-0").performTouchInput { down(center) }
+        rule.mainClock.advanceTimeBy(700); settle()
+        rule.onNodeWithTag("bank-0").performTouchInput { up() }; settle()
+        assertTrue("holding bank 1 mutes it", state.bankMuted(0))
+        state.toggleBankMute(0); settle()
+        // Drop held: everything out but the pads you touch, all back on letting go
+        at("drop-key").performTouchInput { down(center) }; settle()
+        assertTrue(state.dropOn)
+        assertFalse("everything is out", state.padAudible(0))
+        rule.onNodeWithTag("pad-1").performTouchInput { down(1, center) }; settle()
+        rule.onNodeWithTag("pad-1").performTouchInput { up(1) }; settle()
+        assertTrue("a pad hit during Drop stays in", state.padAudible(1))
+        rule.onNodeWithTag("drop-key").performTouchInput { up() }; settle()
+        assertTrue("let go: all back", state.padAudible(0) && !state.dropOn)
+        // Mute on a HotKeys swipe
+        state.setSwipe("up", "mute")
+        rule.onNodeWithTag("pad-2").performTouchInput { down(center); moveBy(Offset(0f, -height * 1.2f)); up() }; settle()
+        assertTrue("a swipe set to Mute mutes", !state.padAudible(2))
+        rule.onNodeWithTag("pad-2").performTouchInput { down(center); moveBy(Offset(0f, -height * 1.2f)); up() }; settle()
+        assertTrue("the same swipe brings it back", state.padAudible(2))
+        state.setSwipe("up", "edit")
         // chords on with no Padiano out opens the picked pad's
         state.keyboards.clear(); if (state.chordMode != "off") state.toggleChords(); settle()
         state.selectPad(1, false); settle()
@@ -725,6 +749,23 @@ class BigTest {
         at("perform-live").assertExists()
         at("master-throws").assertExists()
         shot("109-master-throws")
+    }
+
+    /** Nov 21 video crash: Chords off with a chord set showing, the Padiano as a Keyboard and In key only off. */
+    @Test fun chordsOffWithAKeyboardPadiano() {
+        val pad = (0 until 16).first { state.project.kit[it].isNotEmpty() }
+        for (keyboard in listOf(true, false)) for (rows in listOf(1, 3)) for (keysMode in listOf(false, true)) {
+            state.pickChordMode("set:Sunday Pop"); settle()
+            state.keyboards.clear(); state.keysMode = false; state.selectPad(pad, false); settle()
+            state.openPadiano(pad); settle()
+            state.switchPadianoKeys(keyboard); state.switchInKey(false); state.changePadianoRows(rows); settle()
+            state.keysMode = keysMode; settle()
+            state.toggleChords(); settle()
+            assertEquals("off", state.chordMode)
+            state.toggleChords(); settle()
+            state.toggleChords(); settle()
+        }
+        state.keysMode = false; state.switchPadianoKeys(false); state.changePadianoRows(1); settle()
     }
 
     @Test fun notesSentLateSayWhenTheyWereWritten() {
