@@ -12,6 +12,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import com.tideclock.messmachine.AppState
 import com.tideclock.messmachine.FX_STRIP
 import com.tideclock.messmachine.Overlay
@@ -34,8 +38,19 @@ fun EditTray(state: AppState, pad: Int) {
     if (k.isEmpty()) { T("This pad is empty.", size = 13.sp, color = C.Dim); return }
     val col = padColor(Color(state.lib.colorOf(k)))
     Row(Modifier.fillMaxWidth().tagged("edit-tabs"), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-        for ((id, name) in EDIT_TABS) Btn(name, { state.pickEditTab(id) }, on = state.editTab == id, onColor = col, small = true, tight = true,
-            tag = "edit-tab-$id", modifier = Modifier.weight(1f))
+        for ((id, name) in EDIT_TABS) {
+            if (UiLook.panel) {
+                // the panel Look: five drawer keys, the open drawer's lamp lit in the pad's colour; narrow words, so a Fold's cover fits them
+                val on = state.editTab == id
+                androidx.compose.foundation.layout.Box(
+                    Modifier.weight(1f).heightIn(min = (40f / UiLook.scale.coerceIn(.4f, 2f)).coerceAtLeast(36f).dp)
+                        .bakelite(on, col, false).clickable { state.pickEditTab(id) }.tagged("edit-tab-$id")
+                        .semantics { selected = on }.padding(start = 11.dp, end = 2.dp),
+                    contentAlignment = Alignment.Center,
+                ) { T(name.uppercase(), size = 11.sp, color = if (on) lerp(Hw.Engrave, col, .35f) else Hw.Engrave, lines = 1, weight = androidx.compose.ui.text.font.FontWeight.ExtraBold) }
+            } else Btn(name, { state.pickEditTab(id) }, on = state.editTab == id, onColor = col, small = true, tight = true,
+                tag = "edit-tab-$id", modifier = Modifier.weight(1f))
+        }
     }
     Column(Modifier.fillMaxWidth().padding(top = 10.dp).tagged("edit-${state.editTab}")) {
         when (state.editTab) {
