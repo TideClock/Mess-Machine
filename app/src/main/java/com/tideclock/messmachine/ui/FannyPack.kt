@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.drawText
@@ -275,7 +276,7 @@ fun Vial(value: Float, color: Color, live: Boolean, tag: String, height: android
         if (label != null) {
             val lay = tm.measure(label, androidx.compose.ui.text.TextStyle(fontFamily = Stencil, fontSize = 10.sp, color = Hw.Engrave.copy(alpha = .9f), letterSpacing = .08.em))
             val mid = Offset(size.width / 2, glassTop + glassH / 2)
-            androidx.compose.ui.graphics.drawscope.rotate(-90f, mid) {
+            rotate(-90f, mid) {
                 drawText(lay, topLeft = Offset(mid.x - lay.size.width / 2f, mid.y - lay.size.height / 2f))
             }
         }
