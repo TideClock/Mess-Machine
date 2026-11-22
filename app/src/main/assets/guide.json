@@ -6,7 +6,8 @@
     "A pad tile sits at the top left of the Synth tab. Tap it to play the synth's note. Swipe it like a grid pad: up for Edit, right for its FX vials, down folds the keys away. The same swipe again closes it.",
     "One keyboard everywhere: the Synth tab uses the Padiano now. In the panel Look its Keyboard style is the synth's (cream keys, bakelite blacks, amber under your finger). Squares or Keyboard is the same setting on every screen.",
     "Put on: Empty pad moves the scratch synth onto a pad, knobs and recorded notes and all, and a fresh copy stays on the Synth tab.",
-    "Picking a synth pad anywhere makes the Synth tab show that pad's synth."
+    "Picking a synth pad anywhere makes the Synth tab show that pad's synth.",
+    "The keys on the Synth tab say SCRATCH and the preset's name over them, not a pad number."
   ],
   "watch": [
     "The lag number beside the BPM: lower than the 81 ms in your last video? And any red clicks?",
