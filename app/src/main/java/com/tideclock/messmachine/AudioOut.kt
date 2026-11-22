@@ -104,14 +104,98 @@ class AudioOut(private val engine: Engine, private val rate: Int, framesPerBurst
         thread = Thread({ loop() }, "mess-audio").also { it.start() }
     }
 
+    /** Start again (after switching the AAudio setting), only if it was running. */
+    fun restart() { if (running) { stop(); start() } }
+
     fun stop() {
         running = false
         thread?.join(600)
         thread = null
     }
 
+    /** Nov 21 (L4): go out through AAudio (Android's fast path) when the phone allows it; off uses the older AudioTrack. */
+    @Volatile var useAAudio = true
+    /** Which way the sound leaves, for the notes and Settings: "AAudio (exclusive, low latency)", "AudioTrack", ... */
+    @Volatile var path = "not started"
+        private set
+
     private fun loop() {
         Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO)
+        // AAudio first; a stream that dies (headphones in or out, a call) is opened again, a few times at most
+        var tries = 0
+        while (running && useAAudio && NativeOut.ok && tries < 5) {
+            when (loopAAudio()) {
+                0 -> return
+                1 -> break
+                else -> tries++
+            }
+        }
+        if (running) loopTrack()
+    }
+
+    /** 0: stopped as asked; 1: AAudio would not open here; 2: the stream died (open it again). */
+    private fun loopAAudio(): Int {
+        val dev = try { NativeOut.open(rate, burst * 3) } catch (_: Throwable) { -1 }
+        if (dev <= 0) return 1
+        // the ring holds one engine block plus two of the device's bursts to start, like the old path's three bursts
+        val startFill = burst + dev * 2
+        var fill = startFill
+        NativeOut.setFill(fill)
+        val devBuf = NativeOut.deviceBuffer()
+        fun latency() { bufferFrames = fill + devBuf; engine.setLatencyFrames(fill + devBuf) }
+        latency()
+        val mode = NativeOut.mode()
+        path = "AAudio ($mode)"
+        fastPath = if (mode.contains("low latency")) "yes (AAudio, $mode)" else "no (AAudio, $mode)"
+        val buf = FloatArray(burst * 2)
+        var seen = 0
+        var lastClick = System.nanoTime()
+        var n = 0
+        val budget = burst * 1e9 / rate
+        val hint = hintSession(budget.toLong())
+        startedNanos = System.nanoTime()
+        var why = 0
+        try {
+            var peak = 0.0
+            while (running) {
+                val t0 = System.nanoTime()
+                engine.render(buf, burst)
+                val took = System.nanoTime() - t0
+                val load = took / budget
+                loadAvg += (load - loadAvg) * .01
+                if (load > peak) peak = load
+                if (hint != null) try { HintCompat.report(hint, took.coerceAtLeast(1L)) } catch (_: Throwable) {}
+                if (load > 1.5) noteLong(t0, load)
+                if (NativeOut.write(buf, burst, rate) < 0) { why = 2; break }
+                if (++n % 64 == 0) {
+                    val u = NativeOut.clicks()
+                    underruns = u
+                    val now = System.nanoTime()
+                    if (u > seen) repeat(minOf(u - seen, 64)) { clickAt[clickN and 63] = now; clickN++ }
+                    if (u > seen && fill < startFill + burst * growCap) { fill += burst; grown++; growVoices = maxOf(growVoices, engine.activeVoices()); NativeOut.setFill(fill); latency() }
+                    if (fill > startFill + burst * growCap) { fill = startFill + burst * growCap; NativeOut.setFill(fill); latency() }
+                    if (u > seen) lastClick = now
+                    else if (fill > startFill && now - lastClick > 10_000_000_000L) { fill -= burst; shrunk++; NativeOut.setFill(fill); latency(); lastClick = now }
+                    seen = u
+                    val behind = NativeOut.behind(now, rate)
+                    if (behind >= 0) { val m = behind * 1000.0 / rate; if (m in 0.0..2000.0) outputMs = if (outputMs < 0) m else outputMs + (m - outputMs) * .2 }
+                    if (n % 1024 == 0) {
+                        loadPeak = peak; peak = 0.0
+                        // read by the phone test (tools/phone-test.sh): keep the same words as the old path's line
+                        Log.i("MessAudio", "underruns=$u buffer=$bufferFrames burst=$burst ${loadText()} out=${"%.1f".format(outputMs)}ms long=$lbCount cpu=$cpuHint path=aaudio")
+                    }
+                }
+            }
+        } finally {
+            try { NativeOut.close() } catch (_: Throwable) {}
+            if (hint != null) try { HintCompat.close(hint) } catch (_: Throwable) {}
+        }
+        if (why == 2) Log.i("MessAudio", "AAudio stream ended, opening it again")
+        return why
+    }
+
+    private fun loopTrack() {
+        path = "AudioTrack"
         val minBuf = AudioTrack.getMinBufferSize(rate, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_FLOAT)
         val track = try {
             AudioTrack.Builder()
@@ -197,7 +281,7 @@ class AudioOut(private val engine: Engine, private val rate: Int, framesPerBurst
                         loadPeak = peak; peak = 0.0
                         // read by the phone test (tools/phone-test.sh) to report clicks, load and lag
                         // no format() over loadText(): its "%" signs would be read as format codes (build 58's phone test crash)
-                        Log.i("MessAudio", "underruns=$u buffer=$size burst=$burst ${loadText()} out=${"%.1f".format(outputMs)}ms long=$lbCount cpu=$cpuHint")
+                        Log.i("MessAudio", "underruns=$u buffer=$size burst=$burst ${loadText()} out=${"%.1f".format(outputMs)}ms long=$lbCount cpu=$cpuHint path=track")
                     }
                 }
             }
@@ -229,6 +313,22 @@ class AudioOut(private val engine: Engine, private val rate: Int, framesPerBurst
             HintCompat.create(ctx, Process.myTid(), budgetNanos).also { cpuHint = if (it != null) "on" else "not on this phone" }
         } catch (_: Throwable) { cpuHint = "not on this phone"; null }
     }
+}
+
+/**
+ * The AAudio output (app/src/main/cpp/mmaudio.c). ok is false when the library is missing (a 32-bit-only build, the
+ * big test on a computer), and the old path is used.
+ */
+object NativeOut {
+    val ok: Boolean = try { System.loadLibrary("mmaudio"); true } catch (_: Throwable) { false }
+    external fun open(rate: Int, fill: Int): Int
+    external fun write(buf: FloatArray, frames: Int, rate: Int): Int
+    external fun setFill(fill: Int)
+    external fun clicks(): Int
+    external fun behind(now: Long, rate: Int): Long
+    external fun mode(): String
+    external fun deviceBuffer(): Int
+    external fun close()
 }
 
 /** PerformanceHintManager lives on Android 12 and up; kept in its own object so older phones never load it. */

@@ -130,6 +130,11 @@ One line each, dated, with the reason and who decided (BT-2). Older decisions li
   follow, and a fresh copy stays. One keyboard (Tyler: "it needs to be consistent"): the Synth tab uses the Padiano,
   and the panel Look's Keyboard style is the synth's cream and bakelite keys. Open for discussion: whether Squares
   should stay the default or the Keyboard should be. Auto lanes over the vials (Round C) shipped with round A.
+- 2026-11-21 AAudio (L4, Tyler: "definitely move the sound onto AAudio"): app/src/main/cpp/mmaudio.c opens a
+  low-latency AAudio stream (exclusive first, then shared) with a callback that only reads a lock-free ring; the Java
+  engine keeps rendering on its own thread and writes blocks into the ring (fill starts at one engine block plus two
+  device bursts, grows a block per click run up to the Buffer cap, shrinks after ten clean seconds). A dead stream is
+  reopened up to five times, then AudioTrack takes over. Settings, Playing, Sound out switches to the older path.
 - 2026-11-21 Dock plan, not built yet (Tyler): the app needs one cohesive dock idea, so mutes and the other live
   controls can be brought up on any screen the same way. Pad things and master things (docks, FX) must look clearly
   different. Today's step toward it: the master plate (brass trim) for whole-mix controls, pad colour for pad ones.

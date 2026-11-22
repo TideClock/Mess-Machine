@@ -766,6 +766,9 @@ class BigTest {
             assertTrue("a fresh scratch synth stays", state.synthOn(SC) != null && state.project.kit[SC] != key)
         }
         state.synthScratch = false
+        // L4: the AAudio switch (a computer has no AAudio, so the old path runs here either way)
+        state.switchAAudio(false); assertFalse(state.audio.useAAudio)
+        state.switchAAudio(true); assertTrue(state.audio.useAAudio)
         // Perform: loops and mutes at the top, the master throws as vials
         tab("Perform")
         at("perform-live").assertExists()

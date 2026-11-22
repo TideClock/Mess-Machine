@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.18)
+project(mmaudio C)
+add_library(mmaudio SHARED mmaudio.c)
+target_compile_options(mmaudio PRIVATE -O2 -Wall)
+target_link_libraries(mmaudio aaudio log)

@@ -16,7 +16,18 @@ android {
         versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
         versionName = "0.1." + (System.getenv("GITHUB_RUN_NUMBER") ?: "0")
         buildConfigField("String", "GIT_SHA", "\"" + (System.getenv("GITHUB_SHA") ?: "local").take(7) + "\"")
+        // Nov 21 (L4): the AAudio output is a small C library; phones (arm) and the phone test's emulator (x86_64)
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
     }
+
+    externalNativeBuild {
+        cmake { path = file("src/main/cpp/CMakeLists.txt") }
+    }
+    // use the newest NDK the build machine already has, so CI never waits on a download
+    (System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT"))?.let { File(it, "ndk").listFiles() }
+        ?.map { it.name }?.filter { n -> n.firstOrNull()?.isDigit() == true }
+        ?.maxByOrNull { n -> n.split('.').map { it.toLongOrNull() ?: 0L }.fold(0L) { a, b -> a * 100000L + b } }
+        ?.let { ndkVersion = it }
 
     signingConfigs {
         // One fixed key in the repo, so a new build installs over the old one without losing your messes.

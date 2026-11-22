@@ -257,6 +257,9 @@ fun SettingsScreen(state: AppState) {
                 Btn(if (state.smoothScreen) "Screen: smooth" else "Screen: 60 a second", { state.switchSmoothScreen(!state.smoothScreen) }, on = state.smoothScreen, onColor = C.Teal, small = true, tag = "set-smooth")
                 Note("Sound buffer. Tight keeps lag low and lets a rare click through; Steady grows more to ride out a busy phone.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
                 Btn(if (state.steadyBuffer) "Buffer: steady" else "Buffer: tight", { state.switchSteadyBuffer(!state.steadyBuffer) }, on = state.steadyBuffer, onColor = C.Teal, small = true, tag = "set-buffer")
+                // Nov 21 (L4): AAudio is Android's fast path; the older one is there for a phone where it misbehaves
+                Note("Sound out. AAudio is Android's fast path, for the least lag; Older is the way the app used before, if AAudio ever clicks or goes quiet. Now: ${state.audio.path}.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
+                Btn(if (state.aaudio) "Sound out: AAudio" else "Sound out: older", { state.switchAAudio(!state.aaudio) }, on = state.aaudio, onColor = C.Teal, small = true, tag = "set-aaudio")
                 Note("Beat glow behind everything.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
                 Wrap(Modifier.tagged("glow-chips")) {
                     for ((v, n) in listOf(0 to "Off", 1 to "Soft", 2 to "Full")) Btn(n, { state.setPulse(v) }, on = state.pulseLevel == v, small = true, tag = "set-pulse-$v")

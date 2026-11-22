@@ -272,6 +272,11 @@ class AppState(private val app: Context) {
     var steadyBuffer by mutableStateOf(prefs.getBoolean("steadyBuffer", false))
         private set
     init { audio.growCap = if (steadyBuffer) 8 else 3 }
+    /** Nov 21 (L4): the sound goes out through AAudio; off is the older AudioTrack, for a phone where AAudio misbehaves. */
+    var aaudio by mutableStateOf(prefs.getBoolean("aaudio", true))
+        private set
+    init { audio.useAAudio = aaudio }
+    fun switchAAudio(v: Boolean) { aaudio = v; audio.useAAudio = v; prefs.edit().putBoolean("aaudio", v).apply(); notes.trail("audio ${if (v) "aaudio" else "audiotrack"}"); audio.restart() }
     fun switchSteadyBuffer(v: Boolean) { steadyBuffer = v; audio.growCap = if (v) 8 else 3; prefs.edit().putBoolean("steadyBuffer", v).apply(); notes.trail("buffer ${if (v) "steady" else "tight"}") }
     fun switchSmoothScreen(v: Boolean) { smoothScreen = v; prefs.edit().putBoolean("smoothScreen", v).apply(); notes.trail("screen ${if (v) "smooth" else "60"}") }
     /** Keep playing when you leave the app (MM-10). Off: leaving pauses the music. */
@@ -2052,7 +2057,7 @@ class AppState(private val app: Context) {
         val touch = touchMs().let { if (it >= 0) "$it ms (${minOf(touchN, 32)} taps)" else "no taps yet" }
         val spk = if (speakerMs >= 0) "%.0f ms".format(speakerMs) else "not run"
         val buf = "%.1f".format(audio.ms(audio.bufferFrames))
-        return "output $out by Android's clock, buffer $buf ms, last hit waited $wait for a block, touch to app $touch, speaker test $spk, buffer grown ${audio.grown} and given back ${audio.shrunk}" + (if (audio.grown > 0) " (up to ${audio.growVoices} voices sounding at a growth)" else "") + ", voices cut at the limit ${engine.stolen}, steady CPU ${audio.cpuHint}, fast path ${audio.fastPath}, screen ${if (smoothScreen) "smooth" else "60"}"
+        return "output $out by Android's clock, buffer $buf ms, last hit waited $wait for a block, touch to app $touch, speaker test $spk, buffer grown ${audio.grown} and given back ${audio.shrunk}" + (if (audio.grown > 0) " (up to ${audio.growVoices} voices sounding at a growth)" else "") + ", voices cut at the limit ${engine.stolen}, steady CPU ${audio.cpuHint}, out through ${audio.path}, fast path ${audio.fastPath}, screen ${if (smoothScreen) "smooth" else "60"}"
     }
 
     /** A short click for the tap pad and the speaker test: 3 ms of 2 kHz, loud enough for the mic. */

@@ -1,6 +1,7 @@
 {
-  "title": "The synth gets its own pad",
+  "title": "The synth gets its own pad, and the fast audio path",
   "thisBuild": [
+    "Sound now goes out through AAudio, Android's fast path (the part of the lag that wasn't the app). Settings, Playing, Sound out shows which path you got; Older switches back if AAudio ever clicks or goes quiet.",
     "The Synth tab's scratch synth is now a real pad of its own, hidden past the 64 (in no bank). It plays through its own FX vials, Hold, Repeat, Chords and Glide like any pad, and it records into the loop.",
     "A pad tile sits at the top left of the Synth tab. Tap it to play the synth's note. Swipe it like a grid pad: up for Edit, right for its FX vials, down folds the keys away. The same swipe again closes it.",
     "One keyboard everywhere: the Synth tab uses the Padiano now. In the panel Look its Keyboard style is the synth's (cream keys, bakelite blacks, amber under your finger). Squares or Keyboard is the same setting on every screen.",
@@ -8,13 +9,14 @@
     "Picking a synth pad anywhere makes the Synth tab show that pad's synth."
   ],
   "watch": [
+    "The lag number beside the BPM: lower than the 81 ms in your last video? And any red clicks?",
     "Swipe the synth tile right: do its FX vials open, and does a second right swipe close them?",
     "Record a few scratch synth notes into a loop, then Put on a pad: do they keep playing from the pad?",
     "The keyboard style on the Synth tab: does it feel the same as the Padiano on the pads now?"
   ],
   "limits": [
+    "If your phone won't give the app its exclusive AAudio stream, it uses the shared one: still faster than before, not the fastest. Settings shows which.",
     "Notes you record with the scratch synth don't show on the Steps page until you put it on a pad.",
-    "The sound is still on Android's older audio path; AAudio is the next build.",
     "Your saved FX live on the phone, not in the mess."
   ]
 }

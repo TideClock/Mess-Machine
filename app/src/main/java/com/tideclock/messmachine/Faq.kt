@@ -83,6 +83,7 @@ object Faq {
         Line("look-panel", "Panel", "The hardware panel: bakelite keys in worn metal, with glyphs from Tyler's drawings."),
         Line("set-padflick", "Pad swipes", "On or off for every swipe off a pad. Each direction is set just below."),
         Line("swipe-*", "A swipe", "What a quick swipe off a pad in this direction does: Edit tray, Padiano, Sample, FX, FannyPack, Mute, or nothing. The same swipe again closes it."),
+        Line("set-aaudio", "Sound out", "AAudio (out of the box) is Android's fast path, for the least lag. Older is the AudioTrack way the app used before: switch to it if AAudio ever clicks or goes quiet on your phone."),
         Line("set-buffer", "Sound buffer", "Tight (out of the box) keeps lag low; Steady lets the buffer grow further after clicks, for fewer clicks and more lag."),
         Line("look-large", "Large keys", "Every key about a quarter bigger, for playing at a small view size."),
         Line("set-smooth", "Screen speed", "60 a second (out of the box) leaves the sound more of the phone; Smooth draws as fast as the screen goes."),
