@@ -380,11 +380,11 @@ fun Btn(
                 .clickable(src, indication = null, enabled = enabled) { onClick() }
                 .then(if (tag != null) Modifier.tagged(tag) else Modifier)
                 .semantics { selected = on }
-                .padding(start = if (tight) 13.dp else 20.dp, end = if (tight) 5.dp else if (small) 10.dp else 14.dp, top = if (small) 6.dp else 9.dp, bottom = if (small) 6.dp else 9.dp),
+                .padding(start = if (tight) 12.dp else 20.dp, end = if (tight) 3.dp else if (small) 10.dp else 14.dp, top = if (small) 6.dp else 9.dp, bottom = if (small) 6.dp else 9.dp),
             contentAlignment = Alignment.Center,
         ) {
             T(text.uppercase(), color = when { tier == Tier.Quiet -> Hw.Engrave.copy(alpha = .6f); on -> lerp(Hw.Engrave, onColor, .35f); else -> Hw.Engrave },
-                size = if (small) 12.sp else 13.sp, lines = 1, spacing = .1.em, weight = if (tier == Tier.Primary) FontWeight.Black else FontWeight.ExtraBold)
+                size = if (small) 12.sp else 13.sp, lines = 1, spacing = if (tight) .02.em else .1.em, weight = if (tier == Tier.Primary) FontWeight.Black else FontWeight.ExtraBold)
         }
         return
     }
