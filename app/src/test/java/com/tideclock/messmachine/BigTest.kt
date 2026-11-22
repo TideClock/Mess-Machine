@@ -2330,8 +2330,9 @@ class BigTest {
         assertEquals("and the next one is waiting on pad 9", MidiTarget("pad", 8), state.midiCursor)
         shot("57-midi-map")
         // a Padiano key: open one, touch a key, and the next controller key is that key
-        state.toggleKeyboard(0); settle()
-        at("piano-keys-0").performTouchInput { down(Offset(width * .05f, height * .2f)); up() }
+        // (Chords on, earlier in this flow, already brought pad 1's Padiano out)
+        if (0 !in state.keyboards) state.toggleKeyboard(0); settle()
+        at("piano-keys-0").performTouchInput { down(Offset(width * .05f, height * .5f)); up() }
         settle()
         val aimed = state.midiCursor
         assertTrue("touching a Padiano key aims at it ($aimed)", aimed != null && aimed.kind == "key" && aimed.a == 0)
