@@ -751,6 +751,41 @@ class BigTest {
         shot("109-master-throws")
     }
 
+    /** Nov 21, second video: saved FX, the Cut vial (full is the most filtering), settings by name, Auto lanes over the vials. */
+    @Test fun fxPresetsSettingsAndLanesInPlace() {
+        val E = Engine.T_RVB
+        state.selectPad(1, false); settle()
+        state.openLaneHere(1, Engine.T_ECHO); settle()
+        assertEquals("the lane opens over the vials, not on Seq", Tab.Pads, state.tab)
+        assertEquals(1, state.laneHere)
+        assertEquals("edit:1", state.tray)
+        at("moves").assertExists()
+        shot("110-lane-over-vials")
+        at("moves-close").performClick(); settle()
+        assertEquals(-1, state.laneHere)
+        // a name opens its settings: reverb has its space
+        at("fxname-$E-1").performClick(); settle()
+        at("fx-settings").assertExists()
+        shot("111-fx-settings")
+        at("fx-settings-close").performClick(); settle()
+        // saved sets: Wash fills Verb, Dry empties everything, a saved set comes back on another pad
+        state.loadFxPreset(1, "Wash"); settle()
+        assertEquals(.7f, state.fxSend["1:$E"]!!, 1e-4f)
+        state.saveFxPreset(1); settle()
+        val mine = state.myFx.last().first
+        state.loadFxPreset(1, "Dry"); settle()
+        assertEquals(0f, state.fxSend["1:$E"] ?: 0f, 1e-4f)
+        state.loadFxPreset(2, mine); settle()
+        assertEquals("a saved set loads on another pad", .7f, state.fxSend["2:$E"]!!, 1e-4f)
+        // Cut: an empty vial is no filtering (it used to be a closed filter: a silent pad)
+        assertEquals(0f, state.fxSend["1:${Engine.T_FILTER}"] ?: 0f, 1e-4f)
+        state.closeEdit(); settle()
+        // Large keys
+        state.switchLargeKeys(true); settle()
+        shot("112-large-keys")
+        state.switchLargeKeys(false); settle()
+    }
+
     /** Nov 21 video crash: Chords off with a chord set showing, the Padiano as a Keyboard and In key only off. */
     @Test fun chordsOffWithAKeyboardPadiano() {
         val pad = (0 until 16).first { state.project.kit[it].isNotEmpty() }

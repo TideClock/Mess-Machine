@@ -206,7 +206,7 @@ fun BarBtn(
         androidx.compose.foundation.layout.Box(
             androidx.compose.ui.Modifier.border(if (on) 3.dp else 0.dp, if (on) ring else androidx.compose.ui.graphics.Color.Transparent, androidx.compose.foundation.shape.RoundedCornerShape(6.dp)).padding(2.dp),
         ) { PixIcon(icon, 30.dp, dim = !enabled) }
-        if (state.proWords && word != null) T(word.uppercase(), size = 8.sp, color = if (on) onColor.takeIf { state.look != "light" } ?: C.Ink else railText(state), lines = 1, spacing = .04.em)
+        if (state.proWords && word != null) T(word.uppercase(), size = (8f * UiLook.big).sp, color = if (on) onColor.takeIf { state.look != "light" } ?: C.Ink else railText(state), lines = 1, spacing = .04.em)
     }
 }
 
@@ -222,8 +222,9 @@ fun PanelKey(
 ) {
     // Nov 21 video: keys grow with the screen up to a cap (a Fold's inner screen gets big keys, not small ones far apart),
     // the glyph as big as the cap allows, and the lamp in the lip under the cap so the glyph sits in the middle
-    val capW = (UiLook.widthDp / 8f).coerceIn(44f, 80f)
-    val capH = (capW * .72f).coerceIn(38f, 54f)
+    // Nov 21 (second video): bigger again, and Large keys (Settings, Look) a quarter bigger still
+    val capW = (UiLook.widthDp / 7f).coerceIn(48f, 96f) * UiLook.big
+    val capH = (capW * .72f).coerceIn(40f, 62f * UiLook.big)
     val src = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val pressed by src.collectIsPressedAsState()
     val res = Icons.all[icon]?.first
@@ -235,7 +236,7 @@ fun PanelKey(
     ) {
         androidx.compose.foundation.layout.Box(
             androidx.compose.ui.Modifier.widthIn(max = capW.dp).fillMaxWidth().height(capH.dp + UiLook.lip).offset(0.dp, if (pressed) 2.dp else 0.dp)
-                .bakelite(on, onColor, pressed, danger = tier == Tier.Danger, brass = tier == Tier.Primary, lamped = lamped)
+                .bakelite(on, onColor, pressed, danger = tier == Tier.Danger, brass = tier == Tier.Primary, lamped = lamped, tint = capTint(icon))
                 .padding(bottom = UiLook.lip),
             contentAlignment = androidx.compose.ui.Alignment.Center,
         ) {
@@ -243,7 +244,7 @@ fun PanelKey(
             if (res != null) InlayIcon(res, (capH - 8f).dp, on, text)
             else T((if (text.length <= 5) text else text.take(3)).uppercase(), size = 12.sp, color = if (on) lerp(Hw.Engrave, onColor, .5f) else Hw.Engrave, lines = 1, spacing = 0.em, family = Worn, weight = androidx.compose.ui.text.font.FontWeight.Normal)
         }
-        if (state.proWords && word != null) T(word.uppercase(), size = 8.sp, color = if (on) onColor else Hw.Engrave.copy(alpha = .8f), lines = 1, spacing = 0.em, family = Stencil, weight = androidx.compose.ui.text.font.FontWeight.Normal,
+        if (state.proWords && word != null) T(word.uppercase(), size = (8f * UiLook.big).sp, color = if (on) onColor else Hw.Engrave.copy(alpha = .8f), lines = 1, spacing = 0.em, family = Stencil, weight = androidx.compose.ui.text.font.FontWeight.Normal,
             modifier = androidx.compose.ui.Modifier.padding(top = 2.dp))
     }
 }

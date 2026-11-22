@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
@@ -78,13 +80,22 @@ fun FannyPack(state: AppState, pad: Int) {
             Box {
                 Btn("+", { add = true }, small = true, tight = true, tag = "pack-add-$pad")
                 // Nov 18 (note #22): four colored tiles, an icon and a word each, lit when packed; no descriptions
-                DropdownMenu(expanded = add, onDismissRequest = { add = false }, modifier = Modifier.background(C.Ink).tagged("pack-menu")) {
+                DropdownMenu(expanded = add, onDismissRequest = { add = false }, modifier = Modifier.background(if (UiLook.panel) Hw.Plate else C.Ink).tagged("pack-menu")) {
                     val tiles = listOf(Triple("keys", "Keys", C.Pink), Triple("fx", "FX", C.Teal), Triple("lfo", "LFO", C.Yellow), Triple("xy", "XY square", tileColor("place")))
                     Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         for (row in tiles.chunked(2)) Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             for ((id, icon, col) in row) {
                                 val on = id in packed
-                                Column(
+                                // Nov 21 (second video): in the panel Look the tiles are bakelite keys wearing their colour, like the rest
+                                if (UiLook.panel) Column(
+                                    Modifier.width(92.dp).bakelite(on, col, false, tint = col).clickable { state.togglePackStrip(pad, id); add = false }
+                                        .padding(top = 8.dp, bottom = 6.dp + UiLook.lip).tagged("pack-pick-$id"),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                ) {
+                                    Icons.all[icon]?.first?.let { InlayIcon(it, 46.dp, on, icon) }
+                                    T(PACK_STRIPS.first { it.first == id }.second.uppercase(), size = 12.sp, color = Hw.Engrave, family = Worn, weight = FontWeight.Normal, modifier = Modifier.padding(top = 4.dp))
+                                }
+                                else Column(
                                     Modifier.width(84.dp).border(3.dp, if (on) C.Cream else C.Card2).clickable { state.togglePackStrip(pad, id); add = false }.padding(6.dp).tagged("pack-pick-$id"),
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                 ) {
@@ -171,30 +182,43 @@ private fun vialColor(t: Int): Color = when (t) {
 
 /**
  * The FX vials (Nov 21 video): every effect on the pad as a glass vial filled to how much of it there is. Drag up or
- * down on a vial to fill it. The lamp under it takes that effect out and puts it back where it was; hold the lamp
- * for the effect's Auto lane. Bypass takes them all out at once. Cut is the pad's filter (full is open).
+ * down on a vial to fill it; an empty vial is that effect off, Cut included (Nov 21, second video: full is the most
+ * filtering, so an empty Cut no longer silences the pad). The lamp under a vial takes it out and puts it back; hold the
+ * lamp for its Auto lane, drawn right here over the vials. Tap a name for that effect's settings. Load and Save keep
+ * whole sets of levels; Bypass takes them all out at once.
  */
 @Composable
 fun VialStrip(state: AppState, pad: Int) {
+    @Suppress("UNUSED_VARIABLE") val vv = state.version
+    val ft = com.tideclock.messmachine.engine.Engine.T_FILTER
+    val rt = com.tideclock.messmachine.engine.Engine.T_RES
+    val all = FX_STRIP + listOf(ft to "Cut", rt to "Res")
+    // the vials grow with the screen (a Fold's inner screen gets tall ones) and with Large keys
+    val vialH = ((UiLook.widthDp / 3.6f).coerceIn(112f, 190f) * UiLook.big).dp
+    val nameSp = if (UiLook.widthDp > 560) 10f * UiLook.big else 7.5f * UiLook.big
     Column(Modifier.fillMaxWidth().padding(bottom = 6.dp).tagged("fxstrip-$pad")) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 6.dp)) {
-            T("FX · PAD ${pad + 1}", size = 12.sp, color = C.Yellow, spacing = .1.em, modifier = Modifier.weight(1f))
-            Btn("Bypass", { state.toggleBypass(pad) }, on = pad in state.padBypass, onColor = Hw.Oxblood, small = true, tag = "fxstrip-off-$pad")
+        T("FX · PAD ${pad + 1}", size = 12.sp, color = C.Yellow, spacing = .1.em, modifier = Modifier.padding(bottom = 6.dp))
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
+            Select("Load", state.fxPresets().map { it.first to it.first }, { state.loadFxPreset(pad, it) }, tag = "fxpreset-load", modifier = Modifier.weight(1f))
+            Btn("Save", { state.saveFxPreset(pad) }, small = true, tight = true, tag = "fxpreset-save", modifier = Modifier.weight(1f))
+            Btn("Auto", { state.laneHere = if (state.laneHere == pad) -1 else pad; if (state.laneHere == pad && state.moveLanes().none { it.startsWith("$pad:") }) state.newLane(pad, com.tideclock.messmachine.engine.Engine.T_RVB) },
+                on = state.laneHere == pad, onColor = C.Teal, small = true, tight = true, tag = "fx-auto-$pad", modifier = Modifier.weight(1f))
+            Btn("Bypass", { state.toggleBypass(pad) }, on = pad in state.padBypass, onColor = Hw.Oxblood, small = true, tight = true, tag = "fxstrip-off-$pad", modifier = Modifier.weight(1f))
         }
-        val ft = com.tideclock.messmachine.engine.Engine.T_FILTER
-        val rt = com.tideclock.messmachine.engine.Engine.T_RES
-        val all = FX_STRIP + listOf(ft to "Cut", rt to "Res")
+        // Nov 21 (second video): Auto lanes in place, over the vials, not off on the Seq tab
+        if (state.laneHere == pad) MovesPanel(state, onClose = { state.laneHere = -1 })
+        state.fxEditing(pad)?.let { t -> FxSettingsCard(state, pad, t, all.firstOrNull { it.first == t }?.second ?: "") }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
             for ((t, name) in all) {
-                val raw = state.fxSend["$pad:$t"] ?: 0f
-                val v = if (t == ft) 1f - raw else raw
+                val v = state.fxSend["$pad:$t"] ?: 0f
                 val inNow = state.fxIn(pad, t)
+                val picked = state.fxEdit == "$pad:$t"
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                    Vial(v, vialColor(t), inNow, "fx-$t-$pad") { x, on -> state.fxSendTo(pad, t, if (t == ft) 1f - x else x, on) }
+                    Vial(v, vialColor(t), inNow, "fx-$t-$pad", height = vialH) { x, on -> state.fxSendTo(pad, t, x, on) }
                     // the lamp: in or out; hold it for this effect's Auto lane
                     Box(
                         Modifier.padding(top = 4.dp).size(26.dp).tagged("fxin-$t-$pad")
-                            .tapOrHold(t to pad, onTap = { state.toggleFxIn(pad, t) }, onHold = { if (t != ft && t != rt) { state.closeEdit(); state.tray = null; state.openAutoLane(pad, t) } })
+                            .tapOrHold(t to pad, onTap = { state.toggleFxIn(pad, t) }, onHold = { state.openLaneHere(pad, t) })
                             .semantics { selected = inNow },
                         contentAlignment = Alignment.Center,
                     ) {
@@ -206,10 +230,44 @@ fun VialStrip(state: AppState, pad: Int) {
                             drawCircle(Color.White.copy(alpha = .35f), r * .22f, Offset(center.x - r * .25f, center.y - r * .25f))
                         }
                     }
-                    T(name.uppercase(), size = if (name.length > 4) 7.5.sp else 9.sp, color = if (inNow) Hw.Engrave else Hw.Engrave.copy(alpha = .45f), lines = 1, spacing = (-.02).em, family = Stencil,
-                        weight = FontWeight.Normal, modifier = Modifier.padding(top = 1.dp))
+                    // the name is a little plate: tap it for this effect's settings
+                    Box(
+                        Modifier.padding(top = 2.dp).fillMaxWidth().heightIn(min = 26.dp)
+                            .drawBehind { drawRoundRect(if (picked) vialColor(t).copy(alpha = .35f) else Hw.PlateTop, cornerRadius = androidx.compose.ui.geometry.CornerRadius(3.dp.toPx())) }
+                            .clickable { state.fxEdit = if (picked) null else "$pad:$t" }.tagged("fxname-$t-$pad"),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        T(name.uppercase(), size = (if (name.length > 4) nameSp else nameSp + 1.5f).sp, color = if (inNow) Hw.Engrave else Hw.Engrave.copy(alpha = .45f), lines = 1, spacing = (-.02).em, family = Stencil,
+                            weight = FontWeight.Normal)
+                    }
                 }
             }
+        }
+        Help("Drag a vial to fill it; empty is off. Its lamp takes it out and back; hold the lamp for an Auto lane. Tap a name for its settings.", Modifier.padding(top = 4.dp))
+    }
+}
+
+/** One effect's settings over the vials: how much, what else it has (reverb's space, echo's time), its Auto lane. */
+@Composable
+fun FxSettingsCard(state: AppState, pad: Int, t: Int, name: String) {
+    val k = state.project.kit.getOrNull(pad).orEmpty()
+    val e = state.project.edit(k)
+    val E = com.tideclock.messmachine.engine.Engine
+    Column(Modifier.fillMaxWidth().padding(bottom = 8.dp).sticker(C.Well, shadow = 0.dp, border = 2.dp, borderColor = vialColor(t)).padding(10.dp).tagged("fx-settings")) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            T("${name.uppercase()} · PAD ${pad + 1}", size = 12.sp, color = vialColor(t), spacing = .08.em, modifier = Modifier.weight(1f))
+            CloseScrew({ state.fxEdit = null }, tag = "fx-settings-close", label = "Close the settings")
+        }
+        SliderRow(if (t == E.T_FILTER) "How much it cuts" else "Amount", state.fxSend["$pad:$t"] ?: 0f, 0f..1f, { "${(it * 100).toInt()}%" }, { v -> state.fxSendTo(pad, t, v, true) }, { state.fxSendTo(pad, t, state.fxSend["$pad:$t"] ?: 0f, false) }, accent = vialColor(t))
+        if (k.isNotEmpty() && t == E.T_RVB) SliderRow("Space", e.rvbSize.toFloat(), 0f..1f, { if (it < .33f) "small room" else if (it < .66f) "hall" else "cave" },
+            { v -> state.setEdit(k, e.copy().also { it.rvbSize = v.toDouble() }, false) }, { state.setEdit(k, state.project.edit(k).copy(), true) }, accent = vialColor(t))
+        if (k.isNotEmpty() && t == E.T_ECHO) Wrap(Modifier.padding(top = 4.dp, bottom = 4.dp), gap = 6.dp) {
+            T("TIME", size = 11.sp, color = C.Dim, spacing = .1.em)
+            for ((ti, n) in listOf(0 to "1/16", 1 to "1/8", 2 to "3/16", 3 to "1/4")) Btn(n, { state.setEdit(k, e.copy().also { it.echoT = ti }, true) }, on = e.echoT == ti, small = true, tag = "fx-echo-$ti")
+        }
+        Wrap(Modifier.padding(top = 6.dp), gap = 6.dp) {
+            Btn("Auto lane", { state.openLaneHere(pad, t) }, on = state.laneHere == pad && state.moveLane == "$pad:$t", onColor = C.Teal, small = true, tag = "fx-settings-lane")
+            if (k.isNotEmpty() && !com.tideclock.messmachine.engine.Project.isSynth(k)) Btn("The sound's own FX", { state.fxEdit = null; state.closeEdit(); state.doctorTab = "fx"; state.overlay = com.tideclock.messmachine.Overlay.Doctor(k) }, small = true, tag = "fx-settings-sound")
         }
     }
 }

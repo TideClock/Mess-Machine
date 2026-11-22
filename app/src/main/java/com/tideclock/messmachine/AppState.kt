@@ -268,6 +268,11 @@ class AppState(private val app: Context) {
      */
     var smoothScreen by mutableStateOf(prefs.getBoolean("smoothScreen", false))
         private set
+    /** Nov 21 (L5): Tight lets the buffer grow 3 steps at most after clicks (low lag); Steady 8 (fewer clicks, more lag). */
+    var steadyBuffer by mutableStateOf(prefs.getBoolean("steadyBuffer", false))
+        private set
+    init { audio.growCap = if (steadyBuffer) 8 else 3 }
+    fun switchSteadyBuffer(v: Boolean) { steadyBuffer = v; audio.growCap = if (v) 8 else 3; prefs.edit().putBoolean("steadyBuffer", v).apply(); notes.trail("buffer ${if (v) "steady" else "tight"}") }
     fun switchSmoothScreen(v: Boolean) { smoothScreen = v; prefs.edit().putBoolean("smoothScreen", v).apply(); notes.trail("screen ${if (v) "smooth" else "60"}") }
     /** Keep playing when you leave the app (MM-10). Off: leaving pauses the music. */
     var bgPlay by mutableStateOf(prefs.getBoolean("bgPlay", true))
@@ -1476,6 +1481,59 @@ class AppState(private val app: Context) {
     /** Straight to a control's automation: the Steps tab with Auto open on that lane (Nov 18: Auto from any fader). */
     fun openAutoLane(pad: Int, target: Int) { tab = Tab.Steps; movesOpen = true; newLane(pad, target) }
 
+    /** Nov 21 (second video): Auto lanes drawn in place over the pad's vials (the Seq tab keeps the whole view). */
+    var laneHere by mutableIntStateOf(-1)
+    fun openLaneHere(pad: Int, target: Int) {
+        newLane(pad, target)
+        laneHere = pad
+        // the vials live in the Edit tray's FX drawer (new layouts) or the FannyPack (Classic)
+        if (layout != "classic") { pickEditTab("fx"); if (tray != "edit:$pad") openTray("edit:$pad") }
+        else { if ("fx" !in packOf(pad)) togglePackStrip(pad, "fx"); packHidden[pad] = (packHidden[pad] ?: emptySet()) - "fx"; if (pad !in keyboards) toggleKeyboard(pad) }
+        notes.trail("lane here $pad:$target")
+    }
+
+    /** Which vial's settings card is open, as "pad:target". */
+    var fxEdit by mutableStateOf<String?>(null)
+    fun fxEditing(pad: Int): Int? = fxEdit?.takeIf { it.startsWith("$pad:") }?.substringAfter(':')?.toIntOrNull()
+
+    /** The Sample sheet opens on this tab once (the vials' "the sound's own FX"). */
+    var doctorTab: String? = null
+
+    /*
+     * Saved FX (Nov 21): a whole set of vial levels under a name, for any pad. Five come with the app; yours are kept on
+     * the phone, not in the mess.
+     */
+    private val builtInFx = listOf(
+        "Wash" to mapOf(Engine.T_RVB to .7f, Engine.T_ECHO to .3f, Engine.T_CHORUS to .2f),
+        "Grit" to mapOf(Engine.T_DIRT to .6f, Engine.T_CRUSH to .3f, Engine.T_FILTER to .2f),
+        "Tape" to mapOf(Engine.T_WARM to .6f, Engine.T_CHORUS to .3f, Engine.T_FILTER to .15f),
+        "Space" to mapOf(Engine.T_RVB to .5f, Engine.T_ECHO to .5f, Engine.T_PHASER to .3f),
+        "Dry" to emptyMap(),
+    )
+    var myFx by mutableStateOf(parseFx(prefs.getString("myFx", "") ?: ""))
+        private set
+    private fun parseFx(s: String): List<Pair<String, Map<Int, Float>>> = s.split("\n").filter { it.contains('=') }.mapNotNull { line ->
+        val name = line.substringBefore('=')
+        val m = line.substringAfter('=').split(',').filter { it.contains(':') }.associate { it.substringBefore(':').toInt() to it.substringAfter(':').toFloat() }
+        if (name.isEmpty()) null else name to m
+    }
+    fun fxPresets(): List<Pair<String, Map<Int, Float>>> = builtInFx + myFx
+    fun loadFxPreset(pad: Int, name: String) {
+        val m = fxPresets().firstOrNull { it.first == name }?.second ?: return
+        padBypass.remove(pad); for (t in FX_ALL_T) fxOut.remove("$pad:$t")
+        for (t in FX_ALL_T) fxSendTo(pad, t, m[t] ?: 0f, false)
+        notes.trail("fx preset $name on ${pad + 1}")
+        say("$name on pad ${pad + 1}.")
+    }
+    fun saveFxPreset(pad: Int) {
+        val m = FX_ALL_T.associateWith { fxSend["$pad:$it"] ?: 0f }.filterValues { it > 0f }
+        var n = 1; while (fxPresets().any { it.first == "Mine $n" }) n++
+        myFx = myFx + ("Mine $n" to m)
+        prefs.edit().putString("myFx", myFx.joinToString("\n") { (k, v) -> k + "=" + v.entries.joinToString(",") { "${it.key}:${it.value}" } }).apply()
+        notes.trail("fx preset saved Mine $n")
+        say("Saved as Mine $n. Load lists it on every pad.")
+    }
+
     fun newLane(pad: Int, target: Int) { moveLane = "$pad:$target"; edit { pat().lane(moveLane) } }
 
     /** Draw on a lane: norm 0..1 is bottom to top of its range, or null to erase the step. commit when the finger lifts. */
@@ -2152,6 +2210,11 @@ class AppState(private val app: Context) {
         private set
     init { com.tideclock.messmachine.ui.UiLook.id = look }
     fun pickLook(v: String) { look = v; com.tideclock.messmachine.ui.UiLook.id = v; prefs.edit().putString("look", v).apply(); notes.trail("look $v") }
+    /** Large keys (Nov 21): every key about a quarter bigger, for playing at 70 to 80 percent view size */
+    var largeKeys by mutableStateOf(prefs.getBoolean("largeKeys", false))
+        private set
+    init { com.tideclock.messmachine.ui.UiLook.large = largeKeys }
+    fun switchLargeKeys(v: Boolean) { largeKeys = v; com.tideclock.messmachine.ui.UiLook.large = v; prefs.edit().putBoolean("largeKeys", v).apply(); notes.trail("large keys $v") }
     /** build 5 of the overhaul: the colour skin, separate from the Look (the button skin) */
     var skin by mutableStateOf(com.tideclock.messmachine.ui.Skins.byId(prefs.getString("skin", "classic")).id)
     init { com.tideclock.messmachine.ui.C.skin = com.tideclock.messmachine.ui.Skins.byId(skin) }

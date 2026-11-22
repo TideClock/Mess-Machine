@@ -321,7 +321,12 @@ fun Transport(state: AppState) {
                 if (state.look == "classic") T("BPM", size = 9.sp, color = C.Dim, lines = 1, family = Mono, weight = FontWeight.Bold)
                 else {
                     val lag by androidx.compose.runtime.produceState(state.audio.outputMs) { while (true) { value = state.audio.outputMs; if (UiFlags.testing) break; kotlinx.coroutines.delay(1000) } }
-                    T(if (lag >= 0) "${lag.toInt()} MS" else "BPM", size = 9.sp, color = if (state.look == "panel") Hw.Amber.copy(alpha = .6f) else C.Dim, lines = 1, family = if (state.look == "panel") Lcd else Mono, weight = FontWeight.Bold, modifier = Modifier.tagged("lag"))
+                    // Nov 21 (L7): clicks this minute beside the lag, red, so a dropout shows the moment it happens
+                    val clicks by androidx.compose.runtime.produceState(0) { while (true) { value = state.audio.clicksLastMinute(); if (UiFlags.testing) break; kotlinx.coroutines.delay(1000) } }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        T(if (lag >= 0) "${lag.toInt()} MS" else "BPM", size = 9.sp, color = if (state.look == "panel") Hw.Amber.copy(alpha = .6f) else C.Dim, lines = 1, family = if (state.look == "panel") Lcd else Mono, weight = FontWeight.Bold, modifier = Modifier.tagged("lag"))
+                        if (clicks > 0) T(" ${clicks}✕", size = 9.sp, color = C.Riot, lines = 1, family = if (state.look == "panel") Lcd else Mono, weight = FontWeight.Bold, modifier = Modifier.tagged("clicks"))
+                    }
                 }
             }
         }

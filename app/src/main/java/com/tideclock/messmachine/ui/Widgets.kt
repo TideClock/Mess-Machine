@@ -60,6 +60,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -141,6 +142,22 @@ object UiLook {
     var widthDp by mutableStateOf(400f)
     /** the lip under each key where its lamp sits */
     val lip = 8.dp
+    /** Large keys (Settings, Look): every key about a quarter bigger, for playing at a small view size */
+    var large by mutableStateOf(false)
+    val big: Float get() = if (large) 1.25f else 1f
+}
+
+/** Keys that open a thing get their tile's colour on the cap (Nov 21); plain switches return null and stay dark. */
+fun capTint(label: String): Color? {
+    val w = label.replace(Regex("[^A-Za-z ]"), " ").trim().replace(Regex("\\s+"), " ")
+    if (w.equals("Sample", true) || w.startsWith("Swap sound", true)) return tileColor("sound")
+    val g = Icons.all.entries.firstOrNull { it.key.equals(w, ignoreCase = true) }?.value?.second ?: return null
+    return when {
+        g == "place" -> tileColor("place")
+        w.equals("Edit", true) || w.equals("Pack", true) || w.equals("Menu", true) -> tileColor("perform")
+        w.equals("FX", true) || w.equals("LFO", true) || w.startsWith("XY", true) || w.equals("Keys", true) -> tileColor("sound")
+        else -> null
+    }
 }
 
 /** Bakelite and worn metal, for the panel Look. */
@@ -166,35 +183,39 @@ fun Modifier.lcd(lit: Boolean = false): Modifier = this.drawBehind {
  * A bakelite key in a worn metal bezel. Nov 21 video: the lamp sits in the metal lip under the cap, not on the cap, so
  * the word and icon stay centred; keys that only do something (no on or off) have no lamp at all.
  */
-fun Modifier.bakelite(on: Boolean, lamp: Color, pressed: Boolean, danger: Boolean = false, brass: Boolean = false, lamped: Boolean = true): Modifier = this.drawBehind {
+fun Modifier.bakelite(on: Boolean, lamp: Color, pressed: Boolean, danger: Boolean = false, brass: Boolean = false, lamped: Boolean = true, tint: Color? = null): Modifier = this.drawWithCache {
+    // Nov 21 (lag): the brushes and scuffs are worked out once per size and state, not on every redraw of every key
     val r = CornerRadius(7.dp.toPx())
     val bez = 2.5.dp.toPx()
     val lip = UiLook.lip.toPx()
-    // shadow under the key, gone while pressed
-    if (!pressed) drawRoundRect(Color.Black.copy(alpha = .55f), topLeft = Offset(0f, 2.5.dp.toPx()), size = size, cornerRadius = r)
-    // the bezel: worn metal, brighter on the top edge, brass for the main key, oxblood for danger
-    val rim = when { danger -> listOf(Color(0xFFC4573F), Hw.Oxblood, Color(0xFF5A1A10)); brass -> listOf(Color(0xFFE8C877), Hw.Brass, Color(0xFF6E5420)); else -> listOf(Hw.MetalHi, Hw.Metal, Hw.MetalLow) }
-    drawRoundRect(Brush.verticalGradient(rim), cornerRadius = r)
-    // the cap: bakelite, a soft dome of light from above, darker when pushed in; the lip below it stays metal
+    val rim = Brush.verticalGradient(when { danger -> listOf(Color(0xFFC4573F), Hw.Oxblood, Color(0xFF5A1A10)); brass -> listOf(Color(0xFFE8C877), Hw.Brass, Color(0xFF6E5420)); else -> listOf(Hw.MetalHi, Hw.Metal, Hw.MetalLow) })
+    // Nov 21: keys that open a thing wear their tile's colour in the bakelite (the 16-bit tiles Tyler liked); switches stay dark
+    fun t(c: Color, k: Float) = if (tint == null) c else lerp(c, tint, k)
+    val cap = Brush.verticalGradient(if (pressed) listOf(t(Hw.BakeLow, .35f), t(Hw.Bake, .45f)) else listOf(t(Hw.BakeTop, .6f), t(Hw.Bake, .5f), t(Hw.BakeLow, .4f)))
     val capR = CornerRadius(5.dp.toPx())
     val capH = size.height - bez - lip
-    drawRoundRect(Brush.verticalGradient(if (pressed) listOf(Hw.BakeLow, Hw.Bake) else listOf(Hw.BakeTop, Hw.Bake, Hw.BakeLow)),
-        topLeft = Offset(bez, bez), size = Size(size.width - bez * 2, capH), cornerRadius = capR)
-    // wear: a few pale scuffs on the cap, the same on every redraw for a given size
-    // (Nov 21, lag: a tiny hash in place of a new Random on every redraw of every key)
     var seed = (size.width * 31 + size.height).toInt() * 1103515245 + 12345
     fun next(): Float { seed = seed * 1103515245 + 12345; return ((seed ushr 8) and 0xFFFF) / 65535f }
-    repeat(3) {
-        val x = bez + next() * (size.width - bez * 2 - 8f); val y = bez + next() * (capH - 4f).coerceAtLeast(1f)
-        drawLine(Color.White.copy(alpha = .05f + next() * .05f), Offset(x, y), Offset(x + 4f + next() * 14f, y + next() * 3f), strokeWidth = 1f)
-    }
-    // the lamp: a small glass bead set in the lip, centred under the cap, that glows when on
-    if (lamped) {
-        val lr = 2.6.dp.toPx(); val lc = Offset(size.width / 2, size.height - lip / 2 - .5.dp.toPx())
-        if (on) drawCircle(Brush.radialGradient(listOf(lamp.copy(alpha = .6f), Color.Transparent), center = lc, radius = lr * 5f), radius = lr * 5f, center = lc)
-        drawCircle(Color.Black.copy(alpha = .5f), radius = lr * 1.35f, center = lc)
-        drawCircle(if (on) lamp else Color(0xFF0E0B09), radius = lr, center = lc)
-        drawCircle(Color.White.copy(alpha = if (on) .55f else .18f), radius = lr * .35f, center = Offset(lc.x - lr * .3f, lc.y - lr * .35f))
+    val scuffs = List(3) { val x = bez + next() * (size.width - bez * 2 - 8f); val y = bez + next() * (capH - 4f).coerceAtLeast(1f); floatArrayOf(x, y, x + 4f + next() * 14f, y + next() * 3f, .05f + next() * .05f) }
+    val lr = 2.6.dp.toPx(); val lc = Offset(size.width / 2, size.height - lip / 2 - .5.dp.toPx())
+    val glow = Brush.radialGradient(listOf(lamp.copy(alpha = .6f), Color.Transparent), center = lc, radius = lr * 5f)
+    val shadowOff = Offset(0f, 2.5.dp.toPx())
+    onDrawBehind {
+        // shadow under the key, gone while pressed
+        if (!pressed) drawRoundRect(Color.Black.copy(alpha = .55f), topLeft = shadowOff, size = size, cornerRadius = r)
+        // the bezel: worn metal, brighter on the top edge, brass for the main key, oxblood for danger
+        drawRoundRect(rim, cornerRadius = r)
+        // the cap: bakelite, a soft dome of light from above, darker when pushed in; the lip below it stays metal
+        drawRoundRect(cap, topLeft = Offset(bez, bez), size = Size(size.width - bez * 2, capH), cornerRadius = capR)
+        // wear: a few pale scuffs on the cap, the same on every redraw for a given size
+        for (sc in scuffs) drawLine(Color.White.copy(alpha = sc[4]), Offset(sc[0], sc[1]), Offset(sc[2], sc[3]), strokeWidth = 1f)
+        // the lamp: a small glass bead set in the lip, centred under the cap, that glows when on
+        if (lamped) {
+            if (on) drawCircle(glow, radius = lr * 5f, center = lc)
+            drawCircle(Color.Black.copy(alpha = .5f), radius = lr * 1.35f, center = lc)
+            drawCircle(if (on) lamp else Color(0xFF0E0B09), radius = lr, center = lc)
+            drawCircle(Color.White.copy(alpha = if (on) .55f else .18f), radius = lr * .35f, center = Offset(lc.x - lr * .3f, lc.y - lr * .35f))
+        }
     }
 }
 
@@ -427,14 +448,14 @@ fun Btn(
     if (UiLook.panel) {
         // the hardware panel: a bakelite key, engraved words, a lamp under it for on. At least 40 real dp tall at any view size.
         // Keys widen with the screen and stop at a cap, so a wide screen has bigger keys, not lonely little ones
-        val minH = maxOf(if (small) 34f else 44f, 40f / UiLook.scale.coerceIn(.4f, 2f)) + UiLook.lip.value
-        val minW = if (tight) 0f else (UiLook.widthDp * (if (small) .14f else .18f)).coerceIn(if (small) 48f else 56f, if (small) 120f else 150f)
+        val minH = maxOf(if (small) 34f else 44f, 40f / UiLook.scale.coerceIn(.4f, 2f)) * UiLook.big + UiLook.lip.value
+        val minW = if (tight) 0f else (UiLook.widthDp * (if (small) .14f else .18f)).coerceIn(if (small) 48f else 56f, if (small) 120f else 150f) * UiLook.big
         Box(
             modifier
                 .heightIn(min = minH.dp)
                 .widthIn(min = minW.dp)
                 .offset(0.dp, if (pressed && enabled) 2.dp else 0.dp)
-                .bakelite(on, if (tier == Tier.Danger) Hw.Oxblood else onColor, pressed && enabled, danger = tier == Tier.Danger, brass = tier == Tier.Primary, lamped = lamped)
+                .bakelite(on, if (tier == Tier.Danger) Hw.Oxblood else onColor, pressed && enabled, danger = tier == Tier.Danger, brass = tier == Tier.Primary, lamped = lamped, tint = if (tight) null else capTint(text))
                 .alpha(if (enabled) 1f else .4f)
                 .clickable(src, indication = null, enabled = enabled) { onClick() }
                 .then(if (tag != null) Modifier.tagged(tag) else Modifier)
@@ -449,9 +470,9 @@ fun Btn(
             // (in the panel Look the old symbols go anyway: the worn letters have no ● or ✂, and the lamp says on)
             val words = text.replace(Regex("^[^A-Za-z0-9\\s]+\\s+"), "").ifEmpty { text }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (icon != null) InlayIcon(icon, if (small) 28.dp else 32.dp, on, text, Modifier.padding(end = 7.dp))
+                if (icon != null) InlayIcon(icon, (if (small) 28.dp else 32.dp) * UiLook.big, on, text, Modifier.padding(end = 7.dp))
                 T(words.uppercase(), color = when { tier == Tier.Quiet -> Hw.Engrave.copy(alpha = .6f); on -> lerp(Hw.Engrave, onColor, .35f); else -> Hw.Engrave },
-                    size = if (small) 12.sp else 13.sp, lines = 1, spacing = if (tight) 0.em else .03.em, family = Worn, weight = FontWeight.Normal)
+                    size = (if (small) 12f else 13f).let { (it * UiLook.big).sp }, lines = 1, spacing = if (tight) 0.em else .03.em, family = Worn, weight = FontWeight.Normal)
             }
         }
         return

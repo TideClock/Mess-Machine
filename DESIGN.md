@@ -119,6 +119,11 @@ One line each, dated, with the reason and who decided (BT-2). Older decisions li
   (Project.dropKeep, never saved). Mute is also a HotKeys swipe, and the same swipe again closes what it opened.
 - 2026-11-21 Lag, first half: 60 frames a second by default (Smooth screen setting), the beat glow and top bar flash in
   their own layers, no Random made on every key redraw, the Latency screen shows the fast path Android granted.
+- 2026-11-21 Second video, Tyler's go on everything (proposal doc https://claude.ai/artifact/GbkRTdFSCg8Pa2115EHA1C):
+  Cut fill is the amount of filtering (empty = off, like every vial); vial names open a settings card; Auto lanes draw
+  in place over the vials (laneHere), not on Seq; saved FX with five built in (Wash, Grit, Tape, Space, Dry); colored
+  caps on keys that open things (capTint); Large keys; buffer growth capped (Tight 3 bursts, Steady 8); clicks this
+  minute on the BPM readout. Next: scratch synth on a hidden 65th pad (S3), one keyboard style, AAudio (L4).
 - 2026-11-21 Dock plan, not built yet (Tyler): the app needs one cohesive dock idea, so mutes and the other live
   controls can be brought up on any screen the same way. Pad things and master things (docks, FX) must look clearly
   different. Today's step toward it: the master plate (brass trim) for whole-mix controls, pad colour for pad ones.

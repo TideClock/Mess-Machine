@@ -90,7 +90,7 @@ fun EditTray(state: AppState, pad: Int) {
                 LfoTray(state, pad)
                 T("RECORD A LANE FOR", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
                 Wrap(gap = 6.dp) {
-                    for ((t, name) in FX_STRIP) Btn(name, { state.closeEdit(); state.openAutoLane(pad, t) }, small = true, tight = true, tag = "edit-lane-$t")
+                    for ((t, name) in FX_STRIP) Btn(name, { state.openLaneHere(pad, t) }, small = true, tight = true, tag = "edit-lane-$t")
                 }
             }
             else -> {

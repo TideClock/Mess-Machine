@@ -45,6 +45,19 @@ class AudioOut(private val engine: Engine, private val rate: Int, framesPerBurst
         private set
     @Volatile var shrunk = 0
         private set
+    /**
+     * Nov 21 (L5): how many bursts the buffer may grow past where it started. Tight (3, about 12 ms more) keeps lag low and
+     * lets a rare click through; Steady (8) rides out a busy phone at the cost of lag.
+     */
+    @Volatile var growCap = 3
+    /** Nov 21 (L7): when the last clicks happened, for "clicks this minute" on the BPM readout. */
+    private val clickAt = LongArray(64)
+    @Volatile private var clickN = 0
+    fun clicksLastMinute(): Int {
+        val now = System.nanoTime(); var c = 0
+        for (k in 0 until minOf(clickN, 64)) if (now - clickAt[k] < 60_000_000_000L) c++
+        return c
+    }
     /** Set by the screen when a frame took over 50 ms, so a long audio block can say the screen was busy too. */
     @Volatile var lastSlowFrameNanos = 0L
 
@@ -78,6 +91,7 @@ class AudioOut(private val engine: Engine, private val rate: Int, framesPerBurst
                 if (f and 1 != 0) add("loading a sound")
                 if (f and 2 != 0) add("screen busy")
                 if (f and 4 != 0) add("first minute")
+                if (f and 8 != 0) add("a throw on")
             }.joinToString(", ").ifEmpty { "nothing else seen" }
             out.append("; ${ago}s ago ${(lbLoad[i] * 100).toInt()}% with ${lbVoices[i]} voices ($why)")
         }
@@ -155,12 +169,14 @@ class AudioOut(private val engine: Engine, private val rate: Int, framesPerBurst
                     val u = track.underrunCount
                     underruns = u
                     val now = System.nanoTime()
-                    if (u > seen && size < track.bufferCapacityInFrames) {
+                    if (u > seen) repeat(minOf(u - seen, 64)) { clickAt[clickN and 63] = now; clickN++ }
+                    if (u > seen && size < track.bufferCapacityInFrames && size < startSize + burst * growCap) {
                         val g = track.setBufferSizeInFrames(size + burst)
                         if (g > 0) { size = g; grown++; growVoices = maxOf(growVoices, engine.activeVoices()) }
                         bufferFrames = size
                         engine.setLatencyFrames(size + burst)
                     }
+                    if (size > startSize + burst * growCap) { val s2 = track.setBufferSizeInFrames(startSize + burst * growCap); if (s2 > 0) { size = s2; bufferFrames = size; engine.setLatencyFrames(size + burst) } }
                     if (u > seen) lastClick = now
                     else if (size > startSize && now - lastClick > 10_000_000_000L) {
                         // ten clean seconds: give one burst back, so a click does not cost lag for long (Nov 18: 60 s let it creep)
@@ -201,6 +217,8 @@ class AudioOut(private val engine: Engine, private val rate: Int, framesPerBurst
         if (Library.decoding() > 0) f = f or 1
         if (t0 - lastSlowFrameNanos < 100_000_000L) f = f or 2
         if (t0 - startedNanos < 60_000_000_000L) f = f or 4
+        // Nov 21 (L6): a throw effect (stutter, tape stop...) was on: is it the one making long blocks
+        if (try { engine.fxActive() } catch (_: Throwable) { false }) f = f or 8
         lbFlags[i] = f
         lbCount++
     }

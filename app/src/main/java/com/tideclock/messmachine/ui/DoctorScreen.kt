@@ -56,7 +56,7 @@ fun DoctorScreen(state: AppState, key: String) {
     var lazyT0 by remember { mutableStateOf(0L) }
     var fitBars by remember { mutableStateOf(1.0) }
     // the sample's settings in five tabs under a waveform that always stays on screen; Play first (how it plays when held and pitched)
-    var dtab by remember { mutableStateOf("play") }
+    var dtab by remember { mutableStateOf(state.doctorTab ?: "play").also { state.doctorTab = null } }
     LaunchedEffect(key) {
         if (smp == null) smp = withContext(Dispatchers.IO) { try { state.lib.load(key) } catch (_: Exception) { null } }
     }

@@ -1,21 +1,22 @@
 {
-  "title": "Mute mode, Drop, and a steadier screen",
+  "title": "Vials you can tune, saved FX, colored keys",
   "thisBuild": [
-    "MUTE on the dock: hold it and tap pads to mute or unmute them; let go and the pads play again. Tap MUTE instead and it stays on until you tap it again. Muted pads go dark with a slash, and every pad gets a red rim while Mute is on.",
-    "Hold a bank number (1 to 4) for half a second: the whole bank mutes, or comes back.",
-    "DROP on the dock: hold it and everything goes quiet but the pads you touch. Let go and it all comes back.",
-    "The wall of mute keys under LOOP is gone. LOOP is back to one row of loops.",
-    "HotKeys: Mute is a swipe choice now, and the same swipe again closes whatever it opened (Edit tray, Padiano, FX).",
-    "For the lag and crackle: the screen runs at 60 a second unless you turn on Settings, Playing, Screen: smooth. The beat glow no longer redraws the whole screen on every frame. The Latency screen now says whether Android gave the sound its fast path, and how the screen is keeping up."
+    "Cut works like every other vial now: empty is off, full is the most filtering. An empty Cut no longer silences a pad.",
+    "Tap a vial's name for that effect's settings, right over the vials: how much, reverb's Space, echo's time, its Auto lane, and the sound's own FX.",
+    "Auto lanes draw right over the vials (Auto on the FX drawer, or hold a vial's lamp, Cut and Res too). No more jumping to the Seq tab.",
+    "Load and Save on the FX drawer: Wash, Grit, Tape, Space and Dry come with the app; Save keeps your own set for any pad.",
+    "Keys that open things wear their color (pages purple, Edit and Pack pink, FX, LFO and XY teal); switches stay dark. The FannyPack's add menu matches.",
+    "Bigger keys on wide screens, and Settings, Look, Large keys makes every key about a quarter bigger.",
+    "Lag work, round two: keys are drawn once and reused, the buffer can only grow 3 steps after clicks (Settings, Playing, Buffer: steady lets it grow more), and the BPM readout shows clicks this minute in red."
   ],
   "watch": [
-    "Play the same thing as in your video for five minutes: open Latency after. How many dropouts, and what does Fast audio path say?",
-    "Mute mode: hold MUTE and tap pads while the loop plays. Quick enough?",
-    "Drop on a fill, then let go on the one."
+    "Play for five minutes: does a red click count ever show beside the lag?",
+    "Tap a vial name, change reverb's Space: can you hear it now?",
+    "Colored caps: keep them, or too much?"
   ],
   "limits": [
-    "This build is the first half of the lag work. The deeper fix (moving the sound onto Android's newer fast audio system) is in the proposal doc waiting for your call.",
-    "Drop leaves sounds that are already ringing to finish; it stops new hits.",
-    "Muting a sound mutes it on every pad that has it."
+    "The scratch synth still plays straight to the speaker; the next build puts it on its own hidden pad.",
+    "The sound is still on Android's older audio path; moving it to AAudio is two builds away.",
+    "Your saved FX live on the phone, not in the mess."
   ]
 }

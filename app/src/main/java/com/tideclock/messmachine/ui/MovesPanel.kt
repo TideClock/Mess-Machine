@@ -36,7 +36,7 @@ import com.tideclock.messmachine.engine.Project
  * ramps, triangle, sine, saw, square) every beat, half bar or bar, as strongly as you like. Each change is one undo.
  */
 @Composable
-fun MovesPanel(state: AppState) {
+fun MovesPanel(state: AppState, onClose: () -> Unit = { state.movesOpen = false }) {
     @Suppress("UNUSED_VARIABLE") val vv = state.version
     val P = state.project
     val lanes = state.moveLanes()
@@ -51,7 +51,7 @@ fun MovesPanel(state: AppState) {
             T("AUTO", size = 12.sp, color = C.Yellow, spacing = .1.em)
             Select(if (lane.isEmpty()) "No lanes yet" else state.laneLabel(lane), lanes.map { it to state.laneLabel(it) }, { state.moveLane = it }, tag = "moves-lane", modifier = Modifier.weight(1f))
             // note (Nov 21): the lanes had no way out but the Auto button again
-            CloseScrew({ state.movesOpen = false }, tag = "moves-close", label = "Close the lanes")
+            CloseScrew(onClose, tag = "moves-close", label = "Close the lanes")
         }
         // a new lane: a pad and what it moves
         val loaded = (0 until Project.NPADS).filter { P.kit[it].isNotEmpty() }

@@ -198,6 +198,9 @@ fun SettingsScreen(state: AppState) {
                 }
                 if (state.look != "classic") Btn(if (state.proWords) "Words under icons: on" else "Words under icons: off", { state.switchProWords() }, on = state.proWords, onColor = C.Teal, small = true, tag = "look-words",
                     modifier = Modifier.padding(top = 8.dp))
+                // Nov 21: a quarter bigger everywhere, for playing at 70 to 80 percent view size
+                Btn(if (state.largeKeys) "Large keys: on" else "Large keys: off", { state.switchLargeKeys(!state.largeKeys) }, on = state.largeKeys, onColor = C.Teal, small = true, tag = "look-large",
+                    modifier = Modifier.padding(top = 8.dp))
             }
         }
         // build 107: where things live. New is the default; Classic puts back build 104's Menu, FX and side dock
@@ -252,6 +255,8 @@ fun SettingsScreen(state: AppState) {
                 // Nov 21 (lag): the screen at 60 a second leaves more time for the sound
                 Note("Screen speed. 60 a second leaves the sound more room; Smooth is the phone's fastest.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
                 Btn(if (state.smoothScreen) "Screen: smooth" else "Screen: 60 a second", { state.switchSmoothScreen(!state.smoothScreen) }, on = state.smoothScreen, onColor = C.Teal, small = true, tag = "set-smooth")
+                Note("Sound buffer. Tight keeps lag low and lets a rare click through; Steady grows more to ride out a busy phone.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
+                Btn(if (state.steadyBuffer) "Buffer: steady" else "Buffer: tight", { state.switchSteadyBuffer(!state.steadyBuffer) }, on = state.steadyBuffer, onColor = C.Teal, small = true, tag = "set-buffer")
                 Note("Beat glow behind everything.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
                 Wrap(Modifier.tagged("glow-chips")) {
                     for ((v, n) in listOf(0 to "Off", 1 to "Soft", 2 to "Full")) Btn(n, { state.setPulse(v) }, on = state.pulseLevel == v, small = true, tag = "set-pulse-$v")

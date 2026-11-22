@@ -1099,8 +1099,8 @@ public final class Engine {
         v.fxChorus = (float) e.chorus; v.fxWob = (float) e.wob; v.fxWobRate = (float) e.wobRate;
         v.wobPh = 0; v.chPh = 0; v.chW = 0; v.crushCnt = 0; v.crushVal = 0; v.bendMul = 1; v.volMul = 1; v.panX = e.pan;
         if (v.chBuf != null) java.util.Arrays.fill(v.chBuf, 0f);
-        if (e.rvb > 0) rvbSizeT = (float) e.rvbSize;
-        if (e.echo > 0) sEchoDiv = e.echoT;
+        if (e.rvb > 0 || (ps.index >= 0 && ps.index < 64 && padRvb[ps.index] > 0)) rvbSizeT = (float) e.rvbSize;
+        if (e.echo > 0 || (ps.index >= 0 && ps.index < 64 && padEcho[ps.index] > 0)) sEchoDiv = e.echoT;
         triggers++;
         setFilter(v, e.tone);
         if (e.choke > 0) {
@@ -1170,8 +1170,8 @@ public final class Engine {
         v.fxChorus = (float) e.chorus; v.fxWob = (float) e.wob; v.fxWobRate = (float) e.wobRate;
         v.wobPh = 0; v.chPh = 0; v.chW = 0; v.crushCnt = 0; v.crushVal = 0; v.bendMul = 1; v.volMul = 1; v.panX = e.pan;
         if (v.chBuf != null) java.util.Arrays.fill(v.chBuf, 0f);
-        if (e.rvb > 0) rvbSizeT = (float) e.rvbSize;
-        if (e.echo > 0) sEchoDiv = e.echoT;
+        if (e.rvb > 0 || (ps.index >= 0 && ps.index < 64 && padRvb[ps.index] > 0)) rvbSizeT = (float) e.rvbSize;
+        if (e.echo > 0 || (ps.index >= 0 && ps.index < 64 && padEcho[ps.index] > 0)) sEchoDiv = e.echoT;
         triggers++;
         setFilter(v, e.tone);
         if (e.choke > 0) {
@@ -1714,7 +1714,8 @@ public final class Engine {
             padGate[p] = Math.min(1, Math.max(a[4], b[4]) + m[T_GATE]);
             padRing[p] = Math.min(1, Math.max(a[6], b[6]) + m[T_RING]);
             padEcho[p] = Math.max(a[1], b[1]) + m[T_ECHO];
-            padRvb[p] = m[T_RVB];
+            // Nov 21 (second video): a curve that eases out, so a half-full Verb vial is plainly reverb, the top the same as before
+            { float rv = Math.max(0, Math.min(1, m[T_RVB])); padRvb[p] = rv * (2 - rv); }
             padChorus[p] = m[T_CHORUS];
             padWob[p] = m[T_WOB];
             padPump[p] = Math.min(1, m[T_PUMP]); padWarm[p] = Math.min(1, m[T_WARM]); padPhaser[p] = Math.min(1, m[T_PHASER]); padFreeze[p] = Math.min(1, m[T_FREEZE]);
