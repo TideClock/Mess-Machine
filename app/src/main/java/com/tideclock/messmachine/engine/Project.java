@@ -15,6 +15,8 @@ import java.util.Set;
  */
 public final class Project {
     public static final int NPADS = 64, BANK = 16, NSLOTS = 8, MAXSTEPS = 128, MAXSONG = 64;
+    /** Nov 21: a slot past the 64 pads, in no bank, for the Synth tab's scratch synth; it plays and records like a pad. */
+    public static final int SCRATCH = NPADS, SLOTS = NPADS + 1;
     /** The finer time grid: ticks in one sixteenth step (96 a quarter note), enough for every triplet and dotted rate. */
     public static final int TICKS = 24;
     public static final String LETTERS = "ABCDEFGH";
@@ -293,12 +295,12 @@ public final class Project {
     }
 
     public String name = "";
-    public final String[] kit = new String[NPADS];
+    public final String[] kit = new String[SLOTS];
     /** Per-pad settings (glide, routing, XY); null = the defaults. */
-    public final PadOpts[] opts = new PadOpts[NPADS];
+    public final PadOpts[] opts = new PadOpts[SLOTS];
 
-    public PadOpts opt(int pad) { return pad >= 0 && pad < NPADS && opts[pad] != null ? opts[pad] : PadOpts.DEFAULT; }
-    public void setOpt(int pad, PadOpts o) { if (pad >= 0 && pad < NPADS) opts[pad] = o == null || o.isDefault() ? null : o.copy(); }
+    public PadOpts opt(int pad) { return pad >= 0 && pad < SLOTS && opts[pad] != null ? opts[pad] : PadOpts.DEFAULT; }
+    public void setOpt(int pad, PadOpts o) { if (pad >= 0 && pad < SLOTS) opts[pad] = o == null || o.isDefault() ? null : o.copy(); }
     public final Pattern[] pats = new Pattern[NSLOTS];
     public final int[] song = new int[MAXSONG];
     public int bpm = 112, swing = 0, sel = 7, root = 0, cur = 0;
@@ -369,7 +371,7 @@ public final class Project {
 
     public int padOf(String k) { for (int k2 = 0; k2 < NPADS; k2++) if (kit[k2].equals(k)) return k2; return -1; }
 
-    public int loadedCount() { int n = 0; for (String k : kit) if (!k.isEmpty()) n++; return n; }
+    public int loadedCount() { int n = 0; for (int k = 0; k < NPADS; k++) if (!kit[k].isEmpty()) n++; return n; }
 
     /** Put a sound on a pad. A sound lives on one pad at a time, like the site. */
     public void assign(int pad, String key) {
@@ -505,7 +507,7 @@ public final class Project {
         for (String k : kit) if (synths.containsKey(k)) sy.put(k, synths.get(k).toMap());
         if (!sy.isEmpty()) o.put("synths", sy);
         Map<String, Object> po = new LinkedHashMap<>();
-        for (int k = 0; k < NPADS; k++) if (opts[k] != null && !opts[k].isDefault()) po.put(String.valueOf(k), opts[k].toMap());
+        for (int k = 0; k < SLOTS; k++) if (opts[k] != null && !opts[k].isDefault()) po.put(String.valueOf(k), opts[k].toMap());
         if (!po.isEmpty()) o.put("padOpts", po);
         if (withTime) o.put("at", isoNow());
         o.put("app", "android");
@@ -543,13 +545,13 @@ public final class Project {
         Project p = new Project();
         p.name = Json.str(q.get("name"), "");
         for (Map.Entry<String, Object> e : Json.map(q.get("padOpts")).entrySet()) {
-            try { int k = Integer.parseInt(e.getKey()); if (k >= 0 && k < NPADS) p.opts[k] = PadOpts.fromMap(Json.map(e.getValue())); } catch (NumberFormatException ignored) {}
+            try { int k = Integer.parseInt(e.getKey()); if (k >= 0 && k < SLOTS) p.opts[k] = PadOpts.fromMap(Json.map(e.getValue())); } catch (NumberFormatException ignored) {}
         }
         for (Map.Entry<String, Object> e : Json.map(q.get("synths")).entrySet())
             if (isSynth(e.getKey())) p.synths.put(e.getKey(), Synth.Patch.fromMap(Json.map(e.getValue())));
         List<Object> kl = Json.list(q.get("kit"));
         int missing = 0;
-        for (int k = 0; k < kl.size() && k < NPADS; k++) {
+        for (int k = 0; k < kl.size() && k < SLOTS; k++) {
             String key = Json.str(kl.get(k), "");
             if (key.isEmpty()) continue;
             if (known == null || known.has(key) || p.synths.containsKey(key)) {

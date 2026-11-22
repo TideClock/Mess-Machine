@@ -101,8 +101,9 @@ public final class Engine {
         }
 
         public static Snapshot build(Project p, SampleSource src, Live live) {
-            PadSlot[] pads = new PadSlot[Project.NPADS];
-            for (int i = 0; i < Project.NPADS; i++) {
+            // Nov 21: one slot past the 64 pads for the Synth tab's scratch synth (Project.SCRATCH)
+            PadSlot[] pads = new PadSlot[Project.SLOTS];
+            for (int i = 0; i < Project.SLOTS; i++) {
                 String k = p.kit[i];
                 if (k.isEmpty()) continue;
                 Sample s = src.get(k);
@@ -247,7 +248,7 @@ public final class Engine {
     private int step, songPos, arpI;
     private long fired, stopAfter = -1;
     private final Map<Integer, Held> held = new LinkedHashMap<>();
-    private final double[] lastP = new double[64];
+    private final double[] lastP = new double[Project.SLOTS];
     private volatile Voice lastVoice;
     private final java.util.Random rnd = new java.util.Random();
 
@@ -273,9 +274,9 @@ public final class Engine {
     private boolean bypassMaster;
 
     // live filter per pad (the strip under each piano): cutoff and resonance glide per block
-    private final double[] pfFreq = new double[64], pfTarget = new double[64], pfQ = new double[64], pfQT = new double[64];
-    private final boolean[] pfOn = new boolean[64], pfSlow = new boolean[64];
-    private final float[][] pfC = new float[64][5];
+    private final double[] pfFreq = new double[Project.SLOTS], pfTarget = new double[Project.SLOTS], pfQ = new double[Project.SLOTS], pfQT = new double[Project.SLOTS];
+    private final boolean[] pfOn = new boolean[Project.SLOTS], pfSlow = new boolean[Project.SLOTS];
+    private final float[][] pfC = new float[Project.SLOTS][5];
 
     private double oct() { return fxOct ? .5 : 1; }
 
@@ -400,19 +401,6 @@ public final class Engine {
     public void padFilter(int pad, float cut, float res, boolean on) { cmds.add(new Object[]{"pf", pad, cut, res, on}); }
     public void stopPreviews() { cmds.add(new Object[]{"stopprev"}); }
 
-    /**
-     * The Synth tab's own synth (Nov 21 video): a synth you can play before it is on any pad. Its notes are held
-     * voices of their own, not on a pad, so nothing records them and no pad's effects touch them.
-     */
-    public static final int SCRATCH = -3;
-    private Synth.Patch scratchP;
-    private final java.util.HashMap<Integer, Voice> scratchHeld = new java.util.HashMap<>();
-    public void scratchDown(int id, Synth.Patch p, int pitch, float vel) { if (p != null) cmds.add(new Object[]{"sdown", id, p.copy(), pitch, vel}); }
-    public void scratchUp(int id) { cmds.add(new Object[]{"sup", id}); }
-    /** New knob settings for the scratch synth: notes already sounding follow them. */
-    public void scratchPatch(Synth.Patch p) { if (p != null) cmds.add(new Object[]{"spatch", p.copy()}); }
-    /** Scratch notes sounding now, for tests. */
-    public int scratchCount() { return scratchHeld.size(); }
 
     public RecEvent pollRec() { return recs.poll(); }
 
@@ -480,7 +468,7 @@ public final class Engine {
     }
 
     private void padFilters(int frames) {
-        for (int p = 0; p < 64; p++) {
+        for (int p = 0; p < Project.SLOTS; p++) {
             if (!lfoFilt[p] && !pfOn[p] && pfTarget[p] >= 19999 && pfQT[p] <= .71) continue;
             double g = 1 - Math.exp(-frames / ((pfSlow[p] ? .12 : .025) * rate));
             pfFreq[p] += (pfTarget[p] - pfFreq[p]) * g;
@@ -499,31 +487,31 @@ public final class Engine {
 
     /* ---------- the LFO strip: one slow wave per pad (the build after 84) ---------- */
 
-    private final double[] lfoV = new double[64], lfoRandV = new double[64];
+    private final double[] lfoV = new double[Project.SLOTS], lfoRandV = new double[Project.SLOTS];
     private Snapshot lastSnap;
 
     /** A new snapshot (an edit, Undo, a cleared lane while stopped): lanes that no longer exist let go at once. */
     private void dropGoneLanes(Snapshot S) {
         int pi = S != null ? playingPat(S) : -1;
         Pat P = S != null && pi >= 0 && pi < S.pats.length ? S.pats[pi] : null;
-        boolean[][] keep = new boolean[64][];
+        boolean[][] keep = new boolean[Project.SLOTS][];
         if (P != null) for (int q = 0; q < P.lanePad.length; q++) {
             int lp = P.lanePad[q], lt = P.laneT[q];
-            if (lp < 0 || lp >= 64 || lt < 0 || lt >= NT) continue;
+            if (lp < 0 || lp >= Project.SLOTS || lt < 0 || lt >= NT) continue;
             if (keep[lp] == null) keep[lp] = new boolean[NT];
             keep[lp][lt] = true;
         }
-        for (int lp = 0; lp < 64; lp++) for (int lt = 0; lt < NT; lt++)
+        for (int lp = 0; lp < Project.SLOTS; lp++) for (int lt = 0; lt < NT; lt++)
             if (laneHeld[lp][lt] && (keep[lp] == null || !keep[lp][lt])) { laneHeld[lp][lt] = false; combine(lp, lt); }
     }
-    private final long[] lfoRandCyc = new long[64], padLast = new long[64];
-    private final boolean[] lfoFilt = new boolean[64];
-    private final int[] pfType = new int[64];
+    private final long[] lfoRandCyc = new long[Project.SLOTS], padLast = new long[Project.SLOTS];
+    private final boolean[] lfoFilt = new boolean[Project.SLOTS];
+    private final int[] pfType = new int[Project.SLOTS];
 
     /** The LFO's wave right now on a pad, -1..1 (0 when it is off), for tests and the strip's light. */
-    public double lfoValue(int pad) { return pad >= 0 && pad < 64 ? lfoV[pad] : 0; }
+    public double lfoValue(int pad) { return pad >= 0 && pad < Project.SLOTS ? lfoV[pad] : 0; }
     /** The pad's filter cutoff in Hz right now (20000 when open), for tests. */
-    public double padCutoff(int pad) { return pad >= 0 && pad < 64 && (pfOn[pad] || lfoFilt[pad]) ? pfFreq[pad] : 20000; }
+    public double padCutoff(int pad) { return pad >= 0 && pad < Project.SLOTS && (pfOn[pad] || lfoFilt[pad]) ? pfFreq[pad] : 20000; }
 
     /** One wave value: ph 0..1 through the cycle. */
     static double lfoWave(int wave, double ph, long cyc, int pad) {
@@ -546,7 +534,7 @@ public final class Engine {
         if (S == null) return;
         double spbF = spbNow > 0 ? spbNow : spb(S);
         double pos = playing ? step - (nextStepAt - frame) / spbF : frame / spbF;
-        for (int p = 0; p < 64; p++) {
+        for (int p = 0; p < Project.SLOTS; p++) {
             PadSlot ps = S.pads[p];
             PadOpts o = ps != null ? ps.opts : null;
             if (o == null || !o.lfoOn) { lfoV[p] = 0; continue; }
@@ -559,7 +547,7 @@ public final class Engine {
     }
 
     /** Is a pad's live filter closed at all right now (for the UI and tests). */
-    public boolean padFiltered(int pad) { return pad >= 0 && pad < 64 && pfOn[pad]; }
+    public boolean padFiltered(int pad) { return pad >= 0 && pad < Project.SLOTS && pfOn[pad]; }
 
     private double spb(Snapshot S) { return rate * 60.0 / Math.max(40, S.bpm) / 4.0; }
 
@@ -627,25 +615,11 @@ public final class Engine {
                 break;
             }
             case "stopprev": for (Voice v : pool) if (v.active && v.preview) startRelease(v, .03f); break;
-            case "sdown": {
-                int id = (Integer) c[1];
-                Synth.Patch sp = (Synth.Patch) c[2];
-                scratchP = sp;
-                Voice old = scratchHeld.remove(id);
-                if (old != null) startRelease(old, .02f);
-                float vel = (Float) c[4];
-                PadSlot ps = new PadSlot(SCRATCH, "scratch", clickHi, SoundEdit.DEFAULT, true, PadOpts.DEFAULT, sp, null);
-                Voice v = trigger(ps, oct() * Math.pow(2, (Integer) c[3] / 12.0), 0, false, .85f * (vel >= 0 ? velGain(vel) : 1f), 0, true);
-                if (v != null) scratchHeld.put(id, v);
-                break;
-            }
-            case "sup": { Voice v = scratchHeld.remove((Integer) c[1]); if (v != null && v.active) release(v); break; }
-            case "spatch": scratchP = (Synth.Patch) c[1]; break;
             case "fx": fxSet(S, (String) c[1], (Boolean) c[2]); break;
             case "mod": {
                 // a hand (finger, wheel, mouth, a knob) holds this control until it lets go (build 106)
                 int pd = (Integer) c[1], t = (Integer) c[2];
-                if (pd >= 0 && pd < 64 && t >= 0 && t < NT) {
+                if (pd >= 0 && pd < Project.SLOTS && t >= 0 && t < NT) {
                     pHand[pd][t] = (Float) c[3];
                     handOn[pd][t] = true;
                     modTouch[pd][t] = frame;
@@ -655,12 +629,12 @@ public final class Engine {
             }
             case "rel": {
                 int pd = (Integer) c[1], t = (Integer) c[2];
-                if (pd >= 0 && pd < 64 && t >= 0 && t < NT) { handOn[pd][t] = false; combine(pd, t); }
+                if (pd >= 0 && pd < Project.SLOTS && t >= 0 && t < NT) { handOn[pd][t] = false; combine(pd, t); }
                 break;
             }
             case "home": {
                 int pd = (Integer) c[1], t = (Integer) c[2];
-                if (pd >= 0 && pd < 64 && t >= 0 && t < NT) { pHome[pd][t] = (Float) c[3]; combine(pd, t); }
+                if (pd >= 0 && pd < Project.SLOTS && t >= 0 && t < NT) { pHome[pd][t] = (Float) c[3]; combine(pd, t); }
                 break;
             }
             case "fxt": {
@@ -688,7 +662,7 @@ public final class Engine {
                 // a hand on the pad filter (XY, the Padiano strip, the dock filter): cut 1 = open. Let go and the
                 // filter goes back to where it rests, not wide open (build 106)
                 int pd = (Integer) c[1];
-                if (pd < 0 || pd >= 64) break;
+                if (pd < 0 || pd >= Project.SLOTS) break;
                 boolean on = (Boolean) c[4];
                 float cut = Math.max(0, Math.min(1, (Float) c[2])), res = Math.max(0, Math.min(1, (Float) c[3]));
                 pHand[pd][T_FILTER] = 1 - cut; pHand[pd][T_RES] = res;
@@ -737,7 +711,7 @@ public final class Engine {
         if (old != null) for (Voice v : old.voices) startRelease(v, .02f);
         // glide: slide in from the pad's last note (legato: only while another note of this pad is down)
         double from = Double.NaN;
-        double gT = pad >= 0 && pad < 64 && pMod[pad][T_GLIDE] > .001 ? pMod[pad][T_GLIDE] : ps.opts.glide ? ps.opts.glideT : 0;
+        double gT = pad >= 0 && pad < Project.SLOTS && pMod[pad][T_GLIDE] > .001 ? pMod[pad][T_GLIDE] : ps.opts.glide ? ps.opts.glideT : 0;
         if (mel && pad >= 0 && pad < lastP.length && gT > .001 && !Double.isNaN(lastP[pad])) {
             boolean overlap = false;
             for (Held o : held.values()) if (o.pad.index == pad) { overlap = true; break; }
@@ -915,9 +889,9 @@ public final class Engine {
             for (Track t : P.tracks) {
                 if (!t.pad.audible) continue;
                 int ti = t.pad.index, ts = s0;
-                if (ti >= 0 && ti < 64 && padStut[ti] && !fxStut) { ts = pStutA[ti] + Math.floorMod(step - pStutB[ti], 2); if (ts >= len) ts = 0; }
+                if (ti >= 0 && ti < Project.SLOTS && padStut[ti] && !fxStut) { ts = pStutA[ti] + Math.floorMod(step - pStutB[ti], 2); if (ts >= len) ts = 0; }
                 // step locks: the locked controls take this step's value, and let go again on a step without one
-                if (t.lockT != null && ti >= 0 && ti < 64) for (int q = 0; q < t.lockT.length; q++) {
+                if (t.lockT != null && ti >= 0 && ti < Project.SLOTS) for (int q = 0; q < t.lockT.length; q++) {
                     int lt = t.lockT[q]; float lv = ts < t.lockV[q].length ? t.lockV[q][ts] : Float.NaN;
                     boolean on = !Float.isNaN(lv) && t.steps[ts];
                     if (on || lockOn[ti][lt]) { lockOn[ti][lt] = on; if (on) lockVal[ti][lt] = lv; combine(ti, lt); }
@@ -934,7 +908,7 @@ public final class Engine {
         laneSerial++;
         if (P != null) for (int q = 0; q < P.lanePad.length; q++) {
             int lp = P.lanePad[q], lt = P.laneT[q];
-            if (lp < 0 || lp >= 64 || lt < 0 || lt >= NT) continue;
+            if (lp < 0 || lp >= Project.SLOTS || lt < 0 || lt >= NT) continue;
             laneSeen[lp][lt] = laneSerial;
             float v = P.laneV[q][s];
             if (Float.isNaN(v)) continue;  // between marks a lane holds its last value
@@ -944,7 +918,7 @@ public final class Engine {
         }
         // build 105: where a lane stops (a cleared lane, a loop without it) the control goes back to where it rests,
         // instead of staying stuck at the lane's last value
-        for (int lp = 0; lp < 64; lp++) for (int lt = 0; lt < NT; lt++) {
+        for (int lp = 0; lp < Project.SLOTS; lp++) for (int lt = 0; lt < NT; lt++) {
             if (!laneHeld[lp][lt] || laneSeen[lp][lt] == laneSerial) continue;
             laneHeld[lp][lt] = false;
             combine(lp, lt);
@@ -1026,7 +1000,7 @@ public final class Engine {
     /* ---------- starting one voice, voiceEd() from the site ---------- */
 
     private Voice trigger(PadSlot ps, double rateMul, double durSec, boolean gate, float gain, long delay, boolean hold) {
-        boolean flip = fxRev || (ps.index >= 0 && ps.index < 64 && padRev[ps.index]);
+        boolean flip = fxRev || (ps.index >= 0 && ps.index < Project.SLOTS && padRev[ps.index]);
         return trigger(ps, rateMul, durSec, gate, gain, delay, hold, flip);
     }
 
@@ -1039,7 +1013,7 @@ public final class Engine {
         boolean rev = e.rev != flip;
         float[] d = rev ? s.reversedData() : s.data;
         double a = e.st * N, z = e.en * N;
-        float[] pm = ps.index >= 0 && ps.index < 64 ? pMod[ps.index] : null;
+        float[] pm = ps.index >= 0 && ps.index < Project.SLOTS ? pMod[ps.index] : null;
         if (pm != null && pm[T_START] > 0) a = Math.min(z - .005 * s.rate, a + (z - a) * Math.min(.95, pm[T_START]));
         if (rev) { double a2 = N - z; z = N - a; a = a2; }
         double len = Math.max(.005 * s.rate, z - a);
@@ -1065,7 +1039,7 @@ public final class Engine {
             float[] bk = s.bakedFor(r / timeR);
             if (bk != null && bk.length == N) { d = bk; incR = timeR; grain = false; bakedPlays++; }
         }
-        if (grain && !sustain && ps.index >= 0 && ps.index < 64) grainUsed[ps.index] = true;
+        if (grain && !sustain && ps.index >= 0 && ps.index < Project.SLOTS) grainUsed[ps.index] = true;
         double natural = len / s.rate / timeR;
         boolean g = "gate".equals(e.mode) || gate;
         double play = hold ? 600 : e.loop ? (durSec > 0 ? durSec : natural) : (g && durSec > 0 ? Math.min(durSec, natural) : natural);
@@ -1099,8 +1073,8 @@ public final class Engine {
         v.fxChorus = (float) e.chorus; v.fxWob = (float) e.wob; v.fxWobRate = (float) e.wobRate;
         v.wobPh = 0; v.chPh = 0; v.chW = 0; v.crushCnt = 0; v.crushVal = 0; v.bendMul = 1; v.volMul = 1; v.panX = e.pan;
         if (v.chBuf != null) java.util.Arrays.fill(v.chBuf, 0f);
-        if (e.rvb > 0 || (ps.index >= 0 && ps.index < 64 && padRvb[ps.index] > 0)) rvbSizeT = (float) e.rvbSize;
-        if (e.echo > 0 || (ps.index >= 0 && ps.index < 64 && padEcho[ps.index] > 0)) sEchoDiv = e.echoT;
+        if (e.rvb > 0 || (ps.index >= 0 && ps.index < Project.SLOTS && padRvb[ps.index] > 0)) rvbSizeT = (float) e.rvbSize;
+        if (e.echo > 0 || (ps.index >= 0 && ps.index < Project.SLOTS && padEcho[ps.index] > 0)) sEchoDiv = e.echoT;
         triggers++;
         setFilter(v, e.tone);
         if (e.choke > 0) {
@@ -1170,8 +1144,8 @@ public final class Engine {
         v.fxChorus = (float) e.chorus; v.fxWob = (float) e.wob; v.fxWobRate = (float) e.wobRate;
         v.wobPh = 0; v.chPh = 0; v.chW = 0; v.crushCnt = 0; v.crushVal = 0; v.bendMul = 1; v.volMul = 1; v.panX = e.pan;
         if (v.chBuf != null) java.util.Arrays.fill(v.chBuf, 0f);
-        if (e.rvb > 0 || (ps.index >= 0 && ps.index < 64 && padRvb[ps.index] > 0)) rvbSizeT = (float) e.rvbSize;
-        if (e.echo > 0 || (ps.index >= 0 && ps.index < 64 && padEcho[ps.index] > 0)) sEchoDiv = e.echoT;
+        if (e.rvb > 0 || (ps.index >= 0 && ps.index < Project.SLOTS && padRvb[ps.index] > 0)) rvbSizeT = (float) e.rvbSize;
+        if (e.echo > 0 || (ps.index >= 0 && ps.index < Project.SLOTS && padEcho[ps.index] > 0)) sEchoDiv = e.echoT;
         triggers++;
         setFilter(v, e.tone);
         if (e.choke > 0) {
@@ -1259,7 +1233,6 @@ public final class Engine {
                 PadSlot cp = SN.pads[v.pad];
                 if (cp != null && cp.synth != null && cp.synth.kind == v.sv.patch.kind) v.sv.read(cp.synth);
             }
-            else if (v.syn && v.pad == SCRATCH && scratchP != null && scratchP.kind == v.sv.patch.kind) v.sv.read(scratchP);
             int k = 0;
             if (v.delay > 0) {
                 long skip = Math.min(v.delay, n);
@@ -1268,7 +1241,7 @@ public final class Engine {
                 if (v.delay > 0) continue;
             }
             float[] d = v.d;
-            int p = v.pad >= 0 && v.pad < 64 ? v.pad : -1;
+            int p = v.pad >= 0 && v.pad < Project.SLOTS ? v.pad : -1;
             // what this pad adds right now (XY, per-pad and per-bus effects)
             float dirt = v.fxDirt + (p >= 0 ? padDirt[p] : 0), crush = v.fxCrush + (p >= 0 ? padCrush[p] : 0);
             float chorus = v.fxChorus + (p >= 0 ? padChorus[p] : 0), wob = v.fxWob + (p >= 0 ? padWob[p] : 0);
@@ -1575,16 +1548,16 @@ public final class Engine {
     /** The perform effects, in the order the buttons show them. */
     public static final String[] FXN = {"stutter", "echo", "crush", "tape", "gate", "dirty", "ring", "oct", "rev"};
     private static final float[] ZERO9 = new float[9];
-    private final float[][] pMod = new float[64][NT];
+    private final float[][] pMod = new float[Project.SLOTS][NT];
     private final float[][] tFx = new float[69][9];
-    private final float[] padDirt = new float[64], padCrush = new float[64], padChorus = new float[64], padWob = new float[64],
-        padGate = new float[64], padRing = new float[64], padRvb = new float[64], padEcho = new float[64],
-        padVol = new float[64], padPan = new float[64], tapeF = new float[64],
-        padPump = new float[64], padWarm = new float[64], padPhaser = new float[64], padFreeze = new float[64];
-    private final double[] padRateFrom = new double[64], padRateTo = new double[64];
-    private final boolean[] padStut = new boolean[64], padRev = new boolean[64];
-    private final int[] pStutA = new int[64], pStutB = new int[64];
-    private final long[] rollNext = new long[64];
+    private final float[] padDirt = new float[Project.SLOTS], padCrush = new float[Project.SLOTS], padChorus = new float[Project.SLOTS], padWob = new float[Project.SLOTS],
+        padGate = new float[Project.SLOTS], padRing = new float[Project.SLOTS], padRvb = new float[Project.SLOTS], padEcho = new float[Project.SLOTS],
+        padVol = new float[Project.SLOTS], padPan = new float[Project.SLOTS], tapeF = new float[Project.SLOTS],
+        padPump = new float[Project.SLOTS], padWarm = new float[Project.SLOTS], padPhaser = new float[Project.SLOTS], padFreeze = new float[Project.SLOTS];
+    private final double[] padRateFrom = new double[Project.SLOTS], padRateTo = new double[Project.SLOTS];
+    private final boolean[] padStut = new boolean[Project.SLOTS], padRev = new boolean[Project.SLOTS];
+    private final int[] pStutA = new int[Project.SLOTS], pStutB = new int[Project.SLOTS];
+    private final long[] rollNext = new long[Project.SLOTS];
     private long blockStart;
     private int blockLen = 1;
     private double spbNow = 1000;
@@ -1593,7 +1566,7 @@ public final class Engine {
     public int triggers;
     /** SE-3: plays that used a baked version, and pads that needed live grain this session (for the Latency screen). */
     public int bakedPlays;
-    public final boolean[] grainUsed = new boolean[64];
+    public final boolean[] grainUsed = new boolean[Project.SLOTS];
 
     /** Move one thing on one pad: semitones for pitch, -1..1 for volume and pan, seconds for attack, release and glide, 0..1 for the rest. */
     public void mod(int pad, int what, float value) { cmds.add(new Object[]{"mod", pad, what, value}); }
@@ -1609,10 +1582,10 @@ public final class Engine {
     public void fxAmount(String name, float amount) { cmds.add(new Object[]{"famt", name, amount}); }
     public void gateLength(int steps) { cmds.add(new Object[]{"gatelen", steps}); }
 
-    private final long[][] modTouch = new long[64][NT];
+    private final long[][] modTouch = new long[Project.SLOTS][NT];
     /** Which controls a recorded lane is driving right now, and the step serial each lane was last heard on (build 105). */
-    private final boolean[][] laneHeld = new boolean[64][NT];
-    private final long[][] laneSeen = new long[64][NT];
+    private final boolean[][] laneHeld = new boolean[Project.SLOTS][NT];
+    private final long[][] laneSeen = new long[Project.SLOTS][NT];
     private long laneSerial = 0;
 
     /*
@@ -1621,12 +1594,12 @@ public final class Engine {
      * else where the control rests (Home: the FX strip's faders, saved in the mess). The LFO adds its wave on top
      * when the sound is made, so it moves from wherever the control is.
      */
-    private final float[][] pHome = new float[64][NT], pHand = new float[64][NT], laneVal = new float[64][NT];
-    private final boolean[][] handOn = new boolean[64][NT];
+    private final float[][] pHome = new float[Project.SLOTS][NT], pHand = new float[Project.SLOTS][NT], laneVal = new float[Project.SLOTS][NT];
+    private final boolean[][] handOn = new boolean[Project.SLOTS][NT];
 
     /** Step locks: on for one step at a time, while the loop plays. */
-    private final boolean[][] lockOn = new boolean[64][NT];
-    private final float[][] lockVal = new float[64][NT];
+    private final boolean[][] lockOn = new boolean[Project.SLOTS][NT];
+    private final float[][] lockVal = new float[Project.SLOTS][NT];
 
     /** Who wins a control: a hand on it, then a step lock, then a recorded lane, then where it rests. */
     private void combine(int p, int t) {
@@ -1635,13 +1608,13 @@ public final class Engine {
 
     /** Let go of every step lock (stop, panic). */
     private void dropLocks() {
-        for (int p = 0; p < 64; p++) for (int t = 0; t < NT; t++) if (lockOn[p][t]) { lockOn[p][t] = false; combine(p, t); }
+        for (int p = 0; p < Project.SLOTS; p++) for (int t = 0; t < NT; t++) if (lockOn[p][t]) { lockOn[p][t] = false; combine(p, t); }
     }
 
     /** Every pad's controls rest where the mess says (each new snapshot, a bounce, panic). */
     private void restHomes(Snapshot S) {
         if (S == null) return;
-        for (int i = 0; i < 64; i++) {
+        for (int i = 0; i < Project.SLOTS; i++) {
             PadSlot ps = i < S.pads.length ? S.pads[i] : null;
             java.util.Map<Integer, Double> m = ps != null ? ps.opts.fxMap() : java.util.Collections.emptyMap();
             for (int t = 0; t < NT; t++) {
@@ -1653,7 +1626,7 @@ public final class Engine {
     }
 
     /** What a control sounds like right now, before the LFO (for tests and the UI's ghost marks). */
-    public float controlValue(int pad, int t) { return pad >= 0 && pad < 64 && t >= 0 && t < NT ? pMod[pad][t] : 0f; }
+    public float controlValue(int pad, int t) { return pad >= 0 && pad < Project.SLOTS && t >= 0 && t < NT ? pMod[pad][t] : 0f; }
     { for (long[] m : modTouch) java.util.Arrays.fill(m, Long.MIN_VALUE / 2); }
 
     /**
@@ -1665,7 +1638,7 @@ public final class Engine {
     static float velGain(float v) { v = Math.max(0, Math.min(1, v)); return (float) (.3 + .85 * v); }
 
     private void filterBlock(Snapshot S) {
-        for (int p = 0; p < 64; p++) {
+        for (int p = 0; p < Project.SLOTS; p++) {
             PadSlot ps = S != null && p < S.pads.length ? S.pads[p] : null;
             double closed = Math.max(0, Math.min(1, pMod[p][T_FILTER])), res = Math.max(0, Math.min(1, pMod[p][T_RES]));
             int type = ps != null ? ps.opts.ftype : 1;
@@ -1698,17 +1671,17 @@ public final class Engine {
     private static int fxIndex(String n) { for (int k = 0; k < FXN.length; k++) if (FXN[k].equals(n)) return k; return -1; }
 
     /** The rate a pad plays at right now (XY pitch, tape, octave), for tests. */
-    public double padRate(int pad) { return pad >= 0 && pad < 64 ? padRateTo[pad] : 1; }
-    public float padLevel(int pad) { return pad >= 0 && pad < 64 ? padVol[pad] : 1; }
+    public double padRate(int pad) { return pad >= 0 && pad < Project.SLOTS ? padRateTo[pad] : 1; }
+    public float padLevel(int pad) { return pad >= 0 && pad < Project.SLOTS ? padVol[pad] : 1; }
 
     private void padBlock(Snapshot S, int frames) {
         blockStart = frame;
         blockLen = frames;
         spbNow = spb(S);
-        for (int p = 0; p < 64; p++) {
+        for (int p = 0; p < Project.SLOTS; p++) {
             PadSlot ps = S.pads[p];
             int bus = ps != null ? ps.opts.route : 0;
-            float[] a = tFx[p], b = bus > 0 ? tFx[64 + bus] : ZERO9, m = pMod[p];
+            float[] a = tFx[p], b = bus > 0 ? tFx[Project.NPADS + bus] : ZERO9, m = pMod[p];
             padDirt[p] = Math.max(a[5], b[5]) + m[T_DIRT];
             padCrush[p] = Math.max(a[2], b[2]) + m[T_CRUSH];
             padGate[p] = Math.min(1, Math.max(a[4], b[4]) + m[T_GATE]);

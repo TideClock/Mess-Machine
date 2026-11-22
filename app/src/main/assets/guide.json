@@ -1,22 +1,20 @@
 {
-  "title": "Vials you can tune, saved FX, colored keys",
+  "title": "The synth gets its own pad",
   "thisBuild": [
-    "Cut works like every other vial now: empty is off, full is the most filtering. An empty Cut no longer silences a pad.",
-    "Tap a vial's name for that effect's settings, right over the vials: how much, reverb's Space, echo's time, its Auto lane, and the sound's own FX.",
-    "Auto lanes draw right over the vials (Auto on the FX drawer, or hold a vial's lamp, Cut and Res too). No more jumping to the Seq tab.",
-    "Load and Save on the FX drawer: Wash, Grit, Tape, Space and Dry come with the app; Save keeps your own set for any pad.",
-    "Keys that open things wear their color (pages purple, Edit and Pack pink, FX, LFO and XY teal); switches stay dark. The FannyPack's add menu matches.",
-    "Bigger keys on wide screens, and Settings, Look, Large keys makes every key about a quarter bigger.",
-    "Lag work, round two: keys are drawn once and reused, the buffer can only grow 3 steps after clicks (Settings, Playing, Buffer: steady lets it grow more), and the BPM readout shows clicks this minute in red."
+    "The Synth tab's scratch synth is now a real pad of its own, hidden past the 64 (in no bank). It plays through its own FX vials, Hold, Repeat, Chords and Glide like any pad, and it records into the loop.",
+    "A pad tile sits at the top left of the Synth tab. Tap it to play the synth's note. Swipe it like a grid pad: up for Edit, right for its FX vials, down folds the keys away. The same swipe again closes it.",
+    "One keyboard everywhere: the Synth tab uses the Padiano now. In the panel Look its Keyboard style is the synth's (cream keys, bakelite blacks, amber under your finger). Squares or Keyboard is the same setting on every screen.",
+    "Put on: Empty pad moves the scratch synth onto a pad, knobs and recorded notes and all, and a fresh copy stays on the Synth tab.",
+    "Picking a synth pad anywhere makes the Synth tab show that pad's synth."
   ],
   "watch": [
-    "Play for five minutes: does a red click count ever show beside the lag?",
-    "Tap a vial name, change reverb's Space: can you hear it now?",
-    "Colored caps: keep them, or too much?"
+    "Swipe the synth tile right: do its FX vials open, and does a second right swipe close them?",
+    "Record a few scratch synth notes into a loop, then Put on a pad: do they keep playing from the pad?",
+    "The keyboard style on the Synth tab: does it feel the same as the Padiano on the pads now?"
   ],
   "limits": [
-    "The scratch synth still plays straight to the speaker; the next build puts it on its own hidden pad.",
-    "The sound is still on Android's older audio path; moving it to AAudio is two builds away.",
+    "Notes you record with the scratch synth don't show on the Steps page until you put it on a pad.",
+    "The sound is still on Android's older audio path; AAudio is the next build.",
     "Your saved FX live on the phone, not in the mess."
   ]
 }

@@ -16,6 +16,7 @@ import androidx.compose.ui.test.swipe
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.swipeUp
+import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
@@ -725,25 +726,46 @@ class BigTest {
         at("chords-toggle").performClick(); settle()
         assertTrue("Chords on brings a Padiano out", state.padianoOut())
         state.toggleChords(); state.keyboards.clear(); settle()
-        // the scratch synth: the Synth tab on a pad with no synth plays straight away
+        // the scratch synth (video 2, S3): a 65th pad in no bank, with a pad tile to play and swipe, and the Padiano keys
+        val SC = com.tideclock.messmachine.engine.Project.SCRATCH
         val plain = (0 until 16).first { !com.tideclock.messmachine.engine.Project.isSynth(state.project.kit[it]) }
         state.selectPad(plain, false); settle()
         tab("Synth")
-        at("scratch-keys").assertExists()
-        rule.onNodeWithTag("scratch-keys").performTouchInput { down(Offset(width * .05f, height * .9f)) }
+        assertTrue("the scratch slot always holds a synth", state.synthOn(SC) != null)
+        at("synth-tile").assertExists()
+        at("piano-keys-$SC").assertExists()
+        rule.onNodeWithTag("synth-tile").performTouchInput { down(center) }
         settle(); loudest(1024)
-        assertEquals("a key down sounds a note", 1, state.engine.scratchCount())
-        rule.onNodeWithTag("scratch-keys").performTouchInput { up() }
+        assertTrue("tapping the synth's pad sounds a note", state.engine.activeVoices() >= 1)
+        rule.onNodeWithTag("synth-tile").performTouchInput { up() }
         settle(); loudest(1024)
-        assertEquals(0, state.engine.scratchCount())
+        // swipe up on the tile: its Edit tray; the same swipe again closes it
+        rule.onNodeWithTag("synth-tile").performTouchInput { swipeUp() }; settle()
+        assertEquals("edit:$SC", state.tray)
+        at("edit-tabs").assertExists()
+        at("menu-swap").assertDoesNotExist()
+        shot("108b-scratch-edit")
+        rule.onNodeWithTag("synth-tile").performTouchInput { swipeUp() }; settle()
+        assertEquals(null, state.tray)
+        // down folds the keys away and brings them back
+        if (state.swipe["down"] == "padiano") {
+            rule.onNodeWithTag("synth-tile").performTouchInput { swipeDown() }; settle()
+            at("piano-keys-$SC").assertDoesNotExist()
+            rule.onNodeWithTag("synth-tile").performTouchInput { swipeDown() }; settle()
+            at("piano-keys-$SC").assertExists()
+        }
         at("scratchkind-fm").performClick(); settle()
-        assertEquals(com.tideclock.messmachine.engine.Synth.FM, state.scratch.kind)
+        assertEquals(com.tideclock.messmachine.engine.Synth.FM, state.synthOn(SC)?.kind)
         shot("108-scratch-synth")
         val empty = state.emptyPadInBank()
         if (empty >= 0) {
+            val key = state.project.kit[SC]
             at("synth-new-empty").performClick(); settle()
             assertEquals("the scratch synth goes onto the pad", com.tideclock.messmachine.engine.Synth.FM, state.synthOn(empty)?.kind)
+            assertEquals("its key moves (recorded notes go with it)", key, state.project.kit[empty])
+            assertTrue("a fresh scratch synth stays", state.synthOn(SC) != null && state.project.kit[SC] != key)
         }
+        state.synthScratch = false
         // Perform: loops and mutes at the top, the master throws as vials
         tab("Perform")
         at("perform-live").assertExists()

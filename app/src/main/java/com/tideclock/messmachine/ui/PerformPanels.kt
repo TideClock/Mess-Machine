@@ -538,6 +538,13 @@ fun PadianoKeys(state: AppState, pad: Int, col: Color, keysHeight: Dp) {
     val origins = remember { List(3) { Origin() } }
     val octs = state.padianoRows
     val tm = rememberTextMeasurer()
+    // Nov 21 video 2: one keyboard everywhere. In the panel Look the keys are the synth's: engraved cream whites,
+    // bakelite blacks, amber under a finger; the pad's color still marks the key's notes.
+    val panel = UiLook.panel
+    val wc = if (panel) Hw.Engrave else C.Cream
+    val bc = if (panel) Hw.Bake else C.Ink
+    val wDown = if (panel) Hw.Amber else col
+    val bDown = if (panel) Hw.Brass else col
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val avail = maxWidth - 6.dp
         val wk = maxOf(if (state.padianoSize >= 3) 44.dp else 34.dp, avail / whites.size)
@@ -591,14 +598,15 @@ fun PadianoKeys(state: AppState, pad: Int, col: Color, keysHeight: Dp) {
                         val inS = L.inScale(p)
                         val root = L.isRoot(p)
                         val fill = when {
-                            p in L.down -> col
-                            p in L.chord && L.playsChord -> lerp(col, C.Cream, .25f)
-                            root -> lerp(C.Cream, col, .5f)
-                            L.chromatic -> C.Cream
-                            inS -> lerp(C.Cream, col, .14f)
-                            else -> lerp(C.Cream, C.Ink, .5f)
+                            p in L.down -> wDown
+                            p in L.chord && L.playsChord -> lerp(col, wc, .25f)
+                            root -> lerp(wc, col, .5f)
+                            L.chromatic -> wc
+                            inS -> lerp(wc, col, .14f)
+                            else -> lerp(wc, bc, .5f)
                         }
                         drawRect(fill, topLeft = Offset(x, 0f), size = Size(ww, size.height))
+                        if (panel) drawRect(Color.Black.copy(alpha = .3f), topLeft = Offset(x, size.height - 5.dp.toPx()), size = Size(ww, 5.dp.toPx()))
                         if (!L.chromatic && inS && p !in L.down) drawRect(Brush.verticalGradient(listOf(Color.Transparent, col.copy(alpha = .55f)), startY = size.height * .55f, endY = size.height), topLeft = Offset(x, size.height * .55f), size = Size(ww, size.height * .45f))
                         if (root) drawCircle(C.Pink, radius = ww * .13f, center = Offset(x + ww / 2, size.height - ww * .55f))
                         if (p in L.chord && !L.playsChord) {
@@ -618,12 +626,12 @@ fun PadianoKeys(state: AppState, pad: Int, col: Color, keysHeight: Dp) {
                         val x = (i + 1) * ww - bw / 2
                         val inS = L.inScale(b)
                         val fill = when {
-                            b in L.down -> col
-                            b in L.chord && L.playsChord -> lerp(col, C.Ink, .2f)
-                            L.isRoot(b) -> lerp(C.Ink, col, .65f)
-                            L.chromatic -> C.Ink
-                            inS -> lerp(C.Ink, col, .3f)
-                            else -> lerp(C.Ink, C.Paper, .6f)
+                            b in L.down -> bDown
+                            b in L.chord && L.playsChord -> lerp(col, bc, .2f)
+                            L.isRoot(b) -> lerp(bc, col, .65f)
+                            L.chromatic -> bc
+                            inS -> lerp(bc, col, .3f)
+                            else -> lerp(bc, C.Paper, .6f)
                         }
                         drawRect(C.Black, topLeft = Offset(x + 3f, 3f), size = Size(bw, bh))
                         drawRect(fill, topLeft = Offset(x, 0f), size = Size(bw, bh))

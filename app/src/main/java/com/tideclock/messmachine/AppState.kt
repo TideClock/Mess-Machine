@@ -567,6 +567,7 @@ class AppState(private val app: Context) {
     }
 
     private fun rebuild() {
+        ensureScratch()
         // SE-11: the mess's synths show in the Synths jar under their names, so every screen can name them
         for ((k, sp) in project.synths) lib.addSynth(k, sp.name)
         // the wavetables are made once, off the audio thread, as soon as a mess has a wavetable synth
@@ -583,26 +584,41 @@ class AppState(private val app: Context) {
     var synthView by mutableStateOf("simple")
 
     /*
-     * The Synth tab's own synth (Nov 21 video): the tab opens on a synth you can play straight away, on no pad. Pick
-     * its kind and preset, turn its knobs, play its keys, then put it on a pad when it is worth keeping.
+     * The Synth tab's own synth (Nov 21 video), on its own pad since the second video (S3): Project.SCRATCH, a slot past
+     * the 64 pads in no bank. It plays like any pad (Padiano, Chords, Glide, Hold, Repeat, FX vials, swipes, recording
+     * into the loop), and Put on pad moves it, notes and all, onto a real pad, with a fresh copy left to keep playing.
      */
-    var scratch by mutableStateOf(Synth.ANALOG.presets.first().copy())
-        private set
-    var scratchV by mutableIntStateOf(0)
-        private set
-    var scratchOct by mutableIntStateOf(0)
     /** Show the scratch synth even when the picked pad has a synth of its own. */
     var synthScratch by mutableStateOf(false)
-    fun loadScratch(p: Synth.Patch) { scratch = p.copy(); scratchV++; engine.scratchPatch(scratch); notes.trail("scratch synth ${p.name}") }
-    fun turnScratch(id: String, x: Double) { scratch.set(id, x); scratchV++; engine.scratchPatch(scratch) }
-    fun scratchDown(id: Int, pitch: Int) { if (!locked) engine.scratchDown(id, scratch, pitch, -1f) }
-    fun scratchUp(id: Int) { engine.scratchUp(id) }
-    /** The scratch synth onto a pad (a copy: the scratch synth stays to keep playing with). */
+    /** The Synth page's keyboard, folded away by the tile's Padiano swipe. */
+    var synthKeysHidden by mutableStateOf(false)
+    /** The scratch slot always holds a synth: a mess without one gets the first Analog preset. */
+    private fun ensureScratch() {
+        val k = project.kit[Project.SCRATCH]
+        if (k.isNotEmpty() && Project.isSynth(k) && project.synths.containsKey(k)) return
+        val key = project.newSynthKey()
+        project.synths[key] = Synth.ANALOG.presets.first().copy()
+        project.kit[Project.SCRATCH] = key
+    }
+    fun loadScratch(p: Synth.Patch) { loadSynthPreset(Project.SCRATCH, p) }
+    /** The scratch synth onto a pad: its key moves there (recorded notes go with it); a copy stays here to keep playing. */
     fun scratchToPad(pad: Int) {
         if (pad !in 0 until Project.NPADS) return
-        newSynth(pad, scratch)
+        val key = project.kit[Project.SCRATCH]
+        val sp = project.synths[key] ?: return
+        val old = project.kit[pad]
+        edit {
+            kit[pad] = key
+            opts[pad] = opts[Project.SCRATCH]?.copy()
+            if (old.isNotEmpty() && Project.isSynth(old) && kit.none { it == old }) synths.remove(old)
+            val nk = newSynthKey()
+            synths[nk] = sp.copy()
+            kit[Project.SCRATCH] = nk
+            sel = pad
+        }
         synthScratch = false
-        say("${scratch.name} is on pad ${pad + 1}. Its knobs are here; Steps and the Padiano play it.")
+        notes.trail("scratch synth to pad ${pad + 1}")
+        say("${sp.name} is on pad ${pad + 1}. Its knobs are here; Steps and the Padiano play it.")
     }
 
     /** The synth on a pad, or null. */
@@ -1627,6 +1643,9 @@ class AppState(private val app: Context) {
     fun toggleSolo(key: String) = edit { if (!solos.remove(key)) solos.add(key) }
 
     fun selectPad(i: Int, hear: Boolean) {
+        if (i !in 0 until Project.NPADS) return
+        // a synth pad picked anywhere: the Synth tab shows it, not the scratch synth
+        if (Project.isSynth(project.kit[i])) synthScratch = false
         view { sel = i }
         if (hear) preview(project.kit[i])
     }
@@ -2250,19 +2269,35 @@ class AppState(private val app: Context) {
 
     /** A swipe off pad d (on screen) toward dir: does whatever HotKeys says. */
     fun padSwipe(tag: String, dir: String) {
-        if (!padFlick || sphere != null || locked) return
         val d = tag.substringAfterLast('-').toIntOrNull() ?: return
-        val pad = bank * Project.BANK + d
+        padSwipeAt(bank * Project.BANK + d, dir, tag)
+    }
+
+    /** A swipe off any pad, the Synth tab's pad tile included (tag: the grid pad's tag, or null off the grid). */
+    fun padSwipeAt(pad: Int, dir: String, tag: String?) {
+        if (!padFlick || sphere != null || locked) return
         val act = swipe[dir] ?: "off"
         if (act == "off") return
         val k = project.kit.getOrNull(pad).orEmpty()
         if (k.isEmpty() && act != "edit") return
-        if (project.sel != pad) selectPad(pad, false)
+        if (pad < Project.NPADS && project.sel != pad) selectPad(pad, false)
+        // the scratch synth's tile: Edit and FX open its tray; Sample and Padiano are the Synth page it sits on
+        if (pad == Project.SCRATCH) {
+            notes.trail("swipe $dir $act scratch")
+            when (act) {
+                "edit", "pack" -> if (tray == "edit:$pad") tray = null else openTray("edit:$pad")
+                "fx" -> if (tray == "edit:$pad" && editTab == "fx") tray = null else { pickEditTab("fx"); openTray("edit:$pad") }
+                "mute" -> toggleMute(k)
+                "padiano" -> synthKeysHidden = !synthKeysHidden
+                else -> {}
+            }
+            return
+        }
         notes.trail("swipe $dir $act ${pad + 1}")
         // Nov 21: the same swipe again closes what it opened
         val packShows = { strip: String -> pad in keyboards && strip in packOf(pad) && strip !in (packHidden[pad] ?: emptySet()) }
         when (act) {
-            "edit" -> if (tray == "edit:$pad") tray = null else openSettingsFor(tag)
+            "edit" -> if (tray == "edit:$pad") tray = null else if (tag != null) openSettingsFor(tag) else openTray("edit:$pad")
             "padiano" -> { tray = null; padMenu = -1; if (packShows("keys")) toggleKeyboard(pad) else openPadiano(pad) }
             "pack" -> { tray = null; padMenu = -1; togglePack(pad) }
             "sample" -> { tray = null; padMenu = -1; if (Project.isSynth(k)) tab = Tab.Synth else overlay = Overlay.Doctor(k) }
@@ -2390,7 +2425,7 @@ class AppState(private val app: Context) {
     }
 
     /** Pads with a synth on them, for the Synth tab's pad picker (note #12). */
-    fun synthPads(): List<Int> = project.kit.indices.filter { Project.isSynth(project.kit[it]) }
+    fun synthPads(): List<Int> = (0 until Project.NPADS).filter { Project.isSynth(project.kit[it]) }
 
     /** From the Synth tab: this pad's Padiano opens under its row on the pad grid, and the grid shows (note #11). */
     fun padianoOnGrid(pad: Int) {
@@ -3305,7 +3340,7 @@ class AppState(private val app: Context) {
             val t = k.substringAfter(":").toIntOrNull() ?: continue
             if (v > 0f) want[pad] = (want[pad] ?: emptyMap()) + (t to v.toDouble())
         }
-        val pads = (0 until Project.NPADS).filter { p -> (want[p] ?: emptyMap()) != project.opt(p).fxMap().toMap() }
+        val pads = (0 until Project.SLOTS).filter { p -> (want[p] ?: emptyMap()) != project.opt(p).fxMap().toMap() }
         if (pads.isEmpty()) return
         edit {
             for (p in pads) { val o = opt(p).copy(); o.fxSet(want[p] ?: emptyMap()); setOpt(p, o) }
@@ -3316,7 +3351,7 @@ class AppState(private val app: Context) {
     private fun restFx() {
         val old = fxSend.keys.toList()
         fxSend.clear()
-        for (p in 0 until Project.NPADS) for ((t, v) in project.opt(p).fxMap()) { fxSend["$p:$t"] = v.toFloat(); engine.home(p, t, v.toFloat()) }
+        for (p in 0 until Project.SLOTS) for ((t, v) in project.opt(p).fxMap()) { fxSend["$p:$t"] = v.toFloat(); engine.home(p, t, v.toFloat()) }
         for (k in old) if (k !in fxSend) {
             val p = k.substringBefore(":").toIntOrNull() ?: continue
             val t = k.substringAfter(":").toIntOrNull() ?: continue

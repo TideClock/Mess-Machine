@@ -259,15 +259,19 @@ public class EngineTest {
         check(Math.abs(h0 - 261.6) < 3 && Math.abs(h12 - 523.3) < 5 && se1.activeVoices() == 2, String.format("Synth: pitch 0 is middle C (%.1f Hz), +12 an octave up (%.1f Hz), poly plays both", h0, h12));
         se1.up(1); se1.up(2); run.apply(se1, 1.5);
         check(se1.activeVoices() == 0, "Synth: let go, the release rings out and the voices end");
-        // Nov 21 video: the Synth tab's own synth plays with no pad under it, follows its knobs, and lets go
+        // Nov 21 video 2 (S3): the Synth tab's own synth is a 65th pad in no bank; it plays, saves and comes back
         {
-          Engine sc = new Engine(rate); sc.setSnapshot(Engine.Snapshot.build(new Project(), ss, new Engine.Live()));
-          sc.scratchDown(7, sinP, 0, -1f); run.apply(sc, .1); double hs = hz.apply(run.apply(sc, .5));
-          check(Math.abs(hs - 261.6) < 3 && sc.scratchCount() == 1 && sc.activeVoices() == 1, String.format("Scratch synth: plays middle C with no pad (%.1f Hz)", hs));
-          sc.scratchDown(8, sinP, 7, -1f); run.apply(sc, .1);
-          check(sc.activeVoices() == 2 && sc.scratchCount() == 2, "Scratch synth: two fingers, two notes");
-          sc.scratchUp(7); sc.scratchUp(8); run.apply(sc, 1.5);
-          check(sc.activeVoices() == 0 && sc.scratchCount() == 0, "Scratch synth: let go, the notes end");
+          Project qs = new Project(); qs.kit[Project.SCRATCH] = "synth:1"; qs.synths.put("synth:1", sinP.copy());
+          Engine sc = new Engine(rate); sc.setSnapshot(Engine.Snapshot.build(qs, ss, new Engine.Live()));
+          sc.down(7, Project.SCRATCH, new int[]{0}, true); run.apply(sc, .1); double hs = hz.apply(run.apply(sc, .5));
+          check(Math.abs(hs - 261.6) < 3 && sc.activeVoices() == 1, String.format("Scratch synth: the 65th pad plays middle C (%.1f Hz)", hs));
+          sc.down(8, Project.SCRATCH, new int[]{7}, true); run.apply(sc, .1);
+          check(sc.activeVoices() == 2, "Scratch synth: two fingers, two notes");
+          sc.up(7); sc.up(8); run.apply(sc, 1.5);
+          check(sc.activeVoices() == 0, "Scratch synth: let go, the notes end");
+          Project qb = Project.fromJson(qs.toJson(), k -> false).project;
+          check("synth:1".equals(qb.kit[Project.SCRATCH]) && qb.synths.containsKey("synth:1") && qb.loadedCount() == 0,
+              "Scratch synth: saved with the mess, back after a load, and not counted as a loaded pad");
         }
         Synth.Patch mono = sinP.copy(); mono.set("mode", 1); mono.set("glide", .05);
         Engine se2 = eng.apply(mono); se2.down(1, 0, new int[]{0}, true); run.apply(se2, .3); se2.down(2, 0, new int[]{7}, true); run.apply(se2, .2);

@@ -124,6 +124,12 @@ One line each, dated, with the reason and who decided (BT-2). Older decisions li
   in place over the vials (laneHere), not on Seq; saved FX with five built in (Wash, Grit, Tape, Space, Dry); colored
   caps on keys that open things (capTint); Large keys; buffer growth capped (Tight 3 bursts, Steady 8); clicks this
   minute on the BPM readout. Next: scratch synth on a hidden 65th pad (S3), one keyboard style, AAudio (L4).
+- 2026-11-21 Scratch synth on its own pad (S3, Tyler): Project.SCRATCH = 64, SLOTS = 65; the slot is in no bank, saved
+  with the mess, always holds a synth (ensureScratch), and is not counted as a loaded pad. The Synth tab shows a pad
+  tile for it (tap plays, swipes follow HotKeys, same swipe closes). Put on moves its key to a pad so recorded notes
+  follow, and a fresh copy stays. One keyboard (Tyler: "it needs to be consistent"): the Synth tab uses the Padiano,
+  and the panel Look's Keyboard style is the synth's cream and bakelite keys. Open for discussion: whether Squares
+  should stay the default or the Keyboard should be. Auto lanes over the vials (Round C) shipped with round A.
 - 2026-11-21 Dock plan, not built yet (Tyler): the app needs one cohesive dock idea, so mutes and the other live
   controls can be brought up on any screen the same way. Pad things and master things (docks, FX) must look clearly
   different. Today's step toward it: the master plate (brass trim) for whole-mix controls, pad colour for pad ones.

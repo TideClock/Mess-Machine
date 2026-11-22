@@ -710,7 +710,7 @@ fun SettingsTray(state: AppState, kind: String, modifier: Modifier = Modifier) {
     val pad = kind.substringAfter(':', "").toIntOrNull() ?: state.project.sel
     val title = when (kind.substringBefore(':')) {
         "glide" -> "GLIDE · PAD ${pad + 1}"; "lfo" -> "LFO · PAD ${pad + 1}"; "fx" -> "FX · PAD ${pad + 1}"; "padiano" -> "PADIANO · PAD ${pad + 1}"
-        "pack" -> "FANNYPACK · PAD ${pad + 1}"; "edit" -> "EDIT · PAD ${pad + 1} · " + state.lib.titleOf(state.project.kit.getOrNull(pad).orEmpty()).uppercase(); "hold" -> "HOLD"; "repeat" -> "REPEAT"; "wheel" -> "PITCH WHEEL"; "dockfilter" -> "DOCK FILTER"; else -> kind.uppercase()
+        "pack" -> "FANNYPACK · PAD ${pad + 1}"; "edit" -> (if (pad == com.tideclock.messmachine.engine.Project.SCRATCH) "EDIT · SCRATCH SYNTH · " else "EDIT · PAD ${pad + 1} · ") + state.lib.titleOf(state.project.kit.getOrNull(pad).orEmpty()).uppercase(); "hold" -> "HOLD"; "repeat" -> "REPEAT"; "wheel" -> "PITCH WHEEL"; "dockfilter" -> "DOCK FILTER"; else -> kind.uppercase()
     }
     Column(
         modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, bottom = if (dockUp) 100.dp else 52.dp).sticker(C.Ink, shadow = 5.dp, border = 3.dp, borderColor = C.Yellow)
