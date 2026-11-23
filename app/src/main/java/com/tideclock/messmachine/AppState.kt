@@ -908,7 +908,6 @@ class AppState(private val app: Context) {
                     else P.setStep(ev.key, ev.step, false)
                 }
             }
-            if (hitNew.size > 64) hitNew.keys.take(32).toList().forEach { hitNew.remove(it) }
             else {
                 val notes = P.notes(ev.key)
                 for (q in ev.pitches) {
@@ -918,6 +917,7 @@ class AppState(private val app: Context) {
             }
             any = true
         }
+        if (hitNew.size > 64) hitNew.keys.take(32).toList().forEach { hitNew.remove(it) }
         if (any) { if (taking()) { changed(false); takeOpen = true } else changed(true) }
         if (takeOpen && !taking()) { takeOpen = false; commitUndo() }
     }
