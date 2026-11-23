@@ -339,3 +339,65 @@ def _():
     im,d=new(); rect(d,[40,80,472,432],K,o=CR,w=16,r=30); line(d,[(80,360),(170,360),(250,170),(330,250),(430,140)],P,34)
     for x,y in [(170,360),(250,170),(330,250)]: ell(d,[x-26,y-26,x+26,y+26],Y,w=10)
     return im
+# ---------- Nov 22: synth kinds, the wobble wave, filter shapes and voice modes (for Tyler's review first) ----------
+@icon('synth','Analog')
+def _():
+    im,d=new(); rect(d,[50,90,462,430],YD,r=36); rect(d,[50,90,462,250],Y,r=36); rect(d,[50,90,462,430],None,r=36)
+    for x in (165,347): eye(d,x,175,62,iris=P)
+    wave(d,lambda t:math.sin(t*2*math.pi*1.5),x0=100,x1=412,cy=345,amp=48,c=K,w=30); return im
+@icon('synth','FM')
+def _():
+    im,d=new(); wave(d,lambda t:math.sin(t*2*math.pi*1+2.2*math.sin(t*2*math.pi*3)),x0=50,x1=462,cy=300,amp=120,c=K,w=78,n=400)
+    wave(d,lambda t:math.sin(t*2*math.pi*1+2.2*math.sin(t*2*math.pi*3)),x0=50,x1=462,cy=300,amp=120,c=P,w=40,n=400)
+    eye(d,256,110,58,iris=T); return im
+@icon('synth','Wavetable')
+def _():
+    im,d=new()
+    for i,c in enumerate([PUD,PU,TL,Y]):
+        o=i*60; wave(d,lambda t,i=i:math.sin(t*2*math.pi)*(1-i*.18)+(i*.25)*(1 if (t*2)%1<.5 else -1),x0=50+o,x1=330+o,cy=170+o,amp=70,c=K,w=52,n=300)
+        wave(d,lambda t,i=i:math.sin(t*2*math.pi)*(1-i*.18)+(i*.25)*(1 if (t*2)%1<.5 else -1),x0=50+o,x1=330+o,cy=170+o,amp=70,c=c,w=26,n=300)
+    return im
+@icon('synth','Granular')
+def _():
+    im,d=new()
+    for x,y,r,c in [(110,150,46,T),(220,90,34,Y),(360,120,52,P),(420,250,36,TL),(120,320,40,PU),(230,420,30,Y),(370,390,44,T),(80,230,26,P),(300,460,22,TL)]:
+        ell(d,[x-r,y-r,x+r,y+r],c,w=16)
+    eye(d,256,260,74); return im
+@icon('synth','Drums')
+def _():
+    im,d=new(); rect(d,[80,210,432,420],R,r=20); d.ellipse([80,140,432,280],fill=CR,outline=K,width=LW)
+    for x in range(110,420,64): line(d,[(x,290),(x+32,410)],CR,14)
+    rect(d,[80,210,432,420],None,r=20); d.ellipse([80,140,432,280],outline=K,width=LW)
+    line(d,[(150,40),(300,200)],K,40); line(d,[(150,40),(300,200)],YD,20); line(d,[(380,30),(250,190)],K,40); line(d,[(380,30),(250,190)],YD,20)
+    eye(d,256,208,44); return im
+@icon('synth','Pluck')
+def _():
+    im,d=new()
+    for i,y in enumerate((150,230,310,390)): line(d,[(40,y),(472,y)],G if i!=1 else K,14 if i!=1 else 18)
+    wave(d,lambda t:math.sin(t*2*math.pi*4)*math.sin(t*math.pi),x0=40,x1=472,cy=230,amp=36,c=Y,w=18,n=400)
+    poly(d,[(250,250),(420,250),(335,460)],P); eye(d,335,320,44,iris=Y); return im
+@icon('synth','Poly')
+def _():
+    im,d=new()
+    for x,y,c in [(160,330,T),(256,230,P),(352,130,Y)]:
+        ell(d,[x-78,y-58,x+78,y+58],c); line(d,[(x+70,y),(x+70,y-150)],K,24) if False else None
+        d.ellipse([x-22,y-22,x+22,y+22],fill=K)
+    return im
+@icon('synth','Mono')
+def _():
+    im,d=new(); ell(d,[100,220,330,400],P); line(d,[(318,300),(318,60)],K,34); poly(d,[(318,60),(440,120),(440,190),(318,140)],P)
+    eye(d,215,310,58); return im
+@icon('synth','Acid')
+def _():
+    im,d=new(); poly(d,[(256,40),(400,260),(400,330),(370,400),(310,450),(202,450),(142,400),(112,330),(112,260)],Y)
+    poly(d,[(112,330),(400,330),(370,400),(310,450),(202,450),(142,400)],YD); line(d,[(256,40),(400,260),(400,330),(370,400),(310,450),(202,450),(142,400),(112,330),(112,260),(256,40)])
+    eye(d,256,280,60,iris=P); return im
+for nm,fn in [('Wobble',lambda t:math.sin(t*2*math.pi*2.5)*(.35+.65*abs(math.sin(t*math.pi*1.3)))),
+              ('Low pass',lambda t:.6 if t<.55 else .6-((t-.55)/.45)**1.4*2.2),
+              ('High pass',lambda t:.6 if t>.45 else .6-((.45-t)/.45)**1.4*2.2),
+              ('Band pass',lambda t:-1.2+1.9*math.exp(-((t-.5)/.14)**2))]:
+    def mk(fn=fn):
+        def f():
+            im,d=new(); rect(d,[40,80,472,432],K,o=CR,w=16,r=30); wave(d,fn,x0=90,x1=422,amp=110,c=Y if nm=='Wobble' else T,w=34,n=400); return im
+        return f
+    I[nm]=('sound',mk())

@@ -57,6 +57,7 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.draw.alpha
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalDensity
@@ -339,7 +340,7 @@ fun Transport(state: AppState) {
                 .pointerInput(free) {
                     if (!free) return@pointerInput
                     var dx = 0f
-                    androidx.compose.foundation.gestures.detectHorizontalDragGestures(
+                    detectHorizontalDragGestures(
                         onDragStart = { dx = 0f },
                         onDragEnd = { val far = 28.dp.toPx(); if (dx > far) state.stepLoop(1) else if (dx < -far) state.stepLoop(-1) },
                     ) { ch, d -> dx += d; ch.consume() }
