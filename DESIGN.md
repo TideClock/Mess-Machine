@@ -119,6 +119,11 @@ One line each, dated, with the reason and who decided (BT-2). Older decisions li
   sound takes a second tap. Look: only the milled tab slot with the raised current tab (Settings, Look, Tabs: keys
   goes back) and readouts that shrink to fit; help lines are off for everyone (Explain in Settings brings them back).
   Not built, per Tyler: the edit tray stopping above the dock, Song inside Seq, the rest of the look spec.
+- 2026-11-22 Late notes (Tyler): Click and Count moved to the Play page's bank row ("just on the main screen"), out
+  of the loop strip. A swipe's hit is taken back after 24 dp (the swipe's job still needs 44), halving the blip; the hit
+  still sounds on touch, as agreed (no added latency). The touch watcher ignores touches under a sheet, the More menu
+  or the settings tray (scrolling the notes sheet over a pad set off the pad's swipe). He misses some of the old
+  school feel; the Tempo sheet still has it. Not acted on yet.
 - 2026-11-22 Sizing, first build (Tyler: "build it", after two reviews of the sizing proposal): floors are real dp on
   the glass (Float.rdp divides by View size). Bottom dock keys share one width, 44 real dp sized for their widest
   word (Hold/Last/8/8) where there is room, never scrolling. Tyler, after a build put Chords and Repeat behind More

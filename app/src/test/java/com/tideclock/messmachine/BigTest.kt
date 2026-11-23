@@ -2316,7 +2316,8 @@ class BigTest {
         shot("47-steps-eight-bars")
         repeat(7) { at("loop-minus").performClick(); settle() }
         assertEquals(16, state.project.pat().len)
-        // the click and the count-in live in the strip, and the count shows in the loop readout
+        // the click and the count-in live on the Play page (Nov 22, Tyler), and the count shows in the loop readout
+        tab("Pads")
         val clickWas = state.live.click
         at("loop-click").performClick(); settle()
         assertEquals("Click switches the metronome", !clickWas, state.live.click)
@@ -2956,7 +2957,7 @@ class BigTest {
         rule.onNodeWithTag("loop-open").performTouchInput { swipeRight() }; settle()
         assertEquals("a swipe right is the next loop", (cur0 + 1) % 8, state.project.cur)
         strip()
-        for (t in listOf("loop-0", "loop-7", "loop-when", "loop-click", "loop-countin", "loop-minus", "loop-plus", "loop-double", "loop-close", "loop-song", "bottle", "moves-open")) at(t).assertExists()
+        for (t in listOf("loop-0", "loop-7", "loop-when", "loop-minus", "loop-plus", "loop-double", "loop-close", "loop-song", "bottle", "moves-open")) at(t).assertExists()
         val padH = rule.onNodeWithTag("loop-0").fetchSemanticsNode().boundsInRoot.height
         val keyH = rule.onNodeWithTag("loop-plus").fetchSemanticsNode().boundsInRoot.height
         assertTrue("the loops are pad sized, taller than the keys ($padH vs $keyH)", padH > keyH)
@@ -3057,13 +3058,16 @@ class BigTest {
         shot("127-perform-row-dense")
         rule.onNodeWithTag("perform-handle").performClick(); settle()
 
-        // the loop strip: Loop and Song sides; keys as wide as their words; the song's keys on one row
-        strip()
-        at("loop-tab-loop").assertExists()
+        // Click and Count are on the Play page (Nov 22, Tyler), as wide as their words
+        tab("Pads")
+        assertTrue("Click and Count are not in the strip", rule.onAllNodes(androidx.compose.ui.test.hasTestTag("loop-click") and androidx.compose.ui.test.hasAnyAncestor(androidx.compose.ui.test.hasTestTag("loopstrip"))).fetchSemanticsNodes().isEmpty())
         for (t in listOf("loop-click", "loop-countin")) {
             val w = rule.onNodeWithTag(t).fetchSemanticsNode().boundsInRoot.width
             assertTrue("$t is sized to what is on it ($w of $wide)", w < wide * .3f)
         }
+        // the loop strip: Loop and Song sides; the song's keys on one row
+        strip()
+        at("loop-tab-loop").assertExists()
         at("loop-song").performClick(); settle()
         assertTrue(state.songOpen)
         at("song-body").assertExists()
@@ -3161,6 +3165,23 @@ class BigTest {
         assertTrue("the pads stay over 64 real dp at 70 percent ($pad70, was $pad100)", pad70 >= 64f)
         shot("131-dock-view70")
         state.setViewSize(1f); settle()
+    }
+
+    /** Nov 22 (Tyler): scrolling a sheet over a pad must not set the pad off (the touch watcher read the pad under the sheet). */
+    @Test fun nov22SheetCoversPads() {
+        state.overlay = Overlay.Notes; settle()
+        val tray0 = state.tray; val kb0 = state.keyboards.toList()
+        // a quick swipe up then down over where pad 1 sits, as a scroll of the sheet would be
+        val pad = rule.onNodeWithTag("pad-1").fetchSemanticsNode().boundsInRoot
+        rule.onNodeWithTag("sheet").performTouchInput {
+            val at = androidx.compose.ui.geometry.Offset(pad.center.x, pad.center.y - rule.onNodeWithTag("sheet").fetchSemanticsNode().boundsInRoot.top)
+            down(at); moveBy(androidx.compose.ui.geometry.Offset(0f, -200f)); up()
+            down(at); moveBy(androidx.compose.ui.geometry.Offset(0f, 200f)); up()
+        }
+        settle()
+        assertEquals("no Edit tray opened under the sheet", tray0, state.tray)
+        assertEquals("no Padiano opened under the sheet", kb0, state.keyboards.toList())
+        state.overlay = null; settle()
     }
 
     @Test fun hushStopsEverything() {

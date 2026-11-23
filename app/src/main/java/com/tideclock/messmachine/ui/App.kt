@@ -703,11 +703,9 @@ private fun LoopSide(state: AppState, bars: Int) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             for (i in 0 until com.tideclock.messmachine.engine.Project.NSLOTS) LoopPad(state, i, Modifier.weight(1f))
         }
-        // when a pick lands, the click and the count-in, then the loop's length: each key as wide as its icon and word
+        // when a pick lands, then the loop's length (Click and Count moved to the Play page, Nov 22)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
             Btn(if (state.loopAtBar) "Wait bar" else "Now", { state.switchLoopAtBar() }, small = true, tight = true, on = state.loopAtBar, onColor = C.Teal, tag = "loop-when", modifier = Modifier.widthIn(min = Floor.KEY.rdp), icon = if (state.loopAtBar) "Wait bar" else "Now")
-            Btn("Click", { state.switchClick() }, small = true, tight = true, on = state.live.click, onColor = C.Yellow, tag = "loop-click", modifier = Modifier.widthIn(min = Floor.KEY.rdp), icon = "Click")
-            Btn(if (state.countInBars == 0) "Count off" else "Count ${state.countInBars}", { state.cycleCountIn() }, small = true, tight = true, on = state.countInBars > 0, onColor = C.Yellow, tag = "loop-countin", modifier = Modifier.widthIn(min = Floor.KEY.rdp), icon = "Count in")
             Spacer(Modifier.weight(1f))
             T("${bars} BAR${if (bars > 1) "S" else ""}", size = 11.sp, color = C.Dim, spacing = .06.em, lines = 1, modifier = Modifier.tagged("loop-bars"))
             Btn("−", { state.dropBar() }, small = true, tight = true, enabled = bars > 1, tag = "loop-minus", modifier = Modifier.widthIn(min = Floor.KEY.rdp), icon = "Bar minus")
@@ -774,14 +772,17 @@ fun Modifier.watchTouches(state: AppState): Modifier = composed {
             while (true) {
                 val e = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
                 val far = with(dens) { 44.dp.toPx() }
-                fun dirOf(from: Offset, to: Offset): String? {
+                // Nov 22 (Tyler: a swipe still plays): the hit is taken back as soon as the finger has clearly gone 24 dp one
+                // way, not 44, so the blip before it fades is about half as long. The swipe's job still needs 44 dp.
+                val near = with(dens) { 24.dp.toPx() }
+                fun dirOf(from: Offset, to: Offset, dist: Float = far): String? {
                     val dy = from.y - to.y; val sx = to.x - from.x
                     val dx = kotlin.math.abs(sx); val ady = kotlin.math.abs(dy)
                     return when {
-                        dy > far && dx < dy / 2 -> "up"
-                        -dy > far && dx < ady / 2 -> "down"
-                        sx < -far && ady < dx / 2 -> "left"
-                        sx > far && ady < dx / 2 -> "right"
+                        dy > dist && dx < dy / 2 -> "up"
+                        -dy > dist && dx < ady / 2 -> "down"
+                        sx < -dist && ady < dx / 2 -> "left"
+                        sx > dist && ady < dx / 2 -> "right"
                         else -> null
                     }
                 }
@@ -789,7 +790,11 @@ fun Modifier.watchTouches(state: AppState): Modifier = composed {
                 if (e.changes.none { it.pressed || it.previousPressed }) touches.clear()
                 for (c in e.changes) {
                     if (c.pressed && !c.previousPressed) {
-                        val tag = settingsTagAt(c.position + origin, state)
+                        // Nov 22 (Tyler: scrolling the notes sheet set off the pad under it): nothing under a sheet, or under
+                        // the settings tray, counts as touched, so a scroll there is never a pad swipe
+                        val at = c.position + origin
+                        val covered = state.overlay != null || state.dockMoreOpen || (state.tray != null && TutHi.rects["tray"]?.contains(at) == true)
+                        val tag = if (covered) null else settingsTagAt(at, state)
                         touches[c.id] = Touch(c.position, c.uptimeMillis, tag)
                         state.noteTouch(tag)
                         continue
@@ -800,7 +805,7 @@ fun Modifier.watchTouches(state: AppState): Modifier = composed {
                         // latency); the moment this finger has gone far enough to be a swipe, its hit fades out and
                         // a recorded hit is taken back
                         if (t.cancelled || !state.padFlick || t.tag?.startsWith("pad-") != true || c.uptimeMillis - t.t >= 300) continue
-                        val dir = dirOf(t.at, c.position)
+                        val dir = dirOf(t.at, c.position, near)
                         if (dir != null && state.swipeDoes(dir)) { t.cancelled = true; t.tag!!.substringAfterLast('-').toIntOrNull()?.let { state.cancelPadHit(it) } }
                     } else if (!c.pressed && c.previousPressed) {
                         touches.remove(c.id)

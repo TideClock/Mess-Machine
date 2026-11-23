@@ -147,6 +147,9 @@ private fun RowScope.BankButtons(state: AppState) {
         // hold a bank number: the whole bank muted, or back in (Nov 21)
         Btn("${b + 1}", modifier = Modifier.weight(1f).holdFor(b) { state.toggleBankMute(b) }, onClick = { state.bank = b }, on = state.bank == b && !state.keysMode, small = true, enabled = !state.keysMode, tag = "bank-$b")
     }
+    // Nov 22 (Tyler: "click and count should be just on the main screen"): in the room the Sample key left
+    Btn("Click", { state.switchClick() }, small = true, tight = true, on = state.live.click, onColor = C.Yellow, tag = "loop-click", modifier = Modifier.widthIn(min = Floor.KEY.rdp), icon = "Click")
+    Btn(if (state.countInBars == 0) "Count off" else "Count ${state.countInBars}", { state.cycleCountIn() }, small = true, tight = true, on = state.countInBars > 0, onColor = C.Yellow, tag = "loop-countin", modifier = Modifier.widthIn(min = Floor.KEY.rdp), icon = "Count in")
 }
 
 /** One key on the bottom dock: its tag, when it goes into ⋯ (higher goes first, 0 never), its words, and how it draws. */
