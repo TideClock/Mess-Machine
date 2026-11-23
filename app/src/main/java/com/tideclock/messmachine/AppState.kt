@@ -598,9 +598,11 @@ class AppState(private val app: Context) {
     var replaceArmed by mutableIntStateOf(-1)
     private var armedAt = 0L
     /** A second tap counts only after half a second, so a quick double tap can't overwrite the pad. */
-    fun replaceReady(): Boolean = android.os.SystemClock.uptimeMillis() - armedAt >= 500
+    fun replaceReady(): Boolean = guardClock() - armedAt >= 500
+    /** The clock the replace guard reads (a test sets its own). */
+    var guardClock: () -> Long = { android.os.SystemClock.uptimeMillis() }
     fun armReplace(pad: Int) {
-        replaceArmed = pad; armedAt = android.os.SystemClock.uptimeMillis()
+        replaceArmed = pad; armedAt = guardClock()
         val token = armedAt
         say("Tap again to replace ${lib.titleOf(project.kit.getOrNull(pad).orEmpty()).ifEmpty { "pad ${pad + 1}" }} with this synth.")
         val me = pad

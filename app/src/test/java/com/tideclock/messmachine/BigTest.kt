@@ -2969,13 +2969,15 @@ class BigTest {
         assertTrue("no Synthipad", rule.onAllNodesWithTag(GONE_SYNTHIPAD).fetchSemanticsNodes().isEmpty())
         val before = state.project.kit[0]
         assertTrue(before.isNotEmpty())
+        var fakeNow = 10_000L
+        state.guardClock = { fakeNow }
         at("synth-new-here").performClick(); settle()
         assertEquals("one tap does not overwrite the pad", before, state.project.kit[0])
         assertEquals(0, state.replaceArmed)
         shot("124-synth-page")
         rule.onNodeWithTag("synth-new-here").performClick(); settle()
         assertEquals("a quick double tap does not overwrite either", before, state.project.kit[0])
-        ShadowLooper.idleMainLooper(700, java.util.concurrent.TimeUnit.MILLISECONDS)
+        fakeNow += 700
         at("synth-new-here").performClick(); settle()
         assertTrue("the second tap does", state.project.kit[0] != before)
         state.undo(); settle()
