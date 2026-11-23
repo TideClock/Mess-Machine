@@ -720,7 +720,7 @@ fun LoopPad(state: AppState, i: Int, modifier: Modifier) {
     val playingHere = state.playing && state.heardPat == i
     val L = com.tideclock.messmachine.engine.Project.LETTERS[i]
     Box(
-        modifier.height(48.dp)
+        modifier.height(58.dp)
             .sticker(if (cur) C.Yellow else if (wait) C.Pink else if (used) C.Card2 else C.Ink, shadow = if (cur) 1.dp else 3.dp, border = if (playingHere) 4.dp else 2.5.dp, borderColor = if (playingHere) C.Pink else C.Cream)
             .tapOrHold(i, { state.pickLoop(i) }, { if (!state.locked) state.slotMenu = i })
             .tagged("loop-$i"),

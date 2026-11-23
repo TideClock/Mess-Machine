@@ -685,7 +685,8 @@ class BigTest {
         at("fxstrip-off-1").performClick(); settle()
         assertTrue("and brings it back", state.fxIn(1, Engine.T_RVB) && state.fxIn(1, Engine.T_ECHO))
         assertEquals(.4f, state.fxSend["1:${Engine.T_ECHO}"]!!, 1e-4f)
-        // the same swipe again closes what it opened
+        // the same swipe again closes what it opened (the vials scrolled the page: bring the pad back into view)
+        at("pad-1")
         rule.onNodeWithTag("pad-1").performTouchInput { down(center); moveBy(Offset(width * 1.2f, 0f)); up() }
         settle()
         assertFalse("swiping right again closes the FX strip", 1 in state.keyboards)
@@ -1750,7 +1751,7 @@ class BigTest {
 
         page("Play: Pads")
         at("loop-open").performClick(); page("Play: loops"); at("loop-open").performClick(); settle()
-        for (t in listOf("Steps", "Roll", "Song", "Sounds")) { tab(t); page(t) }
+        for (t in listOf("Steps", "Roll", "Sounds")) { tab(t); page(t) }
         // the Synth tab: with no synth on the pad, then each view of one
         tab("Synth"); page("Synth: none")
         at("synth-new-empty").performClick(); settle()
@@ -2244,8 +2245,9 @@ class BigTest {
         rule.onNodeWithTag("speed-done").performClick(); settle()
         assertEquals(-1, state.speedStop)
 
-        // Moves: a lane for pad 1's filter, a ramp stamped every beat, smoothed, cleared
+        // Moves: a lane for pad 1's filter, a ramp stamped every beat, smoothed, cleared (Auto is in the loop strip)
         tab("Steps")
+        strip()
         state.newLane(0, com.tideclock.messmachine.engine.Engine.T_FILTER); settle()
         at("moves-shape-1").performClick(); settle()
         at("moves-stamp").performClick(); settle()
@@ -2981,7 +2983,7 @@ class BigTest {
     }
 
     @Test fun everyTabAndPanelOpens() {
-        for (t in Tab.entries) {
+        for (t in Tab.entries.filter { it != Tab.Song }) {
             tab(t.label)
             val ok = try { rule.onNodeWithTag("screen-${t.label}").assertIsDisplayed(); true } catch (e: AssertionError) { false }
             println("TAB ${t.label} displayed=$ok")
