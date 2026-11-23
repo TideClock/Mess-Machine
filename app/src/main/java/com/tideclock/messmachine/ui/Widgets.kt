@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -763,7 +764,7 @@ fun PickSlider(
                 for (i in 1 until n) { val x = size.width * i / n; drawLine(Color.White.copy(alpha = .07f), Offset(x, 8.dp.toPx()), Offset(x, size.height - 8.dp.toPx()), 1.dp.toPx()) }
             }
             .then(if (enabled) Modifier.pointerInput(n, picked) {
-                androidx.compose.foundation.gestures.detectHorizontalDragGestures(
+                detectHorizontalDragGestures(
                     onDragStart = { o -> drag = (o.x / size.width * n).toInt().coerceIn(0, n - 1) },
                     onDragEnd = { val d = drag; drag = -1; if (d >= 0 && d != picked) pick(d) },
                     onDragCancel = { drag = -1 },
