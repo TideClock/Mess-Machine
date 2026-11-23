@@ -58,8 +58,7 @@ jobs:
           cp app/build/test-results/testDebugUnitTest/*.xml shots/ 2>/dev/null || true
           (cd shots && zip -q -r ../test-screens.zip .) || true
           if [ -f test-screens.zip ]; then
-            gh release delete test-screens --yes --cleanup-tag || true
-            gh release create test-screens test-screens.zip --title "Test screenshots" --notes "Screens from build ${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7}). Test outcome: ${{ steps.bigtest.outcome }}." --prerelease
+            bash tools/release.sh test-screens "Test screenshots" "Screens from build ${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7}). Test outcome: ${{ steps.bigtest.outcome }}." test-screens.zip || true
           fi
 
       - name: Stop here if the big test failed
@@ -122,8 +121,7 @@ jobs:
         run: |
           (cd phone-out && zip -q -r ../phone-screens.zip .) || true
           if [ -f phone-screens.zip ]; then
-            gh release delete phone-screens --yes --cleanup-tag || true
-            gh release create phone-screens phone-screens.zip --title "Phone test" --notes "Emulator run for build ${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7})." --prerelease
+            bash tools/release.sh phone-screens "Phone test" "Emulator run for build ${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7})." phone-screens.zip || true
           fi
 
   publish:
@@ -131,6 +129,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: MessMachine-apk
@@ -142,11 +141,10 @@ jobs:
         run: |
           cp $(find built -name app-release.apk | head -1) MessMachine.apk
           cp $(find built -name mapping.txt | head -1) mapping.txt
-          gh release delete latest --yes --cleanup-tag -R ${{ github.repository }} || true
-          gh release create latest MessMachine.apk mapping.txt -R ${{ github.repository }} \
-            --title "Mess Machine, latest build" \
-            --notes "Build ${GITHUB_RUN_NUMBER} from ${GITHUB_SHA::7}. Passed the big test and the phone test. On your phone, tap MessMachine.apk below, open it, and allow installs from your browser if Android asks. It installs over the last build and keeps your messes." \
-            --prerelease
+          # Nov 23: published through tools/release.sh, which checks the app can actually see it (build 168 came out a draft)
+          bash tools/release.sh latest "Mess Machine, latest build" \
+            "Build ${GITHUB_RUN_NUMBER} from ${GITHUB_SHA::7}. Passed the big test and the phone test. On your phone, tap MessMachine.apk below, open it, and allow installs from your browser if Android asks. It installs over the last build and keeps your messes." \
+            MessMachine.apk mapping.txt
 
       # the overhaul's rollback (Nov 21): every green build keeps its own release, so any build can be fetched or
       # rebuilt later. A rollback rebuilds old code with a new build number, since Android won't install a lower one.
