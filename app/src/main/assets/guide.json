@@ -1,20 +1,20 @@
 {
-  "title": "Keys that fit your thumb, Click and Count on Play",
+  "title": "One key size, colours back on the keys",
   "thisBuild": [
-    "The bottom bar's keys are all one width and no longer stretch. Where there is room they are 44 dp under your thumb at any view size; on your folded screen they go a little smaller, about 39, so all seven and the key readout fit. A key keeps its width when its word changes (Hold, Last, 2/4).",
-    "Chords and Repeat stay on the bar. Only a screen narrower than your folded phone puts a key behind More, Pack first.",
-    "Click and Count sit on the Play page now, by the bank numbers where Sample used to be. They left the loop strip.",
-    "A swipe off a pad is taken back sooner (after about 24 dp, it was 44), so the blip before it cuts is about half as long.",
-    "Scrolling a sheet (notes, settings) over a pad no longer sets off the pad's swipe under it.",
-    "The pads no longer shrink a second time at 70 percent view, so they are bigger there now."
+    "Every key is one size in real dp now: the dock, the synth, Steps and the tabs no longer grow with the screen, so a tablet no longer gets enormous dock keys.",
+    "Keys with an icon are filled with their tile colour from the icon boards: yellow transport, purple pages and synth, pink playing tools, teal sound shapes, slate tools.",
+    "Simple/Full and Poly/Mono/Acid have their icons back, in colour; every slider's icons stay in colour, not dimmed.",
+    "The synth's pad shows its kind's icon instead of repeating SCRATCH and the preset name.",
+    "Click and Count sit on the Play page by the bank numbers. A swipe's hit is taken back sooner. Scrolling a sheet over a pad no longer sets the pad off.",
+    "Chords and Repeat stay on the bottom bar; when folded the keys go a little narrower so all seven fit."
   ],
   "watch": [
-    "Swipe off a drum pad: is the blip short enough now?",
-    "The perform row: what feels wrong about it? (It changed in build 162.)",
-    "Folded: do the bottom keys feel big enough?"
+    "Do the dock, Synth and Steps keys look like one family now, on the phone and the tablet?",
+    "Too much colour, or right?",
+    "Swipe off a drum pad: is the blip short enough?"
   ],
   "limits": [
-    "The top bar and the sheets are still sized the old way.",
+    "The top bar keeps its old sizes until you pick which of its keys go behind More.",
     "Menu size and Pad layout are not built yet."
   ]
 }

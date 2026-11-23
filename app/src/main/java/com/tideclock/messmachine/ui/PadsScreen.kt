@@ -220,8 +220,7 @@ fun BottomDock(state: AppState) {
             val dens = androidx.compose.ui.platform.LocalDensity.current
             val wordStyle = androidx.compose.ui.text.TextStyle(fontFamily = Block, fontWeight = FontWeight.Black, fontSize = (9.5f * UiLook.big).sp)
             val wordW = keys.maxOf { k -> k.words.maxOf { w -> with(dens) { tm.measure(w.uppercase(), wordStyle).size.width.toDp().value } } } * .86f + 10f
-            val capH = ((UiLook.widthDp / 7f).coerceIn(48f, 96f) * UiLook.big * .72f).coerceIn(40f, 62f * UiLook.big)
-            val base = maxOf(Floor.KEY.rdp.value, wordW, if (state.look == "panel") capH + 6f else 38f)
+            val base = maxOf(Floor.KEY.rdp.value, wordW, if (state.look == "panel") 46.rdp.value * UiLook.big else 38f)
             val gap = 5f
             val plan = BarPlan.plan(keys.map { it.prio }, maxWidth.value, base, gap, base, Floor.READOUT.rdp.value, Floor.KEY_TIGHT.rdp.value)
             val over = plan.overflow.map { keys[it].tag }.toSet()

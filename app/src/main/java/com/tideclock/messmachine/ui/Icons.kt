@@ -146,6 +146,14 @@ object Icons {
     )
     /** The icon for a name, through the short names. */
     fun named(name: String?): Int? = if (name == null) null else all[alias[name] ?: name]?.first
+    /** The tile colour group of an icon by name or by a button's words; null when there is no icon. */
+    fun groupOf(name: String?): String? {
+        if (name == null) return null
+        all[alias[name] ?: name]?.let { return it.second }
+        val w = name.replace(Regex("[^A-Za-z ]"), " ").trim().replace(Regex("\\s+"), " ")
+        if (w.isEmpty()) return null
+        return all.entries.firstOrNull { it.key.equals(w, ignoreCase = true) }?.value?.second
+    }
     fun res(name: String): Int? = all[name]?.first
 }
 
@@ -263,25 +271,27 @@ fun PanelKey(
     // Nov 21 video: keys grow with the screen up to a cap (a Fold's inner screen gets big keys, not small ones far apart),
     // the glyph as big as the cap allows, and the lamp in the lip under the cap so the glyph sits in the middle
     // Nov 21 (second video): bigger again, and Large keys (Settings, Look) a quarter bigger still
-    val capW = (UiLook.widthDp / 7f).coerceIn(48f, 96f) * UiLook.big
-    val capH = (capW * .72f).coerceIn(40f, 62f * UiLook.big)
+    // Nov 22 sizing (Tyler: "on my tablet the dock buttons are enormous"): one size in real dp, not grown with the screen
+    val capW = 64.rdp.value * UiLook.big
+    val capH = 40.rdp.value * UiLook.big
     val src = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val pressed by src.collectIsPressedAsState()
     val res = Icons.all[icon]?.first
     androidx.compose.foundation.layout.Column(
-        modifier.heightIn(min = (44f / UiLook.scale.coerceIn(.4f, 2f)).coerceAtLeast(40f).dp)
+        modifier.heightIn(min = Floor.KEY.rdp)
             .clickable(src, indication = null, enabled = enabled) { onClick() }.let { if (tag != null) it.tagged(tag) else it }
             .alpha(if (enabled) 1f else .4f).padding(vertical = 2.dp),
         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
     ) {
         androidx.compose.foundation.layout.Box(
             androidx.compose.ui.Modifier.widthIn(max = capW.dp).fillMaxWidth().height(capH.dp + UiLook.lip).offset(0.dp, if (pressed) 2.dp else 0.dp)
-                .bakelite(on, onColor, pressed, danger = tier == Tier.Danger, brass = tier == Tier.Primary, lamped = lamped, tint = capTint(icon))
+                .bakelite(on, lampFor(tag, onColor, tier == Tier.Danger), pressed, danger = tier == Tier.Danger, brass = tier == Tier.Primary, lamped = lamped,
+                    tint = Icons.all[icon]?.second?.let { tileFill(it) } ?: capTint(icon), fill = Icons.all[icon] != null)
                 .padding(bottom = UiLook.lip),
             contentAlignment = androidx.compose.ui.Alignment.Center,
         ) {
             // the icon in its own colours (aged, crisp whole pixels), centred on the cap
-            if (res != null) InlayIcon(res, (capH - 8f).dp, on, text)
+            if (res != null) InlayIcon(res, (capH - 4f).dp, true, text)
             else T((if (text.length <= 5) text else text.take(3)).uppercase(), size = 12.sp, color = if (on) lerp(Hw.Engrave, onColor, .5f) else Hw.Engrave, lines = 1, spacing = 0.em, family = Worn, weight = androidx.compose.ui.text.font.FontWeight.Normal)
         }
         if (state.proWords && word != null) {

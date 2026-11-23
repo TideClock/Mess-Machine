@@ -624,12 +624,12 @@ fun TabSlot(state: AppState, modifier: Modifier) {
                     .semantics { selected = on }.alpha(if (state.locked) .45f else 1f),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                val capH = ((UiLook.widthDp / 7f).coerceIn(48f, 96f) * UiLook.big * .62f).coerceIn(34f, 54f)
+                val capH = 40.rdp.value * UiLook.big  // Nov 22 sizing: one size in real dp, not grown with the screen
                 Box(
-                    Modifier.fillMaxWidth().height(capH.dp).let { if (on) it.bakelite(true, C.Yellow, false, lamped = false).padding(bottom = UiLook.lip) else it },
+                    Modifier.fillMaxWidth().height(capH.dp).let { if (on) it.bakelite(true, C.Yellow, false, lamped = false, tint = tileFill("place"), fill = true).padding(bottom = UiLook.lip) else it },
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (res != null) Box(Modifier.alpha(if (on) 1f else .5f)) { InlayIcon(res, (capH - 12f).dp, on, word) }
+                    if (res != null) Box(Modifier.alpha(if (on) 1f else .7f)) { InlayIcon(res, (capH - 6f).dp, true, word) }
                     else T(word.uppercase(), size = 10.sp, color = Hw.Engrave, lines = 1, family = Stencil)
                 }
                 if (state.proWords) { if (state.wordPlate) PlateWord(word, on, C.Yellow) else T(word.uppercase(), size = (8f * UiLook.big).sp, color = if (on) C.Yellow else Hw.Engrave.copy(alpha = .55f), lines = 1, family = Stencil, weight = FontWeight.Normal, modifier = Modifier.padding(top = 2.dp)) }

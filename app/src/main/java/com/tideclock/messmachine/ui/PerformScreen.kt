@@ -52,6 +52,6 @@ fun SeqSwitch(state: AppState) {
         T("SEQUENCE", size = 11.sp, color = C.Dim, spacing = .12.em)
         // Nov 22: two views, one pick, so a slider
         PickSlider(listOf("Steps" to "Steps", "Roll" to "Roll"), if (state.tab == Tab.Roll) 1 else 0, { state.tab = if (it == 1) Tab.Roll else Tab.Steps },
-            Modifier.weight(1f), tags = listOf("seq-steps", "seq-roll"), tag = "seqview-chips", icons = false)
+            Modifier.weight(1f), tags = listOf("seq-steps", "seq-roll"), tag = "seqview-chips")
     }
 }

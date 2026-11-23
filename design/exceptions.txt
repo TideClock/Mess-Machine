@@ -19,3 +19,4 @@ screen: Settings | 25 | Words: plates or stamped, and Tabs: slot or keys, so the
 label: Close | The screw in the corner of every sheet (Tyler asked for something with meaning instead of Done, 2026-11-21); every sheet needs its own
 label: ROLL | The Steps or Roll switch at the top of the Seq tab sits on both of its views (Nov 21: Steps and Roll are one tab)
 label: STEPS | The Steps or Roll switch at the top of the Seq tab sits on both of its views (Nov 21: Steps and Roll are one tab)
+label: CLICK | The metronome on the Play page (Tyler, 2026-11-22: "just on the main screen") and on the Tempo sheet beside the tempo it clicks

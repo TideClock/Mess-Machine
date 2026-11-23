@@ -185,7 +185,7 @@ fun Modifier.lcd(lit: Boolean = false): Modifier = this.drawBehind {
  * A bakelite key in a worn metal bezel. Nov 21 video: the lamp sits in the metal lip under the cap, not on the cap, so
  * the word and icon stay centred; keys that only do something (no on or off) have no lamp at all.
  */
-fun Modifier.bakelite(on: Boolean, lamp: Color, pressed: Boolean, danger: Boolean = false, brass: Boolean = false, lamped: Boolean = true, tint: Color? = null): Modifier = this.drawWithCache {
+fun Modifier.bakelite(on: Boolean, lamp: Color, pressed: Boolean, danger: Boolean = false, brass: Boolean = false, lamped: Boolean = true, tint: Color? = null, fill: Boolean = false): Modifier = this.drawWithCache {
     // Nov 21 (lag): the brushes and scuffs are worked out once per size and state, not on every redraw of every key
     val r = CornerRadius(7.dp.toPx())
     val bez = 2.5.dp.toPx()
@@ -193,7 +193,11 @@ fun Modifier.bakelite(on: Boolean, lamp: Color, pressed: Boolean, danger: Boolea
     val rim = Brush.verticalGradient(when { danger -> listOf(Color(0xFFC4573F), Hw.Oxblood, Color(0xFF5A1A10)); brass -> listOf(Color(0xFFE8C877), Hw.Brass, Color(0xFF6E5420)); else -> listOf(Hw.MetalHi, Hw.Metal, Hw.MetalLow) })
     // Nov 21: keys that open a thing wear their tile's colour in the bakelite (the 16-bit tiles Tyler liked); switches stay dark
     fun t(c: Color, k: Float) = if (tint == null) c else lerp(c, tint, k)
-    val cap = Brush.verticalGradient(if (pressed) listOf(t(Hw.BakeLow, .35f), t(Hw.Bake, .45f)) else listOf(t(Hw.BakeTop, .6f), t(Hw.Bake, .5f), t(Hw.BakeLow, .4f)))
+    // Nov 22 (Tyler: "why didn't you keep the colors behind all the buttons, those colors are sick"): a key with an icon
+    // is filled with its tile's colour, as on the icon boards, lighter at the top and darker at the lower rim
+    val cap = if (fill && tint != null) Brush.verticalGradient(if (pressed) listOf(lerp(tint, Color.Black, .35f), lerp(tint, Color.Black, .2f))
+        else listOf(lerp(tint, Color.White, .18f), tint, lerp(tint, Color.Black, .32f)))
+        else Brush.verticalGradient(if (pressed) listOf(t(Hw.BakeLow, .35f), t(Hw.Bake, .45f)) else listOf(t(Hw.BakeTop, .6f), t(Hw.Bake, .5f), t(Hw.BakeLow, .4f)))
     val capR = CornerRadius(5.dp.toPx())
     val capH = size.height - bez - lip
     var seed = (size.width * 31 + size.height).toInt() * 1103515245 + 12345
@@ -332,7 +336,8 @@ fun InlayIcon(res: Int, maxDp: androidx.compose.ui.unit.Dp, lit: Boolean, label:
     val px = with(dens) { maxDp.toPx() }
     // the nearest whole multiple (a 26 dp icon on a 2.6x screen is 68 px: 2x, 80 px, not 1x and half the size)
     var k = maxOf(1, Math.round(px / 40f))
-    if (k > 1 && 40f * k > px * 1.15f) k--
+    // Nov 22: up to a fifth bigger than asked is fine (the art has a clear margin), so an icon lands on 2x, not 1x
+    if (k > 1 && 40f * k > px * 1.22f) k--
     val side = with(dens) { (40f * k).toDp() }
     val img = androidx.compose.ui.graphics.ImageBitmap.imageResource(res)
     Box(modifier.size(side)) {
@@ -487,16 +492,20 @@ fun Btn(
     if (UiLook.panel) {
         // the hardware panel: a bakelite key, engraved words, a lamp under it for on. At least 40 real dp tall at any view size.
         // Keys widen with the screen and stop at a cap, so a wide screen has bigger keys, not lonely little ones
-        val minH = maxOf(if (small) 34f else 44f, 40f / UiLook.scale.coerceIn(.4f, 2f)) * UiLook.big + UiLook.lip.value
-        val minW = if (tight) 0f else (UiLook.widthDp * (if (small) .14f else .18f)).coerceIn(if (small) 48f else 56f, if (small) 120f else 150f) * UiLook.big
+        // Nov 22 sizing: one key size in real dp everywhere (it used to grow with the screen: huge on a tablet)
+        val minH = (if (small) 40f else 46f).rdp.value * UiLook.big + UiLook.lip.value
+        val minW = (if (tight) Floor.KEY else if (small) 56f else 64f).rdp.value * UiLook.big
         // Nov 22 look spec: one meaning per colour (see lampFor)
         val lamp = lampFor(tag, onColor, tier == Tier.Danger)
+        // a key with an icon wears the icon's tile colour (danger keys stay oxblood)
+        val keyTile = if (tier == Tier.Danger) null else (icon ?: if (tight) null else text).let { Icons.groupOf(it) }?.let { tileFill(it) }
         Box(
             modifier
                 .heightIn(min = minH.dp)
                 .widthIn(min = minW.dp)
                 .offset(0.dp, if (pressed && enabled) 2.dp else 0.dp)
-                .bakelite(on, lamp, pressed && enabled, danger = tier == Tier.Danger, brass = tier == Tier.Primary, lamped = lamped, tint = if (tight) null else capTint(text))
+                .bakelite(on, lamp, pressed && enabled, danger = tier == Tier.Danger, brass = tier == Tier.Primary, lamped = lamped,
+                    tint = keyTile ?: if (tight) null else capTint(text), fill = keyTile != null)
                 .alpha(if (enabled) 1f else .4f)
                 .clickable(src, indication = null, enabled = enabled) { onClick() }
                 .then(if (tag != null) Modifier.tagged(tag) else Modifier)
@@ -511,12 +520,12 @@ fun Btn(
             // (in the panel Look the old symbols go anyway: the worn letters have no ● or ✂, and the lamp says on)
             val words = text.replace(Regex("^[^A-Za-z0-9\\s]+\\s+"), "").ifEmpty { text }
             if (iconRes != null && tight) Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                InlayIcon(iconRes, 30.dp * UiLook.big, on, text)
-                if (words.isNotBlank()) T(words.uppercase(), color = when { tier == Tier.Quiet -> Hw.Engrave.copy(alpha = .6f); on -> lerp(Hw.Engrave, lamp, .35f); else -> Hw.Engrave },
+                InlayIcon(iconRes, 30.rdp * UiLook.big, true, text)
+                if (words.isNotBlank()) T(words.uppercase(), color = when { keyTile != null -> capInk(keyTile); tier == Tier.Quiet -> Hw.Engrave.copy(alpha = .6f); on -> lerp(Hw.Engrave, lamp, .35f); else -> Hw.Engrave },
                     size = (10f * UiLook.big).sp, lines = 1, spacing = 0.em, family = Worn, weight = FontWeight.Normal, modifier = Modifier.padding(top = 1.dp))
             } else Row(verticalAlignment = Alignment.CenterVertically) {
-                if (iconRes != null) InlayIcon(iconRes, (if (small) 28.dp else 32.dp) * UiLook.big, on, text, Modifier.padding(end = 7.dp))
-                T(words.uppercase(), color = when { tier == Tier.Quiet -> Hw.Engrave.copy(alpha = .6f); on -> lerp(Hw.Engrave, lamp, .35f); else -> Hw.Engrave },
+                if (iconRes != null) InlayIcon(iconRes, (if (small) 28.rdp else 32.rdp) * UiLook.big, true, text, Modifier.padding(end = 7.dp))
+                T(words.uppercase(), color = when { keyTile != null -> capInk(keyTile); tier == Tier.Quiet -> Hw.Engrave.copy(alpha = .6f); on -> lerp(Hw.Engrave, lamp, .35f); else -> Hw.Engrave },
                     size = (if (small) 12f else 13f).let { (it * UiLook.big).sp }, lines = 1, spacing = if (tight) 0.em else .03.em, family = Worn, weight = FontWeight.Normal)
             }
         }
@@ -750,8 +759,8 @@ fun PickSlider(
     val pick by androidx.compose.runtime.rememberUpdatedState(onPick)
     val shown = if (drag >= 0) drag else picked
     val hasIcon = icons && stops.any { it.second?.let { s -> Icons.named(s) } != null }
-    val iconDp = (26f * UiLook.big).dp
-    val h = if (hasIcon) (iconDp.value + 26f).dp else (36f * UiLook.big).coerceAtLeast(34f).dp
+    val iconDp = 30.rdp * UiLook.big
+    val h = if (hasIcon) iconDp + 26.dp else (40f * UiLook.big).rdp
     androidx.compose.foundation.layout.BoxWithConstraints(
         modifier.fillMaxWidth().height(h + 6.dp).alpha(if (enabled) 1f else .45f)
             .drawBehind {
@@ -778,7 +787,8 @@ fun PickSlider(
         // the raised block that slides to the pick
         if (shown in 0 until n) Box(
             Modifier.offset(x = x).size(w, h).let {
-                if (UiLook.panel) it.bakelite(true, onColor, false, lamped = false) else it.sticker(onColor, shadow = 2.dp, border = 2.dp, borderColor = C.Cream)
+                if (UiLook.panel) { val g = stops.getOrNull(shown)?.second?.let { n -> Icons.groupOf(n) }?.let { tileFill(it) }
+                    it.bakelite(true, onColor, false, lamped = false, tint = g, fill = g != null) } else it.sticker(onColor, shadow = 2.dp, border = 2.dp, borderColor = C.Cream)
             },
         )
         Row(Modifier.fillMaxWidth().height(h)) {
@@ -793,8 +803,9 @@ fun PickSlider(
                         .padding(bottom = if (UiLook.panel && on) UiLook.lip else 0.dp),
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
                 ) {
-                    if (res != null) Box(Modifier.alpha(if (on) 1f else .55f)) { InlayIcon(res, iconDp, on, st.first) }
-                    val wc = if (UiLook.panel) (if (on) lerp(Hw.Engrave, onColor, .35f) else Hw.Engrave.copy(alpha = .6f)) else if (on) ink(onColor) else C.Cream
+                    if (res != null) Box(Modifier.alpha(if (on) 1f else .8f)) { InlayIcon(res, iconDp, true, st.first) }
+                    val g = if (on && icons) st.second?.let { n -> Icons.groupOf(n) }?.let { tileFill(it) } else null
+                    val wc = if (UiLook.panel) (if (g != null) capInk(g) else if (on) lerp(Hw.Engrave, onColor, .35f) else Hw.Engrave.copy(alpha = .75f)) else if (on) ink(onColor) else C.Cream
                     T(st.first.uppercase(), size = (if (res != null) 9.5f else 12f).let { (it * UiLook.big).sp }, color = wc, lines = 1, spacing = 0.em,
                         family = if (UiLook.panel) Worn else Archivo, weight = if (UiLook.panel) FontWeight.Normal else FontWeight.ExtraBold,
                         modifier = Modifier.padding(horizontal = 2.dp, vertical = if (res != null) 1.dp else 0.dp))
@@ -836,3 +847,15 @@ fun Modifier.plate(top: Boolean = false, bottom: Boolean = false): Modifier =
 fun Modifier.trayFrame(): Modifier =
     if (UiLook.panel) this.sticker(Hw.Plate, shadow = 5.dp, border = 2.dp, borderColor = Hw.Brass, shadowColor = Color.Black.copy(alpha = .6f))
     else this.sticker(C.Ink, shadow = 5.dp, border = 3.dp, borderColor = C.Yellow)
+
+/** Nov 22: the tile colours from Tyler's icon boards, by icon group (the same in every skin). */
+fun tileFill(group: String): Color = when (group) {
+    "transport" -> Color(0xFFFFCC33)
+    "place", "synth", "synthview" -> Color(0xFFA070E0)
+    "perform", "throw" -> Color(0xFFFF4FA3)
+    "sound" -> Color(0xFF00B8AA)
+    else -> Color(0xFF5C5668)
+}
+
+/** Words on a filled tile cap: dark on yellow and teal, cream on the darker tiles. */
+fun capInk(tile: Color): Color = if (tile.luminance() > .45f) Color(0xFF1A1613) else Color(0xFFF6EBD6)

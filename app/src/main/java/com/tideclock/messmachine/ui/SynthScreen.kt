@@ -83,12 +83,12 @@ fun SynthScreen(state: AppState) {
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     val full = state.synthView == "full"
-                    PickSlider(listOf("Simple" to null, "Full" to null), if (full) 1 else 0, { state.synthView = if (it == 1) "full" else "simple" }, Modifier.weight(1f),
-                        tags = listOf("synthview-simple", "synthview-full"), tag = "synthview-chips", onColor = C.Teal, icons = false)
+                    PickSlider(listOf("Simple" to "Simple", "Full" to "Full"), if (full) 1 else 0, { state.synthView = if (it == 1) "full" else "simple" }, Modifier.weight(1f),
+                        tags = listOf("synthview-simple", "synthview-full"), tag = "synthview-chips", onColor = C.Yellow)
                     sp.kind.params.firstOrNull { it.id == "mode" }?.let { mp ->
                         val m = sp.get("mode").toInt().coerceIn(0, mp.choices.size - 1)
-                        PickSlider(mp.choices.map { it to null }, m, { state.setSynth(pad, "mode", it.toDouble(), true) }, Modifier.weight(1.5f),
-                            tags = mp.choices.indices.map { "synthmode-$it" }, tag = "synthmode-chips", onColor = C.Yellow, icons = false)
+                        PickSlider(mp.choices.map { it to it }, m, { state.setSynth(pad, "mode", it.toDouble(), true) }, Modifier.weight(1.5f),
+                            tags = mp.choices.indices.map { "synthmode-$it" }, tag = "synthmode-chips", onColor = C.Yellow)
                     }
                 }
             }
@@ -177,9 +177,10 @@ private fun SynthPadTile(state: AppState, pad: Int, sp: Synth.Patch) {
             },
         contentAlignment = Alignment.Center,
     ) {
+        // Nov 22 (Tyler: "the scratch vowel pad can definitely come out"): the pickers beside it already say which synth
+        // and which preset, so the pad shows its kind's icon, big
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            T(if (pad == Project.SCRATCH) "SCRATCH" else "PAD ${pad + 1}", size = 9.sp, color = Hw.Engrave.copy(alpha = .8f), lines = 1, spacing = .06.em, family = Stencil)
-            T(sp.name.uppercase(), size = 11.sp, color = Hw.Engrave, lines = 2, spacing = 0.em, family = Worn)
+            Icons.named(sp.kind.name)?.let { InlayIcon(it, 52.rdp, true, sp.kind.name) }
             if (muted) T("MUTED", size = 9.sp, color = C.Pink, lines = 1, family = Stencil)
         }
     }
