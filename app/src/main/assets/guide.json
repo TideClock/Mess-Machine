@@ -1,19 +1,24 @@
 {
-  "title": "Chord sets back in key, still twelve and smooth",
+  "title": "Loops in one place, swipes that take back their hit",
   "thisBuild": [
-    "Chord sets stay in key again. Every set still has 12 chords: the seven chords of its scale, then five colour chords (sus, add9, sevenths) that are in key too.",
-    "Keys in the scale play their own chord: press A in C major and you get A minor. The five keys between play the colour chords, so every key does something and nothing is out of key.",
-    "Picking a set written in another scale moves the scale to it again, and the menu says so.",
-    "Smooth moves stays on: each chord picks the inversion nearest the last one, so changes glide."
+    "Tap the loop readout at the top: loops A to H are pad sized now, with Click, Count, and - + 2x for the loop you are in. Its bars, Copy to, Clear, Auto, Bottle it and the Song are all in there too.",
+    "Steps and Roll lost their own rows of loops and bars; a line at the top says which loop and bar you see, tap it for the strip. Song has no tab any more: it is in the strip.",
+    "Swipe the loop readout left or right for the previous or next loop.",
+    "Count-in: with Rec on, Play from a stop clicks a bar first (Count 1, 2 or off). The click is on out of the box.",
+    "A swipe off a pad takes back its own hit: it still sounds on touch, then fades the moment the swipe is clear, and a recorded hit comes out.",
+    "Swipe right opens the FX vials under that pad's row, two rows of wider vials.",
+    "Synth: one row of kinds, Simple/Full and Poly/Mono/Acid are one-tap switches, Synthipad is gone, and putting the scratch synth over a pad with a sound takes a second tap.",
+    "Tabs sit in one milled slot with your page raised (Settings, Look: Tabs: keys to go back). Readouts shrink to fit instead of cutting off. The help lines are gone."
   ],
   "watch": [
-    "Play Sunday Pop or Neo Soul on the chord boxes: in key and smooth now?",
-    "Do the colour chords on the black keys feel useful, or would you rather those keys stay quiet?",
-    "Any set that still feels off? Tell me which set and which chord."
+    "Swipe off a drum pad while recording: do you hear a blip before it cuts, and is that OK?",
+    "Record with Count 1: does the bar of clicks land right before the loop?",
+    "Is the loop strip too tall on your phone with Song open?",
+    "Do the two rows of vials under a row feel playable?"
   ],
   "limits": [
-    "The Roll still writes chords from their root.",
-    "Making your own sets isn't in yet.",
-    "The cut and look changes are still proposals: nothing moved on screen in this build."
+    "The FX, wave and synth-kind icons are drawn for you to review first; they are not in the app yet.",
+    "The other cut and look ideas you didn't pick are not in this build.",
+    "The master filter on Perform and the Keys menus are unchanged."
   ]
 }

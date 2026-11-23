@@ -25,13 +25,18 @@ import com.tideclock.messmachine.engine.Project
 
 @Composable
 fun SongScreen(state: AppState) {
+    ScrollPane { SongBody(state) }
+}
+
+/** The song painter. Since Nov 22 it lives in the loop strip under the top bar (Tyler: bars are managed there). */
+@Composable
+fun SongBody(state: AppState) {
     val P = state.project
     val len = P.songLen()
     var steps = 0
     for (k in 0 until len) steps += if (P.song[k] >= 0) P.pats[P.song[k]].len else 16
     val secs = (steps * 60.0 / P.bpm / 4).toInt()
-    ScrollPane {
-        SlotBar(state)
+    Column(Modifier.tagged("song-body")) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 14.dp)) {
             Btn("Play the loop", { state.setSongMode(false) }, on = !P.songMode, onColor = C.Teal)
             Btn("Play the song", { state.setSongMode(true) }, on = P.songMode, onColor = C.Pink)
@@ -87,10 +92,5 @@ fun SongScreen(state: AppState) {
             Btn("Share the song", { state.bounce(true, 1) }, small = true, color = C.Pink, enabled = len > 0, tag = "share-song")
             Btn("Clear the song", { state.clearSong() }, small = true, enabled = len > 0, tier = Tier.Danger)
         }
-        Help(
-            "Each square is one loop's worth. Tap a square to paint the loop you picked; tap it again to make it a rest. " +
-                "Rough it in lays every loop that has something in it down twice, in order. ☰, then Messes, bounces the song to a WAV.",
-            modifier = Modifier.padding(top = 12.dp),
-        )
     }
 }

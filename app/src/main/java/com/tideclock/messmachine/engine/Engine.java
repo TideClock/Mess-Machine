@@ -180,7 +180,7 @@ public final class Engine {
     /* ================= what the engine tells the UI ================= */
 
     public static final class RecEvent {
-        public static final int STEP = 0, NOTES = 1, OFF = 2;
+        public static final int STEP = 0, NOTES = 1, OFF = 2, CANCEL = 3;
         public final int type, pat, step, len;
         public final String key;
         public final int[] pitches;
@@ -321,6 +321,8 @@ public final class Engine {
         int[] pitches;
         boolean mel, holdV, latched, beat, flow;
         int beats;
+        /** Where this press was recorded (Nov 22: a swipe takes its own hit back), -1 if it wasn't. */
+        int recPat = -1, recAt = -1; boolean recFine;
         double at;
         List<Voice> voices = new ArrayList<>();
     }
@@ -368,6 +370,8 @@ public final class Engine {
     public void setLatencyFrames(int f) { latencyFrames = f; }
 
     public void play() { cmds.add(new Object[]{"play"}); }
+    /** Nov 22 (Tyler: a count-in): from a stop, this many steps of click come first, then the loop starts at its top. */
+    public void play(int countSteps) { cmds.add(new Object[]{"play", countSteps}); }
     public void pause() { cmds.add(new Object[]{"pause"}); }
     public void stop() { cmds.add(new Object[]{"stop"}); }
     public void panic() { cmds.add(new Object[]{"panic"}); }
@@ -383,6 +387,8 @@ public final class Engine {
     public static final float[] STEP_GAIN = {.42f, .85f, 1f};
     public void unlatch(int id) { cmds.add(new Object[]{"unlatch", id}); }
     public void up(int id) { cmds.add(new Object[]{"up", id, System.nanoTime()}); }
+    /** Nov 22 (Tyler: a swipe cancels its own hit): the press under this id fades out at once and its recorded hit goes. */
+    public void cancel(int id) { cmds.add(new Object[]{"cancel", id}); }
 
     /** Hear a sound with its doctor settings, outside the mess (browsing, editing, toggling a step). */
     public void preview(Sample s, SoundEdit e, int semis) { preview(s, e, semis, false); }
@@ -567,6 +573,8 @@ public final class Engine {
         switch ((String) c[0]) {
             case "play":
                 if (!paused) { step = 0; songPos = 0; loops = 0; }
+                countLeft = countTotal = !paused && c.length > 1 ? Math.max(0, (Integer) c[1]) : 0;
+                countUi = countLeft > 0 ? (countLeft + 3) / 4 : 0;
                 paused = false; playing = true; freeOn = false;
                 nextStepAt = frame + .004 * rate;
                 break;
@@ -578,6 +586,7 @@ public final class Engine {
                 playing = false; paused = true;
                 break;
             case "stop":
+                countLeft = 0; countUi = 0;
                 if (!playing && !paused) releaseAll(.03f);
                 fxStut = false; fxTape = false;
                 playing = false; paused = false; step = 0; songPos = 0; freeOn = !held.isEmpty() && S.live.nr;
@@ -596,6 +605,13 @@ public final class Engine {
                 held.clear(); freeOn = false; beatOn = false;
                 break;
             case "down": lastHitWaitNanos = renderNanos - (Long) c[5]; hits++; padDown(S, (Integer) c[1], (Integer) c[2], (int[]) c[3], (Boolean) c[4], (Long) c[5], renderNanos, c.length > 6 && (Boolean) c[6], c.length > 7 ? (Float) c[7] : -1f); break;
+            case "cancel": {
+                Held h = held.remove((Integer) c[1]);
+                if (h == null) break;
+                for (Voice v : h.voices) startRelease(v, .006f);
+                if (h.recPat >= 0) recs.add(new RecEvent(RecEvent.CANCEL, h.recPat, h.pad.key, h.recAt, null, h.recFine ? 1 : 0));
+                break;
+            }
             case "unlatch": {
                 Held h = held.remove((Integer) c[1]);
                 if (h != null) for (Voice v : h.voices) startRelease(v, .03f);
@@ -757,7 +773,12 @@ public final class Engine {
                     // Rec set to exact (Nov 18): the hit lands on the finer grid where it was played
                     int tick = Math.floorMod((int) Math.round(h.at * Project.TICKS), len * Project.TICKS);
                     recs.add(new RecEvent(RecEvent.OFF, pi, ps.key, tick, null, 1));
-                } else recs.add(new RecEvent(RecEvent.STEP, pi, ps.key, Math.floorMod((int) Math.round(h.at), len), null, 1, vel));
+                    h.recPat = pi; h.recAt = tick; h.recFine = true;
+                } else {
+                    int st = Math.floorMod((int) Math.round(h.at), len);
+                    recs.add(new RecEvent(RecEvent.STEP, pi, ps.key, st, null, 1, vel));
+                    h.recPat = pi; h.recAt = st; h.recFine = false;
+                }
             }
         }
     }
@@ -864,7 +885,21 @@ public final class Engine {
         }
     }
 
+    private int countLeft, countTotal;
+    /** Beats of count-in still to come (4, 3, 2, 1), 0 when the loop is running. Read by the screen. */
+    public volatile int countUi;
+
     private void fireStep(Snapshot S) {
+        if (countLeft > 0) {
+            // the count-in: a click on every beat, the first one high, and the loop waits at its top
+            int k = countTotal - countLeft;
+            long delay = Math.max(0, Math.round(nextStepAt - frame));
+            if (k % 4 == 0) { Voice cv = trigger(k % 16 == 0 ? clickHiSlot : clickLoSlot, 1, 0, false, 1f, delay, false, false); if (cv != null) cv.dry = true; countUi = (countLeft + 3) / 4; }
+            countLeft--;
+            if (countLeft == 0) countUi = 0;
+            nextStepAt += spb(S);
+            return;
+        }
         int pi = playingPat(S);
         Pat P = pi >= 0 ? S.pats[pi] : null;
         int len = P != null ? P.len : 16;

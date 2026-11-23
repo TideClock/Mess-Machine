@@ -434,7 +434,7 @@ fun ChordSlots(state: AppState, pad: Int, col: Color, oct: Int) {
             }
         }
     }
-    Note("${state.chordMode.substring(4)} in ${Theory.NN[P.root]}" + (if (oct != 0) ", ${if (oct > 0) "+" else ""}$oct octave" else "") + " · each box is always the same chord" +
+    Note("${state.chordMode.substring(4)} in ${Theory.NN[P.root]}" + (if (oct != 0) ", ${if (oct > 0) "+" else ""}$oct octave" else "") +
         if (!state.chordPlay) " · showing" else "", modifier = Modifier.padding(top = 4.dp))
 }
 

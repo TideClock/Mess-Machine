@@ -106,6 +106,13 @@ public final class Project {
             if (!l.contains(t)) { l.add(t); java.util.Collections.sort(l); }
         }
 
+        /** Takes back one off-grid hit (a swipe cancelled it). */
+        public void removeOff(String k, int tick) {
+            int t = Math.floorMod(tick, len * TICKS);
+            List<Integer> l = offs.get(k);
+            if (l != null) l.remove((Integer) t);
+        }
+
         /** Off-grid hits of a sound that fall inside step j. */
         public int offsIn(String k, int j) {
             List<Integer> l = offs.get(k);
@@ -571,7 +578,7 @@ public final class Project {
                 Pattern P = p.pats[i];
                 // 1, 2, 4 or 8 bars (the site plays 1 or 2; longer loops are app only)
                 int ln = (int) Json.num(x.get("len"), 16);
-                P.len = ln == 32 || ln == 64 || ln == 128 ? ln : 16;
+                P.len = ln >= 16 && ln <= 128 && ln % 16 == 0 ? ln : 16;  // Nov 22: any 1 to 8 bars (+ and - in the loop strip)
                 decSteps(P, Json.map(x.get("steps")));
                 for (Map.Entry<String, Object> e : Json.map(x.get("motion")).entrySet()) {
                     float[] a = new float[MAXSTEPS];

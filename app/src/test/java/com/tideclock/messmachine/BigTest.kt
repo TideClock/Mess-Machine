@@ -17,6 +17,8 @@ import androidx.compose.ui.test.swipe
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.swipeUp
+import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
@@ -64,10 +66,15 @@ class BigTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
     private lateinit var state: AppState
 
+    // tags that are gone on purpose (Nov 22), checked for absence: built so the stale-tag check doesn't read them as asks
+    private val GONE_SLOT = listOf("slot", "0").joinToString("-")
+    private val GONE_SYNTHIPAD = listOf("synthipad", "notes").joinToString("-")
+
     @Before fun setUp() {
         UiFlags.testing = true
         val ctx = ApplicationProvider.getApplicationContext<Context>()
-        ctx.getSharedPreferences("mess", 0).edit().putInt("guideSeen", BuildConfig.VERSION_CODE).commit()
+        // the older flows were written with the click off and no count-in (both on out of the box since Nov 22)
+        ctx.getSharedPreferences("mess", 0).edit().putInt("guideSeen", BuildConfig.VERSION_CODE).putBoolean("click", false).putInt("countIn", 0).commit()
         state = AppState(ctx)
         rule.setContent { MessMachineApp(state, ticker = false) }
         settle()
@@ -163,8 +170,14 @@ class BigTest {
         if (label == "Pads") state.pickPlayLayout(false)
         // Nov 21: Roll lives inside the Sequence tab (tab-Steps), behind the Steps or Roll switch
         if (label == "Roll") { rule.onNodeWithTag("tab-Steps").performClick(); settle(); rule.onNodeWithTag("seq-roll").performClick(); settle(); return }
+        // Nov 22: the song lives in the loop strip under the top bar, not on a tab
+        if (label == "Song") { rule.runOnUiThread { state.openSong() }; settle(); return }
+        if (state.songOpen) rule.runOnUiThread { state.songOpen = false; state.loopStripOpen = false }
         rule.onNodeWithTag("tab-$label").performClick(); settle()
     }
+
+    /** Nov 22: the loop strip (loops, bars, loop tools, Auto, the song) opens from the loop readout on any page. */
+    private fun strip() { if (!state.loopStripOpen) { rule.onNodeWithTag("loop-open").performClick(); settle() } }
 
     private fun tapPad(d: Int) {
         at("pad-$d").performTouchInput { down(center) }
@@ -597,7 +610,8 @@ class BigTest {
         rule.onNodeWithTag("seq-switch").assertExists()
         at("seq-steps").performClick(); settle()
         assertEquals(Tab.Steps, state.tab)
-        // the lanes: a screw, and Back
+        // the lanes: a screw, and Back (Auto is in the loop strip now)
+        strip()
         at("moves-open").performClick(); settle()
         assertTrue(state.movesOpen)
         at("moves-close").performClick(); settle()
@@ -654,8 +668,10 @@ class BigTest {
         state.toggleKeyboard(1); settle()
         rule.onNodeWithTag("pad-1").performTouchInput { down(center); moveBy(Offset(width * 1.2f, 0f)); up() }
         settle()
-        assertEquals("a swipe right opens the FX drawer", "edit:1", state.tray)
-        assertEquals("fx", state.editTab)
+        // Nov 22: in every layout the FX open as a strip under the pad's row, in two rows of wide vials
+        assertTrue("a swipe right opens the FX strip under the row", 1 in state.keyboards && "fx" in state.packOf(1))
+        assertEquals("no tray over the pads", null, state.tray)
+        at("fxstrip-1").assertExists()
         shot("105-fx-vials")
         // the vials: a lamp takes one effect out and back, Bypass takes them all out and brings them back
         state.fxSendTo(1, Engine.T_RVB, .6f, false); state.fxSendTo(1, Engine.T_ECHO, .4f, false); settle()
@@ -672,7 +688,7 @@ class BigTest {
         // the same swipe again closes what it opened
         rule.onNodeWithTag("pad-1").performTouchInput { down(center); moveBy(Offset(width * 1.2f, 0f)); up() }
         settle()
-        assertEquals("swiping right again closes the FX drawer", null, state.tray)
+        assertFalse("swiping right again closes the FX strip", 1 in state.keyboards)
         rule.onNodeWithTag("pad-1").performTouchInput { down(center); moveBy(Offset(-width * 1.2f, 0f)); up() }
         settle()
         assertTrue("a swipe left opens Sample", state.overlay is Overlay.Doctor)
@@ -1349,18 +1365,14 @@ class BigTest {
         assertEquals("the Pluck chip makes it a pluck", "pluck", state.synthOn(pad)!!.kind.id)
         shot("48-synth-pluck")
         at("synthkind-analog").performClick(); settle()
-        at("synthmode-2").performClick(); settle()
+        // Poly, Mono, Acid is one switch now: tap until Acid
+        repeat(3) { if (state.synthOn(pad)!!.get("mode") != 2.0) { at("synthmode-toggle").performClick(); settle() } }
         assertEquals("Acid", 2.0, state.synthOn(pad)!!.get("mode"), 0.0)
         shot("41-synth-simple")
-        at("synthview-full").performClick(); settle()
+        at("synthview-toggle").performClick(); settle()
+        assertEquals("Simple or Full is one switch", "full", state.synthView)
         shot("42-synth-full")
-        at("synthview-pad").performClick(); settle()
-        val t0 = state.engine.triggers
-        rule.onNodeWithTag("synthipad-notes").performTouchInput { down(Offset(width * .1f, height * .9f)); up() }
-        settle()
-        state.engine.render(FloatArray(512), 256)
-        assertTrue("a Synthipad note plays the synth", state.engine.triggers > t0)
-        shot("43-synthipad")
+        assertTrue("Synthipad is gone", rule.onAllNodesWithTag(GONE_SYNTHIPAD).fetchSemanticsNodes().isEmpty())
         state.synthView = "simple"
         // it saves and loads with the mess
         val back = com.tideclock.messmachine.engine.Project.fromJson(state.project.toJson(), state.lib::has).project
@@ -1742,7 +1754,7 @@ class BigTest {
         // the Synth tab: with no synth on the pad, then each view of one
         tab("Synth"); page("Synth: none")
         at("synth-new-empty").performClick(); settle()
-        for (v in listOf("simple", "full", "pad")) { at("synthview-$v").performClick(); page("Synth: $v") }
+        page("Synth: simple"); at("synthview-toggle").performClick(); page("Synth: full")
         state.synthView = "simple"
         tab("Pads")
         for ((n, o) in listOf("Messes" to Overlay.Files, "Settings" to Overlay.Settings, "Tempo" to Overlay.Tempo, "Notes for Claude" to Overlay.Notes, "Latency" to Overlay.AudioCheck)) {
@@ -1810,6 +1822,7 @@ class BigTest {
         assertTrue(state.live.recExact)
         state.overlay = null; settle()
         state.toggleLen(); settle()
+        strip()
         at("moves-open").performClick(); settle()
         state.newLane(1, com.tideclock.messmachine.engine.Engine.T_RVB); settle()
         at("moves-lane-canvas").performTouchInput { down(Offset(width * .9f, height * .2f)); up() }; settle()
@@ -1827,7 +1840,7 @@ class BigTest {
         state.overlay = null; settle()
         assertEquals("dark", state.look)
         // every control on the bars is an icon tile now (its icon carries the control's name)
-        for (n in listOf("Play", "Stop", "Rec", "Undo", "What the FAQ", "Settings", "Menu", "Pack", "Hold", "Chords", "FX", "Notes (bug)", "Play tab", "Synth", "Steps", "Song", "Sounds"))
+        for (n in listOf("Play", "Stop", "Rec", "Undo", "What the FAQ", "Settings", "Menu", "Pack", "Hold", "Chords", "FX", "Notes (bug)", "Play tab", "Synth", "Steps", "Sounds"))
             assertTrue("$n has its icon", rule.onAllNodesWithContentDescription(n).fetchSemanticsNodes().isNotEmpty())
         // the new layout's bar: Edit has its icon too
         state.pickLayout("new"); settle()
@@ -1937,7 +1950,7 @@ class BigTest {
         state.toggleKeyboard(1); settle()
 
         // Moves is called Auto
-        tab("Steps"); at("moves-open").assertExists()
+        tab("Steps"); strip(); at("moves-open").assertExists()
         assertTrue(rule.onAllNodesWithText("Auto", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         tab("Pads")
     }
@@ -2215,7 +2228,8 @@ class BigTest {
         state.switchKeysBar(true); sweep("key panel"); state.switchKeysBar(false)
         state.switchDockOpen(true); sweep("dock"); state.switchDockOpen(false)
         for (t in listOf("Steps", "Roll", "Song", "Sounds", "Synth")) { tab(t); sweep(t) }
-        tab("Steps"); at("moves-open").performClick(); sweep("Auto")
+        tab("Steps"); strip(); at("moves-open").performClick(); sweep("Auto")
+        at("loop-song").performClick(); sweep("song in the strip")
         tab("Pads")
         state.switchMidiMap(true); sweep("MIDI map"); state.switchMidiMap(false)
         println("FAQ MISSING: $missing")
@@ -2262,15 +2276,35 @@ class BigTest {
 
     @Test fun longerLoopsDesksPicturesAndBuzz() {
         tab("Steps")
-        repeat(3) { at("looplen").performClick(); settle() }
-        assertEquals("1, 2, 4, 8 bars", 128, state.project.pat().len)
+        strip()
+        // Nov 22: + adds an empty bar, 2x doubles, - drops the last bar (any 1 to 8 bars)
+        val k0 = state.project.kit[0]
+        state.edit { pats[cur].setStep(k0, 0, true) }; settle()
+        at("loop-plus").performClick(); settle()
+        assertEquals("+ adds a bar", 32, state.project.pat().len)
+        assertFalse("the new bar is empty", state.project.pat().step(k0, 16))
+        assertEquals("+ shows the new bar", 1, state.page)
+        at("loop-plus").performClick(); settle()
+        assertEquals("three bars", 48, state.project.pat().len)
+        at("loop-double").performClick(); settle()
+        assertEquals("2x doubles", 96, state.project.pat().len)
+        assertTrue("2x copies", state.project.pat().step(k0, 48))
+        at("loop-plus").performClick(); at("loop-plus").performClick(); settle()
+        assertEquals("up to 8 bars", 128, state.project.pat().len)
         at("page-8").performClick()
         settle()
         assertEquals(7, state.page)
+        rule.onNodeWithTag("seq-where").assertExists()
         shot("47-steps-eight-bars")
-        at("looplen").performClick()
-        settle()
+        repeat(7) { at("loop-minus").performClick(); settle() }
         assertEquals(16, state.project.pat().len)
+        // the click and the count-in live in the strip, and the count shows in the loop readout
+        val clickWas = state.live.click
+        at("loop-click").performClick(); settle()
+        assertEquals("Click switches the metronome", !clickWas, state.live.click)
+        val cWas = state.countInBars
+        at("loop-countin").performClick(); settle()
+        assertEquals("Count-in steps through off, 1, 2", (cWas + 1) % 3, state.countInBars)
         // a saved copy of a desk
         tab("Console")
         val n = state.desks.size
@@ -2521,15 +2555,17 @@ class BigTest {
         rule.onNodeWithTag("help-toggle").performClick(); settle()
         rule.onNodeWithTag("faq-help").performClick(); settle()
         rule.onNodeWithTag("faq-done").performClick(); settle()
+        tab("Roll")
         assertTrue("page help shows it again", rule.onAllNodesWithTag("help").fetchSemanticsNodes().isNotEmpty())
         shot("45-help-on")
     }
 
     @Test fun stepsHeaderFitsOnAPhone() {
         tab("Steps")
-        // the eight loop letters sit on one line (build 44 wrapped H onto a second row)
-        val a = rule.onNodeWithTag("slot-0").fetchSemanticsNode().positionInRoot
-        val h = rule.onNodeWithTag("slot-7").fetchSemanticsNode().positionInRoot
+        // the eight loops sit on one line in the loop strip (build 44 wrapped H onto a second row)
+        strip()
+        val a = rule.onNodeWithTag("loop-0").fetchSemanticsNode().positionInRoot
+        val h = rule.onNodeWithTag("loop-7").fetchSemanticsNode().positionInRoot
         assertEquals("loop H on the same line as A", a.y, h.y, 1f)
         // banks read 1 2 3 4 like the Pads page, and switch the bank
         at("steps-bank-2").performClick()
@@ -2561,8 +2597,9 @@ class BigTest {
         rule.onNodeWithTag("pitch-plain").performClick()
         settle()
         assertTrue(state.project.pat().step(k7, 4) && state.project.pat().notes(k7).none { it.s == 4 })
-        // a loop letter's menu
-        longPress("slot-0")
+        // a loop's menu, in the loop strip
+        strip()
+        longPress("loop-0")
         assertEquals(0, state.slotMenu)
         rule.onNodeWithTag("slotmenu-copy").performClick()
         settle()
@@ -2596,6 +2633,7 @@ class BigTest {
         state.stop()
         settle()
         tab("Steps")
+        strip()
         rule.onNodeWithTag("clear-moves").performScrollTo().performClick()
         settle()
         assertFalse(state.project.pat().hasMotion())
@@ -2619,7 +2657,8 @@ class BigTest {
         rule.onNodeWithTag("menu-mute-0").performClick()
         settle()
         assertTrue(state.project.mutes.contains(state.project.kit[0]))
-        rule.onNodeWithTag("looplen").performClick()
+        strip()
+        rule.onNodeWithTag("loop-double").performClick()
         settle()
         assertEquals(32, state.project.pat().len)
         assertEquals("bar one copies into bar two", state.project.pat().step(k, 1), state.project.pat().step(k, 17))
@@ -2842,6 +2881,90 @@ class BigTest {
         settle()
         assertEquals("Bottle it makes the loop a sound on a free pad", padsBefore + 1, state.project.kit.count { it.isNotEmpty() })
         shot("18-after-import")
+    }
+
+    /** Nov 22 video: a swipe takes back its own hit, the loop strip, the count-in, the tab slot, the Synth page. */
+    @Test fun nov22VideoSwipeCancelLoopsSynth() {
+        // a swipe cancels its own hit: it sounds on touch, then a swipe takes the recorded hit back
+        val k2 = state.project.kit[2]
+        state.edit { for (j in 0 until pats[cur].len) pats[cur].setStep(k2, j, false) }
+        state.setLive { rec = true }
+        state.togglePlay(); repeat(4) { state.engine.render(FloatArray(512), 256) }; state.tick(System.nanoTime()); settle()
+        rule.onNodeWithTag("pad-2").performTouchInput { down(center) }
+        repeat(2) { state.engine.render(FloatArray(512), 256) }; state.tick(System.nanoTime())
+        val hit = (0 until state.project.pat().len).count { state.project.pat().step(k2, it) }
+        assertEquals("the hit records on touch", 1, hit)
+        rule.onNodeWithTag("pad-2").performTouchInput { moveBy(Offset(width * 1.2f, 0f)); up() }
+        repeat(2) { state.engine.render(FloatArray(512), 256) }; state.tick(System.nanoTime()); settle()
+        assertEquals("the swipe took its hit back", 0, (0 until state.project.pat().len).count { state.project.pat().step(k2, it) })
+        assertTrue("and still opened the FX strip", 2 in state.keyboards && "fx" in state.packOf(2))
+        state.toggleKeyboard(2)
+        // a plain tap still records
+        rule.onNodeWithTag("pad-2").performTouchInput { down(center) }
+        repeat(2) { state.engine.render(FloatArray(512), 256) }; state.tick(System.nanoTime())
+        rule.onNodeWithTag("pad-2").performTouchInput { up() }
+        repeat(2) { state.engine.render(FloatArray(512), 256) }; state.tick(System.nanoTime()); settle()
+        assertEquals("a tap stays", 1, (0 until state.project.pat().len).count { state.project.pat().step(k2, it) })
+        state.stop(); state.setLive { rec = false }; settle()
+
+        // the count-in shows in the loop readout
+        state.setLive { rec = true }
+        if (state.countInBars == 0) state.cycleCountIn()
+        state.togglePlay(); repeat(3) { state.engine.render(FloatArray(512), 256) }; state.tick(System.nanoTime()); settle()
+        assertTrue("counting in", state.countNow > 0)
+        assertTrue("the readout counts", rule.onAllNodesWithText("COUNT", substring = true).fetchSemanticsNodes().isNotEmpty())
+        shot("120-count-in")
+        state.stop(); state.setLive { rec = false }; state.engine.render(FloatArray(512), 256); state.tick(System.nanoTime()); settle()
+
+        // the loop readout: swipe it for the next loop; the strip has pad-sized loops, - + 2x, click, count, the song
+        val cur0 = state.project.cur
+        rule.onNodeWithTag("loop-open").performTouchInput { swipeLeft() }; settle()
+        rule.onNodeWithTag("loop-open").performTouchInput { swipeRight() }; settle()
+        assertEquals("left then right comes back", cur0, state.project.cur)
+        rule.onNodeWithTag("loop-open").performTouchInput { swipeRight() }; settle()
+        assertEquals("a swipe right is the next loop", (cur0 + 1) % 8, state.project.cur)
+        strip()
+        for (t in listOf("loop-0", "loop-7", "loop-when", "loop-click", "loop-countin", "loop-minus", "loop-plus", "loop-double", "loop-close", "loop-song", "bottle", "moves-open")) at(t).assertExists()
+        val padH = rule.onNodeWithTag("loop-0").fetchSemanticsNode().boundsInRoot.height
+        val keyH = rule.onNodeWithTag("loop-plus").fetchSemanticsNode().boundsInRoot.height
+        assertTrue("the loops are pad sized, taller than the keys ($padH vs $keyH)", padH > keyH)
+        shot("121-loop-strip")
+        at("loop-song").performClick(); settle()
+        at("song-body").assertExists()
+        shot("122-loop-strip-song")
+        tab("Steps")
+        assertTrue("Steps has no row of loops of its own", rule.onAllNodesWithTag(GONE_SLOT).fetchSemanticsNodes().isEmpty())
+        rule.onNodeWithTag("seq-where").assertExists()
+        assertTrue("Song has no tab", rule.onAllNodesWithTag("tab-Song").fetchSemanticsNodes().isEmpty())
+
+        // the tabs sit in a milled slot; Settings switches back to keys
+        if (state.look == "panel") {
+            rule.onNodeWithTag("tab-slot").assertExists()
+            shot("123-tab-slot")
+            rule.runOnUiThread { state.switchTabSlot() }; settle()
+            assertTrue("keys again", rule.onAllNodesWithTag("tab-slot").fetchSemanticsNodes().isEmpty())
+            rule.onNodeWithTag("tab-Steps").assertExists()
+            rule.runOnUiThread { state.switchTabSlot() }; settle()
+        }
+
+        // Synth: one row of kinds, two switches, no Synthipad, and a pad with a sound takes a second tap to replace
+        state.selectPad(0, false)
+        tab("Synth")
+        at("synthkind-chips").assertExists()
+        assertTrue("no Synthipad", rule.onAllNodesWithTag(GONE_SYNTHIPAD).fetchSemanticsNodes().isEmpty())
+        val before = state.project.kit[0]
+        assertTrue(before.isNotEmpty())
+        at("synth-new-here").performClick(); settle()
+        assertEquals("one tap does not overwrite the pad", before, state.project.kit[0])
+        assertEquals(0, state.replaceArmed)
+        shot("124-synth-page")
+        at("synth-new-here").performClick(); settle()
+        assertTrue("the second tap does", state.project.kit[0] != before)
+        state.undo(); settle()
+        assertEquals("Undo brings it back", before, state.project.kit[0])
+
+        // no flavor text on the playing pages
+        for (t in listOf("Pads", "Steps", "Synth", "Perform")) { tab(t); assertTrue("no help lines on $t", rule.onAllNodesWithTag("help").fetchSemanticsNodes().isEmpty()) }
     }
 
     @Test fun hushStopsEverything() {

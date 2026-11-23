@@ -46,8 +46,8 @@ import com.tideclock.messmachine.engine.Theory
 
 /**
  * The Synth tab (SE-11): the synth on the selected pad, or the scratch synth (Project.SCRATCH, a 65th pad in no
- * bank) when that pad has none. Simple shows the knobs that matter most, Full every knob in groups, Synthipad turns
- * the page into a playing surface. The tile on the left is the synth's pad: tap to play it, swipe it like a grid pad
+ * bank) when that pad has none. Simple shows the knobs that matter most, Full every knob in groups (Synthipad is
+ * gone, Nov 22). The tile on the left is the synth's pad: tap to play it, swipe it like a grid pad
  * (HotKeys), the same swipe again closes what it opened. The keyboard is the Padiano, the same one as on the pads.
  */
 @Composable
@@ -82,21 +82,37 @@ fun SynthScreen(state: AppState) {
                 )
             }
         }
-        // the scratch synth onto a pad: it moves there with what you recorded, a fresh copy stays here
-        if (scratch) Row(Modifier.fillMaxWidth().padding(bottom = 8.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            T("PUT ON", size = 11.sp, color = C.Dim, spacing = .1.em)
-            val empty = state.emptyPadInBank()
-            if (empty >= 0) Btn("Empty pad ${empty + 1}", { state.scratchToPad(empty) }, small = true, tag = "synth-new-empty")
-            Btn("Pad ${sel + 1}", { state.scratchToPad(sel) }, small = true, tag = "synth-new-here")
+        // what kind of synth, in one row (Nov 22, Tyler: the menus took the whole page). Switching starts from that
+        // kind's first preset; Undo brings the old one back. Grain reads a sound off a pad, so scratch has no Grain.
+        Row(Modifier.fillMaxWidth().padding(bottom = 6.dp, end = 4.dp).tagged("synthkind-chips"), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            for (k in Synth.KINDS) if (!scratch || k != Synth.GRAIN) Btn(kindShort(k), { if (sp.kind != k) state.loadSynthPreset(pad, k.presets.first()) }, on = sp.kind == k, onColor = C.Yellow, small = true, tight = true,
+                tag = if (scratch) "scratchkind-${k.id}" else "synthkind-${k.id}", modifier = Modifier.weight(1f))
         }
-        if (scratch && P.kit.getOrNull(sel).orEmpty().isNotEmpty()) Note("Pad ${sel + 1} replaces ${state.lib.titleOf(P.kit[sel])} (Undo brings it back)", modifier = Modifier.padding(bottom = 8.dp))
-        // what kind of synth (switching starts from that kind's first preset; Undo brings the old one back).
-        // Grain reads a sound off a pad, so the scratch synth goes onto a pad first.
-        Wrap(Modifier.padding(bottom = 8.dp).tagged("synthkind-chips"), gap = 6.dp) {
-            for (k in Synth.KINDS) if (!scratch || k != Synth.GRAIN) Btn(k.name, { if (sp.kind != k) state.loadSynthPreset(pad, k.presets.first()) }, on = sp.kind == k, onColor = C.Yellow, small = true, tag = if (scratch) "scratchkind-${k.id}" else "synthkind-${k.id}")
+        // Simple or Full and Poly, Mono or Acid are switches, one tap each; the scratch synth goes onto a pad from here
+        Row(Modifier.fillMaxWidth().padding(bottom = 10.dp, end = 4.dp).tagged("synthview-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            val full = state.synthView == "full"
+            Btn(if (full) "Full" else "Simple", { state.synthView = if (full) "simple" else "full" }, on = full, onColor = C.Teal, small = true, tight = true, tag = "synthview-toggle", modifier = Modifier.weight(1f))
+            sp.kind.params.firstOrNull { it.id == "mode" }?.let { mp ->
+                val m = sp.get("mode").toInt().coerceIn(0, mp.choices.size - 1)
+                Btn(mp.choices[m], { state.setSynth(pad, "mode", ((m + 1) % mp.choices.size).toDouble(), true) }, on = m > 0, onColor = C.Pink, small = true, tight = true, tag = "synthmode-toggle", modifier = Modifier.weight(1f))
+            }
+            if (scratch) {
+                // the scratch synth onto a pad: an empty one in one tap; a pad with a sound on it takes a second tap
+                // (Nov 22: it was too easy to overwrite the snare you had picked)
+                val empty = state.emptyPadInBank()
+                if (empty >= 0) Btn("To pad ${empty + 1}", { state.scratchToPad(empty) }, small = true, tight = true, tag = "synth-new-empty", modifier = Modifier.weight(1.2f))
+                val selFull = P.kit.getOrNull(sel).orEmpty().isNotEmpty()
+                val armed = state.replaceArmed == sel
+                if (!selFull) { if (empty != sel) Btn("To pad ${sel + 1}", { state.scratchToPad(sel) }, small = true, tight = true, tag = "synth-new-here", modifier = Modifier.weight(1.2f)) }
+                else Btn(if (armed) "Replace ${sel + 1}?" else "Over ${sel + 1}", { if (armed) { state.replaceArmed = -1; state.scratchToPad(sel) } else state.armReplace(sel) },
+                    on = armed, onColor = C.Riot, small = true, tight = true, tag = "synth-new-here", modifier = Modifier.weight(1.2f))
+            }
         }
-        Row(Modifier.fillMaxWidth().padding(bottom = 12.dp, end = 4.dp).tagged("synthview-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            for ((id, n) in listOf("simple" to "Simple", "full" to "Full", "pad" to "Synthipad")) Btn(n, { state.synthView = id }, on = state.synthView == id, onColor = C.Teal, small = true, tight = true, tag = "synthview-$id", modifier = Modifier.weight(n.length + 3f))
+        // the model choice some kinds have (drums' kit, the plucked string's body)
+        sp.kind.params.firstOrNull { it.id == "model" }?.let { mp ->
+            Wrap(Modifier.padding(bottom = 10.dp).tagged("synthmodel-chips")) {
+                for ((i, n) in mp.choices.withIndex()) Btn(n, { state.setSynth(pad, "model", i.toDouble(), true) }, on = sp.get("model").toInt() == i, onColor = C.Pink, small = true, tag = "synthmodel-$i")
+            }
         }
         // SE-15: a granular synth reads one of the mess's sounds
         if (sp.kind == Synth.GRAIN) {
@@ -107,30 +123,17 @@ fun SynthScreen(state: AppState) {
                 else Select(state.lib.titleOf(sp.src).ifEmpty { "Pick a sound" }, srcs.map { it to state.lib.titleOf(it) }, { k -> state.setGrainSource(pad, k) }, modifier = Modifier.weight(1f), tag = "grain-src")
             }
         }
-        val keys = @Composable {
-            if (state.synthKeysHidden) Note("Keys folded away: swipe the pad down (or your Padiano swipe) to bring them back.", modifier = Modifier.padding(top = 4.dp))
-            else PianoKeyboard(state, pad, close = false)
-        }
-        when (state.synthView) {
-            "full" -> {
-                ModeChips(state, pad, sp)
-                for (g in sp.kind.params.map { it.group }.distinct()) {
-                    val ps = sp.kind.params.filter { it.group == g && it.id != "mode" && it.id != "model" }
-                    if (ps.isEmpty()) continue
-                    T(g.uppercase(), size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 6.dp, bottom = 4.dp))
-                    KnobRows(state, pad, sp, ps, "knobs-${g.lowercase().replace(' ', '-')}-chips")
-                }
-                Spacer(Modifier.height(10.dp))
-                keys()
+        val keys = @Composable { if (!state.synthKeysHidden) PianoKeyboard(state, pad, close = false) }
+        if (state.synthView == "full") {
+            for (g in sp.kind.params.map { it.group }.distinct()) {
+                val ps = sp.kind.params.filter { it.group == g && it.id != "mode" && it.id != "model" }
+                if (ps.isEmpty()) continue
+                T(g.uppercase(), size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 6.dp, bottom = 4.dp))
+                KnobRows(state, pad, sp, ps, "knobs-${g.lowercase().replace(' ', '-')}-chips")
             }
-            "pad" -> Synthipad(state, pad, sp)
-            else -> {
-                ModeChips(state, pad, sp)
-                KnobRows(state, pad, sp, sp.kind.params.filter { it.simple && it.id != "mode" && it.id != "model" }, "knobs-simple-chips")
-                Help(sp.kind.blurb + " Full has every knob.", modifier = Modifier.padding(top = 4.dp, bottom = 10.dp))
-                keys()
-            }
-        }
+            Spacer(Modifier.height(10.dp))
+        } else KnobRows(state, pad, sp, sp.kind.params.filter { it.simple && it.id != "mode" && it.id != "model" }, "knobs-simple-chips")
+        keys()
         T(" ", size = 30.sp)
     }
 }
@@ -179,20 +182,8 @@ private fun SynthPadTile(state: AppState, pad: Int, sp: Synth.Patch) {
     }
 }
 
-/** Mode (Poly, Mono, Acid) and, for drums, the model: choices you pick, not knobs you turn. */
-@Composable
-private fun ModeChips(state: AppState, pad: Int, sp: Synth.Patch) {
-    sp.kind.params.firstOrNull { it.id == "mode" }?.let { mp ->
-        Row(Modifier.fillMaxWidth().padding(bottom = 10.dp, end = 4.dp).tagged("synthmode-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            for ((i, n) in mp.choices.withIndex()) Btn(n, { state.setSynth(pad, "mode", i.toDouble(), true) }, on = sp.get("mode").toInt() == i, onColor = C.Pink, small = true, tag = "synthmode-$i", modifier = Modifier.weight(1f))
-        }
-    }
-    sp.kind.params.firstOrNull { it.id == "model" }?.let { mp ->
-        Wrap(Modifier.padding(bottom = 10.dp).tagged("synthmodel-chips")) {
-            for ((i, n) in mp.choices.withIndex()) Btn(n, { state.setSynth(pad, "model", i.toDouble(), true) }, on = sp.get("model").toInt() == i, onColor = C.Pink, small = true, tag = "synthmodel-$i")
-        }
-    }
-}
+/** Short names so every kind fits in one row (Nov 22). */
+fun kindShort(k: Synth.Kind): String = when (k.name.lowercase()) { "wavetable" -> "Wave"; "granular" -> "Grain"; "drums" -> "Drum"; else -> k.name }
 
 /** Knobs four to a row; choice knobs show as a knob too, stepping through their choices. */
 @Composable
@@ -289,97 +280,3 @@ fun Knob(pm: Synth.Param, value: Double, set: (Double, Boolean) -> Unit, modifie
     }
 }
 
-/**
- * Synthipad: the page as a playing surface. Four rows of in-key notes over two octaves (more fingers, more
- * notes) under an XY square for the filter: across is cutoff, up is resonance.
- */
-@Composable
-private fun Synthipad(state: AppState, pad: Int, sp: Synth.Patch) {
-    val P = state.project
-    val cutP = sp.kind.params.firstOrNull { it.id == "cut" }
-    val resP = sp.kind.params.firstOrNull { it.id == "res" }
-    if (cutP != null && resP != null) {
-        val x = cutP.toKnob(sp.get("cut")).toFloat()
-        val y = resP.toKnob(sp.get("res")).toFloat()
-        Box(Modifier.fillMaxWidth().padding(end = 4.dp, bottom = 10.dp)) {
-            val h = 150.dp
-            Canvas(
-                Modifier.fillMaxWidth().height(h).sticker(C.Card2).tagged("synthipad-xy")
-                    .pointerInput(pad) {
-                        awaitEachGesture {
-                            val d = awaitFirstDown()
-                            fun at(o: Offset, commit: Boolean) {
-                                val kx = (o.x / size.width).coerceIn(0f, 1f).toDouble()
-                                val ky = (1 - o.y / size.height).coerceIn(0f, 1f).toDouble()
-                                state.setSynth(pad, "cut", cutP.fromKnob(kx), false)
-                                state.setSynth(pad, "res", resP.fromKnob(ky), commit)
-                            }
-                            at(d.position, false)
-                            var lastPos = d.position
-                            while (true) {
-                                val ev = awaitPointerEvent()
-                                val c = ev.changes.firstOrNull { it.id == d.id } ?: break
-                                if (!c.pressed) break
-                                lastPos = c.position
-                                at(c.position, false)
-                                c.consume()
-                            }
-                            at(lastPos, true)
-                        }
-                    },
-            ) {
-                drawCircle(C.Teal, 14.dp.toPx(), Offset(x * size.width, (1 - y) * size.height))
-                drawLine(C.Dim.copy(alpha = .4f), Offset(x * size.width, 0f), Offset(x * size.width, size.height), strokeWidth = 1.dp.toPx())
-                drawLine(C.Dim.copy(alpha = .4f), Offset(0f, (1 - y) * size.height), Offset(size.width, (1 - y) * size.height), strokeWidth = 1.dp.toPx())
-            }
-            T("CUTOFF ${cutP.show(sp.get("cut"))} · RESONANCE ${resP.show(sp.get("res"))}", size = 10.sp, color = C.Dim, spacing = .04.em, modifier = Modifier.padding(start = 8.dp, top = 6.dp))
-        }
-    }
-    // key, chords and Hold: on the bottom dock, which stays on screen (build 84)
-    // four rows of in-key notes, lowest at the bottom, like a pad controller
-    val scale = if (P.scale == "Chromatic") "Major" else P.scale
-    val notes = (-12..24).filter { Theory.inScale(it, scale, P.root) }.take(16 + 4).let { all -> if (all.size >= 16) all.take(16) else all }
-    val rows = notes.chunked(4).reversed()
-    var down by remember(pad) { mutableStateOf(setOf<Int>()) }
-    Column(
-        Modifier.fillMaxWidth().padding(end = 4.dp).tagged("synthipad-notes")
-            .pointerInput(pad, notes) {
-                awaitEachGesture {
-                    val active = HashMap<PointerId, Int>()
-                    do {
-                        val ev = awaitPointerEvent()
-                        val cellW = size.width / 4f
-                        val cellH = size.height / rows.size.toFloat()
-                        for (c in ev.changes) {
-                            val cur = active[c.id]
-                            if (c.pressed) {
-                                val col = (c.position.x / cellW).toInt()
-                                val row = (c.position.y / cellH).toInt()
-                                val n = rows.getOrNull(row)?.getOrNull(col)
-                                if (n != cur) {
-                                    if (cur != null) state.pianoUp(pad, cur)
-                                    if (n != null) { state.pianoDown(pad, n); active[c.id] = n } else active.remove(c.id)
-                                }
-                                c.consume()
-                            } else if (cur != null) { state.pianoUp(pad, cur); active.remove(c.id) }
-                        }
-                        down = active.values.toSet()
-                    } while (ev.changes.any { it.pressed })
-                    for (n in active.values) state.pianoUp(pad, n)
-                    down = emptySet()
-                }
-            },
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        for (row in rows) Row(Modifier.fillMaxWidth().height(64.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            for (n in row) {
-                val root = Theory.pcOf(n - P.root) == 0
-                Box(Modifier.weight(1f).height(64.dp).sticker(if (n in down) C.Teal else if (root) C.Pink.copy(alpha = .55f) else C.Card2), contentAlignment = Alignment.Center) {
-                    T(Theory.noteName(n), size = 12.sp, color = if (n in down) C.Ink else C.Cream)
-                }
-            }
-            repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
-        }
-    }
-    Help("Steps and Roll play this synth on pad ${pad + 1}. Hold and Repeat work here too.", modifier = Modifier.padding(top = 10.dp))
-}

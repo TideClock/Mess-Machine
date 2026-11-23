@@ -107,6 +107,18 @@ Rewritten at the end of every session and at each step of a long job (BT-2). Rea
 
 One line each, dated, with the reason and who decided (BT-2). Older decisions live in the plan sections below.
 
+- 2026-11-22 Loops and the cut (Tyler's video and his answers to the cut/look review): the loop strip under the top
+  bar is the one place for loops: pad-sized A to H (hold for the loop menu), Wait bar/Now, Click, Count (with Rec on,
+  Play from a stop counts in off/1/2 bars), - + 2x (any 1 to 8 bars; + adds an empty bar), the loop's bars, Copy to,
+  Clear, Auto, Bottle it and the Song painter. Steps, Roll and Song lost their own loop and bar rows (a one-line "where"
+  chip opens the strip); Song has no tab. The loop readout swipes for the previous/next loop. The click is on by
+  default. A swipe off a pad cancels its own hit without adding latency: the hit sounds on touch, and once the finger
+  has gone 44 dp inside 300 ms its voice fades in 6 ms and a recorded hit is taken back (only if it turned the step on).
+  Swipe right opens the FX vials as a strip under the row in every layout, two rows of wider vials on a phone. Synth:
+  one row of kinds, Simple/Full and Poly/Mono/Acid as one-tap switches, Synthipad removed, replacing a pad that has a
+  sound takes a second tap. Look: only the milled tab slot with the raised current tab (Settings, Look, Tabs: keys
+  goes back) and readouts that shrink to fit; help lines are off for everyone (Explain in Settings brings them back).
+  Not built, per Tyler: the edit tray stopping above the dock, Song inside Seq, the rest of the look spec.
 - 2026-11-21 Video review (Tyler, build 130): lamps sit in a metal lip under each key, only on keys that switch
   something; icons as big as the cap allows; keys widen with the screen up to a cap (UiLook.widthDp). Swipes off a
   pad are HotKeys in Settings, one action per direction (defaults: up Edit, down Padiano, left Sample, right FX).

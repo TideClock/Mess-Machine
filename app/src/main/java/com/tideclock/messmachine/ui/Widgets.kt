@@ -54,6 +54,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -224,18 +225,18 @@ fun Modifier.bakelite(on: Boolean, lamp: Color, pressed: Boolean, danger: Boolea
  * the panel comes off. An X with a reason to be there.
  */
 @Composable
-fun CloseScrew(onClick: () -> Unit, tag: String, modifier: Modifier = Modifier, label: String = "Close") {
+fun CloseScrew(onClick: () -> Unit, tag: String, modifier: Modifier = Modifier, label: String = "Close", small: Boolean = false) {
     val src = remember { MutableInteractionSource() }
     val pressed by src.collectIsPressedAsState()
     val turn by androidx.compose.animation.core.animateFloatAsState(if (pressed) 90f else 0f, androidx.compose.animation.core.tween(160), label = "screw")
     Box(
-        modifier.size((44f / UiLook.scale.coerceIn(.5f, 1.5f)).coerceAtLeast(36f).dp)
+        modifier.size(if (small) 34.dp else (44f / UiLook.scale.coerceIn(.5f, 1.5f)).coerceAtLeast(36f).dp)
             .clickable(src, indication = null, enabled = true, onClickLabel = label) { onClick() }
             .tagged(tag)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        Canvas(Modifier.size(30.dp)) {
+        Canvas(Modifier.size(if (small) 20.dp else 30.dp)) {
             val c = center; val rad = size.minDimension / 2
             drawCircle(Color.Black.copy(alpha = .5f), rad, Offset(c.x + 1.5f, c.y + 2.5f))
             drawCircle(Brush.radialGradient(listOf(Hw.MetalHi, Hw.Metal, Hw.MetalLow), center = Offset(c.x - rad * .35f, c.y - rad * .4f), radius = rad * 1.6f), rad, c)
@@ -383,6 +384,19 @@ fun T(
     text: String, modifier: Modifier = Modifier, color: Color = C.Cream, size: TextUnit = 14.sp,
     weight: FontWeight = FontWeight.ExtraBold, lines: Int = Int.MAX_VALUE, family: FontFamily = Archivo, spacing: TextUnit = TextUnit.Unspecified,
 ) {
+    if (lines == 1 && size.isSp) {
+        // Nov 22 (Tyler: readouts never cut off): a one-line text that doesn't fit shrinks until it does (down to 60%),
+        // instead of ending in "..."; only past that does it cut. It is drawn once it fits, so it never flickers big.
+        var scale by remember(text, size) { mutableFloatStateOf(1f) }
+        var fits by remember(text, size) { mutableStateOf(false) }
+        Text(
+            text, modifier = modifier.drawWithContent { if (fits) drawContent() }, color = color, maxLines = 1, softWrap = false,
+            overflow = if (scale <= .62f) TextOverflow.Ellipsis else TextOverflow.Clip,
+            style = TextStyle(fontFamily = family, fontWeight = weight, fontSize = size * scale, lineHeight = size * 1.25f, letterSpacing = spacing),
+            onTextLayout = { r -> if (r.didOverflowWidth && scale > .62f) scale *= .9f else fits = true },
+        )
+        return
+    }
     Text(
         text, modifier = modifier, color = color, maxLines = lines, overflow = TextOverflow.Ellipsis,
         style = TextStyle(fontFamily = family, fontWeight = weight, fontSize = size, lineHeight = size * 1.25f, letterSpacing = spacing)

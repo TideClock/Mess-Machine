@@ -55,6 +55,8 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.draw.alpha
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalDensity
@@ -333,10 +335,19 @@ fun Transport(state: AppState) {
         // the loop: where the music is; tap for the row of loops A to H (a pick waits for the bar line while playing)
         Box(
             Modifier.weight(if (state.look == "panel") 1.7f else .9f).height(36.dp).let { if (state.look == "panel") it.lcd(lit = state.loopStripOpen || state.pendingSlot >= 0) else it.sticker(if (state.loopStripOpen) C.Card2 else C.Black, shadow = 2.dp, border = 2.dp, borderColor = if (state.pendingSlot >= 0) C.Yellow else C.Cream) }
+                // Nov 22 (Tyler's video, the loop): swipe it for the next or previous loop, tap for the strip
+                .pointerInput(free) {
+                    if (!free) return@pointerInput
+                    var dx = 0f
+                    androidx.compose.foundation.gestures.detectHorizontalDragGestures(
+                        onDragStart = { dx = 0f },
+                        onDragEnd = { val far = 28.dp.toPx(); if (dx > far) state.stepLoop(1) else if (dx < -far) state.stepLoop(-1) },
+                    ) { ch, d -> dx += d; ch.consume() }
+                }
                 .clickable(enabled = free) { state.loopStripOpen = !state.loopStripOpen }.tagged("loop-open"),
             contentAlignment = Alignment.Center,
         ) {
-            T(if (state.pendingSlot >= 0) "→ " + com.tideclock.messmachine.engine.Project.LETTERS[state.pendingSlot] else position(state), size = if (state.look == "panel") 12.sp else 10.sp, color = if (state.look == "panel") Hw.Amber else C.Yellow, lines = 1, family = if (state.look == "panel") Lcd else Mono, weight = FontWeight.Bold, modifier = Modifier.tagged("position"))
+            T(if (state.countNow > 0) "COUNT ${state.countNow}" else if (state.pendingSlot >= 0) "→ " + com.tideclock.messmachine.engine.Project.LETTERS[state.pendingSlot] else position(state), size = if (state.look == "panel") 12.sp else 10.sp, color = if (state.look == "panel") Hw.Amber else C.Yellow, lines = 1, family = if (state.look == "panel") Lcd else Mono, weight = FontWeight.Bold, modifier = Modifier.tagged("position"))
         }
         // What the FAQ (Tyler's name): tap it, then tap anything to learn what it is. Page help moved onto its card
         BarBtn(state, "?", "What the FAQ", { state.switchFaq() }, on = state.faqOn, onColor = C.Teal, tag = "help-toggle", tier = Tier.Quiet, word = "FAQ", modifier = Modifier.weight(if (state.look == "panel") 1f else .55f))
@@ -540,6 +551,11 @@ fun Tabs(state: AppState) {
         // the bug button in the bottom left corner of every page (note #16). Note #20: tap, talk, tap again, and the
         // note waits on the phone. Red while listening or when a crash waits (then it opens the note box)
         val hot = state.crash != null || state.quickText != null
+        if (state.look == "panel" && state.tabSlot) {
+            BarBtn(state, "🐞", "Notes (bug)", { state.bugTap() }, on = hot, onColor = C.Riot, enabled = !state.locked || state.quickText != null, tag = "notes", word = if (state.quickText != null) "Talk" else "Note")
+            TabSlot(state, Modifier.weight(1f))
+            return@Row
+        }
         if (state.look != "classic") {
             // the Pro looks: icon tiles (the bug is red while listening or when a crash waits)
             BarBtn(state, "🐞", "Notes (bug)", { state.bugTap() }, on = hot, onColor = C.Riot, enabled = !state.locked || state.quickText != null, tag = "notes", word = if (state.quickText != null) "Talk" else "Note")
@@ -577,6 +593,47 @@ fun Tabs(state: AppState) {
 }
 
 
+/**
+ * Nov 22 (Tyler, from the look review): the page tabs sit in one milled slot cut into the rail; the page you are on is
+ * the one raised block, the others are engraved flat into the slot. Settings, Look has "Tabs: keys" to go back.
+ */
+@Composable
+fun TabSlot(state: AppState, modifier: Modifier) {
+    Row(
+        modifier.padding(start = 4.dp).drawBehind {
+            val r = androidx.compose.ui.geometry.CornerRadius(7.dp.toPx())
+            // the slot: cut into the plate, dark at the top edge where the light can't reach
+            drawRoundRect(Color(0xFF14110F), cornerRadius = r)
+            drawRoundRect(Brush.verticalGradient(listOf(Color.Black.copy(alpha = .55f), Color.Transparent), endY = 10.dp.toPx()), cornerRadius = r)
+            drawRoundRect(Color.White.copy(alpha = .08f), topLeft = Offset(0f, size.height - 1.5f), size = androidx.compose.ui.geometry.Size(size.width, 1.5f))
+        }.padding(horizontal = 3.dp, vertical = 3.dp).tagged("tab-slot"),
+        horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically,
+    ) {
+        for (t in com.tideclock.messmachine.BAR_TABS) {
+            val play = t == Tab.Pads
+            val on = state.tab == t || (play && state.tab == Tab.Console) || (t == Tab.Steps && state.tab == Tab.Roll)
+            val icon = when (t) { Tab.Pads -> "Play tab"; Tab.Synth -> "Synth"; Tab.Steps -> "Steps"; Tab.Roll -> "Roll"; Tab.Song -> "Song"; Tab.Perform -> "FX"; else -> "Sounds" }
+            val word = if (play) "Play" else if (t == Tab.Steps) "Seq" else t.label
+            val res = Icons.all[icon]?.first
+            Column(
+                Modifier.weight(1f).clickable(enabled = !state.locked) { if (play) state.openPlay() else state.tab = t }.tagged("tab-${t.label}")
+                    .semantics { selected = on }.alpha(if (state.locked) .45f else 1f),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                val capH = ((UiLook.widthDp / 7f).coerceIn(48f, 96f) * UiLook.big * .62f).coerceIn(34f, 54f)
+                Box(
+                    Modifier.fillMaxWidth().height(capH.dp).let { if (on) it.bakelite(true, C.Yellow, false, lamped = false).padding(bottom = UiLook.lip) else it },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (res != null) Box(Modifier.alpha(if (on) 1f else .5f)) { InlayIcon(res, (capH - 12f).dp, on, word) }
+                    else T(word.uppercase(), size = 10.sp, color = Hw.Engrave, lines = 1, family = Stencil)
+                }
+                if (state.proWords) T(word.uppercase(), size = (8f * UiLook.big).sp, color = if (on) C.Yellow else Hw.Engrave.copy(alpha = .55f), lines = 1, family = Stencil, weight = FontWeight.Normal, modifier = Modifier.padding(top = 2.dp))
+            }
+        }
+    }
+}
+
 /** Note #20: while the bug button listens, what it heard so far, with Keep and Drop. Sits just above the tabs. */
 @Composable
 fun QuickNoteBar(state: AppState, modifier: Modifier = Modifier) {
@@ -607,16 +664,81 @@ fun UpdateBar(state: AppState) {
 }
 
 
-/** Loops A to H from any page (Nov 18). Lit letters have something in them; while playing a pick waits for the bar line.
+/**
+ * The loop strip (Nov 22, Tyler's video): the one place for loops. Pad-sized loops A to H, then when a pick lands,
+ * the click and the count-in, and - + 2x for the loop you are in; its bars, its tools, and the song painter.
+ * Steps, Roll and Song no longer carry their own rows of loops and bars.
  */
 @Composable
 fun LoopStrip(state: AppState) {
-    // Nov 21: the mute rows that rode here were a wall of keys; mutes are MUTE on the dock (the pads become the switches)
-    Box(Modifier.fillMaxWidth().background(C.Ink).tagged("loopstrip").padding(horizontal = 8.dp, vertical = 6.dp)) {
-        LoopKeys(state, close = true)
+    val P = state.project
+    val bars = P.pat().len / 16
+    val tall = (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp / state.uiScale * .62f).dp
+    @Suppress("UNUSED_VARIABLE") val lv = state.liveV
+    Column(
+        Modifier.fillMaxWidth().background(C.Ink).tagged("loopstrip").heightIn(max = tall)
+            .verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            for (i in 0 until com.tideclock.messmachine.engine.Project.NSLOTS) LoopPad(state, i, Modifier.weight(1f))
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Btn(if (state.loopAtBar) "Wait bar" else "Now", { state.switchLoopAtBar() }, small = true, tight = true, on = state.loopAtBar, onColor = C.Teal, tag = "loop-when")
+            Btn("Click", { state.switchClick() }, small = true, tight = true, on = state.live.click, onColor = C.Yellow, tag = "loop-click")
+            Btn(if (state.countInBars == 0) "Count off" else "Count ${state.countInBars}", { state.cycleCountIn() }, small = true, tight = true, on = state.countInBars > 0, onColor = C.Yellow, tag = "loop-countin")
+            Box(Modifier.weight(1f))
+            Btn("−", { state.dropBar() }, small = true, tight = true, enabled = bars > 1, tag = "loop-minus")
+            Btn("+", { state.addBar() }, small = true, tight = true, enabled = bars < 8, tag = "loop-plus")
+            Btn("2×", { state.doubleLoop() }, small = true, tight = true, enabled = bars <= 4, tag = "loop-double")
+            CloseScrew({ state.loopStripOpen = false }, tag = "loop-close", label = "Close the loops", small = true)
+        }
+        // the bars of this loop: pick the one Steps and Roll show
+        if (bars > 1) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+            T("BAR", size = 11.sp, color = C.Dim, spacing = .1.em)
+            for (b in 0 until bars) Btn("${b + 1}", { state.page = b }, on = state.page == b, small = true, tight = true, tag = if (b == 1) "page2" else "page-${b + 1}", modifier = Modifier.weight(1f))
+        }
+        Wrap(gap = 6.dp) {
+            Select("Copy to", (0 until com.tideclock.messmachine.engine.Project.NSLOTS).filter { it != P.cur }.map { it to "Loop ${com.tideclock.messmachine.engine.Project.LETTERS[it]}" }, { state.copySlotTo(it) })
+            Btn("Clear loop", { state.clearSlot() }, small = true, enabled = P.pat().used(), tier = Tier.Danger, tag = "loop-clear")
+            Btn("Auto", { state.movesOpen = !state.movesOpen }, on = state.movesOpen, onColor = C.Teal, small = true, tag = "moves-open")
+            if (P.pat().hasMotion()) Btn("Clear auto", { state.clearMoves() }, small = true, tag = "clear-moves")
+            Btn("Bottle it", { state.bottleIt() }, small = true, color = C.Pink, enabled = P.pat().used(), tag = "bottle")
+            Btn("Song", { state.songOpen = !state.songOpen }, on = state.songOpen || P.songMode, onColor = C.Pink, small = true, tag = "loop-song")
+        }
+        if (state.movesOpen) MovesPanel(state)
+        if (state.songOpen) SongBody(state)
     }
 }
 
+/** One loop in the strip, pad sized: tap picks it (at the bar line while playing), hold for its menu. */
+@Composable
+fun LoopPad(state: AppState, i: Int, modifier: Modifier) {
+    val P = state.project
+    val used = P.pats[i].used(); val cur = P.cur == i; val wait = state.pendingSlot == i
+    val playingHere = state.playing && state.heardPat == i
+    val L = com.tideclock.messmachine.engine.Project.LETTERS[i]
+    Box(
+        modifier.height(48.dp)
+            .sticker(if (cur) C.Yellow else if (wait) C.Pink else if (used) C.Card2 else C.Ink, shadow = if (cur) 1.dp else 3.dp, border = if (playingHere) 4.dp else 2.5.dp, borderColor = if (playingHere) C.Pink else C.Cream)
+            .tapOrHold(i, { state.pickLoop(i) }, { if (!state.locked) state.slotMenu = i })
+            .tagged("loop-$i"),
+        contentAlignment = Alignment.Center,
+    ) {
+        T(L.toString(), size = 18.sp, weight = FontWeight.Black, color = if (cur || wait) C.Ink else if (used) C.Cream else C.Empty)
+        if (used && !cur) Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 4.dp).size(6.dp).background(C.Letters[i]))
+        val n = P.pats[i].len / 16
+        if (n > 1) T("$n", size = 9.sp, color = if (cur || wait) C.Ink else C.Dim, family = Mono, weight = FontWeight.Bold, modifier = Modifier.align(Alignment.TopEnd).padding(end = 4.dp, top = 2.dp))
+        HoldMenu(state.slotMenu == i, "Loop $L", { state.slotMenu = -1 }, listOfNotNull(
+            Triple("Play loop $L", "slotmenu-pick") { state.selectSlot(i) },
+            Triple("Copy to the next empty loop", "slotmenu-copy") { state.copySlotToNextEmpty(i) },
+            Triple("Clear loop $L", "slotmenu-clear") { state.clearSlotAt(i) },
+            if (P.pats[i].hasMotion()) Triple("Clear its auto", "slotmenu-moves") { state.edit { pats[i].motion.clear() } } else null,
+        ))
+    }
+}
+
+/** The letters alone (the Perform page keeps them on the page itself). */
 @Composable
 fun LoopKeys(state: AppState, close: Boolean) {
     val P = state.project
@@ -626,7 +748,6 @@ fun LoopKeys(state: AppState, close: Boolean) {
             Btn(com.tideclock.messmachine.engine.Project.LETTERS[i].toString(), { state.pickLoop(i) }, on = cur || wait, onColor = if (wait) C.Pink else C.Yellow,
                 color = if (used) C.Card2 else C.Ink, small = true, tight = true, tag = "loop-$i", modifier = Modifier.weight(1f))
         }
-        // Nov 21: "Bar" read like a way to add bars; it says when a picked loop takes over: at the bar line, or now
         Btn(if (state.loopAtBar) "Wait bar" else "Now", { state.switchLoopAtBar() }, small = true, on = state.loopAtBar, onColor = C.Teal, tag = "loop-when")
         if (close) CloseScrew({ state.loopStripOpen = false }, tag = "loop-close", label = "Close the loops")
     }
@@ -642,14 +763,29 @@ fun Modifier.watchTouches(state: AppState): Modifier = composed {
     val dens = LocalDensity.current
     this.onGloballyPositioned { origin = it.boundsInRoot().topLeft }.pointerInput(Unit) {
         awaitPointerEventScope {
-            var downAt = Offset.Zero; var downT = 0L; var downTag: String? = null
+            var downAt = Offset.Zero; var downT = 0L; var downTag: String? = null; var cancelled = false
             while (true) {
                 val e = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
                 for (c in e.changes) {
                     if (c.pressed && !c.previousPressed) {
-                        downAt = c.position; downT = c.uptimeMillis
+                        downAt = c.position; downT = c.uptimeMillis; cancelled = false
                         downTag = settingsTagAt(c.position + origin, state)
                         state.noteTouch(downTag)
+                    } else if (c.pressed && c.previousPressed && !cancelled && state.padFlick && downTag?.startsWith("pad-") == true && c.uptimeMillis - downT < 300) {
+                        // Nov 22 (Tyler): a swipe cancels its own hit. The hit already sounded on touch (no added
+                        // latency); the moment the finger has gone far enough to be a swipe, it fades out and a
+                        // recorded hit is taken back
+                        val dy = downAt.y - c.position.y; val sx = c.position.x - downAt.x
+                        val dx = kotlin.math.abs(sx); val ady = kotlin.math.abs(dy)
+                        val far = with(dens) { 44.dp.toPx() }
+                        val dir = when {
+                            dy > far && dx < dy / 2 -> "up"
+                            -dy > far && dx < ady / 2 -> "down"
+                            sx < -far && ady < dx / 2 -> "left"
+                            sx > far && ady < dx / 2 -> "right"
+                            else -> null
+                        }
+                        if (dir != null && state.swipeDoes(dir)) { cancelled = true; downTag!!.substringAfterLast('-').toIntOrNull()?.let { state.cancelPadHit(it) } }
                     } else if (!c.pressed && c.previousPressed) {
                         val dy = downAt.y - c.position.y; val dx = kotlin.math.abs(c.position.x - downAt.x)
                         val sx = c.position.x - downAt.x; val ady = kotlin.math.abs(dy)

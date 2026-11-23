@@ -171,10 +171,12 @@ class AuditTest {
         state.tab = Tab.Steps; settle(); state.openStepSheet(state.project.kit[0], 0); settle(); audit(width, "Step sheet", "stepsheet"); state.stepSheet = null; state.tab = Tab.Pads; settle()
         state.tab = Tab.Console; settle(); audit(width, "My Desk")
         // the other tabs
-        for (t in listOf(Tab.Steps, Tab.Roll, Tab.Song, Tab.Sounds)) { state.tab = t; settle(); audit(width, t.label) }
+        for (t in listOf(Tab.Steps, Tab.Roll, Tab.Sounds)) { state.tab = t; settle(); audit(width, t.label) }
+        // Nov 22: the loop strip carries the loops, their tools and the song
+        state.loopStripOpen = true; state.songOpen = true; settle(); audit(width, "Loop strip with song"); state.songOpen = false; state.loopStripOpen = false; settle()
         state.tab = Tab.Synth; settle(); audit(width, "Synth none")
         go("synth-new-empty")
-        for (v in listOf("simple", "full", "pad")) { state.synthView = v; settle(); audit(width, "Synth $v") }
+        for (v in listOf("simple", "full")) { state.synthView = v; settle(); audit(width, "Synth $v") }
         state.synthView = "simple"
         go("keysbar-open"); audit(width, "Synth keys bar open"); go("keysbar-open")
         // the MIDI map over the Synth tab and the Play tab

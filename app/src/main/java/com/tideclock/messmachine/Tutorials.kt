@@ -126,13 +126,6 @@ object Tutorials {
                 s.synthOn(s.project.sel)?.kind?.id?.let { c.seen.add(it) }; c.seen.count { it != "analog" } >= 3
             },
         )),
-        Tutorial("synthipad", "Synths", "Synthipad", "The Synth page as a playing surface: in-key notes and a filter square.", listOf(
-            TutStep("Tap SYNTH.", t("tab-Synth")) { s, _ -> s.tab == Tab.Synth },
-            TutStep("Tap Synthipad.", t("synthview-pad")) { s, c -> (s.synthView == "pad").also { if (it) c.num0 = cut(s) } },
-            TutStep("Play the note grid. More fingers, more notes.", t("synthipad-notes")) { s, c -> played(s, c, 3) },
-            TutStep("Drag in the square: across is cutoff, up is resonance.", t("synthipad-xy")) { s, c -> Math.abs(cut(s) - c.num0) > 1 },
-            TutStep("Back to Simple.", t("synthview-simple")) { s, _ -> s.synthView == "simple" },
-        )) { s -> s.newSynth(Project.BANK - 1, Synth.ANALOG.presets.first()); s.tab = Tab.Pads },
         Tutorial("steps", "Writing", "Steps", "Program a beat on the step grid and play it.", listOf(
             TutStep("Tap STEPS.", t("tab-Steps")) { s, _ -> s.tab == Tab.Steps },
             TutStep("Tap a few steps on the first row.", t("steps-0")) { s, c -> s.version >= c.v0 + 3 },
@@ -183,14 +176,14 @@ object Tutorials {
         )),
         Tutorial("song", "Writing", "Song", "Chain loops into a song, bar by bar.", listOf(
             TutStep("Tap STEPS and tap a few steps, so loop A has something in it.", t("tab-Steps")) { s, _ -> s.project.pat().used() },
-            TutStep("Tap SONG.", t("tab-Song")) { s, _ -> s.tab == Tab.Song },
+            TutStep("Tap the loop readout at the top, then Song.", { s -> if (s.loopStripOpen) "loop-song" else "loop-open" }) { s, _ -> s.songOpen },
             TutStep("Tap a few bars to fill them with the loop.", t("bar-0")) { s, _ -> s.project.songLen() > 0 },
             TutStep("Press Play: it plays the song, bar by bar.", t("play")) { s, _ -> s.playing },
             TutStep("Press Stop.", t("stop")) { s, _ -> !s.playing },
         )),
         Tutorial("bottle", "Writing", "Bottle it", "Turn the loop you made into one sound on a pad.", listOf(
             TutStep("Tap STEPS and tap a few steps.", t("tab-Steps")) { s, _ -> s.project.pat().used() },
-            TutStep("Tap Bottle it. The loop becomes a sound on a free pad.", t("bottle")) { s, c -> s.project.kit.count { it.isNotEmpty() } > c.kit0 },
+            TutStep("Tap the loop readout at the top, then Bottle it. The loop becomes a sound on a free pad.", { s -> if (s.loopStripOpen) "bottle" else "loop-open" }) { s, c -> s.project.kit.count { it.isNotEmpty() } > c.kit0 },
             TutStep("Tap PLAY and play the new pad.", t("tab-Pads")) { s, c -> s.tab == Tab.Pads && played(s, c, 1) },
         )),
         Tutorial("mic", "Sounds", "Record onto a pad", "Any empty pad is a record button: catch a sound with the mic.", listOf(

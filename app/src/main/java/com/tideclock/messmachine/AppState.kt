@@ -31,7 +31,8 @@ import java.util.concurrent.Executors
 enum class Tab(val label: String) { Pads("Pads"), Console("Console"), Synth("Synth"), Steps("Steps"), Roll("Roll"), Song("Song"), Perform("Perform"), Sounds("Sounds") }
 
 /** The tabs on the bar (Nov 21): Steps and Roll share one Sequence tab, and Perform sits next to Song. */
-val BAR_TABS = listOf(Tab.Pads, Tab.Synth, Tab.Steps, Tab.Song, Tab.Perform, Tab.Sounds)
+// Nov 22: Song moved into the loop strip (Tyler: the bars are managed there), so it has no tab of its own
+val BAR_TABS = listOf(Tab.Pads, Tab.Synth, Tab.Steps, Tab.Perform, Tab.Sounds)
 
 /**
  * One piece of Your Console. type picks what it is, pad which pad it plays (pianos, filters, a pad
@@ -152,6 +153,8 @@ class AppState(private val app: Context) {
     private val main = Handler(Looper.getMainLooper())
     private val worker = Executors.newSingleThreadExecutor()
     private val prefs = app.getSharedPreferences("mess", Context.MODE_PRIVATE)
+    // the metronome is on out of the box (Tyler, Nov 22) and remembered
+    init { live.click = prefs.getBoolean("click", true) }
     private val messDir = File(app.filesDir, "messes").also { it.mkdirs() }
     private val currentFile = File(app.filesDir, "current.json")
     /** Built before the mess loads, so pads that use your own sounds find them. */
@@ -183,7 +186,8 @@ class AppState(private val app: Context) {
     var micOn by mutableStateOf(false)
         private set
     /** ? in the top bar: show the how-to text on every page. Each page also shows it once, the first time. */
-    var helpOn by mutableStateOf(prefs.getBoolean("helpOn", false))
+    // Nov 22 (Tyler: no flavor text anywhere): help lines start off for everyone once, even if Explain was on
+    var helpOn by mutableStateOf(run { if (!prefs.getBoolean("helpOff22", false)) prefs.edit().putBoolean("helpOff22", true).putBoolean("helpOn", false).apply(); prefs.getBoolean("helpOn", false) })
         private set
     val helpSeen = mutableStateListOf<String>().also { it.addAll((prefs.getString("helpSeen", "") ?: "").split(",").filter { x -> x.isNotEmpty() }) }
     /** What the FAQ is on: the next tap on a control explains it instead of pressing it. */
@@ -201,7 +205,8 @@ class AppState(private val app: Context) {
 
     fun switchHelp(v: Boolean = !helpOn) { helpOn = v; prefs.edit().putBoolean("helpOn", v).apply() }
     /** Is the how-to text showing on this page or sheet right now. */
-    fun helpShows(page: String): Boolean = helpOn || page !in helpSeen
+    // Nov 22 (Tyler: no flavor text): the help lines show only with Explain on in Settings, not on a first visit
+    fun helpShows(@Suppress("UNUSED_PARAMETER") page: String): Boolean = helpOn
     fun markHelpSeen(page: String) {
         if (page in helpSeen) return
         helpSeen.add(page); prefs.edit().putString("helpSeen", helpSeen.joinToString(",")).apply()
@@ -313,6 +318,8 @@ class AppState(private val app: Context) {
     var heardPat by mutableIntStateOf(-1)
         private set
     var heardStep by mutableIntStateOf(-1)
+    /** Beats of count-in left (4, 3, 2, 1), shown in the loop readout; 0 when the loop runs. */
+    var countNow by mutableIntStateOf(0)
         private set
     var heardSong by mutableIntStateOf(0)
         private set
@@ -587,6 +594,14 @@ class AppState(private val app: Context) {
 
     /** Simple, Full or Synthipad, for this session. */
     var synthView by mutableStateOf("simple")
+    /** Nov 22: a pad with a sound on it takes a second tap before the scratch synth replaces it. -1 = not armed. */
+    var replaceArmed by mutableIntStateOf(-1)
+    fun armReplace(pad: Int) {
+        replaceArmed = pad
+        say("Tap again to replace ${lib.titleOf(project.kit.getOrNull(pad).orEmpty()).ifEmpty { "pad ${pad + 1}" }} with this synth.")
+        val me = pad
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ if (replaceArmed == me) replaceArmed = -1 }, 4000)
+    }
 
     /*
      * The Synth tab's own synth (Nov 21 video), on its own pad since the second video (S3): Project.SCRATCH, a slot past
@@ -845,6 +860,7 @@ class AppState(private val app: Context) {
             if (dt > worst) worst = dt
         }
         lastFrame = now
+        engine.countUi.let { if (it != countNow) countNow = it }
         mouthTick()
         if (winStart == 0L) winStart = now
         if (now - winStart > 10_000_000_000L) {
@@ -872,8 +888,22 @@ class AppState(private val app: Context) {
         while (true) {
             val ev = engine.pollRec() ?: break
             val P = project.pats[ev.pat]
-            if (ev.type == Engine.RecEvent.STEP) { P.setStep(ev.key, ev.step, true); P.setStrength(ev.key, ev.step, ev.strength()) }
-            else if (ev.type == Engine.RecEvent.OFF) P.addOff(ev.key, ev.step)
+            if (ev.type == Engine.RecEvent.STEP) {
+                // remember whether this hit turned the step on, so a swipe that cancels it takes back only its own
+                val was = P.step(ev.key, ev.step)
+                recNew = "${ev.pat}:${ev.key}:${ev.step}:${!was}"
+                P.setStep(ev.key, ev.step, true); P.setStrength(ev.key, ev.step, ev.strength())
+            }
+            else if (ev.type == Engine.RecEvent.OFF) {
+                val t = Math.floorMod(ev.step, P.len * Project.TICKS)
+                val was = if (t % Project.TICKS == 0) P.step(ev.key, t / Project.TICKS) else false
+                recNew = "${ev.pat}:${ev.key}:o${ev.step}:${!was}"; P.addOff(ev.key, ev.step)
+            }
+            else if (ev.type == Engine.RecEvent.CANCEL) {
+                if (ev.len == 1) { if (recNew == "${ev.pat}:${ev.key}:o${ev.step}:true") { val t = Math.floorMod(ev.step, P.len * Project.TICKS); if (t % Project.TICKS == 0) P.setStep(ev.key, t / Project.TICKS, false) else P.removeOff(ev.key, ev.step) } }
+                else if (recNew == "${ev.pat}:${ev.key}:${ev.step}:true") P.setStep(ev.key, ev.step, false)
+                recNew = ""
+            }
             else {
                 val notes = P.notes(ev.key)
                 for (q in ev.pitches) {
@@ -889,6 +919,8 @@ class AppState(private val app: Context) {
 
     /** Build 105: while Rec plays, everything recorded is one take, and one Undo takes the whole take back. */
     private var takeOpen = false
+    /** The last recorded hit and whether it turned its step on (for a swipe taking it back). */
+    private var recNew = ""
     private fun taking() = live.rec && playing
 
     /* ---------------- transport ---------------- */
@@ -899,9 +931,17 @@ class AppState(private val app: Context) {
         else {
             if (project.songMode && project.songLen() == 0) view { songMode = false }
             follow = true
-            engine.play(); playing = true
+            // Nov 22 (Tyler: a count-in): with Rec on, a start from the top clicks in first (a paused loop just goes on)
+            engine.play(if (live.rec) countInBars * 16 else 0); playing = true
         }
     }
+
+    /** Count-in before a recording starts: off, 1 or 2 bars. Remembered. */
+    var countInBars by mutableStateOf(prefs.getInt("countIn", 1))
+    fun cycleCountIn() { countInBars = (countInBars + 1) % 3; prefs.edit().putInt("countIn", countInBars).apply()
+        say(if (countInBars == 0) "No count-in." else "With Rec on, Play counts in ${countInBars} bar${if (countInBars > 1) "s" else ""} first.") }
+    /** The metronome. On out of the box (Tyler, Nov 22) and remembered. */
+    fun switchClick() { setLive { click = !click }; prefs.edit().putBoolean("click", live.click).apply() }
 
     /** Stop; pressed again while already stopped it hushes everything (the Hush button is gone). */
     fun stop() {
@@ -1030,6 +1070,20 @@ class AppState(private val app: Context) {
     fun emptyActsOnLift(d: Int): Boolean {
         val i = bank * Project.BANK + d
         return project.kit[i].isEmpty() && !keysMode && !stepMode && levelsPad < 0 && swapFrom < 0 && !midiMapOn && !recordHold && !(micOn && micPad == i)
+    }
+
+    /**
+     * Nov 22 (Tyler: a swipe cancels its own hit, without adding latency): the hit still sounds the moment the finger
+     * lands; once the finger has travelled far enough to be a swipe, its sound fades out in a few milliseconds and a
+     * recorded hit is taken back. Only plain pad hits: keys, levels and held pads are left alone.
+     */
+    fun cancelPadHit(d: Int) {
+        if (d !in 0 until 16) return
+        val id = downIds[d]
+        if (id !in 0 until 16) return
+        engine.cancel(id)
+        downIds[d] = -1
+        notes.trail("swipe cancelled pad ${bank * Project.BANK + d + 1}")
     }
 
     fun padUp(d: Int) {
@@ -1706,6 +1760,16 @@ class AppState(private val app: Context) {
         page = 0
     }
 
+    /** Nov 22 (Tyler): + adds an empty bar, - drops the last one, 2x doubles the loop with a copy (up to 8 bars). */
+    fun addBar() { val n = project.pat().len; if (n >= 128) say("8 bars is the most a loop holds.") else { setLen(n + 16, fill = false); page = (n + 16) / 16 - 1 } }
+    fun dropBar() { val n = project.pat().len; if (n <= 16) say("One bar is the least.") else setLen(n - 16) }
+    fun doubleLoop() { val n = project.pat().len; if (n * 2 > 128) say("Doubled it would pass 8 bars.") else setLen(n * 2) }
+    /** Swipe the loop readout: the next or previous loop, waiting for the bar line like a tap in the strip. */
+    fun stepLoop(by: Int) { val n = com.tideclock.messmachine.engine.Project.NSLOTS; pickLoop(Math.floorMod((if (pendingSlot >= 0) pendingSlot else project.cur) + by, n)) }
+    /** The song painter lives in the loop strip now (Nov 22); this opens it there. */
+    var songOpen by mutableStateOf(false)
+    fun openSong() { loopStripOpen = true; songOpen = true }
+
     /** Loop length button: 1, 2, 4, 8 bars, then back to 1. */
     fun toggleLen() = setLen(when (project.pat().len) { 16 -> 32; 32 -> 64; 64 -> 128; else -> 16 })
 
@@ -1713,13 +1777,15 @@ class AppState(private val app: Context) {
      * Loops of 1, 2, 4 or 8 bars. Longer copies what is there to fill the new bars (like the site's
      * one to two); shorter drops the bars past the end.
      */
-    fun setLen(n: Int) {
+    fun setLen(n: Int, fill: Boolean = true) {
         val P = project.pat()
         val L = Project.LETTERS[project.cur]
         val old = P.len
-        if (n == old || n !in listOf(16, 32, 64, 128)) return
+        if (n == old || n < 16 || n > 128 || n % 16 != 0) return
         edit {
-            if (n > old) {
+            if (n > old && !fill) {
+                // + : an empty bar at the end
+            } else if (n > old) {
                 for (a in P.steps.values) for (j in old until n) a[j] = a[j % old]
                 for (l in P.notes.values) {
                     val base = l.filter { it.s < old }
@@ -1735,7 +1801,7 @@ class AppState(private val app: Context) {
         }
         page = page.coerceIn(0, n / 16 - 1)
         val bars = n / 16
-        say(if (n > old) "Loop $L is $bars bars now. What was there got copied into the new bars." else "Loop $L is $bars bar${if (bars == 1) "" else "s"} now.")
+        say(if (n > old && fill) "Loop $L is $bars bars now. What was there got copied into the new bars." else if (n > old) "Loop $L is $bars bars now; bar $bars is empty." else "Loop $L is $bars bar${if (bars == 1) "" else "s"} now.")
     }
 
     /** Clear the roll notes for the picked pad in this loop. */
@@ -2254,6 +2320,10 @@ class AppState(private val app: Context) {
     var proWords by mutableStateOf(prefs.getBoolean("proWords", true))
         private set
     fun switchProWords() { proWords = !proWords; prefs.edit().putBoolean("proWords", proWords).apply() }
+    /** Nov 22 (Tyler): the tabs sit in one milled slot and the page you are on is the raised block. Off = keys as before. */
+    var tabSlot by mutableStateOf(prefs.getBoolean("tabSlot", true))
+        private set
+    fun switchTabSlot() { tabSlot = !tabSlot; prefs.edit().putBoolean("tabSlot", tabSlot).apply(); notes.trail("tab slot $tabSlot") }
 
     var menuArmed by mutableStateOf(false)
     /** The settings tray above the bottom bar: what it shows ("lfo:3", "glide:3", "hold"...), or null. */
@@ -2274,6 +2344,9 @@ class AppState(private val app: Context) {
      */
     val swipe = mutableStateMapOf<String, String>().apply { for ((d, def) in SWIPE_DEFAULTS) put(d, prefs.getString("swipe-$d", def) ?: def) }
     fun setSwipe(dir: String, act: String) { swipe[dir] = act; prefs.edit().putString("swipe-$dir", act).apply(); notes.trail("hotkey $dir $act") }
+
+    /** Whether a swipe this way does anything (HotKeys), so only a real swipe cancels the hit under it. */
+    fun swipeDoes(dir: String): Boolean = padFlick && sphere == null && !locked && (swipe[dir] ?: "off") != "off"
 
     /** A swipe off pad d (on screen) toward dir: does whatever HotKeys says. */
     fun padSwipe(tag: String, dir: String) {
@@ -2310,14 +2383,15 @@ class AppState(private val app: Context) {
             "pack" -> { tray = null; padMenu = -1; togglePack(pad) }
             "sample" -> { tray = null; padMenu = -1; if (Project.isSynth(k)) tab = Tab.Synth else overlay = Overlay.Doctor(k) }
             "mute" -> togglePadMute(pad)
+            // Nov 22 (Tyler): in every layout, swipe right opens the pad's FX as a strip under its row (the pads, the
+            // dock and the tabs stay live); the same swipe again closes it
             "fx" -> {
                 padMenu = -1
-                if (layout == "classic") {
-                    if (packShows("fx")) toggleKeyboard(pad)
-                    else { if ("fx" !in packOf(pad)) togglePackStrip(pad, "fx"); packHidden[pad] = (packHidden[pad] ?: emptySet()) - "fx"; if (pad !in keyboards) toggleKeyboard(pad) }
-                }
-                else if (tray == "edit:$pad" && editTab == "fx") tray = null
-                else { pickEditTab("fx"); openTray("edit:$pad") }
+                // off the Synth page's tile there is no row to open under: the tray, as before
+                if (tag == null) { if (tray == "edit:$pad" && editTab == "fx") tray = null else { pickEditTab("fx"); openTray("edit:$pad") }; return }
+                tray = null
+                if (packShows("fx")) toggleKeyboard(pad)
+                else { if ("fx" !in packOf(pad)) togglePackStrip(pad, "fx"); packHidden[pad] = (packHidden[pad] ?: emptySet()) - "fx"; if (pad !in keyboards) toggleKeyboard(pad) }
             }
         }
     }

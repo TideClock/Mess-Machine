@@ -148,6 +148,56 @@ public class EngineTest {
     check(ev != null && ev.type == Engine.RecEvent.STEP && ev.key.equals(p.kit[1]), "recording a pad hit gives a step event" + (ev == null ? "" : " at step " + ev.step));
     Engine.Position pos = e.heard();
     check(pos.playing && pos.pat == 0 && pos.step >= 0, "playhead position " + pos.step);
+    // Nov 22 (Tyler: a swipe cancels its own hit): a hit cancelled while the finger is still down fades out and its
+    // recorded step is taken back (a CANCEL event for the same step)
+    {
+        Engine ce = new Engine(rate);
+        Engine.Live cl = new Engine.Live(); cl.rec = true;
+        ce.setSnapshot(Engine.Snapshot.build(p, lib, cl));
+        ce.play();
+        for (int i = 0; i < 40; i++) ce.render(buf, 256);
+        ce.down(7, 1, new int[]{0}, false);
+        ce.render(buf, 256);
+        int before = ce.activeVoices();
+        ce.cancel(7);
+        for (int i = 0; i < 4; i++) ce.render(buf, 256);
+        int after = ce.activeVoices();
+        Engine.RecEvent r1 = ce.pollRec(), r2 = ce.pollRec();
+        check(r1 != null && r1.type == Engine.RecEvent.STEP && r2 != null && r2.type == Engine.RecEvent.CANCEL && r2.step == r1.step && r2.key.equals(r1.key),
+            "swipe cancel: the recorded hit is taken back (" + (r1 == null ? "none" : "step " + r1.step) + ", " + (r2 == null ? "no cancel" : "cancel at " + r2.step) + ")");
+        check(before >= 1 && after < before, "swipe cancel: the hit fades out at once (" + before + " voices, then " + after + ")");
+        // cancelling after the finger lifted does nothing
+        ce.down(8, 1, new int[]{0}, false); ce.render(buf, 256); ce.up(8); ce.render(buf, 256);
+        while (ce.pollRec() != null) { }
+        ce.cancel(8); ce.render(buf, 256);
+        check(ce.pollRec() == null, "swipe cancel: a lifted hit stays recorded");
+    }
+    // Nov 22 (Tyler: a count-in): with a count-in the loop waits a bar of clicks at its top, then starts
+    {
+        Engine ke = new Engine(rate);
+        Engine.Live kl = new Engine.Live(); kl.click = true;
+        ke.setSnapshot(Engine.Snapshot.build(p, lib, kl));
+        double spbK = rate * 60.0 / p.bpm / 4;
+        ke.play(16);
+        int halfBar = (int) (spbK * 8 / 256);
+        for (int i = 0; i < halfBar; i++) ke.render(buf, 256);
+        int countMid = ke.countUi;
+        Engine.Position kp = ke.heard();
+        for (int i = 0; i < halfBar + (int) (spbK * 3 / 256); i++) ke.render(buf, 256);
+        Engine.Position kp2 = ke.heard();
+        check(countMid >= 2 && countMid <= 3 && ke.countUi == 0, "count-in: counts down through the bar (" + countMid + " beats left halfway), then clears");
+        check(kp2.playing && kp2.step >= 0 && kp2.step <= 4, "count-in: the loop starts at its top after one bar (step " + kp2.step + ")");
+        Engine pe2 = new Engine(rate); pe2.setSnapshot(Engine.Snapshot.build(p, lib, kl));
+        pe2.play(16); for (int i = 0; i < 4; i++) pe2.render(buf, 256); pe2.pause(); for (int i = 0; i < 4; i++) pe2.render(buf, 256);
+        pe2.stop(); pe2.render(buf, 256);
+        check(pe2.countUi == 0, "count-in: Stop clears it");
+    }
+    // Nov 22: loops of any 1 to 8 bars load back (+ and - in the loop strip)
+    {
+        Project lp = new Project(); lp.kit[0] = "imp"; lp.pats[0].len = 48; lp.pats[0].setStep("imp", 40, true);
+        Project lb = Project.fromJson(lp.toJson(), k -> true).project;
+        check(lb.pats[0].len == 48 && lb.pats[0].step("imp", 40), "a 3-bar loop saves and loads as 3 bars");
+    }
     // keys with note repeat + arp stopped: free clock fires
     Engine e2 = new Engine(rate);
     Engine.Live l2 = new Engine.Live(); l2.nr = true; l2.arp = "up";

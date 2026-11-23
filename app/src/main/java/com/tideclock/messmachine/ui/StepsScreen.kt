@@ -54,56 +54,20 @@ import com.tideclock.messmachine.AppState
 import com.tideclock.messmachine.Overlay
 import com.tideclock.messmachine.engine.Project
 
-/** Loop slots A to H, length, copy, clear, bottle. Shared by Steps, Roll and Song. */
+/**
+ * Where you are: which loop and which bar Steps and Roll show. Tap it for the loop strip, where the loops, their bars
+ * and their tools live now (Nov 22, Tyler: one place for loops, not a second row of them on every page).
+ */
 @Composable
-/** Loops A to H. The loop tools (length, copy, clear, bottle) live only on Steps, their home (BT-1). */
-fun SlotBar(state: AppState, tools: Boolean = false) {
+fun SlotBar(state: AppState, @Suppress("UNUSED_PARAMETER") tools: Boolean = false) {
     val P = state.project
-    Column(Modifier.padding(bottom = 12.dp)) {
-        Row(Modifier.fillMaxWidth().padding(bottom = 4.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            for (i in 0 until Project.NSLOTS) {
-                val used = P.pats[i].used()
-                val playingHere = state.playing && state.heardPat == i
-                val on = i == P.cur
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .height(36.dp)
-                        .sticker(if (on) C.Yellow else C.Ink, shadow = if (on) 1.dp else 3.dp, border = if (playingHere) 4.dp else 2.5.dp, borderColor = if (playingHere) C.Pink else C.Cream)
-                        .tapOrHold(i, { state.selectSlot(i) }, { if (!state.locked) state.slotMenu = i })
-                        .tagged("slot-$i"),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    T(Project.LETTERS[i].toString(), size = 15.sp, weight = FontWeight.Black, color = if (on) C.Ink else if (used) C.Cream else C.Empty)
-                    if (used && !on) Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 3.dp).size(5.dp).background(C.Letters[i]))
-                    val L = Project.LETTERS[i]
-                    HoldMenu(state.slotMenu == i, "Loop $L", { state.slotMenu = -1 }, listOfNotNull(
-                        Triple("Play loop $L", "slotmenu-pick") { state.selectSlot(i) },
-                        Triple("Copy to the next empty loop", "slotmenu-copy") { state.copySlotToNextEmpty(i) },
-                        Triple("Clear loop $L", "slotmenu-clear") { state.clearSlotAt(i) },
-                        if (P.pats[i].hasMotion()) Triple("Clear its auto", "slotmenu-moves") { state.edit { pats[i].motion.clear() } } else null,
-                    ))
-                }
-            }
-        }
-        if (!tools) return@Column
-        val bars = P.pat().len / 16
-        Note("Editing loop ${Project.LETTERS[P.cur]}" + if (bars > 1) ", $bars bars" else "", modifier = Modifier.padding(top = 8.dp))
-        // longer loops (up to 8 bars): pick the bar to see and edit
-        if (bars > 1) Row(Modifier.fillMaxWidth().padding(top = 8.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-            T("BAR", size = 11.sp, color = C.Dim, spacing = .1.em)
-            for (b in 0 until bars) Btn("${b + 1}", { state.page = b }, on = state.page == b, small = true, tag = if (b == 1) "page2" else "page-${b + 1}", modifier = Modifier.weight(1f))
-        }
-        Wrap(Modifier.padding(top = 8.dp)) {
-            Btn(if (bars == 1) "1 bar" else "$bars bars", { state.toggleLen() }, small = true, tag = "looplen")
-            Select("Copy to", (0 until Project.NSLOTS).filter { it != P.cur }.map { it to "Loop ${Project.LETTERS[it]}" }, { state.copySlotTo(it) })
-            Btn("Clear loop", { state.clearSlot() }, small = true, enabled = P.pat().used(), tier = Tier.Danger)
-            Btn("Auto", { state.movesOpen = !state.movesOpen }, on = state.movesOpen, onColor = C.Teal, small = true, tag = "moves-open")
-            if (P.pat().hasMotion()) Btn("Clear auto", { state.clearMoves() }, small = true, tag = "clear-moves")
-            Btn("Bottle it", { state.bottleIt() }, small = true, color = C.Pink, enabled = P.pat().used(), tag = "bottle")
-        }
-        Dashed(Modifier.padding(top = 12.dp))
-    }
+    val bars = P.pat().len / 16
+    val where = "LOOP ${Project.LETTERS[P.cur]}" + (if (bars > 1) " · BAR ${state.page.coerceIn(0, bars - 1) + 1} OF $bars" else " · 1 BAR") + if (state.loopStripOpen) "" else "  ▾"
+    Box(
+        Modifier.fillMaxWidth().padding(bottom = 10.dp).height(34.dp).sticker(if (state.loopStripOpen) C.Card2 else C.Ink, shadow = 2.dp, border = 2.dp, borderColor = C.Letters[P.cur])
+            .clickable(enabled = !state.locked) { state.loopStripOpen = !state.loopStripOpen }.tagged("seq-where"),
+        contentAlignment = Alignment.Center,
+    ) { T(where, size = 12.sp, color = C.Yellow, family = Mono, weight = FontWeight.Bold, lines = 1) }
 }
 
 @Composable
@@ -114,7 +78,6 @@ fun StepsScreen(state: AppState) {
     ScrollPane {
         SeqSwitch(state)
         SlotBar(state, tools = true)
-        if (state.movesOpen) MovesPanel(state)
         Row(Modifier.fillMaxWidth().padding(bottom = 12.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
             T("BANK", size = 11.sp, color = C.Dim, spacing = .1.em)
             for (b in 0 until 4) {
@@ -160,7 +123,6 @@ fun StepsScreen(state: AppState) {
                 if (sheetAt != null && sheetAt.first == k) StepSheet(state, k, sheetAt.second)
             }
         }
-        Help("Tap a step to turn it on. Tap again: loud, then quiet, then off. Hold a step for how often it plays (75%, every other loop...), how hard, and a filter, reverb or echo for that one hit (a teal corner); a dashed yellow edge marks one that only plays sometimes. Slide along a row to paint it. Tap a sound's name for its row tools (every 2, 4 or 8, repeat across, nudge, copy, spread) and to give its steps pitches. Hold its name, then lift, for its menu: mute, solo, the Sample sheet and more. A red M or yellow S by the number shows a muted or soloed sound. A dot means a step has a pitch or roll notes; tap it to clear it, or Clear notes for the whole loop.", modifier = Modifier.padding(top = 4.dp))
     }
 }
 

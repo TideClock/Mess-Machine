@@ -195,7 +195,7 @@ fun VialStrip(state: AppState, pad: Int) {
     val all = FX_STRIP + listOf(ft to "Cut", rt to "Res")
     // the vials grow with the screen (a Fold's inner screen gets tall ones) and with Large keys
     val vialH = ((UiLook.widthDp / 3.6f).coerceIn(112f, 190f) * UiLook.big).dp
-    val nameSp = if (UiLook.widthDp > 560) 10f * UiLook.big else 7.5f * UiLook.big
+    val nameSp = if (UiLook.widthDp > 560) 10f * UiLook.big else 9.5f * UiLook.big
     Column(Modifier.fillMaxWidth().padding(bottom = 6.dp).tagged("fxstrip-$pad")) {
         T("FX · PAD ${pad + 1}", size = 12.sp, color = C.Yellow, spacing = .1.em, modifier = Modifier.padding(bottom = 6.dp))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
@@ -208,8 +208,11 @@ fun VialStrip(state: AppState, pad: Int) {
         // Nov 21 (second video): Auto lanes in place, over the vials, not off on the Seq tab
         if (state.laneHere == pad) MovesPanel(state, onClose = { state.laneHere = -1 })
         state.fxEditing(pad)?.let { t -> FxSettingsCard(state, pad, t, all.firstOrNull { it.first == t }?.second ?: "") }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-            for ((t, name) in all) {
+        // Nov 22 (Tyler: the strip under the row needs wider vials to stay playable): on a phone they sit in two rows
+        // of six and five, about twice as wide as eleven in one row; a wide screen keeps one row
+        val perRow = if (UiLook.widthDp > 560) all.size else 6
+        for (rowItems in all.chunked(perRow)) Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            for ((t, name) in rowItems) {
                 val v = state.fxSend["$pad:$t"] ?: 0f
                 val inNow = state.fxIn(pad, t)
                 val picked = state.fxEdit == "$pad:$t"
@@ -242,8 +245,8 @@ fun VialStrip(state: AppState, pad: Int) {
                     }
                 }
             }
+            repeat(perRow - rowItems.size) { Box(Modifier.weight(1f)) }
         }
-        Help("Drag a vial to fill it; empty is off. Its lamp takes it out and back; hold the lamp for an Auto lane. Tap a name for its settings.", Modifier.padding(top = 4.dp))
     }
 }
 

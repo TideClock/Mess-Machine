@@ -89,7 +89,7 @@ close_sheets() {
   done
 }
 # the Play tab, then the loop row under the top bar (Nov 18: loops from every page), then the other tabs
-for t in tab-Pads loop-open tab-Synth tab-Steps tab-Song tab-Perform tab-Sounds; do
+for t in tab-Pads loop-open tab-Synth tab-Steps tab-Perform tab-Sounds; do
   close_sheets
   xy=$(centre "$t")
   [ -z "$xy" ] && { note "$t: NOT FOUND"; fail=1; shot "04-$t"; continue; }
@@ -99,6 +99,17 @@ for t in tab-Pads loop-open tab-Synth tab-Steps tab-Song tab-Perform tab-Sounds;
   alive || { note "$t: NOT RUNNING"; fail=1; adb shell am start -n $PKG/.MainActivity; sleep 5; }
   infront "$t"
 done
+# Nov 22: the song lives in the loop strip: open the strip, then Song, then Back closes it
+close_sheets
+xy=$(centre tab-Pads); [ -n "$xy" ] && { adb shell input tap $xy; sleep 1; }
+xy=$(centre loop-open); [ -n "$xy" ] && { adb shell input tap $xy; sleep 1; }
+xy=$(centre loop-song)
+# the strip may have been open already (the tap above closed it): tap the readout again
+[ -z "$xy" ] && { xy=$(centre loop-open); [ -n "$xy" ] && { adb shell input tap $xy; sleep 1; }; xy=$(centre loop-song); }
+if [ -z "$xy" ]; then note "loop-song: NOT FOUND"; fail=1; else adb shell input tap $xy; sleep 2; shot "04-loop-song"; fi
+alive || { note "loop-song: NOT RUNNING"; fail=1; adb shell am start -n $PKG/.MainActivity; sleep 5; }
+infront "loop-song"
+adb shell input keyevent KEYCODE_BACK; sleep 1
 
 # a long press on a pad plays it (build 84: no hold menu); Menu twice on the bottom dock opens its menu; then a circle on a
 # pad opens the sphere
@@ -187,7 +198,7 @@ else note "play button: NOT FOUND"; fail=1; fi
 close_sheets
 adb shell wm size 1856x2160; sleep 4
 size=$(adb shell wm size | grep -o '[0-9]*x[0-9]*' | tail -1); note "unfolded shape: $size"
-for t in tab-Pads tab-Synth tab-Steps tab-Song tab-Perform tab-Sounds; do
+for t in tab-Pads tab-Synth tab-Steps tab-Perform tab-Sounds; do
   close_sheets
   xy=$(centre "$t")
   [ -z "$xy" ] && { note "unfolded $t: NOT FOUND"; shot "09-unfolded-$t"; continue; }
