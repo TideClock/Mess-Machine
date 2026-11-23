@@ -168,8 +168,8 @@ fun BottomDock(state: AppState) {
     }.tagged("bottomdock")) {
         if (state.keysBarOpen) KeysPanel(state)
         // Nov 22 sizing (Tyler: "build it"): every key in the bar is the same width, at least 44 real dp, sized for its
-        // widest word, and never shrinks or scrolls. Keys that don't fit go into ⋯ at the end, Chords first, then Drop,
-        // then Repeat; Edit never does. The key readout takes what is left.
+        // widest word, and never shrinks or scrolls. Keys that don't fit go into More at the end, Chords first, then Repeat,
+        // then Pack. Mute and Drop are held while you tap pads, and a menu would close under them, so they go last; Edit never. The key readout takes what is left.
         val ed = if (state.layout == "classic") "Menu" else "Edit"
         val keys = ArrayList<DockKey>()
         keys.add(DockKey("open-padmenu", 0, listOf(ed)) { m ->
@@ -181,7 +181,7 @@ fun BottomDock(state: AppState) {
             }
         })
         // the picked pad's FannyPack: one tap zips it open under its row, or shut
-        if (state.tab != com.tideclock.messmachine.Tab.Synth) keys.add(DockKey("pack-toggle", 2, listOf("Pack")) { m ->
+        if (state.tab != com.tideclock.messmachine.Tab.Synth) keys.add(DockKey("pack-toggle", 4, listOf("Pack")) { m ->
             BarBtn(state, "Pack", "Pack", { state.togglePack(state.project.sel) }, on = state.project.sel in state.keyboards, onColor = C.Teal,
                 enabled = !state.locked && !state.keysMode && state.project.kit.getOrNull(state.project.sel).orEmpty().isNotEmpty(), tag = "pack-toggle", word = "Pack", modifier = m)
         })
@@ -197,17 +197,17 @@ fun BottomDock(state: AppState) {
             BarBtn(state, "FX", "FX", { state.showFx = !state.showFx }, on = state.showFx, onColor = C.Pink, tag = "fx-toggle", word = "FX", modifier = m)
         }) }
         // build 107: Repeat sits beside Hold (the throws moved into the perform row); Edit, then Repeat, for its rate
-        else keys.add(DockKey("repeat-toggle", 4, listOf("Repeat")) { m ->
+        else keys.add(DockKey("repeat-toggle", 5, listOf("Repeat")) { m ->
             BarBtn(state, if (state.live.nr) "● Repeat" else "○ Repeat", "Repeat", { state.switchRepeat() }, on = state.live.nr, onColor = C.Pink, tag = "repeat-toggle", word = "Repeat", modifier = m)
         })
         // Nov 21 (second video): MUTE turns the pads into mute switches (hold it, or tap it to stay on); DROP, held,
         // leaves only the pads you touch
-        keys.add(DockKey("mute-key", 3, listOf("Mute")) { m ->
+        keys.add(DockKey("mute-key", 2, listOf("Mute")) { m ->
             PressKey({ down, quick -> if (down) state.muteHeld = true else { state.muteHeld = false; if (quick) state.switchMuteMode() } }, m) {
                 BarBtn(state, "Mute", "Mute", {}, on = state.muting, onColor = Hw.Oxblood, enabled = !state.locked, tag = "mute-key", word = "Mute", modifier = Modifier.fillMaxWidth())
             }
         })
-        keys.add(DockKey("drop-key", 5, listOf("Drop")) { m ->
+        keys.add(DockKey("drop-key", 3, listOf("Drop")) { m ->
             PressKey({ down, _ -> state.drop(down) }, m) {
                 BarBtn(state, "Drop", "Drop", {}, on = state.dropOn, onColor = C.Pink, enabled = !state.locked, tag = "drop-key", word = "Drop", modifier = Modifier.fillMaxWidth())
             }

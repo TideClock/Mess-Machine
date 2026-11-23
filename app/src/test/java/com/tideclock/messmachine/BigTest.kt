@@ -286,12 +286,12 @@ class BigTest {
         rule.onNodeWithTag("scrollbar").performTouchInput { swipeUp() }
         settle()
 
-        // view size: zoomed out, a pad gets smaller
+        // view size (Nov 22 sizing): zoomed out, the pads keep their real size (they used to shrink a second time)
         val w1 = rule.onNodeWithTag("pad-0").performScrollTo().fetchSemanticsNode().boundsInRoot.width
         state.setViewSize(.8f)
         settle()
         val w2 = rule.onNodeWithTag("pad-0").performScrollTo().fetchSemanticsNode().boundsInRoot.width
-        assertTrue("zooming out shrinks the pads ($w1 to $w2)", w2 < w1 * .9f)
+        assertTrue("zooming out keeps the pads at least as big ($w1 to $w2)", w2 >= w1 * .97f)
         shot("03c-zoomed-out-80")
         state.setViewSize(1f)
         settle()
@@ -1851,8 +1851,10 @@ class BigTest {
         state.overlay = null; settle()
         assertEquals("dark", state.look)
         // every control on the bars is an icon tile now (its icon carries the control's name)
+        // (Nov 22 sizing: a key that doesn't fit this screen is behind More, and More has its icon)
         for (n in listOf("Play", "Stop", "Rec", "Undo", "What the FAQ", "Settings", "Menu", "Pack", "Hold", "Chords", "FX", "Notes (bug)", "Play tab", "Synth", "Steps", "Sounds"))
-            assertTrue("$n has its icon", rule.onAllNodesWithContentDescription(n).fetchSemanticsNodes().isNotEmpty())
+            if (n.lowercase() + "-toggle" !in state.dockOverflow) assertTrue("$n has its icon", rule.onAllNodesWithContentDescription(n).fetchSemanticsNodes().isNotEmpty())
+        if (state.dockOverflow.isNotEmpty()) assertTrue("More has its icon", rule.onAllNodesWithContentDescription("More").fetchSemanticsNodes().isNotEmpty())
         // the new layout's bar: Edit has its icon too
         state.pickLayout("new"); settle()
         assertTrue("Edit has its icon", rule.onAllNodesWithContentDescription("Edit").fetchSemanticsNodes().isNotEmpty())
@@ -3133,8 +3135,8 @@ class BigTest {
         assertTrue("and all the same width ($widths)", widths.max() - widths.min() < 1f)
         assertTrue("Edit never goes behind ⋯", "open-padmenu" !in state.dockOverflow)
         if (state.dockOverflow.isNotEmpty()) {
-            // the first to go are Chords, then Drop, then Repeat
-            val order = listOf("chords-toggle", "drop-key", "repeat-toggle", "mute-key", "pack-toggle", "hold-toggle")
+            // the first to go are Chords, then Repeat, then Pack; Mute and Drop are held while you play, so they stay
+            val order = listOf("chords-toggle", "repeat-toggle", "pack-toggle", "drop-key", "mute-key", "hold-toggle")
             assertEquals("they go in order", order.take(state.dockOverflow.size).toSet(), state.dockOverflow)
             at("dock-more").assertExists()
             val first = state.dockOverflow.first()

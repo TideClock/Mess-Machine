@@ -122,7 +122,7 @@ One line each, dated, with the reason and who decided (BT-2). Older decisions li
 - 2026-11-22 Sizing, first build (Tyler: "build it", after two reviews of the sizing proposal): floors are real dp on
   the glass (Float.rdp divides by View size). Bottom dock keys share one width, at least 44 real dp, sized for their
   widest word (Hold/Last/8/8), never shrinking or scrolling; keys that don't fit go behind More, Chords first, then
-  Drop, then Repeat (Edit never). The pad grid no longer shrinks a second time with View size. Loop strip keys are
+  Repeat, then Pack (Mute and Drop are held while playing, so they go last; Edit never). The pad grid no longer shrinks a second time with View size. Loop strip keys are
   at least 44 real dp. The audit fails the build when a bar key or pad-0 is under its floor at 369, 411 and 707 dp and
   at 70 percent view. Next: the top bar (Tyler sets its priorities), Menu size, Pad layout 4x4 or 2x2.
 - 2026-11-22 Second video and the look spec (Tyler's "3"): gone: the Sample key on Play (the pad's Edit tray has

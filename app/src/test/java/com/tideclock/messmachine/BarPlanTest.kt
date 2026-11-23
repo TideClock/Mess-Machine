@@ -7,7 +7,7 @@ import org.junit.Test
 
 /** Nov 22 sizing: the arithmetic behind the bottom dock, checked without a phone. */
 class BarPlanTest {
-    private val prio = listOf(0, 2, 1, 6, 4, 3, 5)  // Edit, Pack, Hold, Chords, Repeat, Mute, Drop
+    private val prio = listOf(0, 4, 1, 6, 5, 2, 3)  // Edit, Pack, Hold, Chords, Repeat, Mute, Drop
 
     @Test fun roomyBarKeepsEveryKeyAndCapsTheirWidth() {
         val p = BarPlan.plan(prio, 900f, 48f, 5f, 38f, 64f)
@@ -16,12 +16,12 @@ class BarPlanTest {
         assertEquals("no key wider than 1.5x its base", 72f, p.slot, .01f)
     }
 
-    @Test fun tightBarSendsChordsThenDropThenRepeat() {
+    @Test fun tightBarSendsChordsThenRepeatThenPack() {
         val p = BarPlan.plan(prio, 400f, 48f, 5f, 38f, 64f)
-        assertEquals(listOf(3, 6), p.overflow)
+        assertEquals(listOf(3, 4), p.overflow)
         assertTrue("keys never shrink under their base", p.slot >= 48f)
         val narrower = BarPlan.plan(prio, 330f, 48f, 5f, 38f, 64f)
-        assertEquals(listOf(3, 4, 6), narrower.overflow)
+        assertEquals(listOf(1, 3, 4), narrower.overflow)
     }
 
     @Test fun whatIsShownAlwaysFits() {
