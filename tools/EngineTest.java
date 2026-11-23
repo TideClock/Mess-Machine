@@ -191,12 +191,38 @@ public class EngineTest {
         pe2.play(16); for (int i = 0; i < 4; i++) pe2.render(buf, 256); pe2.pause(); for (int i = 0; i < 4; i++) pe2.render(buf, 256);
         pe2.stop(); pe2.render(buf, 256);
         check(pe2.countUi == 0, "count-in: Stop clears it");
+        // review of build 153: hits played during the count-in are not recorded, except right on the downbeat
+        Engine re = new Engine(rate); Engine.Live rl = new Engine.Live(); rl.rec = true;
+        re.setSnapshot(Engine.Snapshot.build(p, lib, rl));
+        re.play(16);
+        for (int i = 0; i < (int) (spbK * 6 / 256); i++) re.render(buf, 256);
+        re.down(3, 1, new int[]{0}, false); re.render(buf, 256); re.up(3); re.render(buf, 256);
+        check(re.pollRec() == null, "count-in: a hit in the middle of the count is not recorded");
+        for (int i = 0; i < (int) (spbK * 9.8 / 256) - 2; i++) re.render(buf, 256);
+        re.down(4, 1, new int[]{0}, false); re.render(buf, 256); re.up(4); re.render(buf, 256);
+        Engine.RecEvent late = re.pollRec();
+        check(late != null && late.step == 0, "count-in: a hit just before the downbeat lands on step 0 (" + (late == null ? "none" : "step " + late.step) + ")");
+        // pause in the count-in keeps the rest of the count for Play
+        Engine pc = new Engine(rate); pc.setSnapshot(Engine.Snapshot.build(p, lib, kl));
+        pc.play(16); for (int i = 0; i < (int) (spbK * 6 / 256); i++) pc.render(buf, 256);
+        pc.pause(); pc.render(buf, 256);
+        int whilePaused = pc.countUi;
+        pc.play(16); for (int i = 0; i < 3; i++) pc.render(buf, 256);
+        check(whilePaused == 0 && pc.countUi > 0, "count-in: paused it shows nothing, Play carries on counting (" + pc.countUi + " left)");
     }
     // Nov 22: loops of any 1 to 8 bars load back (+ and - in the loop strip)
     {
         Project lp = new Project(); lp.kit[0] = "imp"; lp.pats[0].len = 48; lp.pats[0].setStep("imp", 40, true);
         Project lb = Project.fromJson(lp.toJson(), k -> true).project;
         check(lb.pats[0].len == 48 && lb.pats[0].step("imp", 40), "a 3-bar loop saves and loads as 3 bars");
+        // review of build 153: shortening drops the extras past the end; doubling copies them
+        Project.Pattern xp = new Project().pats[0]; xp.len = 32;
+        xp.addOff("imp", 20 * Project.TICKS + 8); xp.setStrength("imp", 20, 2); xp.setStep("imp", 4, true); xp.setStrength("imp", 4, 2);
+        xp.extrasFor(16, 32, false); xp.len = 16;
+        xp.extrasFor(16, 32, false); xp.len = 32;
+        check(xp.offsIn("imp", 20) == 0 && xp.strength("imp", 20) == 1, "minus then plus: the new bar starts clean");
+        xp.extrasFor(32, 64, true); xp.len = 64;
+        check(xp.strength("imp", 36) == 2, "2x copies accents into the new bars");
     }
     // keys with note repeat + arp stopped: free clock fires
     Engine e2 = new Engine(rate);

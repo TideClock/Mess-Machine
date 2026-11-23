@@ -119,6 +119,15 @@ One line each, dated, with the reason and who decided (BT-2). Older decisions li
   sound takes a second tap. Look: only the milled tab slot with the raised current tab (Settings, Look, Tabs: keys
   goes back) and readouts that shrink to fit; help lines are off for everyone (Explain in Settings brings them back).
   Not built, per Tyler: the edit tray stopping above the dock, Song inside Seq, the rest of the look spec.
+- 2026-11-22 Review battery on build 153 (four reviewers: Tyler's notes, playability, code, device): fixed each finger
+  tracked on its own for swipes (two-finger drumming dropped hits), count-in positions count back from the top (hits
+  in the count were landing on steps 0 and 15; now only a hit within half a step of the downbeat records, on 0), pause
+  keeps the rest of the count, repeats and beat pads keep going in the count, each recorded hit carries an id so a
+  swipe takes back exactly its own, - and + clear accents, chances, locks and off-grid hits past the end and 2x copies
+  them, the strip opens on Perform too and holds at most half the screen, Song folds when the page changes, - + 2x are
+  full-width keys, the vials under a row are two rows while the Edit tray keeps one, a quick double tap can't replace
+  a pad, mode lamps are yellow (pink is recording). Kept as Tyler asked (speed cost noted by the playability review):
+  bar picks live only in the strip, not on Steps or Roll.
 - 2026-11-21 Video review (Tyler, build 130): lamps sit in a metal lip under each key, only on keys that switch
   something; icons as big as the cap allows; keys widen with the screen up to a cap (UiLook.widthDp). Swipes off a
   pad are HotKeys in Settings, one action per direction (defaults: up Edit, down Padiano, left Sample, right FX).

@@ -121,7 +121,7 @@ object Tutorials {
             TutStep("Play the keyboard under the knobs.", { s -> "piano-keys-${s.project.sel}" }) { s, c -> played(s, c, 2) },
             TutStep("Drag the Cutoff knob up or down. Hold a key while you do it.", t("knob-cut")) { s, c -> Math.abs(cut(s) - c.num0) > c.num0 * .15 },
             TutStep("Double tap the knob to put it back.", t("knob-cut")) { s, _ -> Math.abs(cut(s) - 2400) < 1 },
-            TutStep("Pick Acid, then play the keys: one voice that slides.", t("synthmode-2")) { s, c -> s.synthOn(s.project.sel)?.get("mode") == 2.0 && played(s, c, 1) },
+            TutStep("Pick Acid, then play the keys: one voice that slides.", t("synthmode-toggle")) { s, c -> s.synthOn(s.project.sel)?.get("mode") == 2.0 && played(s, c, 1) },
             TutStep("Try three other kinds at the top (FM, Wavetable, Granular, Drums, Pluck).", t("synthkind-chips")) { s, c ->
                 s.synthOn(s.project.sel)?.kind?.id?.let { c.seen.add(it) }; c.seen.count { it != "analog" } >= 3
             },
@@ -220,7 +220,7 @@ object Tutorials {
         )),
         Tutorial("acid", "Synths", "Acid slides", "Notes that touch in Roll slide into each other on an Acid synth.", listOf(
             TutStep("Tap SYNTH, then On empty pad.", t("tab-Synth")) { s, _ -> s.synthOn(s.project.sel) != null },
-            TutStep("Pick Acid.", t("synthmode-2")) { s, _ -> s.synthOn(s.project.sel)?.get("mode") == 2.0 },
+            TutStep("Pick Acid.", t("synthmode-toggle")) { s, _ -> s.synthOn(s.project.sel)?.get("mode") == 2.0 },
             TutStep("Tap SEQ, then Roll at the top, and draw a few notes, some touching end to start.", { s -> if (s.tab == Tab.Roll) null else if (s.tab == Tab.Steps) "seq-roll" else "tab-Steps" }) { s, c -> s.tab == Tab.Roll && s.version >= c.v0 + 3 },
             TutStep("Press Play and listen for the slides.", t("play")) { s, _ -> s.playing },
             TutStep("Press Stop.", t("stop")) { s, _ -> !s.playing },

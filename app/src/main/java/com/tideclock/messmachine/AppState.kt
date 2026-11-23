@@ -601,9 +601,10 @@ class AppState(private val app: Context) {
     fun replaceReady(): Boolean = android.os.SystemClock.uptimeMillis() - armedAt >= 500
     fun armReplace(pad: Int) {
         replaceArmed = pad; armedAt = android.os.SystemClock.uptimeMillis()
+        val token = armedAt
         say("Tap again to replace ${lib.titleOf(project.kit.getOrNull(pad).orEmpty()).ifEmpty { "pad ${pad + 1}" }} with this synth.")
         val me = pad
-        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ if (replaceArmed == me) replaceArmed = -1 }, 4000)
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ if (replaceArmed == me && armedAt == token) replaceArmed = -1 }, 4000)
     }
 
     /*
@@ -892,21 +893,22 @@ class AppState(private val app: Context) {
             val ev = engine.pollRec() ?: break
             val P = project.pats[ev.pat]
             if (ev.type == Engine.RecEvent.STEP) {
-                // remember whether this hit turned the step on, so a swipe that cancels it takes back only its own
-                val was = P.step(ev.key, ev.step)
-                recNew = "${ev.pat}:${ev.key}:${ev.step}:${!was}"
+                // remember, per hit, whether it turned the step on, so a swipe takes back only its own hit
+                if (ev.hit != 0) hitNew[ev.hit] = !P.step(ev.key, ev.step)
                 P.setStep(ev.key, ev.step, true); P.setStrength(ev.key, ev.step, ev.strength())
             }
             else if (ev.type == Engine.RecEvent.OFF) {
                 val t = Math.floorMod(ev.step, P.len * Project.TICKS)
-                val was = if (t % Project.TICKS == 0) P.step(ev.key, t / Project.TICKS) else false
-                recNew = "${ev.pat}:${ev.key}:o${ev.step}:${!was}"; P.addOff(ev.key, ev.step)
+                if (ev.hit != 0) hitNew[ev.hit] = !(if (t % Project.TICKS == 0) P.step(ev.key, t / Project.TICKS) else P.hasOff(ev.key, ev.step))
+                P.addOff(ev.key, ev.step)
             }
             else if (ev.type == Engine.RecEvent.CANCEL) {
-                if (ev.len == 1) { if (recNew == "${ev.pat}:${ev.key}:o${ev.step}:true") { val t = Math.floorMod(ev.step, P.len * Project.TICKS); if (t % Project.TICKS == 0) P.setStep(ev.key, t / Project.TICKS, false) else P.removeOff(ev.key, ev.step) } }
-                else if (recNew == "${ev.pat}:${ev.key}:${ev.step}:true") P.setStep(ev.key, ev.step, false)
-                recNew = ""
+                if (hitNew.remove(ev.hit) == true) {
+                    if (ev.len == 1) { val t = Math.floorMod(ev.step, P.len * Project.TICKS); if (t % Project.TICKS == 0) P.setStep(ev.key, t / Project.TICKS, false) else P.removeOff(ev.key, ev.step) }
+                    else P.setStep(ev.key, ev.step, false)
+                }
             }
+            if (hitNew.size > 64) hitNew.keys.take(32).toList().forEach { hitNew.remove(it) }
             else {
                 val notes = P.notes(ev.key)
                 for (q in ev.pitches) {
@@ -922,8 +924,8 @@ class AppState(private val app: Context) {
 
     /** Build 105: while Rec plays, everything recorded is one take, and one Undo takes the whole take back. */
     private var takeOpen = false
-    /** The last recorded hit and whether it turned its step on (for a swipe taking it back). */
-    private var recNew = ""
+    /** Recorded hits by press, and whether each turned its step on (for a swipe taking it back). Main thread only. */
+    private val hitNew = LinkedHashMap<Int, Boolean>()
     private fun taking() = live.rec && playing
 
     /* ---------------- transport ---------------- */
@@ -1800,6 +1802,7 @@ class AppState(private val app: Context) {
                 for (l in P.notes.values) { l.removeAll { it.s >= n }; for (x in l) x.l = minOf(x.l, n - x.s) }
                 for (a in P.motion.values) for (j in n until a.size) a[j] = Float.NaN
             }
+            P.extrasFor(minOf(old, n), maxOf(old, n), n > old && fill)
             P.len = n
         }
         page = page.coerceIn(0, n / 16 - 1)

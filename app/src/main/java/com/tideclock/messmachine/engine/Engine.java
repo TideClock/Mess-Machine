@@ -184,6 +184,8 @@ public final class Engine {
         public final int type, pat, step, len;
         public final String key;
         public final int[] pitches;
+        /** Nov 22: which press made this hit (a CANCEL names the same one), 0 for none. */
+        public int hit;
         /** Build 108: how hard the recorded hit was, 0..1, or below 0 for a plain tap. */
         public final float vel;
         public RecEvent(int type, int pat, String key, int step, int[] pitches, int len) { this(type, pat, key, step, pitches, len, -1f); }
@@ -322,7 +324,7 @@ public final class Engine {
         boolean mel, holdV, latched, beat, flow;
         int beats;
         /** Where this press was recorded (Nov 22: a swipe takes its own hit back), -1 if it wasn't. */
-        int recPat = -1, recAt = -1; boolean recFine;
+        int recPat = -1, recAt = -1, recId; boolean recFine;
         double at;
         List<Voice> voices = new ArrayList<>();
     }
@@ -539,7 +541,7 @@ public final class Engine {
     private void lfoBlock(Snapshot S) {
         if (S == null) return;
         double spbF = spbNow > 0 ? spbNow : spb(S);
-        double pos = playing ? step - (nextStepAt - frame) / spbF : frame / spbF;
+        double pos = playing ? step - countLeft - (nextStepAt - frame) / spbF : frame / spbF;
         for (int p = 0; p < Project.SLOTS; p++) {
             PadSlot ps = S.pads[p];
             PadOpts o = ps != null ? ps.opts : null;
@@ -566,20 +568,20 @@ public final class Engine {
 
     private double nowStep(Snapshot S, long nanos, long renderNanos) {
         double heardFrame = frame - latencyFrames - (renderNanos - nanos) * (rate / 1e9);
-        return step - (nextStepAt - heardFrame) / spb(S);
+        return step - countLeft - (nextStepAt - heardFrame) / spb(S);
     }
 
     private void command(Snapshot S, Object[] c, long renderNanos) {
         switch ((String) c[0]) {
             case "play":
-                if (!paused) { step = 0; songPos = 0; loops = 0; }
-                countLeft = countTotal = !paused && c.length > 1 ? Math.max(0, (Integer) c[1]) : 0;
+                if (!paused) { step = 0; songPos = 0; loops = 0; countLeft = countTotal = c.length > 1 ? Math.max(0, (Integer) c[1]) : 0; }
                 countUi = countLeft > 0 ? (countLeft + 3) / 4 : 0;
                 paused = false; playing = true; freeOn = false;
                 nextStepAt = frame + .004 * rate;
                 break;
             case "pause":
                 if (!playing) break;
+                countUi = 0;
                 int heard = (int) Math.floor(nowStep(S, renderNanos, renderNanos));
                 int len = lenOf(S, playingPat(S));
                 step = Math.max(0, Math.min(len - 1, heard + 1));
@@ -608,8 +610,9 @@ public final class Engine {
             case "cancel": {
                 Held h = held.remove((Integer) c[1]);
                 if (h == null) break;
-                for (Voice v : h.voices) startRelease(v, .006f);
-                if (h.recPat >= 0) recs.add(new RecEvent(RecEvent.CANCEL, h.recPat, h.pad.key, h.recAt, null, h.recFine ? 1 : 0));
+                // a true fast fade, even for a held synth or a sustained pad (their own release would linger)
+                for (Voice v : h.voices) { boolean hv = v.hold; v.hold = false; if (v.syn) { v.releasing = false; } startRelease(v, .006f); v.hold = hv; }
+                if (h.recPat >= 0) { RecEvent re = new RecEvent(RecEvent.CANCEL, h.recPat, h.pad.key, h.recAt, null, h.recFine ? 1 : 0); re.hit = h.recId; recs.add(re); }
                 break;
             }
             case "unlatch": {
@@ -765,18 +768,18 @@ public final class Engine {
             nrFreeI = arpLive ? 0 : 1;
             if (arpLive) nrFree(S);
         }
-        if (L.rec && playing && !L.nr && !mel) {
+        if (L.rec && playing && !L.nr && !mel && h.at >= -.5) {
             int pi = playingPat(S);
             if (pi >= 0) {
                 int len = S.pats[pi].len;
                 if (L.recExact) {
                     // Rec set to exact (Nov 18): the hit lands on the finer grid where it was played
                     int tick = Math.floorMod((int) Math.round(h.at * Project.TICKS), len * Project.TICKS);
-                    recs.add(new RecEvent(RecEvent.OFF, pi, ps.key, tick, null, 1));
+                    RecEvent re = new RecEvent(RecEvent.OFF, pi, ps.key, tick, null, 1); re.hit = h.recId = ++hitSerial; recs.add(re);
                     h.recPat = pi; h.recAt = tick; h.recFine = true;
                 } else {
                     int st = Math.floorMod((int) Math.round(h.at), len);
-                    recs.add(new RecEvent(RecEvent.STEP, pi, ps.key, st, null, 1, vel));
+                    RecEvent re = new RecEvent(RecEvent.STEP, pi, ps.key, st, null, 1, vel); re.hit = h.recId = ++hitSerial; recs.add(re);
                     h.recPat = pi; h.recAt = st; h.recFine = false;
                 }
             }
@@ -885,7 +888,7 @@ public final class Engine {
         }
     }
 
-    private int countLeft, countTotal;
+    private int countLeft, countTotal, hitSerial;
     /** Beats of count-in still to come (4, 3, 2, 1), 0 when the loop is running. Read by the screen. */
     public volatile int countUi;
 
@@ -894,7 +897,16 @@ public final class Engine {
             // the count-in: a click on every beat, the first one high, and the loop waits at its top
             int k = countTotal - countLeft;
             long delay = Math.max(0, Math.round(nextStepAt - frame));
-            if (k % 4 == 0) { Voice cv = trigger(k % 16 == 0 ? clickHiSlot : clickLoSlot, 1, 0, false, 1f, delay, false, false); if (cv != null) cv.dry = true; countUi = (countLeft + 3) / 4; }
+            if (k % 4 == 0) { Voice cv = trigger(k % 16 == 0 ? clickHiSlot : clickLoSlot, 1, 0, false, 1f, delay, false, false); if (cv != null) cv.dry = true; countUi = (countLeft + 3) / 4; beatTick(delay); }
+            Live LC = S.live;
+            if (LC.nr && !held.isEmpty()) {
+                double every = Math.max(.25, LC.nrRate), spbC = spb(S);
+                int sc = k % 16;
+                for (long m = (long) Math.ceil(sc / every - 1e-9); m * every < sc + 1 - 1e-9; m++) {
+                    double off = m * every - sc;
+                    nrTick(S, delay + Math.round(off * spbC), sc, -1, off > 1e-6, every, spbC, m);
+                }
+            }
             countLeft--;
             if (countLeft == 0) countUi = 0;
             nextStepAt += spb(S);
@@ -1299,7 +1311,7 @@ public final class Engine {
             // the phaser's sweep moves slowly, so once a block is enough
             float phC = 0;
             if (phaser > 0) { phC = (float) (.55 + .4 * Math.sin(v.phPh)); v.phPh += 2 * Math.PI * .35 * (n - k) / rate; }
-            double beat0 = playing ? (step - (nextStepAt - (frame + k)) / spbV) : (frame + k) / spbV;
+            double beat0 = playing ? (step - countLeft - (nextStepAt - (frame + k)) / spbV) : (frame + k) / spbV;
             float drive = 1 + dirt * 9, driveN = (float) (1 / Math.tanh(drive));
             int hold = 1 + (int) (crush * 11);
             float step = crush > 0 ? (float) Math.pow(2, -(15 - crush * 12)) : 0;

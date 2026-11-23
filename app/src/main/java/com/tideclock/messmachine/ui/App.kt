@@ -786,6 +786,8 @@ fun Modifier.watchTouches(state: AppState): Modifier = composed {
                         else -> null
                     }
                 }
+                // a gesture cancelled without an up (the system took it) leaves no finger behind
+                if (e.changes.none { it.pressed || it.previousPressed }) touches.clear()
                 for (c in e.changes) {
                     if (c.pressed && !c.previousPressed) {
                         val tag = settingsTagAt(c.position + origin, state)
@@ -803,7 +805,8 @@ fun Modifier.watchTouches(state: AppState): Modifier = composed {
                         if (dir != null && state.swipeDoes(dir)) { t.cancelled = true; t.tag!!.substringAfterLast('-').toIntOrNull()?.let { state.cancelPadHit(it) } }
                     } else if (!c.pressed && c.previousPressed) {
                         touches.remove(c.id)
-                        val quick = c.uptimeMillis - t.t < 300
+                        // a swipe whose hit was already taken back still does its job, however slowly the finger lifts
+                        val quick = c.uptimeMillis - t.t < 300 || t.cancelled
                         val dir = dirOf(t.at, c.position)
                         if (state.flickOn && t.tag != null && !t.tag.startsWith("pad-") && quick && dir == "up") state.openSettingsFor(t.tag)
                         // Nov 21: a quick swipe off a pad does what HotKeys (Settings) says for that direction:

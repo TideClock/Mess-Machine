@@ -106,6 +106,31 @@ public final class Project {
             if (!l.contains(t)) { l.add(t); java.util.Collections.sort(l); }
         }
 
+        /** Is this off-grid hit already there? */
+        public boolean hasOff(String k, int tick) {
+            List<Integer> l = offs.get(k);
+            return l != null && l.contains(Math.floorMod(tick, len * TICKS));
+        }
+
+        /**
+         * Nov 22 (review): when a loop's length changes, the per-step extras (accents, chances, locks, off-grid hits)
+         * past the new end go, and bars from..to start clean; with copy, the new bars take bar for bar what the first
+         * ones had.
+         */
+        public void extrasFor(int from, int to, boolean copy) {
+            for (byte[] a : acc.values()) for (int j = from; j < to && j < a.length; j++) a[j] = copy && from > 0 ? a[j % from] : 1;
+            for (byte[] a : chance.values()) for (int j = from; j < to && j < a.length; j++) a[j] = copy && from > 0 ? a[j % from] : 100;
+            for (float[] a : locks.values()) for (int j = from; j < to && j < a.length; j++) a[j] = copy && from > 0 ? a[j % from] : Float.NaN;
+            for (List<Integer> l : offs.values()) {
+                l.removeIf(t -> t >= from * TICKS);
+                if (copy && from > 0) {
+                    List<Integer> base = new ArrayList<>(l);
+                    for (int r = 1; r * from < to; r++) for (int t : base) { int nt = t + r * from * TICKS; if (nt < to * TICKS && !l.contains(nt)) l.add(nt); }
+                    java.util.Collections.sort(l);
+                }
+            }
+        }
+
         /** Takes back one off-grid hit (a swipe cancelled it). */
         public void removeOff(String k, int tick) {
             int t = Math.floorMod(tick, len * TICKS);

@@ -387,8 +387,11 @@ fun T(
     if (lines == 1 && size.isSp) {
         // Nov 22 (Tyler: readouts never cut off): a one-line text that doesn't fit shrinks until it does (down to 60%),
         // instead of ending in "..."; only past that does it cut. It is drawn once it fits, so it never flickers big.
-        var scale by remember(text, size) { mutableFloatStateOf(1f) }
-        var fits by remember(text, size) { mutableStateOf(false) }
+        // the scale is kept while the words change (a readout ticking never blinks) and starts over when the screen's
+        // width changes (a Fold opening, a turn), so it grows back where there is room again
+        val wide = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
+        var scale by remember(size, wide) { mutableFloatStateOf(1f) }
+        var fits by remember(size, wide) { mutableStateOf(false) }
         Text(
             text, modifier = modifier.drawWithContent { if (fits) drawContent() }, color = color, maxLines = 1, softWrap = false,
             overflow = if (scale <= .62f) TextOverflow.Ellipsis else TextOverflow.Clip,

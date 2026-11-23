@@ -326,7 +326,7 @@ fun TempoScreen(state: AppState) {
         }
         Help("Squash presses the whole mix together: off keeps every peak, flattened makes it dense and loud. Level is the mix's volume after it. Both save with the mess and go into bounces and stems.", modifier = Modifier.padding(bottom = 12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Btn("Click", { state.setLive { click = !click } }, on = state.live.click, small = true)
+            Btn("Click", { state.switchClick() }, on = state.live.click, small = true)
             Btn("Hear steps on tap", { state.switchPlayOnTap(!state.playOnTap) }, on = state.playOnTap, small = true, onColor = C.Teal)
         }
     }
