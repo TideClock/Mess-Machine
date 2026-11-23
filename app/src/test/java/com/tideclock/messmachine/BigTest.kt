@@ -880,7 +880,7 @@ class BigTest {
         // the throws joined the row: add them, then they open the perform effects
         if ("throws" !in state.dockItems) state.toggleDockItem("throws")
         settle()
-        rule.onNodeWithTag("dock-throws").performScrollTo().performClick(); settle()
+        rule.onNodeWithTag("dock-throws").performClick(); settle()  // Nov 22: the perform row no longer scrolls
         assertTrue(state.showFx)
         // marks: an LFO and a resting FX fader on pad 1 show as dots on the pad
         state.setPadOpt(0) { lfoOn = true }
