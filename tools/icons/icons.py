@@ -42,8 +42,11 @@ def _():
 @icon('place','Steps')
 def _():
     im,d=new()
-    for i in range(4): x=50+i*108; rect(d,[x,170,x+90,342],[P,CR,Y,CR][i],r=16,w=20)
-    return im
+    on={(0,0):P,(2,0):Y,(1,1):T,(3,1):P}
+    for r in range(2):
+        for c in range(4):
+            x=40+c*112; y=110+r*156; rect(d,[x,y,x+96,y+130],on.get((c,r),GD),r=18,w=22)
+    line(d,[(40,60),(472,60)],Y,26); return im
 @icon('place','Roll')
 def _():
     im,d=new(); rect(d,[50,60,462,452],K,r=30)
@@ -252,12 +255,19 @@ def _():
     im,d=new(); poly(d,[(256,40),(450,150),(450,362),(256,472),(62,362),(62,150)],TL); poly(d,[(256,256),(450,362),(256,472),(62,362)],T)
     line(d,[(256,40),(450,150),(450,362),(256,472),(62,362),(62,150),(256,40)]); eye(d,256,230,64)
     ell(d,[110,120,160,170],W,w=0); return im
+# Nov 22 round 2: waves as a little scope screen: a filled body under a fat neon line, and an eye riding the peak
+def scope(fn,curve=Y,fill=PU,n=400):
+    im,d=new()
+    pts=[(40+432*i/n,230-150*fn(i/n)) for i in range(n+1)]
+    poly(d,pts+[(472,470),(40,470)],fill)
+    line(d,pts,K,70); line(d,pts,curve,38)
+    px,py=min(pts,key=lambda p:p[1]); eye(d,min(max(px,90),422),max(py,80),54,iris=P if curve!=P else T)
+    return im
 for nm,fn in [('Sine',lambda t:math.sin(t*2*math.pi)),('Triangle',lambda t:1-4*abs(t-.5) if True else 0),
               ('Saw up',lambda t:2*((t*2)%1)-1),('Saw down',lambda t:1-2*((t*2)%1)),
-              ('Square',lambda t:1 if (t*2)%1<.5 else -1),('Random steps',lambda t:[.6,-.4,.9,-.8,.2,-.2,.7,-.6][min(7,int(t*8))])]:
+              ('Square',lambda t:1 if (t*2)%1<.5 else -1),('Random steps',lambda t:[.5,-.4,.85,-.75,.2,-.2,.65,-.55][min(7,int(t*8))])]:
     def mk(fn=fn):
-        def f():
-            im,d=new(); rect(d,[40,80,472,432],K,o=CR,w=16,r=30); wave(d,fn,x0=90,x1=422,amp=110,c=Y,w=34,n=400); return im
+        def f(): return scope(fn)
         return f
     I[nm]=('sound',mk())
 @icon('sound','Sample')
@@ -374,9 +384,10 @@ def _():
 @icon('synth','Pluck')
 def _():
     im,d=new()
-    for i,y in enumerate((150,230,310,390)): line(d,[(40,y),(472,y)],G if i!=1 else K,14 if i!=1 else 18)
-    wave(d,lambda t:math.sin(t*2*math.pi*4)*math.sin(t*math.pi),x0=40,x1=472,cy=230,amp=36,c=Y,w=18,n=400)
-    poly(d,[(250,250),(420,250),(335,460)],P); eye(d,335,320,44,iris=Y); return im
+    for y in (120,200,280,360): line(d,[(30,y),(482,y)],K,30); line(d,[(30,y),(482,y)],GD,14)
+    wave(d,lambda t:math.sin(t*2*math.pi*4)*math.sin(t*math.pi),x0=30,x1=482,cy=200,amp=40,c=K,w=34,n=400)
+    wave(d,lambda t:math.sin(t*2*math.pi*4)*math.sin(t*math.pi),x0=30,x1=482,cy=200,amp=40,c=Y,w=18,n=400)
+    poly(d,[(240,250),(440,250),(340,480)],P); eye(d,340,320,48,iris=Y); return im
 @icon('synth','Poly')
 def _():
     im,d=new()
@@ -390,15 +401,90 @@ def _():
     eye(d,215,310,58); return im
 @icon('synth','Acid')
 def _():
-    im,d=new(); poly(d,[(256,40),(400,260),(400,330),(370,400),(310,450),(202,450),(142,400),(112,330),(112,260)],Y)
-    poly(d,[(112,330),(400,330),(370,400),(310,450),(202,450),(142,400)],YD); line(d,[(256,40),(400,260),(400,330),(370,400),(310,450),(202,450),(142,400),(112,330),(112,260),(256,40)])
-    eye(d,256,280,60,iris=P); return im
+    im,d=new(); pts=[(256,30),(404,256),(404,330),(374,404),(312,456),(200,456),(138,404),(108,330),(108,256)]
+    poly(d,pts,GR); poly(d,[(108,340),(404,340),(374,404),(312,456),(200,456),(138,404)],GRD); line(d,pts+[pts[0]])
+    eye(d,256,270,64,iris=P); ell(d,[160,150,200,190],W,w=0); return im
 for nm,fn in [('Wobble',lambda t:math.sin(t*2*math.pi*2.5)*(.35+.65*abs(math.sin(t*math.pi*1.3)))),
               ('Low pass',lambda t:.6 if t<.55 else .6-((t-.55)/.45)**1.4*2.2),
               ('High pass',lambda t:.6 if t>.45 else .6-((.45-t)/.45)**1.4*2.2),
               ('Band pass',lambda t:-1.2+1.9*math.exp(-((t-.5)/.14)**2))]:
     def mk(fn=fn,nm=nm):
-        def f():
-            im,d=new(); rect(d,[40,80,472,432],K,o=CR,w=16,r=30); wave(d,fn,x0=90,x1=422,amp=110,c=Y if nm=='Wobble' else T,w=34,n=400); return im
+        def f(): return scope(fn) if nm=='Wobble' else scope(fn,curve=Y,fill=P)
         return f
     I[nm]=('sound',mk())
+
+# ---------- Nov 22 round 2: the loop strip, the throws, the edit tray's tabs, the synth views ----------
+@icon('loop','Wait bar')
+def _():
+    im,d=new(); poly(d,[(120,50),(392,50),(392,90),(290,250),(392,420),(392,462),(120,462),(120,420),(222,250),(120,90)],CR)
+    poly(d,[(170,420),(342,420),(256,300)],Y); poly(d,[(200,120),(312,120),(256,200)],Y)
+    rect(d,[90,30,422,80],YD,r=14); rect(d,[90,432,422,482],YD,r=14); return im
+@icon('loop','Now')
+def _():
+    im,d=new(); poly(d,[(300,30),(110,290),(240,290),(190,482),(410,200),(270,200),(350,30)],Y); eye(d,262,236,40,iris=P); return im
+@icon('loop','Count in')
+def _():
+    im,d=new()
+    for k in range(4):
+        x=40+k*112; h=110+k*80; rect(d,[x,470-h,x+92,470],P if k==0 else Y,r=16)
+    eye(d,86,300,40,iris=Y); return im
+@icon('loop','Click')
+def _():
+    im,d=new(); poly(d,[(170,40),(342,40),(440,470),(72,470)],R); poly(d,[(256,470),(440,470),(342,40),(310,40)],RD)
+    line(d,[(170,40),(342,40),(440,470),(72,470),(170,40)]); line(d,[(256,400),(380,90)],K,34); ell(d,[340,110,420,190],Y,w=16)
+    rect(d,[140,350,372,410],CR,w=16); return im
+@icon('loop','Bar plus')
+def _():
+    im,d=new(); rect(d,[40,140,300,372],G,r=24); rect(d,[230,90,472,422],GR,r=30)
+    line(d,[(351,170),(351,342)],K,48); line(d,[(265,256),(437,256)],K,48); return im
+@icon('loop','Bar minus')
+def _():
+    im,d=new(); rect(d,[40,140,300,372],G,r=24); rect(d,[230,90,472,422],R,r=30)
+    line(d,[(265,256),(437,256)],K,48); return im
+@icon('loop','Double')
+def _():
+    im,d=new(); rect(d,[40,170,250,400],Y,r=24); rect(d,[262,110,472,340],P,r=24)
+    d.text((0,0),'',fill=K); line(d,[(300,160),(430,290)],K,40); line(d,[(430,160),(300,290)],K,40); return im
+@icon('throw','Stutter')
+def _():
+    im,d=new()
+    for k in range(4): x=60+k*100; rect(d,[x,120+k*10,x+80,392-k*10],[P,P,Y,T][k],r=14)
+    eye(d,100,200,36,iris=Y); return im
+@icon('throw','Tape stop')
+def _():
+    im,d=new(); rect(d,[40,60,472,300],YD,r=30); rect(d,[100,100,412,230],CR,w=16,r=16)
+    for x in (180,332): ell(d,[x-50,115,x+50,215],K,w=0); ell(d,[x-22,143,x+22,187],CR,w=0)
+    poly(d,[(256,480),(150,350),(362,350)],R); return im
+@icon('throw','Gate')
+def _():
+    im,d=new()
+    for x in (70,190,310,430): rect(d,[x-38,60,x+38,452],GD,r=10)
+    rect(d,[30,200,482,300],P,r=20); eye(d,256,250,44,iris=Y); return im
+@icon('throw','Ring mod')
+def _():
+    im,d=new(); ell(d,[50,50,462,462],None,w=0); d.ellipse([50,50,462,462],outline=K,width=90); d.ellipse([50,50,462,462],outline=Y,width=50)
+    wave(d,lambda t:math.sin(t*2*math.pi*3),x0=140,x1=372,cy=256,amp=60,c=K,w=44); wave(d,lambda t:math.sin(t*2*math.pi*3),x0=140,x1=372,cy=256,amp=60,c=P,w=22); return im
+@icon('throw','Reverse')
+def _():
+    im,d=new(); poly(d,[(470,60),(470,452),(170,256)],T); poly(d,[(470,300),(470,452),(170,256)],TD); line(d,[(470,60),(470,452),(170,256),(470,60)])
+    rect(d,[40,60,120,452],P,r=14); eye(d,370,240,56); return im
+@icon('edit','Sound')
+def _():
+    im,d=new(); poly(d,[(60,190),(170,190),(300,70),(300,442),(170,322),(60,322)],G)
+    for r in (90,160): d.arc([300-r,256-r,300+r,256+r],-50,50,fill=K,width=40); d.arc([300-r,256-r,300+r,256+r],-48,48,fill=Y,width=20)
+    return im
+@icon('edit','More')
+def _():
+    im,d=new()
+    for x,c in [(110,P),(256,Y),(402,T)]: ell(d,[x-66,190,x+66,322],c)
+    eye(d,256,256,40,iris=P); return im
+@icon('synthview','Simple')
+def _():
+    im,d=new(); ell(d,[100,100,412,412],G); d.arc([100,100,412,412],120,420,fill=K,width=26); line(d,[(256,256),(150,150)],K,40); line(d,[(256,256),(150,150)],Y,20)
+    return im
+@icon('synthview','Full')
+def _():
+    im,d=new()
+    for cx,cy,c in [(140,140,T),(372,140,P),(140,372,Y),(372,372,PU)]:
+        ell(d,[cx-96,cy-96,cx+96,cy+96],c); line(d,[(cx,cy),(cx-50,cy-50)],K,30)
+    return im
