@@ -143,6 +143,9 @@ fun MessPicture(f: com.tideclock.messmachine.MessFile, modifier: Modifier = Modi
 /** ⚙ Settings: how the app looks and plays (split from the Messes sheet, which keeps files only). */
 @Composable
 fun SettingsScreen(state: AppState) {
+    // Nov 23 (Tyler: "tapping Click isn't working most of the time"): the live settings are not Compose state; reading
+    // liveV makes this redraw when one changes (Click toggled, but its key only showed it on the next redraw)
+    @Suppress("UNUSED_VARIABLE") val lvBump = state.liveV
     val ctx = androidx.compose.ui.platform.LocalContext.current
     // Android 13 and up ask before an app shows notifications; without it the music still plays, the Stop notification just stays hidden
     val notif = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }

@@ -394,6 +394,9 @@ fun styleShort(s: String): String = when (s) { "ring" -> " RNG"; "flow" -> " FLO
 /** Note repeat on or off, and its rate or arp. */
 @Composable
 fun RepeatControls(state: AppState, tag: String = "repeat") {
+    // Nov 23 (Tyler: "tapping Click isn't working most of the time"): the live settings are not Compose state; reading
+    // liveV makes this redraw when one changes (Click toggled, but its key only showed it on the next redraw)
+    @Suppress("UNUSED_VARIABLE") val lvBump = state.liveV
     Btn("Repeat", { state.setLive { nr = !nr } }, on = state.live.nr, onColor = C.Pink, small = true, tag = tag)
     // Nov 21 note: the rate and the pattern are two choices, not one list
     Select(

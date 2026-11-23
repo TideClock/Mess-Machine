@@ -3184,6 +3184,17 @@ class BigTest {
         state.overlay = null; settle()
     }
 
+    /** Nov 23 (Tyler: "tapping Click isn't working most of the time"): the key shows its new state on every tap. */
+    @Test fun nov23ClickKeyShowsEveryTap() {
+        fun lit() = rule.onNodeWithTag("loop-click").fetchSemanticsNode().config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.Selected) == true
+        repeat(4) {
+            val was = state.live.click
+            at("loop-click").performClick(); settle()
+            assertEquals("Click switched", !was, state.live.click)
+            assertEquals("and its key shows it right away (tap ${it + 1})", state.live.click, lit())
+        }
+    }
+
     @Test fun hushStopsEverything() {
         state.togglePlay()
         loudest(4800)
