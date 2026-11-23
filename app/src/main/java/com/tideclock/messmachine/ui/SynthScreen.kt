@@ -94,7 +94,7 @@ fun SynthScreen(state: AppState) {
             Btn(if (full) "Full" else "Simple", { state.synthView = if (full) "simple" else "full" }, on = full, onColor = C.Teal, small = true, tight = true, tag = "synthview-toggle", modifier = Modifier.weight(1f))
             sp.kind.params.firstOrNull { it.id == "mode" }?.let { mp ->
                 val m = sp.get("mode").toInt().coerceIn(0, mp.choices.size - 1)
-                Btn(mp.choices[m], { state.setSynth(pad, "mode", ((m + 1) % mp.choices.size).toDouble(), true) }, on = m > 0, onColor = C.Pink, small = true, tight = true, tag = "synthmode-toggle", modifier = Modifier.weight(1f))
+                Btn(mp.choices[m], { state.setSynth(pad, "mode", ((m + 1) % mp.choices.size).toDouble(), true) }, on = m > 0, onColor = C.Yellow, small = true, tight = true, tag = "synthmode-toggle", modifier = Modifier.weight(1f))
             }
             if (scratch) {
                 // the scratch synth onto a pad: an empty one in one tap; a pad with a sound on it takes a second tap
@@ -104,14 +104,14 @@ fun SynthScreen(state: AppState) {
                 val selFull = P.kit.getOrNull(sel).orEmpty().isNotEmpty()
                 val armed = state.replaceArmed == sel
                 if (!selFull) { if (empty != sel) Btn("To pad ${sel + 1}", { state.scratchToPad(sel) }, small = true, tight = true, tag = "synth-new-here", modifier = Modifier.weight(1.2f)) }
-                else Btn(if (armed) "Replace ${sel + 1}?" else "Over ${sel + 1}", { if (armed) { state.replaceArmed = -1; state.scratchToPad(sel) } else state.armReplace(sel) },
+                else Btn(if (armed) "Replace ${sel + 1}?" else "Over ${sel + 1}", { if (armed) { if (state.replaceReady()) { state.replaceArmed = -1; state.scratchToPad(sel) } } else state.armReplace(sel) },
                     on = armed, onColor = C.Riot, small = true, tight = true, tag = "synth-new-here", modifier = Modifier.weight(1.2f))
             }
         }
         // the model choice some kinds have (drums' kit, the plucked string's body)
         sp.kind.params.firstOrNull { it.id == "model" }?.let { mp ->
             Wrap(Modifier.padding(bottom = 10.dp).tagged("synthmodel-chips")) {
-                for ((i, n) in mp.choices.withIndex()) Btn(n, { state.setSynth(pad, "model", i.toDouble(), true) }, on = sp.get("model").toInt() == i, onColor = C.Pink, small = true, tag = "synthmodel-$i")
+                for ((i, n) in mp.choices.withIndex()) Btn(n, { state.setSynth(pad, "model", i.toDouble(), true) }, on = sp.get("model").toInt() == i, onColor = C.Yellow, small = true, tag = "synthmodel-$i")
             }
         }
         // SE-15: a granular synth reads one of the mess's sounds

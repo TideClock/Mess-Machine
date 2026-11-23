@@ -596,8 +596,11 @@ class AppState(private val app: Context) {
     var synthView by mutableStateOf("simple")
     /** Nov 22: a pad with a sound on it takes a second tap before the scratch synth replaces it. -1 = not armed. */
     var replaceArmed by mutableIntStateOf(-1)
+    private var armedAt = 0L
+    /** A second tap counts only after half a second, so a quick double tap can't overwrite the pad. */
+    fun replaceReady(): Boolean = android.os.SystemClock.uptimeMillis() - armedAt >= 500
     fun armReplace(pad: Int) {
-        replaceArmed = pad
+        replaceArmed = pad; armedAt = android.os.SystemClock.uptimeMillis()
         say("Tap again to replace ${lib.titleOf(project.kit.getOrNull(pad).orEmpty()).ifEmpty { "pad ${pad + 1}" }} with this synth.")
         val me = pad
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ if (replaceArmed == me) replaceArmed = -1 }, 4000)

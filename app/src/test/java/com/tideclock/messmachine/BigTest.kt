@@ -2907,6 +2907,19 @@ class BigTest {
         rule.onNodeWithTag("pad-2").performTouchInput { up() }
         repeat(2) { state.engine.render(FloatArray(512), 256) }; state.tick(System.nanoTime()); settle()
         assertEquals("a tap stays", 1, (0 until state.project.pat().len).count { state.project.pat().step(k2, it) })
+        // two fingers: one finger moving a little must not read as the other one's swipe (review of build 153)
+        val k0 = state.project.kit[0]; val k3 = state.project.kit[3]
+        state.edit { for (j in 0 until pats[cur].len) { pats[cur].setStep(k0, j, false); pats[cur].setStep(k3, j, false) } }; settle()
+        val pa = rule.onNodeWithTag("pad-0").fetchSemanticsNode().boundsInRoot.center
+        val pb = rule.onNodeWithTag("pad-3").fetchSemanticsNode().boundsInRoot.center
+        rule.onRoot().performTouchInput { down(0, pa); down(1, pb) }
+        repeat(2) { state.engine.render(FloatArray(512), 256) }; state.tick(System.nanoTime())
+        rule.onRoot().performTouchInput { moveBy(0, Offset(3f, 0f)) }
+        repeat(2) { state.engine.render(FloatArray(512), 256) }; state.tick(System.nanoTime())
+        rule.onRoot().performTouchInput { up(0); up(1) }
+        repeat(2) { state.engine.render(FloatArray(512), 256) }; state.tick(System.nanoTime()); settle()
+        assertEquals("two fingers: pad 1's hit stays", 1, (0 until state.project.pat().len).count { state.project.pat().step(k0, it) })
+        assertEquals("two fingers: pad 4's hit stays", 1, (0 until state.project.pat().len).count { state.project.pat().step(k3, it) })
         state.stop(); state.setLive { rec = false }; settle()
 
         // the count-in shows in the loop readout
@@ -2960,6 +2973,9 @@ class BigTest {
         assertEquals("one tap does not overwrite the pad", before, state.project.kit[0])
         assertEquals(0, state.replaceArmed)
         shot("124-synth-page")
+        rule.onNodeWithTag("synth-new-here").performClick(); settle()
+        assertEquals("a quick double tap does not overwrite either", before, state.project.kit[0])
+        ShadowLooper.idleMainLooper(700, java.util.concurrent.TimeUnit.MILLISECONDS)
         at("synth-new-here").performClick(); settle()
         assertTrue("the second tap does", state.project.kit[0] != before)
         state.undo(); settle()

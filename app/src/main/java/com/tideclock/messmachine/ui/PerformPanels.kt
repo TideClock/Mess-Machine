@@ -295,7 +295,7 @@ fun PianoKeyboard(state: AppState, pad: Int, keysHeight: Dp = 132.dp, filter: Bo
         // Hold lives on the dock and the keys bar now; the pad filter is the dock's (aim it at this pad) or a desk piece.
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(bottom = 4.dp)) {
             Swatch(col)
-            T(if (pad == com.tideclock.messmachine.engine.Project.SCRATCH) " SCRATCH ${state.synthOn(pad)?.name?.uppercase().orEmpty()}" else " ${pad + 1} ${state.lib.titleOf(k).uppercase()}", size = 11.sp, color = C.Yellow, lines = 1, spacing = .04.em, modifier = Modifier.weight(1f))
+            T(if (pad == com.tideclock.messmachine.engine.Project.SCRATCH) " SCRATCH ${state.synthOn(pad)?.name?.uppercase().orEmpty()}" else " ${pad + 1} ${state.lib.titleOf(k).uppercase()}", size = 11.sp, color = C.Yellow, lines = 2, spacing = .04.em, modifier = Modifier.weight(1f))
             if (squares || slots) {
                 Btn("Oct−", { state.shiftPadiano(pad, -12) }, small = true, tight = true, enabled = base > -36, tag = "piano-down-$pad")
                 Btn("Oct+", { state.shiftPadiano(pad, 12) }, small = true, tight = true, enabled = base < 24, tag = "piano-up-$pad")

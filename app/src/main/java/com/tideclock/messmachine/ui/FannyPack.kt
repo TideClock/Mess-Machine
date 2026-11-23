@@ -111,7 +111,7 @@ fun FannyPack(state: AppState, pad: Int) {
         if (packed.isEmpty()) Note("Empty: tap +", color = C.Yellow)
         for (id in packed) if (id !in hidden) when (id) {
             "keys" -> PianoKeyboard(state, pad, close = false, synthBtn = true)
-            "fx" -> FxStrip(state, pad, col)
+            "fx" -> FxStrip(state, pad, col, underRow = true)
             "lfo" -> LfoStrip(state, pad, col)
             "xy" -> PadXy(state, pad, Modifier.padding(bottom = 6.dp))
         }
@@ -123,8 +123,8 @@ fun FannyPack(state: AppState, pad: Int) {
  * the loop plays, every move records like an XY move. Off sends them all back to zero.
  */
 @Composable
-fun FxStrip(state: AppState, pad: Int, col: Color) {
-    if (UiLook.panel) { VialStrip(state, pad); return }
+fun FxStrip(state: AppState, pad: Int, col: Color, underRow: Boolean = false) {
+    if (UiLook.panel) { VialStrip(state, pad, underRow); return }
     Column(Modifier.fillMaxWidth().padding(bottom = 6.dp).tagged("fxstrip-$pad")) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 4.dp)) {
             T("FX", size = 12.sp, color = C.Yellow, spacing = .1.em, modifier = Modifier.weight(1f))
@@ -188,14 +188,14 @@ private fun vialColor(t: Int): Color = when (t) {
  * whole sets of levels; Bypass takes them all out at once.
  */
 @Composable
-fun VialStrip(state: AppState, pad: Int) {
+fun VialStrip(state: AppState, pad: Int, underRow: Boolean = false) {
     @Suppress("UNUSED_VARIABLE") val vv = state.version
     val ft = com.tideclock.messmachine.engine.Engine.T_FILTER
     val rt = com.tideclock.messmachine.engine.Engine.T_RES
     val all = FX_STRIP + listOf(ft to "Cut", rt to "Res")
     // the vials grow with the screen (a Fold's inner screen gets tall ones) and with Large keys
     val vialH = ((UiLook.widthDp / 3.6f).coerceIn(112f, 190f) * UiLook.big).dp
-    val nameSp = if (UiLook.widthDp > 560) 10f * UiLook.big else 9.5f * UiLook.big
+    val nameSp = if (UiLook.widthDp > 560) 10f * UiLook.big else if (underRow) 9.5f * UiLook.big else 7.5f * UiLook.big
     Column(Modifier.fillMaxWidth().padding(bottom = 6.dp).tagged("fxstrip-$pad")) {
         T("FX · PAD ${pad + 1}", size = 12.sp, color = C.Yellow, spacing = .1.em, modifier = Modifier.padding(bottom = 6.dp))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
@@ -210,7 +210,7 @@ fun VialStrip(state: AppState, pad: Int) {
         state.fxEditing(pad)?.let { t -> FxSettingsCard(state, pad, t, all.firstOrNull { it.first == t }?.second ?: "") }
         // Nov 22 (Tyler: the strip under the row needs wider vials to stay playable): on a phone they sit in two rows
         // of six and five, about twice as wide as eleven in one row; a wide screen keeps one row
-        val perRow = if (UiLook.widthDp > 560) all.size else 6
+        val perRow = if (!underRow || UiLook.widthDp > 560) all.size else 6
         for (rowItems in all.chunked(perRow)) Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for ((t, name) in rowItems) {
                 val v = state.fxSend["$pad:$t"] ?: 0f

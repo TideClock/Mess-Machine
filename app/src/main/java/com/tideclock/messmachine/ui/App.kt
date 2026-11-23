@@ -101,6 +101,7 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
                 state.tick(t)
             }
         }
+        LaunchedEffect(state.tab) { state.songOpen = false }
         LaunchedEffect(state.toastId) {
             if (state.toast != null) { delay(3200); state.toast = null }
         }
@@ -151,8 +152,8 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
             PulseBackdrop(state)
             Column(Modifier.fillMaxSize()) {
                 Transport(state)
-                // Perform has the loops on the page itself, so the strip stays out of the way there
-                if (state.loopStripOpen && state.tab != com.tideclock.messmachine.Tab.Perform) LoopStrip(state)
+                // Nov 22 review: the strip shows on every page, Perform included (Click, Count, - + 2x live only here)
+                if (state.loopStripOpen) LoopStrip(state)
                 if (state.micOn) RecordingBanner(state)
                 if (state.updater.ready && !state.updater.later || state.updater.busy) UpdateBar(state)
                 if (state.cpuAsk) CpuBanner(state)
@@ -674,7 +675,8 @@ fun UpdateBar(state: AppState) {
 fun LoopStrip(state: AppState) {
     val P = state.project
     val bars = P.pat().len / 16
-    val tall = (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp / state.uiScale * .62f).dp
+    // Nov 22 review: at most half the screen, so a row of pads stays in view even with the song open
+    val tall = (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp / state.uiScale * .5f).dp
     @Suppress("UNUSED_VARIABLE") val lv = state.liveV
     Column(
         Modifier.fillMaxWidth().background(C.Ink).tagged("loopstrip").heightIn(max = tall)
@@ -684,15 +686,18 @@ fun LoopStrip(state: AppState) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             for (i in 0 until com.tideclock.messmachine.engine.Project.NSLOTS) LoopPad(state, i, Modifier.weight(1f))
         }
+        // the loop you are in: when a pick lands, its bars (- + 2x, wide enough to hit), and the small X
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Btn(if (state.loopAtBar) "Wait bar" else "Now", { state.switchLoopAtBar() }, small = true, tight = true, on = state.loopAtBar, onColor = C.Teal, tag = "loop-when")
-            Btn("Click", { state.switchClick() }, small = true, tight = true, on = state.live.click, onColor = C.Yellow, tag = "loop-click")
-            Btn(if (state.countInBars == 0) "Count off" else "Count ${state.countInBars}", { state.cycleCountIn() }, small = true, tight = true, on = state.countInBars > 0, onColor = C.Yellow, tag = "loop-countin")
-            Box(Modifier.weight(1f))
-            Btn("−", { state.dropBar() }, small = true, tight = true, enabled = bars > 1, tag = "loop-minus")
-            Btn("+", { state.addBar() }, small = true, tight = true, enabled = bars < 8, tag = "loop-plus")
-            Btn("2×", { state.doubleLoop() }, small = true, tight = true, enabled = bars <= 4, tag = "loop-double")
+            Btn(if (state.loopAtBar) "Wait bar" else "Now", { state.switchLoopAtBar() }, small = true, tight = true, on = state.loopAtBar, onColor = C.Teal, tag = "loop-when", modifier = Modifier.weight(1.5f))
+            T("${bars} BAR${if (bars > 1) "S" else ""}", size = 11.sp, color = C.Dim, spacing = .06.em, lines = 1, modifier = Modifier.weight(1f).tagged("loop-bars"))
+            Btn("−", { state.dropBar() }, small = true, tight = true, enabled = bars > 1, tag = "loop-minus", modifier = Modifier.weight(1f))
+            Btn("+", { state.addBar() }, small = true, tight = true, enabled = bars < 8, tag = "loop-plus", modifier = Modifier.weight(1f))
+            Btn("2×", { state.doubleLoop() }, small = true, tight = true, enabled = bars <= 4, tag = "loop-double", modifier = Modifier.weight(1f))
             CloseScrew({ state.loopStripOpen = false }, tag = "loop-close", label = "Close the loops", small = true)
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Btn("Click", { state.switchClick() }, small = true, tight = true, on = state.live.click, onColor = C.Yellow, tag = "loop-click", modifier = Modifier.weight(1f))
+            Btn(if (state.countInBars == 0) "Count off" else "Count ${state.countInBars}", { state.cycleCountIn() }, small = true, tight = true, on = state.countInBars > 0, onColor = C.Yellow, tag = "loop-countin", modifier = Modifier.weight(1f))
         }
         // the bars of this loop: pick the one Steps and Roll show
         if (bars > 1) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -764,47 +769,48 @@ fun Modifier.watchTouches(state: AppState): Modifier = composed {
     val dens = LocalDensity.current
     this.onGloballyPositioned { origin = it.boundsInRoot().topLeft }.pointerInput(Unit) {
         awaitPointerEventScope {
-            var downAt = Offset.Zero; var downT = 0L; var downTag: String? = null; var cancelled = false
+            // Nov 22 review: each finger keeps its own start, so one finger moving never reads as another one's swipe
+            class Touch(val at: Offset, val t: Long, val tag: String?) { var cancelled = false }
+            val touches = HashMap<androidx.compose.ui.input.pointer.PointerId, Touch>()
             while (true) {
                 val e = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                val far = with(dens) { 44.dp.toPx() }
+                fun dirOf(from: Offset, to: Offset): String? {
+                    val dy = from.y - to.y; val sx = to.x - from.x
+                    val dx = kotlin.math.abs(sx); val ady = kotlin.math.abs(dy)
+                    return when {
+                        dy > far && dx < dy / 2 -> "up"
+                        -dy > far && dx < ady / 2 -> "down"
+                        sx < -far && ady < dx / 2 -> "left"
+                        sx > far && ady < dx / 2 -> "right"
+                        else -> null
+                    }
+                }
                 for (c in e.changes) {
                     if (c.pressed && !c.previousPressed) {
-                        downAt = c.position; downT = c.uptimeMillis; cancelled = false
-                        downTag = settingsTagAt(c.position + origin, state)
-                        state.noteTouch(downTag)
-                    } else if (c.pressed && c.previousPressed && !cancelled && state.padFlick && downTag?.startsWith("pad-") == true && c.uptimeMillis - downT < 300) {
+                        val tag = settingsTagAt(c.position + origin, state)
+                        touches[c.id] = Touch(c.position, c.uptimeMillis, tag)
+                        state.noteTouch(tag)
+                        continue
+                    }
+                    val t = touches[c.id] ?: continue
+                    if (c.pressed && c.previousPressed) {
                         // Nov 22 (Tyler): a swipe cancels its own hit. The hit already sounded on touch (no added
-                        // latency); the moment the finger has gone far enough to be a swipe, it fades out and a
-                        // recorded hit is taken back
-                        val dy = downAt.y - c.position.y; val sx = c.position.x - downAt.x
-                        val dx = kotlin.math.abs(sx); val ady = kotlin.math.abs(dy)
-                        val far = with(dens) { 44.dp.toPx() }
-                        val dir = when {
-                            dy > far && dx < dy / 2 -> "up"
-                            -dy > far && dx < ady / 2 -> "down"
-                            sx < -far && ady < dx / 2 -> "left"
-                            sx > far && ady < dx / 2 -> "right"
-                            else -> null
-                        }
-                        if (dir != null && state.swipeDoes(dir)) { cancelled = true; downTag!!.substringAfterLast('-').toIntOrNull()?.let { state.cancelPadHit(it) } }
+                        // latency); the moment this finger has gone far enough to be a swipe, its hit fades out and
+                        // a recorded hit is taken back
+                        if (t.cancelled || !state.padFlick || t.tag?.startsWith("pad-") != true || c.uptimeMillis - t.t >= 300) continue
+                        val dir = dirOf(t.at, c.position)
+                        if (dir != null && state.swipeDoes(dir)) { t.cancelled = true; t.tag!!.substringAfterLast('-').toIntOrNull()?.let { state.cancelPadHit(it) } }
                     } else if (!c.pressed && c.previousPressed) {
-                        val dy = downAt.y - c.position.y; val dx = kotlin.math.abs(c.position.x - downAt.x)
-                        val sx = c.position.x - downAt.x; val ady = kotlin.math.abs(dy)
-                        val far = with(dens) { 44.dp.toPx() }
-                        val quick = c.uptimeMillis - downT < 300
-                        if (state.flickOn && downTag != null && !downTag!!.startsWith("pad-") && quick && dy > far && dx < dy / 2) state.openSettingsFor(downTag!!)
+                        touches.remove(c.id)
+                        val quick = c.uptimeMillis - t.t < 300
+                        val dir = dirOf(t.at, c.position)
+                        if (state.flickOn && t.tag != null && !t.tag.startsWith("pad-") && quick && dir == "up") state.openSettingsFor(t.tag)
                         // Nov 21: a quick swipe off a pad does what HotKeys (Settings) says for that direction:
                         // up the Edit tray, down the Padiano, left Sample, right FX, out of the box
-                        else if (state.padFlick && (downTag?.startsWith("pad-") == true || downTag == "synth-tile") && quick) {
-                            val dir = when {
-                                dy > far && dx < dy / 2 -> "up"
-                                -dy > far && dx < ady / 2 -> "down"
-                                sx < -far && ady < dx / 2 -> "left"
-                                sx > far && ady < dx / 2 -> "right"
-                                else -> null
-                            }
-                            if (dir != null && downTag == "synth-tile") state.padSwipeAt(state.synthTilePad, dir, null)
-                            else if (dir != null) state.padSwipe(downTag!!, dir)
+                        else if (state.padFlick && (t.tag?.startsWith("pad-") == true || t.tag == "synth-tile") && quick && dir != null) {
+                            if (t.tag == "synth-tile") state.padSwipeAt(state.synthTilePad, dir, null)
+                            else state.padSwipe(t.tag!!, dir)
                         }
                     }
                 }
