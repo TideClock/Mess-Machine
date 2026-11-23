@@ -29,7 +29,9 @@ class TutStep(
 class Tutorial(val id: String, val group: String, val title: String, val blurb: String, val steps: List<TutStep>, val setup: (AppState) -> Unit = {})
 
 object Tutorials {
-    private fun t(tag: String?): (AppState) -> String? = { tag }
+    /** Nov 22: a dock key that sits behind ⋯ on this screen is reached through ⋯. */
+    private fun more(s: AppState, tag: String?): String? = if (tag != null && tag in s.dockOverflow && !s.dockMoreOpen) "dock-more" else tag
+    private fun t(tag: String?): (AppState) -> String? = { s -> more(s, tag) }
     /**
      * A control that lives on the side dock in Classic. In the New and Side layouts (Nov 21 fix): Hold and Repeat are
      * on the bottom bar, and the rest are in the perform row, which the ring opens first.
@@ -37,8 +39,8 @@ object Tutorials {
     private fun dock(tag: String): (AppState) -> String? = { s ->
         when {
             s.layout == "classic" -> tag
-            tag == "dock-hold" -> "hold-toggle"
-            tag == "dock-repeat" -> "repeat-toggle"
+            tag == "dock-hold" -> more(s, "hold-toggle")
+            tag == "dock-repeat" -> more(s, "repeat-toggle")
             !s.performOpen -> "perform-handle"
             else -> tag
         }

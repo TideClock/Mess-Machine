@@ -1,23 +1,19 @@
 {
-  "title": "Sliders, a shorter Synth top, Loop and Song sides",
+  "title": "Keys that fit your thumb",
   "thisBuild": [
-    "Pick-one groups are sliders now: tap a stop or drag and let go. Synth kind, Simple/Full, Poly/Mono/Acid, the LFO wave, the pad filter's Lo/Hi/Band, Straight/Triplet/Dotted, Steps/Roll, and Loop/Song in the loop strip.",
-    "Synth's top is two short rows beside its pad: which synth and its preset, then the view and mode sliders.",
-    "The loop strip has a Loop side and a Song side. Click and Count are only as wide as their words; Song's keys say Play loop and Play song on one row.",
-    "The perform row is one short panel: keys in a row, the pitch wheel and the filter lying on their sides. The beat dot is gone.",
-    "Swipe up on Pack, Hold, Chords, Repeat or the key readout for their settings. Hold's settings are one bar: minus, the count, plus, Let go.",
-    "Gone: the Sample key (it is in the pad's Edit tray), the pack's zipper bar, the loop line on Steps and Roll, the loops row on Perform, and every explanation line.",
-    "Steps names sit level with their steps, the same height.",
-    "Look: bars and trays are one plate with a brass rule. A lamp's colour means one thing: yellow on, pink recording, oxblood takes sound away, teal a shape, amber readouts."
+    "The bottom bar's keys are all one width, at least 44 dp under your thumb at any view size, and they no longer stretch or squeeze. A key keeps its width when its word changes (Hold, Last, 2/4).",
+    "Keys that don't fit your screen go behind More at the end of the bar: Chords first, then Drop, then Repeat. Edit never does. On your folded screen that is Chords and Drop.",
+    "The pads no longer shrink a second time at 70 percent view, so they are bigger there now.",
+    "The loop strip's keys are at least 44 dp under your thumb too.",
+    "The top bar, Menu size and Pad layout come next, once you pick which top bar keys go first."
   ],
   "watch": [
-    "Drag along the synth kinds and let go: does it feel right, or should it switch while you slide?",
-    "Swipe up on Pack and Hold: does the settings tray open every time, and the key not also toggle?",
-    "Do the sideways wheel and filter play better than the upright ones?",
-    "Any lamp colour that now reads wrong to you?"
+    "Play at 70 percent: are the bigger pads better, or do you miss seeing more of the page?",
+    "Is Chords and Drop behind More the right pair, or should something else go first?",
+    "Do the bottom keys feel the right size now, or still small?"
   ],
   "limits": [
-    "Screen-based key sizing is a proposal for you to decide, not built yet.",
-    "Classic Look keeps its old colours; the colour meanings are for the panel Look."
+    "The top bar and the sheets are still sized the old way.",
+    "Menu size and Pad layout are not built yet."
   ]
 }

@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -71,8 +72,9 @@ fun PadsScreen(state: AppState) {
         }
         if (state.stepMode) Note("STEP MODE · " + state.lib.titleOf(state.selKey()).ifEmpty { "the picked pad" }.uppercase() + " · BAR ${state.page + 1}",
             color = C.Yellow, modifier = Modifier.padding(bottom = 8.dp))
-        // zoomed out, the pad grid shrinks with everything else so more of the machine fits
-        Box(Modifier.fillMaxWidth(minOf(1f, state.uiScale)).widthIn(max = 560.dp).align(Alignment.CenterHorizontally)) {
+        // Nov 22 sizing: the pads no longer shrink a second time with View size (the density already scales them);
+        // they fill the width, up to 560 real dp, so a drum pad stays well over 64 real dp on any phone
+        Box(Modifier.fillMaxWidth().widthIn(max = 560.rdp).align(Alignment.CenterHorizontally)) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 for (r in 0 until 4) {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -147,6 +149,9 @@ private fun RowScope.BankButtons(state: AppState) {
     }
 }
 
+/** One key on the bottom dock: its tag, when it goes into ⋯ (higher goes first, 0 never), its words, and how it draws. */
+private class DockKey(val tag: String, val prio: Int, val words: List<String>, val body: @Composable (Modifier) -> Unit)
+
 /**
  * The bottom dock (build 84, Tyler's Nov 17 note): Menu for the picked pad, Hold, Chords on or off and the key,
  * on a bar that stays put under the page while it scrolls. Shown on Play, My Desk and Synth. The key button opens
@@ -162,44 +167,91 @@ fun BottomDock(state: AppState) {
         drawLine(if (UiLook.panel) Hw.Brass else C.Teal, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 2.dp.toPx())
     }.tagged("bottomdock")) {
         if (state.keysBarOpen) KeysPanel(state)
-        Row(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-            // every key shares the row (Nov 21: with MUTE and DROP added, fixed widths left the key readout no room on a phone)
-            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                // Edit (Menu before build 107), then tap anything: its settings. Edit twice: what you touched last (Nov 18)
-                val ed = if (state.layout == "classic") "Menu" else "Edit"
+        // Nov 22 sizing (Tyler: "build it"): every key in the bar is the same width, at least 44 real dp, sized for its
+        // widest word, and never shrinks or scrolls. Keys that don't fit go into ⋯ at the end, Chords first, then Drop,
+        // then Repeat; Edit never does. The key readout takes what is left.
+        val ed = if (state.layout == "classic") "Menu" else "Edit"
+        val keys = ArrayList<DockKey>()
+        keys.add(DockKey("open-padmenu", 0, listOf(ed)) { m ->
+            // Edit (Menu before build 107), then tap anything: its settings. Edit twice: what you touched last (Nov 18)
+            Box(m, contentAlignment = Alignment.Center) {
                 BarBtn(state, if (state.menuArmed) "$ed ●" else ed, ed, { state.menuTap() }, on = state.menuArmed || state.padMenu >= 0 || state.tray != null, onColor = C.Yellow,
-                    enabled = !state.locked, tag = "open-padmenu", word = ed)
+                    enabled = !state.locked, tag = "open-padmenu", word = ed, modifier = Modifier.fillMaxWidth())
                 if (state.padMenu >= 0) PadMenu(state, state.padMenu)
             }
-            // the picked pad's FannyPack: one tap zips it open under its row, or shut
-            if (state.tab != com.tideclock.messmachine.Tab.Synth) BarBtn(state, "Pack", "Pack", { state.togglePack(state.project.sel) }, on = state.project.sel in state.keyboards, onColor = C.Teal,
-                enabled = !state.locked && !state.keysMode && state.project.kit.getOrNull(state.project.sel).orEmpty().isNotEmpty(), tag = "pack-toggle", word = "Pack", modifier = Modifier.weight(1f))
+        })
+        // the picked pad's FannyPack: one tap zips it open under its row, or shut
+        if (state.tab != com.tideclock.messmachine.Tab.Synth) keys.add(DockKey("pack-toggle", 2, listOf("Pack")) { m ->
+            BarBtn(state, "Pack", "Pack", { state.togglePack(state.project.sel) }, on = state.project.sel in state.keyboards, onColor = C.Teal,
+                enabled = !state.locked && !state.keysMode && state.project.kit.getOrNull(state.project.sel).orEmpty().isNotEmpty(), tag = "pack-toggle", word = "Pack", modifier = m)
+        })
+        keys.add(DockKey("hold-toggle", 1, listOf("Hold", "Last", "8/8")) { m ->
             BarBtn(state, if (!state.holdOn) "○ Hold" else if (state.holdCount == 0) "● Last" else "● ${state.latched.size}/${state.holdCount}", "Hold", { state.switchHold() },
-                on = state.holdOn, onColor = C.Yellow, tag = "hold-toggle", word = if (!state.holdOn) "Hold" else if (state.holdCount == 0) "Last" else "${state.latched.size}/${state.holdCount}", modifier = Modifier.weight(1f))
-            BarBtn(state, if (state.chordMode == "off") "○ Chords" else "● Chords", "Chords", { state.toggleChords() }, on = state.chordMode != "off", onColor = C.Teal, tag = "chords-toggle", word = "Chords", modifier = Modifier.weight(1f))
-            // the perform effects (stutter, echo throw, tape stop...), moved down from the view row (Nov 18)
-            if (state.layout == "classic") { if (state.tab == com.tideclock.messmachine.Tab.Pads) BarBtn(state, "FX", "FX", { state.showFx = !state.showFx }, on = state.showFx, onColor = C.Pink, tag = "fx-toggle", word = "FX", modifier = Modifier.weight(1f)) }
-            // build 107: Repeat sits beside Hold (the throws moved into the perform row); Edit, then Repeat, for its rate
-            else BarBtn(state, if (state.live.nr) "● Repeat" else "○ Repeat", "Repeat", { state.switchRepeat() }, on = state.live.nr, onColor = C.Pink, tag = "repeat-toggle", word = "Repeat", modifier = Modifier.weight(1f))
-            // Nov 21 (second video): MUTE turns the pads into mute switches (hold it, or tap it to stay on); DROP, held,
-            // leaves only the pads you touch
-            PressKey({ down, quick -> if (down) state.muteHeld = true else { state.muteHeld = false; if (quick) state.switchMuteMode() } }, Modifier.weight(1f)) {
-                BarBtn(state, "Mute", "Mute", {}, on = state.muting, onColor = Hw.Oxblood, enabled = !state.locked, tag = "mute-key", word = "Mute")
+                on = state.holdOn, onColor = C.Yellow, tag = "hold-toggle", word = if (!state.holdOn) "Hold" else if (state.holdCount == 0) "Last" else "${state.latched.size}/${state.holdCount}", modifier = m)
+        })
+        keys.add(DockKey("chords-toggle", 6, listOf("Chords")) { m ->
+            BarBtn(state, if (state.chordMode == "off") "○ Chords" else "● Chords", "Chords", { state.toggleChords() }, on = state.chordMode != "off", onColor = C.Teal, tag = "chords-toggle", word = "Chords", modifier = m)
+        })
+        // the perform effects (stutter, echo throw, tape stop...), moved down from the view row (Nov 18)
+        if (state.layout == "classic") { if (state.tab == com.tideclock.messmachine.Tab.Pads) keys.add(DockKey("fx-toggle", 4, listOf("FX")) { m ->
+            BarBtn(state, "FX", "FX", { state.showFx = !state.showFx }, on = state.showFx, onColor = C.Pink, tag = "fx-toggle", word = "FX", modifier = m)
+        }) }
+        // build 107: Repeat sits beside Hold (the throws moved into the perform row); Edit, then Repeat, for its rate
+        else keys.add(DockKey("repeat-toggle", 4, listOf("Repeat")) { m ->
+            BarBtn(state, if (state.live.nr) "● Repeat" else "○ Repeat", "Repeat", { state.switchRepeat() }, on = state.live.nr, onColor = C.Pink, tag = "repeat-toggle", word = "Repeat", modifier = m)
+        })
+        // Nov 21 (second video): MUTE turns the pads into mute switches (hold it, or tap it to stay on); DROP, held,
+        // leaves only the pads you touch
+        keys.add(DockKey("mute-key", 3, listOf("Mute")) { m ->
+            PressKey({ down, quick -> if (down) state.muteHeld = true else { state.muteHeld = false; if (quick) state.switchMuteMode() } }, m) {
+                BarBtn(state, "Mute", "Mute", {}, on = state.muting, onColor = Hw.Oxblood, enabled = !state.locked, tag = "mute-key", word = "Mute", modifier = Modifier.fillMaxWidth())
             }
-            PressKey({ down, _ -> state.drop(down) }, Modifier.weight(1f)) {
-                BarBtn(state, "Drop", "Drop", {}, on = state.dropOn, onColor = C.Pink, enabled = !state.locked, tag = "drop-key", word = "Drop")
+        })
+        keys.add(DockKey("drop-key", 5, listOf("Drop")) { m ->
+            PressKey({ down, _ -> state.drop(down) }, m) {
+                BarBtn(state, "Drop", "Drop", {}, on = state.dropOn, onColor = C.Pink, enabled = !state.locked, tag = "drop-key", word = "Drop", modifier = Modifier.fillMaxWidth())
             }
+        })
+        BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 6.dp)) {
+            val tm = androidx.compose.ui.text.rememberTextMeasurer()
+            val dens = androidx.compose.ui.platform.LocalDensity.current
+            val wordStyle = androidx.compose.ui.text.TextStyle(fontFamily = Block, fontWeight = FontWeight.Black, fontSize = (9.5f * UiLook.big).sp)
+            val wordW = keys.maxOf { k -> k.words.maxOf { w -> with(dens) { tm.measure(w.uppercase(), wordStyle).size.width.toDp().value } } } * .86f + 10f
+            val capH = ((UiLook.widthDp / 7f).coerceIn(48f, 96f) * UiLook.big * .72f).coerceIn(40f, 62f * UiLook.big)
+            val base = maxOf(Floor.KEY.rdp.value, wordW, if (state.look == "panel") capH + 6f else 38f)
+            val gap = 5f
+            val plan = BarPlan.plan(keys.map { it.prio }, maxWidth.value, base, gap, base, Floor.READOUT.rdp.value)
+            val over = plan.overflow.map { keys[it].tag }.toSet()
+            androidx.compose.runtime.SideEffect { if (state.dockOverflow != over) state.dockOverflow = over }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(gap.dp)) {
+                for (i in plan.shown) keys[i].body(Modifier.width(plan.slot.dp))
+                if (plan.overflow.isNotEmpty()) Box(Modifier.width(base.dp), contentAlignment = Alignment.Center) {
+                    BarBtn(state, "More", "More", { state.dockMoreOpen = true }, on = state.dockMoreOpen, onColor = C.Yellow, tag = "dock-more", word = "More", modifier = Modifier.fillMaxWidth())
+                    DropdownMenu(expanded = state.dockMoreOpen, onDismissRequest = { state.dockMoreOpen = false }, modifier = Modifier.background(if (UiLook.panel) Hw.Plate else C.Ink).tagged("dock-more-menu")) {
+                        Row(Modifier.padding(8.dp), horizontalArrangement = Arrangement.spacedBy(gap.dp)) {
+                            // a key in here closes the menu when the finger lifts (after it has done its job)
+                            for (i in plan.overflow) Box(Modifier.pointerInput(Unit) {
+                                awaitEachGesture {
+                                    awaitFirstDown(requireUnconsumed = false, pass = androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                                    waitForUpOrCancellation(androidx.compose.ui.input.pointer.PointerEventPass.Final)
+                                    state.dockMoreOpen = false
+                                }
+                            }) { keys[i].body(Modifier.width(plan.slot.dp)) }
+                        }
+                    }
+                }
             // Nov 21 fix: the chord shows only while Chords is on (it used to show the last one with Chords off)
             val keyText = "${Theory.NN[P.root]} ${P.scale.lowercase()}" + (if (state.chordMode != "off") " · " + chordName(state.chordMode).lowercase() else "") + if (state.keysBarOpen) " ▾" else " ▴"
-            if (state.look == "classic") Btn(keyText, { state.switchKeysBar() }, small = true, tight = true, tier = Tier.Quiet, tag = "keysbar-open", modifier = Modifier.weight(1.8f))
+            if (state.look == "classic") Btn(keyText, { state.switchKeysBar() }, small = true, tight = true, tier = Tier.Quiet, tag = "keysbar-open", modifier = Modifier.weight(1f))
             // Nov 21 video: in the panel Look the key reads out on an amber LCD like BPM and Loop (the pink key tile was left over)
-            else if (UiLook.panel) Box(Modifier.weight(1.8f).padding(start = 4.dp, end = 2.dp).heightIn(min = 40.dp).lcd().clickable { state.switchKeysBar() }.tagged("keysbar-open")
+            else if (UiLook.panel) Box(Modifier.weight(1f).padding(start = 4.dp, end = 2.dp).heightIn(min = 40.dp).lcd().clickable { state.switchKeysBar() }.tagged("keysbar-open")
                 .padding(horizontal = 8.dp, vertical = 6.dp), contentAlignment = Alignment.CenterStart) {
                 T(keyText.uppercase(), size = 13.sp, color = Hw.Amber, lines = 1, family = Lcd, weight = androidx.compose.ui.text.font.FontWeight.Normal)
             }
-            else Row(Modifier.weight(1.8f).clickable { state.switchKeysBar() }.tagged("keysbar-open"), verticalAlignment = Alignment.CenterVertically) {
+            else Row(Modifier.weight(1f).clickable { state.switchKeysBar() }.tagged("keysbar-open"), verticalAlignment = Alignment.CenterVertically) {
                 PixIcon("Key and scale", 30.dp)
                 T(keyText.uppercase(), size = 11.sp, color = railText(state), lines = 1, modifier = Modifier.padding(start = 6.dp))
+            }
             }
         }
     }

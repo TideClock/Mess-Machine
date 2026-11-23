@@ -119,6 +119,12 @@ One line each, dated, with the reason and who decided (BT-2). Older decisions li
   sound takes a second tap. Look: only the milled tab slot with the raised current tab (Settings, Look, Tabs: keys
   goes back) and readouts that shrink to fit; help lines are off for everyone (Explain in Settings brings them back).
   Not built, per Tyler: the edit tray stopping above the dock, Song inside Seq, the rest of the look spec.
+- 2026-11-22 Sizing, first build (Tyler: "build it", after two reviews of the sizing proposal): floors are real dp on
+  the glass (Float.rdp divides by View size). Bottom dock keys share one width, at least 44 real dp, sized for their
+  widest word (Hold/Last/8/8), never shrinking or scrolling; keys that don't fit go behind More, Chords first, then
+  Drop, then Repeat (Edit never). The pad grid no longer shrinks a second time with View size. Loop strip keys are
+  at least 44 real dp. The audit fails the build when a bar key or pad-0 is under its floor at 369, 411 and 707 dp and
+  at 70 percent view. Next: the top bar (Tyler sets its priorities), Menu size, Pad layout 4x4 or 2x2.
 - 2026-11-22 Second video and the look spec (Tyler's "3"): gone: the Sample key on Play (the pad's Edit tray has
   Sample), the FannyPack's zipper bar (Pack opens and shuts it, a swipe up on Pack picks its strips), the where-line
   on Steps and Roll, the loops row on Perform, the beat dot in the perform row, and every explanation line (Help is

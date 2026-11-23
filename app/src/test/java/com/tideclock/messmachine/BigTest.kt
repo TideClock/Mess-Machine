@@ -165,7 +165,11 @@ class BigTest {
      * Scroll a node into view and let the page stop moving, so the next touch lands on it. The bottom dock does not
      * scroll, so for what is on it there is nothing to scroll.
      */
-    private fun at(tag: String) = rule.onNodeWithTag(tag).also { try { it.performScrollTo() } catch (_: AssertionError) {}; rule.mainClock.advanceTimeBy(600); settle() }
+    private fun at(tag: String) = run {
+        // Nov 22 sizing: a dock key that doesn't fit this screen sits behind ⋯
+        if (tag in state.dockOverflow && !state.dockMoreOpen) { rule.onNodeWithTag("dock-more").performClick(); settle() }
+        rule.onNodeWithTag(tag)
+    }.also { try { it.performScrollTo() } catch (_: AssertionError) {}; rule.mainClock.advanceTimeBy(600); settle() }
 
     /** Pads and Desk share the Play tab now: "Console" means the Play tab's My Desk view. */
     private fun tab(label: String) {
@@ -869,9 +873,9 @@ class BigTest {
         assertEquals("new", state.layout)
         rule.onNodeWithTag("dock-open").assertDoesNotExist()
         rule.onNodeWithTag("fx-toggle").assertDoesNotExist()
-        rule.onNodeWithTag("repeat-toggle").performClick(); settle()
+        at("repeat-toggle").performClick(); settle()
         assertTrue("Repeat on the bar turns repeat on", state.live.nr)
-        rule.onNodeWithTag("repeat-toggle").performClick(); settle()
+        at("repeat-toggle").performClick(); settle()
         assertFalse(state.live.nr)
         rule.onNodeWithTag("perform-handle").performClick(); settle()
         assertTrue(state.performOpen)
@@ -3118,6 +3122,42 @@ class BigTest {
             assertTrue("no explanation sentences in $o: $long", long.isEmpty())
             state.overlay = null; settle()
         }
+    }
+
+    /** Nov 22 sizing ("build it"): dock keys share one width, at least 44 real dp, hold it while their words change; the rest go behind ⋯. */
+    @Test fun nov22SizingDockKeys() {
+        val d = rule.density.density
+        val shown = listOf("open-padmenu", "pack-toggle", "hold-toggle", "chords-toggle", "repeat-toggle", "mute-key", "drop-key").filter { it !in state.dockOverflow }
+        val widths = shown.map { rule.onNodeWithTag(it).fetchSemanticsNode().size.width / d }
+        assertTrue("every key is at least 44 real dp ($widths)", widths.all { it >= 43.5f })
+        assertTrue("and all the same width ($widths)", widths.max() - widths.min() < 1f)
+        assertTrue("Edit never goes behind ⋯", "open-padmenu" !in state.dockOverflow)
+        if (state.dockOverflow.isNotEmpty()) {
+            // the first to go are Chords, then Drop, then Repeat
+            val order = listOf("chords-toggle", "drop-key", "repeat-toggle", "mute-key", "pack-toggle", "hold-toggle")
+            assertEquals("they go in order", order.take(state.dockOverflow.size).toSet(), state.dockOverflow)
+            at("dock-more").assertExists()
+            val first = state.dockOverflow.first()
+            at(first).assertExists()
+            shot("130-dock-more")
+            if (first == "chords-toggle") { at("chords-toggle").performClick(); settle(); assertTrue(state.chordMode != "off"); assertFalse("the menu closes after a key", state.dockMoreOpen); at("chords-toggle").performClick(); settle() }
+            else { rule.onNodeWithTag("dock-more").performClick(); settle(); state.dockMoreOpen = false; settle() }
+        }
+        // Hold's word changes (Hold, Last, 2/4): its key keeps its width
+        val w0 = rule.onNodeWithTag("hold-toggle").fetchSemanticsNode().size.width
+        at("hold-toggle").performClick(); settle()
+        assertTrue(state.holdOn)
+        assertEquals("Hold keeps its width when its word changes", w0.toFloat(), rule.onNodeWithTag("hold-toggle").fetchSemanticsNode().size.width.toFloat(), 1f)
+        at("hold-toggle").performClick(); settle()
+        // at 70 percent view the keys are still 44 real dp and the pads did not shrink a second time
+        val pad100 = rule.onNodeWithTag("pad-0").fetchSemanticsNode().size.width / d
+        state.setViewSize(.7f); settle(); rule.mainClock.advanceTimeBy(600); settle()
+        val keys70 = listOf("open-padmenu", "hold-toggle").map { rule.onNodeWithTag(it).fetchSemanticsNode().size }
+        assertTrue("at 70 percent the keys are still 44 real dp ($keys70)", keys70.all { it.width / d >= 43.5f && it.height / d >= 43.5f })
+        val pad70 = rule.onNodeWithTag("pad-0").fetchSemanticsNode().size.width / d
+        assertTrue("the pads stay over 64 real dp at 70 percent ($pad70, was $pad100)", pad70 >= 64f)
+        shot("131-dock-view70")
+        state.setViewSize(1f); settle()
     }
 
     @Test fun hushStopsEverything() {

@@ -118,10 +118,18 @@ class AuditTest {
             val h = node.size.height / d
             val name = labelOf(node).ifEmpty { tags.firstOrNull() ?: "?" }.take(40)
             if (w < smallDp || h < smallDp) add("small button", "$name (${w.toInt()} x ${h.toInt()} dp)")
+            // Nov 22 sizing: the keys of a played bar are at least 44 real dp each way, at every view size
+            val own = node.config.getOrNull(SemanticsProperties.TestTag)
+            if (own != null && own in barKeys && (w < 43.5f || h < 43.5f)) barProblems.add("$page: $own is ${"%.1f".format(w)} x ${"%.1f".format(h)} real dp")
             val right = node.positionInRoot.x + node.size.width
             if (right > screenW + 2f && b.width > 0f) add("off the right edge", "$name (by ${((right - screenW) / d).toInt()} dp)")
         }
         controls[page] = n
+        // Nov 22 sizing: a drum pad is at least 64 real dp, at every view size
+        if (page == "Play pads") for (node in rule.onAllNodesWithTag("pad-0").fetchSemanticsNodes()) {
+            val w = node.size.width / d; val h = node.size.height / d
+            if (w < 63.5f || h < 63.5f) barProblems.add("$page: pad-0 is ${"%.1f".format(w)} x ${"%.1f".format(h)} real dp")
+        }
         for (node in rule.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.Text), useUnmergedTree = true).fetchSemanticsNodes()) {
             val tags = tagsOf(node)
             if (!inside(tags)) continue
@@ -210,6 +218,9 @@ class AuditTest {
         File("build/screens/usability-$width.md").writeText(out.toString())
         println(out)
         assertTrue("the audit walked the whole app (${pages.size} pages)", pages.size >= 35)
+        File("build/screens/bar-sizes-$width.txt").writeText(barProblems.joinToString("\n").ifEmpty { "all bar keys at least 44 real dp, pads at least 64" })
+        // enforced at every width a phone in use has, 70 percent view included (that is how Tyler plays); 344 is reported
+        if (width != "w344") assertTrue("bar keys and pads under their floors at $width: $barProblems", barProblems.isEmpty())
         // the words a player steers by must never be cut off, at any width a phone in use has (344 is reported only:
         // narrower than any phone these builds have run on)
         if (mustFit) for (m in listOf("▶ PLAY", "● REC", "PADS", "KEYS", "MY DESK", "SAMPLE", "MENU", "○ HOLD", "○ CHORDS", "PLAY", "SYNTH", "STEPS", "ROLL", "SONG", "SOUNDS", "TRIM", "SHAPE", "TOOLS", "BY TYPE", "BY JAR", "★ STARRED", "PACKS", "EDIT", "SOUND", "FX", "MOD", "MORE", "LOUD", "QUIET", "NORMAL")) {
@@ -219,6 +230,9 @@ class AuditTest {
     }
 
     private var mustFit = true
+    private val barKeys = setOf("open-padmenu", "pack-toggle", "hold-toggle", "chords-toggle", "repeat-toggle", "fx-toggle", "mute-key", "drop-key", "dock-more",
+        "loop-when", "loop-click", "loop-countin", "loop-minus", "loop-plus", "loop-double")
+    private val barProblems = ArrayList<String>()
 
     @Test fun auditPhone() = walk("w411")
 

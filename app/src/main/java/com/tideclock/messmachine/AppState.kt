@@ -1779,6 +1779,9 @@ class AppState(private val app: Context) {
     fun stepLoop(by: Int) { val n = com.tideclock.messmachine.engine.Project.NSLOTS; pickLoop(Math.floorMod((if (pendingSlot >= 0) pendingSlot else project.cur) + by, n)) }
     /** The song painter lives in the loop strip now (Nov 22); this opens it there. */
     var songOpen by mutableStateOf(false)
+    /** Nov 22 sizing: the bottom dock's keys that don't fit sit behind ⋯ (set by the dock as it lays out). */
+    var dockOverflow by mutableStateOf(setOf<String>())
+    var dockMoreOpen by mutableStateOf(false)
     fun openSong() { loopStripOpen = true; songOpen = true }
 
     /** Loop length button: 1, 2, 4, 8 bars, then back to 1. */
