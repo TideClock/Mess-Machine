@@ -630,7 +630,7 @@ fun TabSlot(state: AppState, modifier: Modifier) {
                     if (res != null) Box(Modifier.alpha(if (on) 1f else .5f)) { InlayIcon(res, (capH - 12f).dp, on, word) }
                     else T(word.uppercase(), size = 10.sp, color = Hw.Engrave, lines = 1, family = Stencil)
                 }
-                if (state.proWords) T(word.uppercase(), size = (8f * UiLook.big).sp, color = if (on) C.Yellow else Hw.Engrave.copy(alpha = .55f), lines = 1, family = Stencil, weight = FontWeight.Normal, modifier = Modifier.padding(top = 2.dp))
+                if (state.proWords) { if (state.wordPlate) PlateWord(word, on, C.Yellow) else T(word.uppercase(), size = (8f * UiLook.big).sp, color = if (on) C.Yellow else Hw.Engrave.copy(alpha = .55f), lines = 1, family = Stencil, weight = FontWeight.Normal, modifier = Modifier.padding(top = 2.dp)) }
             }
         }
     }
@@ -688,16 +688,16 @@ fun LoopStrip(state: AppState) {
         }
         // the loop you are in: when a pick lands, its bars (- + 2x, wide enough to hit), and the small X
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Btn(if (state.loopAtBar) "Wait bar" else "Now", { state.switchLoopAtBar() }, small = true, tight = true, on = state.loopAtBar, onColor = C.Teal, tag = "loop-when", modifier = Modifier.weight(1.5f))
+            Btn(if (state.loopAtBar) "Wait bar" else "Now", { state.switchLoopAtBar() }, small = true, tight = true, on = state.loopAtBar, onColor = C.Teal, tag = "loop-when", modifier = Modifier.weight(1.5f), icon = if (state.loopAtBar) "Wait bar" else "Now")
             T("${bars} BAR${if (bars > 1) "S" else ""}", size = 11.sp, color = C.Dim, spacing = .06.em, lines = 1, modifier = Modifier.weight(1f).tagged("loop-bars"))
-            Btn("−", { state.dropBar() }, small = true, tight = true, enabled = bars > 1, tag = "loop-minus", modifier = Modifier.weight(1f))
-            Btn("+", { state.addBar() }, small = true, tight = true, enabled = bars < 8, tag = "loop-plus", modifier = Modifier.weight(1f))
-            Btn("2×", { state.doubleLoop() }, small = true, tight = true, enabled = bars <= 4, tag = "loop-double", modifier = Modifier.weight(1f))
+            Btn("−", { state.dropBar() }, small = true, tight = true, enabled = bars > 1, tag = "loop-minus", modifier = Modifier.weight(1f), icon = "Bar minus")
+            Btn("+", { state.addBar() }, small = true, tight = true, enabled = bars < 8, tag = "loop-plus", modifier = Modifier.weight(1f), icon = "Bar plus")
+            Btn("2×", { state.doubleLoop() }, small = true, tight = true, enabled = bars <= 4, tag = "loop-double", modifier = Modifier.weight(1f), icon = "Double")
             CloseScrew({ state.loopStripOpen = false }, tag = "loop-close", label = "Close the loops", small = true)
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Btn("Click", { state.switchClick() }, small = true, tight = true, on = state.live.click, onColor = C.Yellow, tag = "loop-click", modifier = Modifier.weight(1f))
-            Btn(if (state.countInBars == 0) "Count off" else "Count ${state.countInBars}", { state.cycleCountIn() }, small = true, tight = true, on = state.countInBars > 0, onColor = C.Yellow, tag = "loop-countin", modifier = Modifier.weight(1f))
+            Btn("Click", { state.switchClick() }, small = true, tight = true, on = state.live.click, onColor = C.Yellow, tag = "loop-click", modifier = Modifier.weight(1f), icon = "Click")
+            Btn(if (state.countInBars == 0) "Count off" else "Count ${state.countInBars}", { state.cycleCountIn() }, small = true, tight = true, on = state.countInBars > 0, onColor = C.Yellow, tag = "loop-countin", modifier = Modifier.weight(1f), icon = "Count in")
         }
         // the bars of this loop: pick the one Steps and Roll show
         if (bars > 1) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -706,11 +706,11 @@ fun LoopStrip(state: AppState) {
         }
         Wrap(gap = 6.dp) {
             Select("Copy to", (0 until com.tideclock.messmachine.engine.Project.NSLOTS).filter { it != P.cur }.map { it to "Loop ${com.tideclock.messmachine.engine.Project.LETTERS[it]}" }, { state.copySlotTo(it) })
-            Btn("Clear loop", { state.clearSlot() }, small = true, enabled = P.pat().used(), tier = Tier.Danger, tag = "loop-clear")
+            Btn("Clear loop", { state.clearSlot() }, small = true, enabled = P.pat().used(), tier = Tier.Danger, tag = "loop-clear", icon = "Clear")
             Btn("Auto", { state.movesOpen = !state.movesOpen }, on = state.movesOpen, onColor = C.Teal, small = true, tag = "moves-open")
             if (P.pat().hasMotion()) Btn("Clear auto", { state.clearMoves() }, small = true, tag = "clear-moves")
             Btn("Bottle it", { state.bottleIt() }, small = true, color = C.Pink, enabled = P.pat().used(), tag = "bottle")
-            Btn("Song", { state.songOpen = !state.songOpen }, on = state.songOpen || P.songMode, onColor = C.Pink, small = true, tag = "loop-song")
+            Btn("Song", { state.songOpen = !state.songOpen }, on = state.songOpen || P.songMode, onColor = C.Yellow, small = true, tag = "loop-song")
         }
         if (state.movesOpen) MovesPanel(state)
         if (state.songOpen) SongBody(state)
@@ -805,8 +805,9 @@ fun Modifier.watchTouches(state: AppState): Modifier = composed {
                         if (dir != null && state.swipeDoes(dir)) { t.cancelled = true; t.tag!!.substringAfterLast('-').toIntOrNull()?.let { state.cancelPadHit(it) } }
                     } else if (!c.pressed && c.previousPressed) {
                         touches.remove(c.id)
-                        // a swipe whose hit was already taken back still does its job, however slowly the finger lifts
-                        val quick = c.uptimeMillis - t.t < 300 || t.cancelled
+                        // only a quick swipe does its job: a slow drag is a scroll (a slow-lift swipe here opened trays
+                        // under the phone test's page scrolls and hid the tabs)
+                        val quick = c.uptimeMillis - t.t < 300
                         val dir = dirOf(t.at, c.position)
                         if (state.flickOn && t.tag != null && !t.tag.startsWith("pad-") && quick && dir == "up") state.openSettingsFor(t.tag)
                         // Nov 21: a quick swipe off a pad does what HotKeys (Settings) says for that direction:

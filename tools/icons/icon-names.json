@@ -290,5 +290,121 @@
  "Auto": [
   "ic_auto",
   "tool"
+ ],
+ "Analog": [
+  "ic_analog",
+  "synth"
+ ],
+ "FM": [
+  "ic_fm",
+  "synth"
+ ],
+ "Wavetable": [
+  "ic_wavetable",
+  "synth"
+ ],
+ "Granular": [
+  "ic_granular",
+  "synth"
+ ],
+ "Drums": [
+  "ic_drums",
+  "synth"
+ ],
+ "Pluck": [
+  "ic_pluck",
+  "synth"
+ ],
+ "Poly": [
+  "ic_poly",
+  "synth"
+ ],
+ "Mono": [
+  "ic_mono",
+  "synth"
+ ],
+ "Acid": [
+  "ic_acid",
+  "synth"
+ ],
+ "Wobble": [
+  "ic_wobble",
+  "sound"
+ ],
+ "Low pass": [
+  "ic_low_pass",
+  "sound"
+ ],
+ "High pass": [
+  "ic_high_pass",
+  "sound"
+ ],
+ "Band pass": [
+  "ic_band_pass",
+  "sound"
+ ],
+ "Wait bar": [
+  "ic_wait_bar",
+  "loop"
+ ],
+ "Now": [
+  "ic_now",
+  "loop"
+ ],
+ "Count in": [
+  "ic_count_in",
+  "loop"
+ ],
+ "Click": [
+  "ic_click",
+  "loop"
+ ],
+ "Bar plus": [
+  "ic_bar_plus",
+  "loop"
+ ],
+ "Bar minus": [
+  "ic_bar_minus",
+  "loop"
+ ],
+ "Double": [
+  "ic_double",
+  "loop"
+ ],
+ "Stutter": [
+  "ic_stutter",
+  "throw"
+ ],
+ "Tape stop": [
+  "ic_tape_stop",
+  "throw"
+ ],
+ "Gate": [
+  "ic_gate",
+  "throw"
+ ],
+ "Ring mod": [
+  "ic_ring_mod",
+  "throw"
+ ],
+ "Reverse": [
+  "ic_reverse",
+  "throw"
+ ],
+ "Sound": [
+  "ic_sound",
+  "edit"
+ ],
+ "More": [
+  "ic_more",
+  "edit"
+ ],
+ "Simple": [
+  "ic_simple",
+  "synthview"
+ ],
+ "Full": [
+  "ic_full",
+  "synthview"
  ]
 }

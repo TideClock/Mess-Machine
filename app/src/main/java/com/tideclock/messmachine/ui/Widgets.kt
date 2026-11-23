@@ -285,6 +285,27 @@ val Mono = FontFamily(Font(R.font.plexmono_400, FontWeight.Normal), Font(R.font.
 /** The panel Look's type (Nov 21): worn rubber-stamp letters on the keys, a stencil for the tiny stamped words, an LCD face for readouts */
 val Worn = FontFamily(Font(R.font.rubik_distressed))
 val Stencil = FontFamily(Font(R.font.black_ops_one))
+/** Thick block letters for the word plates (Nov 22, from the icon review). */
+val Block = FontFamily(Font(R.font.archivo_black, FontWeight.Black))
+
+/**
+ * The word plate under a key (Nov 22, Tyler: "the same type of frame with letters in them"): a dark plate with a
+ * brass rule, the word in thick block letters squashed to fill it.
+ */
+@Composable
+fun PlateWord(word: String, on: Boolean, onColor: Color, modifier: Modifier = Modifier) {
+    Box(
+        modifier.padding(top = 2.dp).drawBehind {
+            val r = androidx.compose.ui.geometry.CornerRadius(3.dp.toPx())
+            drawRoundRect(Color(0xFF151311), cornerRadius = r)
+            drawRoundRect(Hw.Brass.copy(alpha = if (on) 1f else .55f), cornerRadius = r, style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
+        }.padding(horizontal = 3.dp, vertical = 1.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        T(word.uppercase(), size = (9.5f * UiLook.big).sp, color = if (on) onColor else Color(0xFFE6D8BC), lines = 1, spacing = (-.02).em, family = Block, weight = FontWeight.Black,
+            modifier = Modifier.graphicsLayer(scaleX = .86f))
+    }
+}
 val Lcd = FontFamily(Font(R.font.share_tech_mono))
 
 /** An aged enamel look for the inlaid icons: a little less colour, a little warmer, unless the key is lit. */
@@ -456,6 +477,8 @@ fun Btn(
     text: String, onClick: () -> Unit, modifier: Modifier = Modifier, color: Color = C.Ink, on: Boolean? = null,
     onColor: Color = C.Yellow, enabled: Boolean = true, small: Boolean = false, tag: String? = null, tier: Tier = Tier.Normal,
     tight: Boolean = false,
+    /** Nov 22: an icon by name (short names like "Verb" or "Lo" work too); a tight key stacks it over its word. */
+    icon: String? = null,
 ) {
     // on given (even false): a switch, with a lamp in the panel Look. Left out: a key that only does something, no lamp
     val lamped = on != null
@@ -482,12 +505,16 @@ fun Btn(
         ) {
             // Nov 21: worn rubber-stamp letters, and the icon from Tyler's drawings beside the word when the word has one,
             // as big as the cap allows
-            val icon = if (tight) null else Icons.forLabel(text)
+            val iconRes = if (icon != null) Icons.named(icon) else if (tight) null else Icons.forLabel(text)
             // with the icon showing, the little symbol in the words (✂, ☆, •) goes: the icon says it better
             // (in the panel Look the old symbols go anyway: the worn letters have no ● or ✂, and the lamp says on)
             val words = text.replace(Regex("^[^A-Za-z0-9\\s]+\\s+"), "").ifEmpty { text }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (icon != null) InlayIcon(icon, (if (small) 28.dp else 32.dp) * UiLook.big, on, text, Modifier.padding(end = 7.dp))
+            if (iconRes != null && tight) Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                InlayIcon(iconRes, 26.dp * UiLook.big, on, text)
+                if (words.isNotBlank()) T(words.uppercase(), color = when { tier == Tier.Quiet -> Hw.Engrave.copy(alpha = .6f); on -> lerp(Hw.Engrave, onColor, .35f); else -> Hw.Engrave },
+                    size = (10f * UiLook.big).sp, lines = 1, spacing = 0.em, family = Worn, weight = FontWeight.Normal, modifier = Modifier.padding(top = 1.dp))
+            } else Row(verticalAlignment = Alignment.CenterVertically) {
+                if (iconRes != null) InlayIcon(iconRes, (if (small) 28.dp else 32.dp) * UiLook.big, on, text, Modifier.padding(end = 7.dp))
                 T(words.uppercase(), color = when { tier == Tier.Quiet -> Hw.Engrave.copy(alpha = .6f); on -> lerp(Hw.Engrave, onColor, .35f); else -> Hw.Engrave },
                     size = (if (small) 12f else 13f).let { (it * UiLook.big).sp }, lines = 1, spacing = if (tight) 0.em else .03.em, family = Worn, weight = FontWeight.Normal)
             }

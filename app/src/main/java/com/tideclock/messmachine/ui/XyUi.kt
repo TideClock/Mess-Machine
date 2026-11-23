@@ -111,6 +111,8 @@ fun ThrowVial(state: AppState, id: String, label: String, color: Color, modifier
     val lit = held || id in state.fxOn
     val shown = if (held) level else if (id in state.fxOn) (state.fxLive[id] ?: s.amount) else 0f
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        // Nov 22: the throw's icon over its vial
+        Icons.named(label)?.let { InlayIcon(it, 24.dp * UiLook.big, lit, label, Modifier.padding(bottom = 4.dp)) }
         Vial(shown, color, true, "fx-$id", height = 140.dp, label = label.uppercase()) { pos, on ->
             val amt = pos.coerceIn(.05f, 1f)
             if (on && !held) {

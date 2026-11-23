@@ -199,6 +199,7 @@ fun SettingsScreen(state: AppState) {
                 if (state.look != "classic") Btn(if (state.proWords) "Words under icons: on" else "Words under icons: off", { state.switchProWords() }, on = state.proWords, onColor = C.Teal, small = true, tag = "look-words",
                     modifier = Modifier.padding(top = 8.dp))
                 if (state.look == "panel") Btn(if (state.tabSlot) "Tabs: slot" else "Tabs: keys", { state.switchTabSlot() }, on = state.tabSlot, onColor = C.Teal, small = true, tag = "look-tabslot", modifier = Modifier.padding(top = 8.dp))
+                if (state.look == "panel" && state.proWords) Btn(if (state.wordPlate) "Words: plates" else "Words: stamped", { state.switchWordPlate() }, on = state.wordPlate, onColor = C.Teal, small = true, tag = "look-wordplate", modifier = Modifier.padding(top = 8.dp))
                 // Nov 21: a quarter bigger everywhere, for playing at 70 to 80 percent view size
                 Btn(if (state.largeKeys) "Large keys: on" else "Large keys: off", { state.switchLargeKeys(!state.largeKeys) }, on = state.largeKeys, onColor = C.Teal, small = true, tag = "look-large",
                     modifier = Modifier.padding(top = 8.dp))

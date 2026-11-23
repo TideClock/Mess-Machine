@@ -86,15 +86,15 @@ fun SynthScreen(state: AppState) {
         // kind's first preset; Undo brings the old one back. Grain reads a sound off a pad, so scratch has no Grain.
         Row(Modifier.fillMaxWidth().padding(bottom = 6.dp, end = 4.dp).tagged("synthkind-chips"), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             for (k in Synth.KINDS) if (!scratch || k != Synth.GRAIN) Btn(kindShort(k), { if (sp.kind != k) state.loadSynthPreset(pad, k.presets.first()) }, on = sp.kind == k, onColor = C.Yellow, small = true, tight = true,
-                tag = if (scratch) "scratchkind-${k.id}" else "synthkind-${k.id}", modifier = Modifier.weight(1f))
+                tag = if (scratch) "scratchkind-${k.id}" else "synthkind-${k.id}", modifier = Modifier.weight(1f), icon = k.name)
         }
         // Simple or Full and Poly, Mono or Acid are switches, one tap each; the scratch synth goes onto a pad from here
         Row(Modifier.fillMaxWidth().padding(bottom = 10.dp, end = 4.dp).tagged("synthview-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
             val full = state.synthView == "full"
-            Btn(if (full) "Full" else "Simple", { state.synthView = if (full) "simple" else "full" }, on = full, onColor = C.Teal, small = true, tight = true, tag = "synthview-toggle", modifier = Modifier.weight(1f))
+            Btn(if (full) "Full" else "Simple", { state.synthView = if (full) "simple" else "full" }, on = full, onColor = C.Teal, small = true, tight = true, tag = "synthview-toggle", modifier = Modifier.weight(1f), icon = if (full) "Full" else "Simple")
             sp.kind.params.firstOrNull { it.id == "mode" }?.let { mp ->
                 val m = sp.get("mode").toInt().coerceIn(0, mp.choices.size - 1)
-                Btn(mp.choices[m], { state.setSynth(pad, "mode", ((m + 1) % mp.choices.size).toDouble(), true) }, on = m > 0, onColor = C.Yellow, small = true, tight = true, tag = "synthmode-toggle", modifier = Modifier.weight(1f))
+                Btn(mp.choices[m], { state.setSynth(pad, "mode", ((m + 1) % mp.choices.size).toDouble(), true) }, on = m > 0, onColor = C.Yellow, small = true, tight = true, tag = "synthmode-toggle", modifier = Modifier.weight(1f), icon = mp.choices[m])
             }
             if (scratch) {
                 // the scratch synth onto a pad: an empty one in one tap; a pad with a sound on it takes a second tap

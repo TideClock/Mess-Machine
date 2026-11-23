@@ -2943,6 +2943,8 @@ class BigTest {
         val padH = rule.onNodeWithTag("loop-0").fetchSemanticsNode().boundsInRoot.height
         val keyH = rule.onNodeWithTag("loop-plus").fetchSemanticsNode().boundsInRoot.height
         assertTrue("the loops are pad sized, taller than the keys ($padH vs $keyH)", padH > keyH)
+        // the icons are in (Tyler, Nov 22): the strip's keys carry them
+        if (state.look == "panel") for (n in listOf("Click", "Clear loop", "Bottle it")) assertTrue("$n has its icon", rule.onAllNodesWithContentDescription(n).fetchSemanticsNodes().isNotEmpty())
         shot("121-loop-strip")
         at("loop-song").performClick(); settle()
         at("song-body").assertExists()
@@ -2966,6 +2968,7 @@ class BigTest {
         state.selectPad(0, false)
         tab("Synth")
         at("synthkind-chips").assertExists()
+        if (state.look == "panel") assertTrue("the synth kinds carry their icons", rule.onAllNodesWithContentDescription("FM").fetchSemanticsNodes().isNotEmpty())
         assertTrue("no Synthipad", rule.onAllNodesWithTag(GONE_SYNTHIPAD).fetchSemanticsNodes().isEmpty())
         val before = state.project.kit[0]
         assertTrue(before.isNotEmpty())

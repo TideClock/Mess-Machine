@@ -1,6 +1,7 @@
 {
-  "title": "Loops in one strip, swipes that take back their hit",
+  "title": "The new icons are in, loops in one strip",
   "thisBuild": [
+    "The icons you liked are in: the loop strip keys, the synth kinds and switches, the LFO waves and filter shapes, the FX vials, the throws and the Edit tray's tabs. Every icon fills its tile with the darker rims, and the words under the keys sit on little block-letter plates (Settings, Look: Words: stamped goes back).",
     "Tap the loop readout: loops A to H are pad sized, then Wait bar, the bars of this loop with - + 2x, Click and Count, the loop tools, Auto and the Song. It now opens on Perform too.",
     "Steps and Roll show one line for the loop and bar you see; tap it for the strip. Song lives in the strip and folds away when you change page.",
     "Swipe the loop readout left or right for the previous or next loop.",
@@ -11,13 +12,13 @@
     "Tabs sit in a milled slot with your page raised (Settings, Look: Tabs: keys goes back). Readouts shrink to fit instead of cutting off. Help lines are off."
   ],
   "watch": [
+    "Do the icons read at a glance on your phone, at 70 to 80 percent view?",
     "Drum with two fingers on one row while recording: do both hits stay?",
     "Swipe off a drum pad while recording: is the blip before it cuts OK?",
     "Record with Count 1: does the bar of clicks land right?",
     "With Song open in the strip, can you still see and play a row of pads?"
   ],
   "limits": [
-    "The new icons are for review on the icon canvas; they are not in the app yet.",
     "The cut and look ideas you didn't pick are not in this build.",
     "Settings and a few sheets still have explanation lines."
   ]

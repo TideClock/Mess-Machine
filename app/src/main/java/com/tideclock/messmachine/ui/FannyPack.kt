@@ -9,6 +9,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -233,6 +234,8 @@ fun VialStrip(state: AppState, pad: Int, underRow: Boolean = false) {
                             drawCircle(Color.White.copy(alpha = .35f), r * .22f, Offset(center.x - r * .25f, center.y - r * .25f))
                         }
                     }
+                    // Nov 22: the effect's icon over its name plate
+                    Icons.named(name)?.let { InlayIcon(it, (if (underRow) 26.dp else 20.dp) * UiLook.big, inNow, name, Modifier.padding(top = 4.dp).alpha(if (inNow) 1f else .5f)) }
                     // the name is a little plate: tap it for this effect's settings
                     Box(
                         Modifier.padding(top = 2.dp).fillMaxWidth().heightIn(min = 26.dp)
@@ -446,15 +449,15 @@ fun LfoTray(state: AppState, pad: Int) {
     val o = state.project.opt(pad)
     fun set(f: com.tideclock.messmachine.engine.PadOpts.() -> Unit) = state.setPadOpt(pad, true, f)
     Wrap(Modifier.tagged("lfowave-chips"), gap = 6.dp) {
-        for ((w, n) in LFO_WAVES) Btn(n, { set { lfoWave = w; lfoOn = true } }, on = o.lfoWave == w, onColor = C.Teal, small = true, tight = true, tag = "lfo-wave-$w-$pad")
+        for ((w, n) in LFO_WAVES) Btn(n, { set { lfoWave = w; lfoOn = true } }, on = o.lfoWave == w, onColor = C.Teal, small = true, tight = true, tag = "lfo-wave-$w-$pad", icon = n)
         // the old Wobble effect, folded in as a preset (Nov 18): a gentle pitch sway on a quarter-note sine
         Btn("Wobble", { set { lfoOn = true; lfoWave = 0; lfoRate = 4.0; lfoTarget = com.tideclock.messmachine.engine.Engine.T_PITCH; lfoDepth = .03; lfoRetrig = false } },
-            on = o.lfoOn && o.lfoTarget == com.tideclock.messmachine.engine.Engine.T_PITCH && o.lfoDepth <= .05, onColor = C.Pink, small = true, tight = true, tag = "lfo-wobble-$pad")
+            on = o.lfoOn && o.lfoTarget == com.tideclock.messmachine.engine.Engine.T_PITCH && o.lfoDepth <= .05, onColor = C.Yellow, small = true, tight = true, tag = "lfo-wobble-$pad", icon = "Wobble")
     }
     Wrap(Modifier.padding(top = 8.dp).tagged("lfotype-chips"), gap = 6.dp) {
         // build 106: the pad filter's kind (everything that moves the filter moves this one)
         T("PAD FILTER", size = 11.sp, color = C.Dim, spacing = .1.em)
-        for ((ty, n) in listOf(1 to "Lo", 2 to "Hi", 3 to "Band")) Btn(n, { set { ftype = ty } }, on = o.ftype == ty, onColor = C.Pink, small = true, tight = true, tag = "lfo-type-$ty-$pad")
+        for ((ty, n) in listOf(1 to "Lo", 2 to "Hi", 3 to "Band")) Btn(n, { set { ftype = ty } }, on = o.ftype == ty, onColor = C.Yellow, small = true, tight = true, tag = "lfo-type-$ty-$pad", icon = n)
     }
     Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
         Select("Target: " + (LFO_TARGETS.firstOrNull { it.first == o.lfoTarget }?.second ?: "Filter"), LFO_TARGETS, { t -> set { lfoTarget = t; lfoOn = true } }, tag = "lfo-target-$pad")

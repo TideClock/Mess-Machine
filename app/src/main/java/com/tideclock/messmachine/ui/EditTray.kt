@@ -48,7 +48,13 @@ fun EditTray(state: AppState, pad: Int) {
                         .bakelite(on, col, false).clickable { state.pickEditTab(id) }.tagged("edit-tab-$id")
                         .semantics { selected = on }.padding(start = 2.dp, end = 2.dp, bottom = UiLook.lip),
                     contentAlignment = Alignment.Center,
-                ) { T(name.uppercase(), size = 12.sp, color = if (on) lerp(Hw.Engrave, col, .35f) else Hw.Engrave, lines = 1, spacing = 0.em, family = Worn, weight = androidx.compose.ui.text.font.FontWeight.Normal) }
+                ) {
+                    // Nov 22: each drawer key carries its icon over its word
+                    androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icons.named(name)?.let { InlayIcon(it, 24.dp * UiLook.big, on, name) }
+                        T(name.uppercase(), size = 11.sp, color = if (on) lerp(Hw.Engrave, col, .35f) else Hw.Engrave, lines = 1, spacing = 0.em, family = Worn, weight = androidx.compose.ui.text.font.FontWeight.Normal)
+                    }
+                }
             } else Btn(name, { state.pickEditTab(id) }, on = state.editTab == id, onColor = col, small = true, tight = true,
                 tag = "edit-tab-$id", modifier = Modifier.weight(1f))
         }
@@ -94,7 +100,7 @@ fun EditTray(state: AppState, pad: Int) {
                 LfoTray(state, pad)
                 T("RECORD A LANE FOR", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
                 Wrap(gap = 6.dp) {
-                    for ((t, name) in FX_STRIP) Btn(name, { state.openLaneHere(pad, t) }, small = true, tight = true, tag = "edit-lane-$t")
+                    for ((t, name) in FX_STRIP) Btn(name, { state.openLaneHere(pad, t) }, small = true, tight = true, tag = "edit-lane-$t", icon = name)
                 }
             }
             else -> {

@@ -2329,6 +2329,10 @@ class AppState(private val app: Context) {
         private set
     fun switchProWords() { proWords = !proWords; prefs.edit().putBoolean("proWords", proWords).apply() }
     /** Nov 22 (Tyler): the tabs sit in one milled slot and the page you are on is the raised block. Off = keys as before. */
+    /** Nov 22: the words under the keys sit on little plates in block letters (off: the stamped words as before). */
+    var wordPlate by mutableStateOf(prefs.getBoolean("wordPlate", true))
+        private set
+    fun switchWordPlate() { wordPlate = !wordPlate; prefs.edit().putBoolean("wordPlate", wordPlate).apply() }
     var tabSlot by mutableStateOf(prefs.getBoolean("tabSlot", true))
         private set
     fun switchTabSlot() { tabSlot = !tabSlot; prefs.edit().putBoolean("tabSlot", tabSlot).apply(); notes.trail("tab slot $tabSlot") }

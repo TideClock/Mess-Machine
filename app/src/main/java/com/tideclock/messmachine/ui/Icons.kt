@@ -105,7 +105,47 @@ object Icons {
         "Bottle it" to (R.drawable.ic_bottle_it to "tool"),
         "Random" to (R.drawable.ic_random to "tool"),
         "Auto" to (R.drawable.ic_auto to "tool"),
+        // Nov 22 (Tyler: "if they're not in, put them in"): the synth, the waves and filter shapes, the loop strip,
+        // the throws, the edit tray's tabs
+        "Analog" to (R.drawable.ic_analog to "synth"),
+        "FM" to (R.drawable.ic_fm to "synth"),
+        "Wavetable" to (R.drawable.ic_wavetable to "synth"),
+        "Granular" to (R.drawable.ic_granular to "synth"),
+        "Drums" to (R.drawable.ic_drums to "synth"),
+        "Pluck" to (R.drawable.ic_pluck to "synth"),
+        "Poly" to (R.drawable.ic_poly to "synth"),
+        "Mono" to (R.drawable.ic_mono to "synth"),
+        "Acid" to (R.drawable.ic_acid to "synth"),
+        "Simple" to (R.drawable.ic_simple to "synth"),
+        "Full" to (R.drawable.ic_full to "synth"),
+        "Wobble" to (R.drawable.ic_wobble to "sound"),
+        "Low pass" to (R.drawable.ic_low_pass to "sound"),
+        "High pass" to (R.drawable.ic_high_pass to "sound"),
+        "Band pass" to (R.drawable.ic_band_pass to "sound"),
+        "Wait bar" to (R.drawable.ic_wait_bar to "loop"),
+        "Now" to (R.drawable.ic_now to "loop"),
+        "Count in" to (R.drawable.ic_count_in to "loop"),
+        "Click" to (R.drawable.ic_click to "loop"),
+        "Bar plus" to (R.drawable.ic_bar_plus to "loop"),
+        "Bar minus" to (R.drawable.ic_bar_minus to "loop"),
+        "Double" to (R.drawable.ic_double to "loop"),
+        "Stutter" to (R.drawable.ic_stutter to "throw"),
+        "Tape stop" to (R.drawable.ic_tape_stop to "throw"),
+        "Gate" to (R.drawable.ic_gate to "throw"),
+        "Ring mod" to (R.drawable.ic_ring_mod to "throw"),
+        "Reverse" to (R.drawable.ic_reverse to "throw"),
+        "Sound" to (R.drawable.ic_sound to "edit"),
+        "More" to (R.drawable.ic_more to "edit"),
     )
+    /** Short names the app shows for things whose icon has a longer name (the vials, waves, throws, tabs). */
+    val alias: Map<String, String> = mapOf(
+        "Verb" to "Reverb", "Chor" to "Chorus", "Phase" to "Phaser", "Cut" to "Filter", "Res" to "Resonance",
+        "Tri" to "Triangle", "Saw ↑" to "Saw up", "Saw ↓" to "Saw down", "Lo" to "Low pass", "Hi" to "High pass", "Band" to "Band pass",
+        "Random" to "Random steps", "Echo throw" to "Echo", "Dirty" to "Dirt", "Oct down" to "Octave down", "Mod" to "LFO",
+        "Wavetable" to "Wavetable", "Granular" to "Granular", "Drums" to "Drums",
+    )
+    /** The icon for a name, through the short names. */
+    fun named(name: String?): Int? = if (name == null) null else all[alias[name] ?: name]?.first
     fun res(name: String): Int? = all[name]?.first
 }
 
@@ -244,7 +284,10 @@ fun PanelKey(
             if (res != null) InlayIcon(res, (capH - 8f).dp, on, text)
             else T((if (text.length <= 5) text else text.take(3)).uppercase(), size = 12.sp, color = if (on) lerp(Hw.Engrave, onColor, .5f) else Hw.Engrave, lines = 1, spacing = 0.em, family = Worn, weight = androidx.compose.ui.text.font.FontWeight.Normal)
         }
-        if (state.proWords && word != null) T(word.uppercase(), size = (8f * UiLook.big).sp, color = if (on) onColor else Hw.Engrave.copy(alpha = .8f), lines = 1, spacing = 0.em, family = Stencil, weight = androidx.compose.ui.text.font.FontWeight.Normal,
-            modifier = androidx.compose.ui.Modifier.padding(top = 2.dp))
+        if (state.proWords && word != null) {
+            if (state.wordPlate) PlateWord(word, on, onColor)
+            else T(word.uppercase(), size = (8f * UiLook.big).sp, color = if (on) onColor else Hw.Engrave.copy(alpha = .8f), lines = 1, spacing = 0.em, family = Stencil, weight = androidx.compose.ui.text.font.FontWeight.Normal,
+                modifier = androidx.compose.ui.Modifier.padding(top = 2.dp))
+        }
     }
 }
