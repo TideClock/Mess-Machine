@@ -72,7 +72,7 @@ object Faq {
         Line("lfo-more-*", "Wave and target", "The LFO's wave, the Wobble preset, what it moves, its filter type and how it restarts."),
         Line("fxauto-*", "Auto lane", "Opens this fader's automation lane on Steps, to draw it."),
         Line("packtray-*", "A strip", "In this pad's FannyPack, or out of it."),
-        Line("dock-more", "More", "The bar's keys that don't fit on this screen. Which ones go here first: Chords, then Repeat, then Pack."),
+        Line("dock-more", "More", "The bar's keys that don't fit on this screen. Only on a screen narrower than a folded phone; Pack goes first."),
         Line("pack-toggle", "Pack", "Zips the picked pad's FannyPack open under its row, or shut. Swipe up on it to pick its strips.", "padiano"),
         Line("hold-toggle", "Hold", "Keeps the first notes you play sounding on their own. Swipe up on it for how many, and Let go.", "hold"),
         Line("chords-toggle", "Chords", "One tap between chords and single notes. The key button picks which chords."),

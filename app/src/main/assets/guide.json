@@ -1,16 +1,16 @@
 {
   "title": "Keys that fit your thumb",
   "thisBuild": [
-    "The bottom bar's keys are all one width, at least 44 dp under your thumb at any view size, and they no longer stretch or squeeze. A key keeps its width when its word changes (Hold, Last, 2/4).",
-    "Keys that don't fit your screen go behind More at the end of the bar: Chords first, then Repeat, then Pack. Mute and Drop stay, because you hold them while you play. On your folded screen that is Chords and Repeat.",
+    "The bottom bar's keys are all one width and no longer stretch. Where there is room they are 44 dp under your thumb at any view size; on your folded screen they go a little smaller, about 39, so all seven and the key readout fit. A key keeps its width when its word changes (Hold, Last, 2/4).",
+    "Chords and Repeat stay on the bar. Only a screen narrower than your folded phone puts a key behind More, Pack first.",
     "The pads no longer shrink a second time at 70 percent view, so they are bigger there now.",
     "The loop strip's keys are at least 44 dp under your thumb too.",
     "The top bar, Menu size and Pad layout come next, once you pick which top bar keys go first."
   ],
   "watch": [
     "Play at 70 percent: are the bigger pads better, or do you miss seeing more of the page?",
-    "Is Chords and Repeat behind More the right pair, or should something else go first?",
-    "Do the bottom keys feel the right size now, or still small?"
+    "Folded: do the bottom keys feel big enough now?",
+    "Do the loop strip's keys feel the right size?"
   ],
   "limits": [
     "The top bar and the sheets are still sized the old way.",

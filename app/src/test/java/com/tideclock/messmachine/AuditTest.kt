@@ -121,7 +121,9 @@ class AuditTest {
             if (w < smallDp || h < smallDp) add("small button", "$name (${w.toInt()} x ${h.toInt()} dp)")
             // Nov 22 sizing: the keys of a played bar are at least 44 real dp each way, at every view size
             val own = node.config.getOrNull(SemanticsProperties.TestTag)
-            if (own != null && own in barKeys && (w < 43.5f || h < 43.5f)) barProblems.add("$page: $own is ${"%.1f".format(w)} x ${"%.1f".format(h)} real dp")
+            // (the bottom bar's keys may go down to 38 wide on a narrow screen, Tyler's call; tall stays 44)
+            val minW = if (own != null && own.startsWith("loop-")) 43.5f else 37.5f
+            if (own != null && own in barKeys && (w < minW || h < 43.5f)) barProblems.add("$page: $own is ${"%.1f".format(w)} x ${"%.1f".format(h)} real dp")
             val right = node.positionInRoot.x + node.size.width
             if (right > screenW + 2f && b.width > 0f) add("off the right edge", "$name (by ${((right - screenW) / d).toInt()} dp)")
         }
@@ -221,6 +223,7 @@ class AuditTest {
         assertTrue("the audit walked the whole app (${pages.size} pages)", pages.size >= 35)
         File("build/screens/bar-sizes-$width.txt").writeText(barProblems.joinToString("\n").ifEmpty { "all bar keys at least 44 real dp, pads at least 64" })
         // enforced at every width a phone in use has, 70 percent view included (that is how Tyler plays); 344 is reported
+        if (width != "w344") assertTrue("Chords and Repeat stay on the bar at $width", "chords-toggle" !in state.dockOverflow && "repeat-toggle" !in state.dockOverflow)
         if (width != "w344") assertTrue("bar keys and pads under their floors at $width: $barProblems", barProblems.isEmpty())
         // the words a player steers by must never be cut off, at any width a phone in use has (344 is reported only:
         // narrower than any phone these builds have run on)

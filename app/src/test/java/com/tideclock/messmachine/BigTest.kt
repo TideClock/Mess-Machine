@@ -3131,12 +3131,12 @@ class BigTest {
         val d = rule.density.density
         val shown = listOf("open-padmenu", "pack-toggle", "hold-toggle", "chords-toggle", "repeat-toggle", "mute-key", "drop-key").filter { it !in state.dockOverflow }
         val widths = shown.map { rule.onNodeWithTag(it).fetchSemanticsNode().size.width / d }
-        assertTrue("every key is at least 44 real dp ($widths)", widths.all { it >= 43.5f })
+        assertTrue("every key is at least 38 real dp, 44 where there is room ($widths)", widths.all { it >= 37.5f })
         assertTrue("and all the same width ($widths)", widths.max() - widths.min() < 1f)
         assertTrue("Edit never goes behind ⋯", "open-padmenu" !in state.dockOverflow)
         if (state.dockOverflow.isNotEmpty()) {
-            // the first to go are Chords, then Repeat, then Pack; Mute and Drop are held while you play, so they stay
-            val order = listOf("chords-toggle", "repeat-toggle", "pack-toggle", "drop-key", "mute-key", "hold-toggle")
+            // only on a very narrow screen: Pack first; Chords and Repeat last of all (Tyler needs them)
+            val order = listOf("pack-toggle", "drop-key", "mute-key", "hold-toggle", "chords-toggle", "repeat-toggle")
             assertEquals("they go in order", order.take(state.dockOverflow.size).toSet(), state.dockOverflow)
             at("dock-more").assertExists()
             val first = state.dockOverflow.first()
@@ -3155,7 +3155,8 @@ class BigTest {
         val pad100 = rule.onNodeWithTag("pad-0").fetchSemanticsNode().size.width / d
         state.setViewSize(.7f); settle(); rule.mainClock.advanceTimeBy(600); settle()
         val keys70 = listOf("open-padmenu", "hold-toggle").map { rule.onNodeWithTag(it).fetchSemanticsNode().size }
-        assertTrue("at 70 percent the keys are still 44 real dp ($keys70)", keys70.all { it.width / d >= 43.5f && it.height / d >= 43.5f })
+        assertTrue("at 70 percent the keys are still at least 38 real dp wide and 44 tall ($keys70)", keys70.all { it.width / d >= 37.5f && it.height / d >= 43.5f })
+        assertTrue("Chords and Repeat stay on the bar", "chords-toggle" !in state.dockOverflow && "repeat-toggle" !in state.dockOverflow)
         val pad70 = rule.onNodeWithTag("pad-0").fetchSemanticsNode().size.width / d
         assertTrue("the pads stay over 64 real dp at 70 percent ($pad70, was $pad100)", pad70 >= 64f)
         shot("131-dock-view70")
