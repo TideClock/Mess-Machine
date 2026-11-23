@@ -83,8 +83,12 @@ val DOCK_TYPES = listOf(
     "mouth" to "Mouth control", "pitch" to "Pitch wheel", "throws" to "All the throws (perform effects)",
 )
 
-/** Build 107: Hold and Rec are already on the bottom bar and the transport, so the perform row does not offer them. */
-val PERFORM_SKIP = setOf("hold", "rec")
+/** Build 107: Hold and Rec are already on the bottom bar and the transport, so the perform row does not offer them.
+ *  Nov 22 (second video): the beat light ("what is that dot even") is gone from it too. */
+val PERFORM_SKIP = setOf("hold", "rec", "beat")
+
+/** Nov 22: keys on the bottom bar and the perform row whose settings a quick swipe up opens, whatever Settings says. */
+val DOCK_FLICK = setOf("pack-toggle", "hold-toggle", "chords-toggle", "repeat-toggle", "keysbar-open", "dock-repeat", "dock-mouth", "dock-xy")
 
 /** Every module you can add, with its name. */
 val CONSOLE_TYPES = listOf(
@@ -2452,6 +2456,7 @@ class AppState(private val app: Context) {
             tag == "chords-toggle" || tag == "keysbar-open" -> "keys"
             tag == "dock-repeat" || tag == "dock-rate" || tag == "repeat-toggle" || tag.startsWith("rate-") -> "repeat"
             tag.startsWith("dock-pitch") -> "wheel"
+            tag == "dock-mouth" -> "mouth"
             tag == "dock-cut" || tag == "dock-res" || tag == "dock-target" || tag == "dock-stay" -> "dockfilter"
             tag == "bpm" -> "tempo"
             tag == "loop-open" || tag == "position" -> "loops"
@@ -2477,6 +2482,7 @@ class AppState(private val app: Context) {
             k.startsWith("xy:") -> { tray = null; overlay = Overlay.Xy(k.substringAfter(':').toInt()) }
             k == "keys" -> { tray = null; switchKeysBar(true) }
             k == "tempo" -> { tray = null; overlay = Overlay.Tempo }
+            k == "mouth" -> { tray = null; overlay = Overlay.Mouth }
             k == "loops" -> { tray = null; loopStripOpen = true }
             else -> openTray(k)
         }

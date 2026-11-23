@@ -65,12 +65,11 @@ fun PadsScreen(state: AppState) {
         // screen however far down the page you are (build 84, Tyler's Nov 17 note)
         Row(Modifier.fillMaxWidth().padding(bottom = 12.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
             if (state.stepMode) BarButtons(state) else BankButtons(state)
-            SoundButton(state)
         }
         if (state.levelsPad >= 0) Box(Modifier.fillMaxWidth().clickable { state.switchLevels() }.tagged("levels-banner")) {
-            Note("16 LEVELS: " + state.lib.titleOf(state.project.kit.getOrElse(state.levelsPad) { "" }).uppercase() + " on every pad, pad 16 hardest. Tap here to stop.", color = C.Yellow)
+            Note("16 LEVELS: " + state.lib.titleOf(state.project.kit.getOrElse(state.levelsPad) { "" }).uppercase() + " · TAP TO STOP", color = C.Yellow)
         }
-        if (state.stepMode) Note("Step mode: the pads are the steps of " + state.lib.titleOf(state.selKey()).ifEmpty { "the picked pad" }.uppercase() + ", bar ${state.page + 1}. Tap to flip a step. Pads picks the sound again.",
+        if (state.stepMode) Note("STEP MODE · " + state.lib.titleOf(state.selKey()).ifEmpty { "the picked pad" }.uppercase() + " · BAR ${state.page + 1}",
             color = C.Yellow, modifier = Modifier.padding(bottom = 8.dp))
         // zoomed out, the pad grid shrinks with everything else so more of the machine fits
         Box(Modifier.fillMaxWidth(minOf(1f, state.uiScale)).widthIn(max = 560.dp).align(Alignment.CenterHorizontally)) {
@@ -148,22 +147,6 @@ private fun RowScope.BankButtons(state: AppState) {
     }
 }
 
-/** The picked pad's sound: the Sample sheet, or the Synth tab for a synth. */
-@Composable
-private fun SoundButton(state: AppState) {
-    val P = state.project
-    // Reading selV and version keeps the label on the pad picked last (a tap on a pad only bumps selV)
-    @Suppress("UNUSED_VARIABLE") val sv = state.selV
-    @Suppress("UNUSED_VARIABLE") val vv = state.version
-    val selKey = P.kit.getOrNull(P.sel).orEmpty()
-    Btn(if (Project.isSynth(selKey)) "Synth" else "Sample", {
-        val pad = state.project.sel
-        val k = state.project.kit.getOrNull(pad).orEmpty()
-        if (Project.isSynth(k)) state.tab = com.tideclock.messmachine.Tab.Synth
-        else if (k.isNotEmpty()) state.overlay = Overlay.Doctor(k)
-    }, small = true, enabled = selKey.isNotEmpty(), tag = "open-sample")
-}
-
 /**
  * The bottom dock (build 84, Tyler's Nov 17 note): Menu for the picked pad, Hold, Chords on or off and the key,
  * on a bar that stays put under the page while it scrolls. Shown on Play, My Desk and Synth. The key button opens
@@ -176,7 +159,7 @@ fun BottomDock(state: AppState) {
     @Suppress("UNUSED_VARIABLE") val vv = state.version
     val P = state.project
     Column(Modifier.fillMaxWidth().rail(state).drawBehind {
-        drawLine(C.Teal, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 2.dp.toPx())
+        drawLine(if (UiLook.panel) Hw.Brass else C.Teal, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 2.dp.toPx())
     }.tagged("bottomdock")) {
         if (state.keysBarOpen) KeysPanel(state)
         Row(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -476,17 +459,17 @@ fun PlayViews(state: AppState) {
 /** Hold: one tap on or off. The first N notes you play keep sounding; press one again to let it go. */
 @Composable
 fun HoldBar(state: AppState, modifier: Modifier = Modifier) {
-    Wrap(modifier.padding(top = 8.dp), gap = 6.dp) {
-        T("HOLD", size = 11.sp, color = if (state.holdOn) C.Yellow else C.Dim, spacing = .1.em)
-        Btn("−", { state.changeHoldCount(state.holdCount - 1) }, small = true, enabled = state.holdCount > 0, tag = "hold-down", modifier = Modifier.widthIn(min = 40.dp))
-        Box(Modifier.size(width = 58.dp, height = if (UiLook.panel) 42.dp else 34.dp).then(if (UiLook.panel) Modifier.lcd() else Modifier.background(C.Well).border(2.dp, if (state.holdOn) C.Yellow else C.Cream)), contentAlignment = Alignment.Center) {
+    // Nov 22 (second video, Tyler: "we just really need these three things"): how many, and Let go, in one short row
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Btn("−", { state.changeHoldCount(state.holdCount - 1) }, small = true, tight = true, enabled = state.holdCount > 0, tag = "hold-down", modifier = Modifier.widthIn(min = 44.dp))
+        Box(Modifier.size(width = 64.dp, height = if (UiLook.panel) 42.dp else 34.dp).then(if (UiLook.panel) Modifier.lcd() else Modifier.background(C.Well).border(2.dp, if (state.holdOn) C.Yellow else C.Cream)).tagged("hold-count"), contentAlignment = Alignment.Center) {
             val n = if (state.holdCount == 0) "LAST" else "${state.holdCount}"
             T(if (state.holdOn && state.holdCount > 0) "${state.latched.size}/$n" else n, size = if (UiLook.panel) 16.sp else 13.sp,
                 color = if (UiLook.panel) Hw.Amber.copy(alpha = if (state.holdOn) 1f else .6f) else if (state.holdOn) C.Yellow else C.Dim,
-                family = if (UiLook.panel) Lcd else Mono, weight = if (UiLook.panel) FontWeight.Normal else FontWeight.Bold)
+                family = if (UiLook.panel) Lcd else Mono, weight = if (UiLook.panel) FontWeight.Normal else FontWeight.Bold, lines = 1)
         }
-        Btn("+", { state.changeHoldCount(state.holdCount + 1) }, small = true, enabled = state.holdCount < 8, tag = "hold-up", modifier = Modifier.widthIn(min = 40.dp))
-        Btn("Let go", { state.releaseHolds() }, small = true, color = C.Riot, enabled = state.latched.isNotEmpty(), tag = "hold-release")
+        Btn("+", { state.changeHoldCount(state.holdCount + 1) }, small = true, tight = true, enabled = state.holdCount < 8, tag = "hold-up", modifier = Modifier.widthIn(min = 44.dp))
+        Btn("Let go", { state.releaseHolds() }, small = true, tight = true, color = C.Riot, enabled = state.latched.isNotEmpty(), tag = "hold-release")
     }
 }
 

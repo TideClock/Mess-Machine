@@ -22,7 +22,6 @@ import com.tideclock.messmachine.AppState
 fun PacksScreen(state: AppState) {
     @Suppress("UNUSED_VARIABLE") val v = state.version
     ScrollPane(hPad = 14.dp, vPad = 0.dp) {
-        Note("Packs are sounds picked in the Vault and sent to the app. Each one lands in Sounds as its own jar.", modifier = Modifier.padding(top = 4.dp, bottom = 10.dp))
         Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Btn("Check for packs", { state.refreshPacks() }, small = true, tag = "packs-refresh")
             if (state.packNote.isNotEmpty()) Note(state.packNote, modifier = Modifier.weight(1f))

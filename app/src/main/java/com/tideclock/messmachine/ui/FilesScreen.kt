@@ -63,7 +63,6 @@ fun FilesScreen(state: AppState) {
         Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
             Column {
                 T("POUR IT OUT", size = 12.sp, color = C.Yellow, spacing = .1.em)
-                Help("Makes a WAV of the music, then opens your share sheet. Stems are a zip with each sound on its own, all starting together; MIDI is the notes, one track per sound.", modifier = Modifier.padding(bottom = 8.dp))
                 Wrap(Modifier) {
                     val L = Project.LETTERS[P.cur]
                     Btn("Loop $L once", { state.bounce(false, 1) }, small = true, color = C.Pink)
@@ -84,10 +83,7 @@ fun FilesScreen(state: AppState) {
         Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
             Column {
                 T("SITE AND PHONE", size = 12.sp, color = C.Yellow, spacing = .1.em)
-                T(
-                    "The app reads and writes the same mess files as the Mess Machine on the site. Sounds you uploaded on the site stay there; those pads come in empty.",
-                    size = 12.sp, color = C.Dim, weight = FontWeight.Medium, modifier = Modifier.padding(bottom = 8.dp),
-                )
+                androidx.compose.foundation.layout.Spacer(Modifier.size(1.dp, 6.dp))
                 Wrap(Modifier) {
                     Btn("Open a mess file", { pick.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }, small = true, color = C.Teal)
                     Btn("Share this mess", { state.shareMess() }, small = true)
@@ -165,7 +161,6 @@ fun SettingsScreen(state: AppState) {
         Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
             Column {
                 T("VIEW SIZE", size = 12.sp, color = C.Yellow, spacing = .1.em)
-                Help("Zoom out to fit more of the machine on the screen.", modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
                 Wrap(Modifier.tagged("zoom-chips")) {
                     for (z in listOf(.7f, .8f, .9f, 1f, 1.1f, 1.2f)) {
                         Btn("${(z * 100).toInt()}%", { state.setViewSize(z) }, on = kotlin.math.abs(state.uiScale - z) < .01f, small = true, tag = "zoom-${(z * 100).toInt()}")
@@ -177,8 +172,6 @@ fun SettingsScreen(state: AppState) {
         Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
             Column {
                 T("SKIN", size = 12.sp, color = C.Yellow, spacing = .1.em)
-                if (LocalHelp.current) T("The colours of the whole machine. Specimen is a lab notebook at night; Stage is black and loud, for dark rooms; Felt and Paper is for daylight; Rust is a machine left out in the rain.", size = 11.sp, color = C.Dim, weight = FontWeight.Medium,
-                    modifier = Modifier.padding(top = 4.dp))
                 Wrap(Modifier.padding(top = 6.dp).tagged("skin-chips")) {
                     Skins.all.forEach { k ->
                         Btn(k.name, { state.pickSkin(k.id) }, on = state.skin == k.id, onColor = androidx.compose.ui.graphics.Color(k.pink), small = true, tag = "skin-${k.id}")
@@ -214,7 +207,6 @@ fun SettingsScreen(state: AppState) {
                     Btn("New, row on the side", { state.pickLayout("side") }, on = state.layout == "side", onColor = C.Teal, small = true, tag = "layout-side")
                     Btn("Classic", { state.pickLayout("classic") }, on = state.layout == "classic", small = true, tag = "layout-classic")
                 }
-                Help("New: Edit and Repeat on the bar; the perform row swipes up. Classic: Menu, FX and the side dock.", modifier = Modifier.padding(top = 6.dp))
             }
         }
         // My Desk is a way of seeing the machine, so it lives here (Tyler, Nov 18): the Play tab shows the pads or your desk
@@ -231,38 +223,34 @@ fun SettingsScreen(state: AppState) {
         Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
             Column {
                 T("PLAYING", size = 12.sp, color = C.Yellow, spacing = .1.em)
-                Note("An empty pad's top corner records onto it with the mic: tap to start and stop, or hold while you make the sound.", modifier = Modifier.padding(top = 2.dp, bottom = 2.dp))
+                T("MIC ON AN EMPTY PAD", size = 11.sp, color = C.Dim, spacing = .1.em, lines = 1, modifier = Modifier.padding(top = 6.dp, bottom = 4.dp))
                 Wrap(Modifier.padding(top = 6.dp).tagged("recmode-chips")) {
                     Btn("Tap start, tap stop", { state.switchRecordHold(false) }, on = !state.recordHold, onColor = C.Teal, small = true, tag = "set-rectap")
                     Btn("Hold to record", { state.switchRecordHold(true) }, on = state.recordHold, onColor = C.Teal, small = true, tag = "set-rechold")
                 }
-                Note("Leave the app while it plays and the music keeps going, with Stop in a notification.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
                 Btn(if (state.bgPlay) "Keep playing when I leave: on" else "Keep playing when I leave: off", {
                     val on = !state.bgPlay
                     state.switchBgPlay(on)
                     if (on && android.os.Build.VERSION.SDK_INT >= 33 && androidx.core.content.ContextCompat.checkSelfPermission(ctx, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED)
                         notif.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                }, on = state.bgPlay, onColor = C.Teal, small = true, tag = "set-bgplay")
-                Note("A short buzz when you hit a pad.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
-                Btn(if (state.buzz) "Pad buzz: on" else "Pad buzz: off", { state.switchBuzz(!state.buzz) }, on = state.buzz, onColor = C.Teal, small = true, tag = "set-buzz")
+                }, on = state.bgPlay, onColor = C.Teal, small = true, tag = "set-bgplay", modifier = Modifier.padding(top = 10.dp))
+                Btn(if (state.buzz) "Pad buzz: on" else "Pad buzz: off", { state.switchBuzz(!state.buzz) }, on = state.buzz, onColor = C.Teal, small = true, tag = "set-buzz", modifier = Modifier.padding(top = 8.dp))
                 // Nov 18: the finer time grid lets live hits record exactly where they were played
                 Btn(if (state.live.recExact) "Recording: exactly where you hit" else "Recording: snapped to 16ths", { state.switchRecExact() }, on = state.live.recExact, onColor = C.Teal, small = true, tag = "set-recexact",
                     modifier = Modifier.padding(top = 8.dp))
                 // Nov 18: a quick flick up off a button opens its settings, like Menu then tap (try it; off by default)
                 // Nov 21: flicks in one row: a flick up off a pad opens its Edit tray (on), off a button its settings (off)
-                Note("Flick a button up for its settings.", modifier = Modifier.padding(top = 12.dp, bottom = 6.dp))
+                T("FLICK UP FOR SETTINGS", size = 11.sp, color = C.Dim, spacing = .1.em, lines = 1, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
                 Wrap(Modifier.tagged("flick-chips")) {
                     Btn("Buttons: " + (if (state.flickOn) "on" else "off"), { state.switchFlick() }, on = state.flickOn, onColor = C.Teal, small = true, tag = "set-flick")
                 }
                 // Nov 21 (lag): the screen at 60 a second leaves more time for the sound
-                Note("Screen speed. 60 a second leaves the sound more room; Smooth is the phone's fastest.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
-                Btn(if (state.smoothScreen) "Screen: smooth" else "Screen: 60 a second", { state.switchSmoothScreen(!state.smoothScreen) }, on = state.smoothScreen, onColor = C.Teal, small = true, tag = "set-smooth")
-                Note("Sound buffer. Tight keeps lag low and lets a rare click through; Steady grows more to ride out a busy phone.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
-                Btn(if (state.steadyBuffer) "Buffer: steady" else "Buffer: tight", { state.switchSteadyBuffer(!state.steadyBuffer) }, on = state.steadyBuffer, onColor = C.Teal, small = true, tag = "set-buffer")
+                Btn(if (state.smoothScreen) "Screen: smooth" else "Screen: 60 a second", { state.switchSmoothScreen(!state.smoothScreen) }, on = state.smoothScreen, onColor = C.Teal, small = true, tag = "set-smooth", modifier = Modifier.padding(top = 8.dp))
+                Btn(if (state.steadyBuffer) "Buffer: steady" else "Buffer: tight", { state.switchSteadyBuffer(!state.steadyBuffer) }, on = state.steadyBuffer, onColor = C.Teal, small = true, tag = "set-buffer", modifier = Modifier.padding(top = 8.dp))
                 // Nov 21 (L4): AAudio is Android's fast path; the older one is there for a phone where it misbehaves
-                Note("Sound out. AAudio is Android's fast path, for the least lag; Older is the way the app used before, if AAudio ever clicks or goes quiet. Now: ${state.audio.path}.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
+                T("SOUND OUT · NOW ${state.audio.path.uppercase()}", size = 11.sp, color = C.Dim, spacing = .1.em, lines = 1, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
                 Btn(if (state.aaudio) "Sound out: AAudio" else "Sound out: older", { state.switchAAudio(!state.aaudio) }, on = state.aaudio, onColor = C.Teal, small = true, tag = "set-aaudio")
-                Note("Beat glow behind everything.", modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
+                T("BEAT GLOW", size = 11.sp, color = C.Dim, spacing = .1.em, lines = 1, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
                 Wrap(Modifier.tagged("glow-chips")) {
                     for ((v, n) in listOf(0 to "Off", 1 to "Soft", 2 to "Full")) Btn(n, { state.setPulse(v) }, on = state.pulseLevel == v, small = true, tag = "set-pulse-$v")
                 }
@@ -272,7 +260,6 @@ fun SettingsScreen(state: AppState) {
         Card(Modifier.fillMaxWidth().padding(bottom = 14.dp).tagged("hotkeys")) {
             Column {
                 T("HOTKEYS", size = 12.sp, color = C.Yellow, spacing = .1.em)
-                Help("A quick swipe off a pad, about a finger's width, opens one of these. The pad still plays when you touch it.", Modifier.padding(top = 2.dp, bottom = 8.dp))
                 Btn("Pad swipes: " + (if (state.padFlick) "on" else "off"), { state.switchPadFlick() }, on = state.padFlick, onColor = C.Teal, small = true, tag = "set-padflick")
                 for ((dir, word) in listOf("up" to "Up", "down" to "Down", "left" to "Left", "right" to "Right")) {
                     val now = SWIPE_ACTIONS.firstOrNull { it.first == state.swipe[dir] }?.second ?: "Nothing"
@@ -281,13 +268,6 @@ fun SettingsScreen(state: AppState) {
                         Select(now, SWIPE_ACTIONS, { state.setSwipe(dir, it) }, tag = "swipe-$dir")
                     }
                 }
-            }
-        }
-        Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
-            Column {
-                T("HELP", size = 12.sp, color = C.Yellow, spacing = .1.em)
-                Help("How-to text shows once on each page the first time you open it. ? in the top bar shows it again.", Modifier.padding(top = 2.dp, bottom = 8.dp))
-                Btn(if (state.helpOn) "How-to text: always" else "How-to text: first time only", { state.switchHelp() }, on = state.helpOn, onColor = C.Teal, small = true, tag = "set-help")
             }
         }
         T(" ", size = 30.sp)
@@ -313,7 +293,6 @@ fun TempoScreen(state: AppState) {
             { bpm = it; val v = it.roundToInt().coerceIn(60, 180); if (v != state.project.bpm) state.edit(commit = false) { this.bpm = v } },
             { state.setBpm(bpm.roundToInt()) })
         SliderRow("Swing", swing, 0f..100f, { "${it.roundToInt()}%" }, { swing = it }, { state.edit { this.swing = swing.roundToInt() } }, accent = C.Teal)
-        Help("Swing pushes every other 16th late, like the site.", modifier = Modifier.padding(bottom = 12.dp))
         // the last build of the overhaul: the master bus, the last thing every sound goes through
         var squash by remember { mutableStateOf(P.squash.toFloat()) }
         var level by remember { mutableStateOf(P.level.toFloat()) }
@@ -325,7 +304,6 @@ fun TempoScreen(state: AppState) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 4.dp)) {
             Btn("As it was", { squash = .5f; level = 1f; state.setMaster(.5, 1.0) }, small = true, tag = "master-reset")
         }
-        Help("Squash presses the whole mix together: off keeps every peak, flattened makes it dense and loud. Level is the mix's volume after it. Both save with the mess and go into bounces and stems.", modifier = Modifier.padding(bottom = 12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Btn("Click", { state.switchClick() }, on = state.live.click, small = true)
             Btn("Hear steps on tap", { state.switchPlayOnTap(!state.playOnTap) }, on = state.playOnTap, small = true, onColor = C.Teal)

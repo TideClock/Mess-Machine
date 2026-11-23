@@ -114,7 +114,6 @@ fun BoxScope.TutorOverlay(state: AppState) {
 @Composable
 fun LearnScreen(state: AppState) {
     ScrollPane(hPad = 14.dp, vPad = 0.dp) {
-        Note("Each lesson points at one control at a time and moves on when you've done it. It uses a practice mess; yours comes back when the lesson ends.", modifier = Modifier.padding(top = 4.dp, bottom = 10.dp))
         Btn("Speed guide: the whole app in a minute", { state.startSpeedGuide() }, small = true, color = C.Teal, tag = "learn-speed", modifier = Modifier.padding(bottom = 12.dp))
         for (g in Tutorials.all.map { it.group }.distinct()) {
             T(g.uppercase(), size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 6.dp, bottom = 4.dp))

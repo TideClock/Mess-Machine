@@ -163,7 +163,6 @@ fun DoctorScreen(state: AppState, key: String) {
         if (dtab == "play") {
         // SE-1: Stretch or Grain
         T("PITCH", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(bottom = 4.dp))
-        Help("Stretch plays a pitch change like tape: higher is faster and shorter. Grain keeps the length. Auto keeps the length for keys, chords and Roll notes, and lets Tune stay tape.", modifier = Modifier.padding(bottom = 6.dp))
         Row(Modifier.fillMaxWidth().padding(bottom = 14.dp, end = 4.dp).tagged("pitch-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for ((v, n) in listOf("auto" to "Auto", "stretch" to "Stretch", "grain" to "Grain")) Btn(n, { upd(true) { pitch = v } }, on = e.pitch == v, onColor = C.Teal, small = true, tag = "pitch-$v", modifier = Modifier.weight(1f))
         }
@@ -184,7 +183,6 @@ fun DoctorScreen(state: AppState, key: String) {
         }
         // SE-5, SE-7: what Hold (and a finger, for Sustain) does with it
         T("WHEN IT IS HELD", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(bottom = 4.dp))
-        Help("Loop its trim, freeze its tail, play it once, sustain it like a pad for as long as it is held, or play it whole and start it again on the beat while Hold keeps it.", modifier = Modifier.padding(bottom = 6.dp))
         Wrap(Modifier.tagged("held-chips")) {
             for ((v, n) in listOf("loop" to "Loop it", "tail" to "Hold the tail", "once" to "Play once", "sustain" to "Sustain", "beat" to "On the beat")) Btn(n, { upd(true) { held = v } }, on = e.held == v, small = true, tag = "held-$v")
         }
@@ -193,7 +191,6 @@ fun DoctorScreen(state: AppState, key: String) {
         }
         }
         if (dtab == "trim") {
-        Help("Drag the yellow line to trim the front, the pink one to trim the back.", modifier = Modifier.padding(bottom = 8.dp))
         Wrap(Modifier.padding(bottom = 8.dp)) {
             Btn("Zoom to trim", {
                 val pad = (e.en - e.st) * .08
@@ -217,13 +214,11 @@ fun DoctorScreen(state: AppState, key: String) {
         SliderRow("Tone", e.tone.toFloat(), -1f..1f, { if (abs(it) < .02f) "open" else if (it < 0) "darker ${(-it * 100).roundToInt()}" else "thinner ${(it * 100).roundToInt()}" }, { v -> upd(false) { tone = v.toDouble() } }, { upd(true) {} }, accent = C.Teal)
         SliderRow("Attack", e.att.toFloat(), 0f..1f, { "${(it * 1000).roundToInt()} ms" }, { v -> upd(false) { att = v.toDouble() } }, { upd(true) {} }, accent = C.Yellow)
         SliderRow("Release", e.rel.toFloat(), 0f..1.5f, { "${(it * 1000).roundToInt()} ms" }, { v -> upd(false) { rel = v.toDouble() } }, { upd(true) {} }, accent = C.Yellow)
-        Help("Choke group: sounds in the same group cut each other off, like an open and closed hat.", modifier = Modifier.padding(top = 4.dp, bottom = 6.dp))
         Wrap(Modifier.tagged("choke-chips")) {
             for (g in 0..6) Btn(if (g == 0) "Off" else "$g", { upd(true) { choke = g } }, on = e.choke == g, small = true, modifier = Modifier.widthIn(min = 40.dp))
         }
         }
         if (dtab == "fx") {
-        Help("These stay with the sound wherever it plays. Reverb and echo share one space each; the sound you played last sets its size and time.", modifier = Modifier.padding(bottom = 6.dp))
         val pct = { v: Float -> "${(v * 100).roundToInt()}%" }
         @Composable
         fun fxRow(name: String, tag: String, amount: Double, toggle: () -> Unit, body: @Composable () -> Unit) {

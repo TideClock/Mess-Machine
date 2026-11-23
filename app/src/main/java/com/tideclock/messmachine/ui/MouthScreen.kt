@@ -29,7 +29,6 @@ fun MouthScreen(state: AppState) {
     val pad = P.sel
     val k = P.kit.getOrNull(pad).orEmpty()
     ScrollPane(hPad = 14.dp, vPad = 0.dp) {
-        Note("Make a sound and your mouth moves the pad you picked: \"ooo\" is dark, \"eee\" is bright. Say \"wow wow wow\" over a held synth for a wub.", modifier = Modifier.padding(top = 4.dp, bottom = 10.dp))
         Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Btn(if (state.mouthOn) "● Listening" else "○ Listen", { state.switchMouth() }, on = state.mouthOn, onColor = C.Pink, tag = "mouth-toggle")
             Note(if (k.isEmpty()) "Pick a pad with a sound first." else "Moves pad ${pad + 1}, ${state.lib.titleOf(k).lowercase()}", modifier = Modifier.weight(1f))
@@ -45,7 +44,6 @@ fun MouthScreen(state: AppState) {
             Btn("Spring back", { state.switchMouthStay(false) }, on = !state.mouthStay, onColor = C.Teal, small = true, tag = "mouth-letgo")
         }
         SliderRow("Sensitivity", -state.mouthGate, 20f..70f, { "quiet under -${it.toInt()} dB" }, { state.changeMouthGate(-it) }, {}, accent = C.Pink)
-        Help("Headphones work best: on the speaker the mic hears the music too, and the music would move things. Turn Sensitivity down if it moves while you're silent. With Rec on while the loop plays, what your mouth does lands in the loop as XY moves (Clear auto takes it out). Nothing you say is kept: only the two numbers.", modifier = Modifier.padding(top = 8.dp))
         T(" ", size = 30.sp)
     }
 }

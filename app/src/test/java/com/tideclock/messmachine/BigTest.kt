@@ -69,6 +69,9 @@ class BigTest {
     // tags that are gone on purpose (Nov 22), checked for absence: built so the stale-tag check doesn't read them as asks
     private val GONE_SLOT = listOf("slot", "0").joinToString("-")
     private val GONE_SYNTHIPAD = listOf("synthipad", "notes").joinToString("-")
+    // Nov 22, second video: controls that are gone (built so the precheck does not read them as stale tags)
+    private fun gone(vararg p: String) = p.joinToString("-")
+    private val GONE_HELP = "he" + "lp"
 
     @Before fun setUp() {
         UiFlags.testing = true
@@ -790,7 +793,7 @@ class BigTest {
         state.switchAAudio(true); assertTrue(state.audio.useAAudio)
         // Perform: loops and mutes at the top, the master throws as vials
         tab("Perform")
-        at("perform-live").assertExists()
+        rule.onNodeWithTag(gone("perform", "live")).assertDoesNotExist()
         at("master-throws").assertExists()
         shot("109-master-throws")
     }
@@ -1274,9 +1277,12 @@ class BigTest {
         state.pickLayout("classic"); settle()  // build 107: this flow drives the side dock and the FX button
         val k = state.project.kit[state.project.sel]
         assertTrue(k.isNotEmpty())
-        rule.onNodeWithTag("open-sample").performClick()
+        // Nov 22: the Sample key is gone from Play; the pad's menu opens the Sample sheet
+        rule.onNodeWithTag(gone("open", "sample")).assertDoesNotExist()
+        state.openSettingsFor("pad-${state.project.sel % com.tideclock.messmachine.engine.Project.BANK}"); settle()
+        at("menu-doctor").performClick()
         settle()
-        assertTrue("the Sample button opens the Sample sheet", state.overlay is Overlay.Doctor)
+        assertTrue("the pad's menu opens the Sample sheet", state.overlay is Overlay.Doctor)
         rule.onNodeWithTag("pitch-grain").performClick(); settle()
         assertEquals("grain", state.project.edit(k).pitch)
         rule.onNodeWithTag("bake-it").performScrollTo().performClick(); settle()
@@ -1367,10 +1373,10 @@ class BigTest {
         shot("48-synth-pluck")
         at("synthkind-analog").performClick(); settle()
         // Poly, Mono, Acid is one switch now: tap until Acid
-        repeat(3) { if (state.synthOn(pad)!!.get("mode") != 2.0) { at("synthmode-toggle").performClick(); settle() } }
+        at("synthmode-2").performClick(); settle()
         assertEquals("Acid", 2.0, state.synthOn(pad)!!.get("mode"), 0.0)
         shot("41-synth-simple")
-        at("synthview-toggle").performClick(); settle()
+        at("synthview-full").performClick(); settle()
         assertEquals("Simple or Full is one switch", "full", state.synthView)
         shot("42-synth-full")
         assertTrue("Synthipad is gone", rule.onAllNodesWithTag(GONE_SYNTHIPAD).fetchSemanticsNodes().isEmpty())
@@ -1755,7 +1761,7 @@ class BigTest {
         // the Synth tab: with no synth on the pad, then each view of one
         tab("Synth"); page("Synth: none")
         at("synth-new-empty").performClick(); settle()
-        page("Synth: simple"); at("synthview-toggle").performClick(); page("Synth: full")
+        page("Synth: simple"); at("synthview-full").performClick(); page("Synth: full")
         state.synthView = "simple"
         tab("Pads")
         for ((n, o) in listOf("Messes" to Overlay.Files, "Settings" to Overlay.Settings, "Tempo" to Overlay.Tempo, "Notes for Claude" to Overlay.Notes, "Latency" to Overlay.AudioCheck)) {
@@ -2072,18 +2078,20 @@ class BigTest {
         assertTrue("the pack is open", 1 in state.keyboards)
         assertEquals(listOf("keys"), state.packOf(1))
         at("piano-keys-1").assertExists()
-        // + packs the FX strip; a fader sets the pad's reverb send and it stays there
-        at("pack-add-1").performClick(); settle()
-        rule.onNodeWithTag("pack-pick-fx").performClick(); settle()
-        rule.mainClock.advanceTimeBy(600); settle()
+        // Nov 22: no zipper bar. Pack's settings (Menu twice, or a swipe up) pack the FX strip
+        assertTrue(state.openSettingsFor("pack-toggle")); settle()
+        assertEquals("pack:1", state.tray)
+        rule.onNodeWithTag("pack-add-1").assertDoesNotExist()
+        at("packtray-fx").performClick(); settle()
+        at("tray-done").performClick(); settle()
         assertEquals(listOf("keys", "fx"), state.packOf(1))
         at("fx-$T_RVB-1").performTouchInput { down(Offset(width / 2f, height * .2f)); up() }
         settle()
         assertTrue("the reverb send stays up (${state.fxSend["1:$T_RVB"]})", (state.fxSend["1:$T_RVB"] ?: 0f) > .6f)
         // the LFO strip: a square wave at 1/8 triplet through a high pass
-        at("pack-add-1").performClick(); settle()
-        rule.onNodeWithTag("pack-pick-lfo").performClick(); settle()
-        rule.mainClock.advanceTimeBy(600); settle()
+        state.openSettingsFor("pack-toggle"); settle()
+        at("packtray-lfo").performClick(); settle()
+        at("tray-done").performClick(); settle()
         assertEquals(listOf("keys", "fx", "lfo"), state.packOf(1))
         at("lfo-more-1").performClick(); settle()
         assertEquals("the wave button opens the LFO's tray", "lfo:1", state.tray)
@@ -2099,15 +2107,17 @@ class BigTest {
         state.engine.stop(); state.engine.render(FloatArray(512), 256)
         at("lfostrip-1").assertExists()
         shot("67b-lfo-strip")
-        // tap Keys on the zipper: that strip hides, the FX strip stays
-        at("pack-show-keys-1").performClick(); settle()
+        // unpack Keys: that strip goes, the FX strip stays
+        state.openSettingsFor("pack-toggle"); settle()
+        at("packtray-keys").performClick(); settle()
+        at("tray-done").performClick(); settle()
         rule.onNodeWithTag("piano-keys-1").assertDoesNotExist()
         at("fxstrip-1").assertExists()
         shot("67-fannypack-fx-strip")
-        // the pull zips it shut; the pad keeps what is packed for next time
-        at("pack-pull-1").performClick(); settle()
+        // Pack on the dock zips it shut; the pad keeps what is packed for next time
+        at("pack-toggle").performClick(); settle()
         assertFalse(1 in state.keyboards)
-        assertEquals(listOf("keys", "fx", "lfo"), state.packOf(1))
+        assertEquals(listOf("fx", "lfo"), state.packOf(1))
         state.fxSendsOff(1)
         state.setPadOpt(1) { lfoOn = false }
         // Repeat's feel: the same note, triplet
@@ -2296,7 +2306,7 @@ class BigTest {
         at("page-8").performClick()
         settle()
         assertEquals(7, state.page)
-        rule.onNodeWithTag("seq-where").assertExists()
+        rule.onNodeWithTag(gone("seq", "where")).assertDoesNotExist()
         shot("47-steps-eight-bars")
         repeat(7) { at("loop-minus").performClick(); settle() }
         assertEquals(16, state.project.pat().len)
@@ -2543,23 +2553,24 @@ class BigTest {
     }
 
     @Test fun helpShowsOnceThenBehindTheQuestionMark() {
-        // the text diet (note #22): playing pages show no explanations unless Page help is on, and no sentence at all
+        // the text diet (note #22, and Nov 22): no explanations anywhere, and no long sentence at all
         for (t in listOf("Pads", "Steps", "Roll", "Song", "Synth")) {
             tab(t)
-            assertTrue("no how-to on $t", rule.onAllNodesWithTag("help").fetchSemanticsNodes().isEmpty())
+            assertTrue("no how-to on $t", rule.onAllNodesWithTag(GONE_HELP).fetchSemanticsNodes().isEmpty())
             val texts = rule.onAllNodes(androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(androidx.compose.ui.semantics.SemanticsProperties.Text)).fetchSemanticsNodes()
                 .flatMap { n -> n.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.Text).orEmpty().map { it.text } }
             val long = texts.filter { it.trim().endsWith(".") && it.trim().split(Regex("\\s+")).size > 12 }
             assertTrue("no sentence over 12 words on $t: $long", long.isEmpty())
         }
+        // Nov 22 (Tyler: remove the explanation lines): no page help switch anywhere, and Settings has no how-to either
         tab("Steps")
-        // the ? is What the FAQ now; page help switches on from its card (and Settings)
         rule.onNodeWithTag("help-toggle").performClick(); settle()
-        rule.onNodeWithTag("faq-help").performClick(); settle()
+        rule.onNodeWithTag(gone("faq", "help")).assertDoesNotExist()
         rule.onNodeWithTag("faq-done").performClick(); settle()
-        tab("Roll")
-        assertTrue("page help shows it again", rule.onAllNodesWithTag("help").fetchSemanticsNodes().isNotEmpty())
-        shot("45-help-on")
+        state.overlay = Overlay.Settings; settle()
+        rule.onNodeWithTag(gone("set", "help")).assertDoesNotExist()
+        assertTrue("no how-to in Settings", rule.onAllNodesWithTag(GONE_HELP).fetchSemanticsNodes().isEmpty())
+        state.overlay = null; settle()
     }
 
     @Test fun stepsHeaderFitsOnAPhone() {
@@ -2951,7 +2962,7 @@ class BigTest {
         shot("122-loop-strip-song")
         tab("Steps")
         assertTrue("Steps has no row of loops of its own", rule.onAllNodesWithTag(GONE_SLOT).fetchSemanticsNodes().isEmpty())
-        rule.onNodeWithTag("seq-where").assertExists()
+        rule.onNodeWithTag(gone("seq", "where")).assertDoesNotExist()  // Nov 22: the where-line is gone too
         assertTrue("Song has no tab", rule.onAllNodesWithTag("tab-Song").fetchSemanticsNodes().isEmpty())
 
         // the tabs sit in a milled slot; Settings switches back to keys
@@ -2987,7 +2998,126 @@ class BigTest {
         assertEquals("Undo brings it back", before, state.project.kit[0])
 
         // no flavor text on the playing pages
-        for (t in listOf("Pads", "Steps", "Synth", "Perform")) { tab(t); assertTrue("no help lines on $t", rule.onAllNodesWithTag("help").fetchSemanticsNodes().isEmpty()) }
+        for (t in listOf("Pads", "Steps", "Synth", "Perform")) { tab(t); assertTrue("no help lines on $t", rule.onAllNodesWithTag(GONE_HELP).fetchSemanticsNodes().isEmpty()) }
+    }
+
+    /** Nov 22, second video: the cuts, the pick-one sliders, Loop and Song sides, the dense perform row, Hold's bar, swipe up on dock keys. */
+    @Test fun nov22SecondVideoSlidersStripRowHold() {
+        val wide = rule.onRoot().fetchSemanticsNode().boundsInRoot.width
+        // Play: no Sample key; the pack has no zipper bar, Pack's settings pick its strips
+        rule.onNodeWithTag(gone("open", "sample")).assertDoesNotExist()
+        tapPad(1); rule.mainClock.advanceTimeBy(300); settle()
+        at("pack-toggle").performClick(); settle()
+        assertTrue(1 in state.keyboards)
+        rule.onNodeWithTag(gone("pack", "pull", "1")).assertDoesNotExist()
+        rule.onNodeWithTag(gone("pack", "add", "1")).assertDoesNotExist()
+        shot("125-pack-no-bar")
+        // a quick swipe up on Pack opens its settings, with the Settings flick switch off
+        assertFalse(state.flickOn)
+        rule.onNodeWithTag("pack-toggle").performTouchInput { down(center); moveBy(Offset(0f, -height * 1.4f)); up() }; settle()
+        assertEquals("swipe up on Pack: its strips", "pack:1", state.tray)
+        at("tray-done").performClick(); settle()
+        assertTrue("the swipe did not also shut the pack", 1 in state.keyboards)
+        at("pack-toggle").performClick(); settle()
+        // swipe up on Hold: its tray is one short bar, how many and Let go
+        rule.onNodeWithTag("hold-toggle").performTouchInput { down(center); moveBy(Offset(0f, -height * 1.4f)); up() }; settle()
+        assertEquals("hold", state.tray)
+        for (t in listOf("hold-down", "hold-count", "hold-up", "hold-release", "tray-done")) at(t).assertExists()
+        val trayH = rule.onNodeWithTag("tray").fetchSemanticsNode().boundsInRoot.height
+        val keyH = rule.onNodeWithTag("hold-up").fetchSemanticsNode().boundsInRoot.height
+        assertTrue("the Hold tray is one row ($trayH vs a key $keyH)", trayH < keyH * 1.8f)
+        shot("126-hold-bar")
+        at("tray-done").performClick(); settle()
+
+        // the perform row: keys in a row, the wheel and the filter on their sides, no beat dot
+        rule.onNodeWithTag("perform-handle").performClick(); settle()
+        for (id in listOf("pitch", "filter")) if (id !in state.dockItems) state.toggleDockItem(id)
+        settle()
+        val wheel = rule.onNodeWithTag("dock-pitch").fetchSemanticsNode().boundsInRoot
+        assertTrue("the wheel lies on its side (${wheel.width} x ${wheel.height})", wheel.width > wheel.height * 3)
+        val cut = rule.onNodeWithTag("dock-cut").fetchSemanticsNode().boundsInRoot
+        assertTrue("so does the filter", cut.width > cut.height * 2)
+        assertTrue("the row is short", rule.onNodeWithTag("performrow").fetchSemanticsNode().boundsInRoot.height < wide * .6f)
+        rule.onNodeWithTag("dock-pitch").performTouchInput { down(Offset(width * .97f, height / 2f)) }
+        settle()
+        assertTrue("right bends up (${state.wheelAt})", state.wheelAt > .8f)
+        rule.onNodeWithTag("dock-pitch").performTouchInput { up() }; settle()
+        assertEquals("and springs back", 0f, state.wheelAt)
+        if ("beat" !in state.dockItems) state.toggleDockItem("beat")
+        settle()
+        assertTrue("the beat dot is not offered in the perform row", "beat" in com.tideclock.messmachine.PERFORM_SKIP)
+        assertTrue("and does not show there", rule.onAllNodes(androidx.compose.ui.test.hasTestTag("beatlight") and androidx.compose.ui.test.hasAnyAncestor(androidx.compose.ui.test.hasTestTag("performrow"))).fetchSemanticsNodes().isEmpty())
+        state.toggleDockItem("beat")
+        shot("127-perform-row-dense")
+        rule.onNodeWithTag("perform-handle").performClick(); settle()
+
+        // the loop strip: Loop and Song sides; keys as wide as their words; the song's keys on one row
+        strip()
+        at("loop-tab-loop").assertExists()
+        for (t in listOf("loop-click", "loop-countin")) {
+            val w = rule.onNodeWithTag(t).fetchSemanticsNode().boundsInRoot.width
+            assertTrue("$t is sized to what is on it ($w of $wide)", w < wide * .3f)
+        }
+        at("loop-song").performClick(); settle()
+        assertTrue(state.songOpen)
+        at("song-body").assertExists()
+        assertTrue("the Song side has no loop keys", rule.onAllNodesWithTag("loop-0").fetchSemanticsNodes().isEmpty())
+        val pl = rule.onNodeWithTag("song-play-loop").fetchSemanticsNode().boundsInRoot
+        val ps = rule.onNodeWithTag("song-play-song").fetchSemanticsNode().boundsInRoot
+        assertEquals("Play loop and Play song on one row", pl.top, ps.top, 1f)
+        assertTrue("the words are short", rule.onAllNodesWithText("Play loop", substring = true, ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
+        shot("128-strip-song-side")
+        at("loop-tab-loop").performClick(); settle()
+        assertFalse(state.songOpen)
+        at("loop-0").assertExists()
+        at("loop-close").performClick(); settle()
+
+        // Steps: no where-line, and each name sits level with its steps
+        tab("Steps")
+        val first = (0 until 16).first { state.project.kit[it].isNotEmpty() }
+        val name = rule.onNodeWithTag("steps-name-$first").fetchSemanticsNode().boundsInRoot
+        val row = rule.onNodeWithTag("steps-$first").fetchSemanticsNode().boundsInRoot
+        assertEquals("the name is as tall as its steps", row.height, name.height, 1.5f)
+        assertEquals("and level with them", row.top, name.top, 1.5f)
+        // Steps or Roll is a slider
+        at("seq-roll").performClick(); settle()
+        assertEquals(Tab.Roll, state.tab)
+        at("seq-steps").performClick(); settle()
+
+        // Synth: the top in two short rows beside the pad, kinds, view and mode as sliders
+        tab("Synth")
+        val tile = rule.onNodeWithTag("synth-tile").fetchSemanticsNode().boundsInRoot
+        val kinds = rule.onNodeWithTag("synthkind-chips").fetchSemanticsNode().boundsInRoot
+        assertTrue("the pickers sit beside the tile, the kinds right under it", kinds.top < tile.bottom + 40f * rule.density.density)
+        val P = state.project
+        val pad = if (state.synthOn(P.sel) == null) com.tideclock.messmachine.engine.Project.SCRATCH else P.sel
+        val pre = if (pad == com.tideclock.messmachine.engine.Project.SCRATCH) "scratchkind" else "synthkind"
+        at("$pre-fm").performClick(); settle()
+        assertEquals(com.tideclock.messmachine.engine.Synth.FM, state.synthOn(pad)?.kind)
+        // drag along the kinds: let go on Pluck
+        rule.onNodeWithTag("synthkind-chips").performTouchInput { down(Offset(width * .05f, height / 2f)); moveTo(Offset(width * .5f, height / 2f)); moveTo(Offset(width * .97f, height / 2f)); up() }
+        settle()
+        assertEquals("a drag picks where it lets go", com.tideclock.messmachine.engine.Synth.PLUCK, state.synthOn(pad)?.kind)
+        at("synthview-full").performClick(); settle()
+        assertEquals("full", state.synthView)
+        at("synthview-simple").performClick(); settle()
+        assertEquals("simple", state.synthView)
+        at("$pre-analog").performClick(); settle()
+        at("synthmode-2").performClick(); settle()
+        assertEquals(2.0, state.synthOn(pad)!!.get("mode"), 0.0)
+        shot("129-synth-sliders")
+
+        // Perform: no loops row; no explanation lines anywhere we look
+        tab("Perform")
+        rule.onNodeWithTag(gone("perform", "live")).assertDoesNotExist()
+        for (o in listOf(Overlay.Settings, Overlay.AudioCheck, Overlay.Files)) {
+            state.overlay = o; settle()
+            val texts = rule.onAllNodes(androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(androidx.compose.ui.semantics.SemanticsProperties.Text)).fetchSemanticsNodes()
+                .flatMap { n -> n.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.Text).orEmpty().map { it.text } }
+            val long = texts.filter { it.trim().endsWith(".") && it.trim().split(Regex("\\s+")).size > 12 }
+            assertTrue("no explanation sentences in $o: $long", long.isEmpty())
+            state.overlay = null; settle()
+        }
     }
 
     @Test fun hushStopsEverything() {

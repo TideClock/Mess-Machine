@@ -74,7 +74,7 @@ fun RollScreen(state: AppState) {
             }
         }
         if (k.isEmpty()) {
-            Note("Pick a pad with a sound. Its own pitch is C4.", color = C.Yellow)
+            Note("Pick a pad with a sound.", color = C.Yellow)
         } else {
             Roll(state)
             val lo = state.rollLo

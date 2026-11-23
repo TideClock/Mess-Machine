@@ -1,25 +1,23 @@
 {
-  "title": "The new icons are in, loops in one strip",
+  "title": "Sliders, a shorter Synth top, Loop and Song sides",
   "thisBuild": [
-    "The icons you liked are in, big and crisp: the loop strip keys, the synth kinds and switches, the LFO waves and filter shapes, the FX vials, the throws and the Edit tray's tabs. Every icon fills its tile with the darker rims, and the words under the keys sit on little block-letter plates (Settings, Look: Words: stamped goes back).",
-    "Tap the loop readout: loops A to H are pad sized, then Wait bar, the bars of this loop with - + 2x, Click and Count, the loop tools, Auto and the Song. It now opens on Perform too.",
-    "Steps and Roll show one line for the loop and bar you see; tap it for the strip. Song lives in the strip and folds away when you change page.",
-    "Swipe the loop readout left or right for the previous or next loop.",
-    "Count-in: with Rec on, Play from a stop clicks a bar first. The click is on out of the box.",
-    "A swipe off a pad takes back its own hit: it sounds on touch, then fades once the swipe is clear. Each finger is tracked on its own, so two-finger drumming keeps both hits.",
-    "Swipe right opens the FX under that pad's row in two rows of wide vials; the Edit tray keeps one row.",
-    "Synth: one row of kinds, Simple/Full and Poly/Mono/Acid switches, no Synthipad. Putting the scratch synth over a pad with a sound takes a second tap, and a quick double tap doesn't count.",
-    "Tabs sit in a milled slot with your page raised (Settings, Look: Tabs: keys goes back). Readouts shrink to fit instead of cutting off. Help lines are off."
+    "Pick-one groups are sliders now: tap a stop or drag and let go. Synth kind, Simple/Full, Poly/Mono/Acid, the LFO wave, the pad filter's Lo/Hi/Band, Straight/Triplet/Dotted, Steps/Roll, and Loop/Song in the loop strip.",
+    "Synth's top is two short rows beside its pad: which synth and its preset, then the view and mode sliders.",
+    "The loop strip has a Loop side and a Song side. Click and Count are only as wide as their words; Song's keys say Play loop and Play song on one row.",
+    "The perform row is one short panel: keys in a row, the pitch wheel and the filter lying on their sides. The beat dot is gone.",
+    "Swipe up on Pack, Hold, Chords, Repeat or the key readout for their settings. Hold's settings are one bar: minus, the count, plus, Let go.",
+    "Gone: the Sample key (it is in the pad's Edit tray), the pack's zipper bar, the loop line on Steps and Roll, the loops row on Perform, and every explanation line.",
+    "Steps names sit level with their steps, the same height.",
+    "Look: bars and trays are one plate with a brass rule. A lamp's colour means one thing: yellow on, pink recording, oxblood takes sound away, teal a shape, amber readouts."
   ],
   "watch": [
-    "Do the icons read at a glance on your phone, at 70 to 80 percent view?",
-    "Drum with two fingers on one row while recording: do both hits stay?",
-    "Swipe off a drum pad while recording: is the blip before it cuts OK?",
-    "Record with Count 1: does the bar of clicks land right?",
-    "With Song open in the strip, can you still see and play a row of pads?"
+    "Drag along the synth kinds and let go: does it feel right, or should it switch while you slide?",
+    "Swipe up on Pack and Hold: does the settings tray open every time, and the key not also toggle?",
+    "Do the sideways wheel and filter play better than the upright ones?",
+    "Any lamp colour that now reads wrong to you?"
   ],
   "limits": [
-    "The cut and look ideas you didn't pick are not in this build.",
-    "Settings and a few sheets still have explanation lines."
+    "Screen-based key sizing is a proposal for you to decide, not built yet.",
+    "Classic Look keeps its old colours; the colour meanings are for the panel Look."
   ]
 }

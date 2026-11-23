@@ -19,4 +19,3 @@ screen: Settings | 25 | Words: plates or stamped, and Tabs: slot or keys, so the
 label: Close | The screw in the corner of every sheet (Tyler asked for something with meaning instead of Done, 2026-11-21); every sheet needs its own
 label: ROLL | The Steps or Roll switch at the top of the Seq tab sits on both of its views (Nov 21: Steps and Roll are one tab)
 label: STEPS | The Steps or Roll switch at the top of the Seq tab sits on both of its views (Nov 21: Steps and Roll are one tab)
-label: [picker: seq-where] | The one line on Steps and Roll that says which loop and bar you see and opens the loop strip, where loops live now (Tyler, 2026-11-22)

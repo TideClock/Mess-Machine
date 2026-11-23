@@ -50,7 +50,6 @@ fun FxPanel(state: AppState) {
     Card(Modifier.fillMaxWidth().padding(top = 18.dp)) {
         Column {
             Heading("Perform", size = 18.sp)
-            Help("Hold an effect while you play. Slide along it to set how much. ✎ in its corner: stays on, slider, or aim it at one pad or a bus.", modifier = Modifier.padding(top = 4.dp, bottom = 10.dp))
             FxEditor(state)
             for (r in 0 until 3) {
                 Row(Modifier.padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -66,7 +65,6 @@ fun FxPanel(state: AppState) {
                 Btn("High pass", { state.switchXyHP(true) }, on = state.xyHP, small = true, onColor = C.Teal)
             }
             XyPad(state)
-            Help("Slide left and right for the cutoff, up for more resonance.", modifier = Modifier.padding(top = 8.dp))
         }
     }
 }
@@ -82,7 +80,6 @@ fun MasterThrows(state: AppState) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             T("MASTER · THROWS", size = 13.sp, color = Hw.Brass, spacing = .12.em, family = Stencil, weight = androidx.compose.ui.text.font.FontWeight.Normal, modifier = Modifier.weight(1f))
         }
-        Help("Hold a vial: where your finger lands is how much, slide to change it. Tap a name for its settings: stays on, slider, or aim it at a pad or a bus.", modifier = Modifier.padding(top = 4.dp, bottom = 8.dp))
         FxEditor(state)
         Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             for ((i, p) in names.withIndex()) ThrowVial(state, p.first, p.second, C.Letters[i % C.Letters.size], Modifier.weight(1f))
@@ -93,7 +90,6 @@ fun MasterThrows(state: AppState) {
             Btn("High pass", { state.switchXyHP(true) }, on = state.xyHP, small = true, onColor = C.Teal)
         }
         XyPad(state)
-        Help("Slide left and right for the cutoff, up for more resonance.", modifier = Modifier.padding(top = 8.dp))
     }
 }
 
@@ -363,7 +359,6 @@ fun PadianoSettings(state: AppState) {
             T("ROWS", size = 11.sp, color = C.Dim, spacing = .1.em)
             for (r in 1..3) Btn("$r", { state.changePadianoRows(r) }, on = state.padianoRows == r, small = true, tag = "pset-rows-$r", modifier = Modifier.widthIn(min = 40.dp))
         }
-        Help("Fewer notes make bigger squares. XL is tall, with wider squares (they wrap sooner). Each extra row is the same notes an octave up.", modifier = Modifier.padding(top = 6.dp))
     }
 }
 

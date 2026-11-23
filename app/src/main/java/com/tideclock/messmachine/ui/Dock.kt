@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -54,7 +56,7 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun PerformRow(state: AppState) {
-    Column(Modifier.fillMaxWidth().background(C.Ink).tagged("performrow")) {
+    Column(Modifier.fillMaxWidth().plate(top = true).tagged("performrow")) {
         Box(
             Modifier.fillMaxWidth().heightIn(min = 26.dp)
                 .pointerInput(state.performOpen) {
@@ -79,16 +81,25 @@ fun PerformRow(state: AppState) {
             T(if (state.performOpen) "▾ PERFORM ROW" else "▴ PERFORM ROW", size = 10.sp, color = C.Dim, family = Mono, spacing = .12.em)
         }
         // an early return inside Column breaks Compose's bookkeeping when the row closes (a crash on switching layouts): wrap instead
-        if (state.performOpen) {
-        Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(start = 8.dp, end = 8.dp, bottom = 8.dp).heightIn(max = 190.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.Top,
-        ) {
-            for (t in state.dockItems.toList()) if (t !in com.tideclock.messmachine.PERFORM_SKIP) Column(Modifier.width(62.dp), horizontalAlignment = Alignment.CenterHorizontally) { DockItem(state, t) }
+        if (state.performOpen) PerformBody(state)
+    }
+}
+
+/**
+ * Nov 22 (second video, Tyler: "turn these on their sides, make this way more dense", and the dot nobody could read):
+ * the perform row as one short panel. Its keys share one row; the pitch wheel and the filter lie on their sides under
+ * them, with their words beside them. A key's settings are a swipe up on it (or Edit, then the key).
+ */
+@Composable
+private fun PerformBody(state: AppState) {
+    @Suppress("UNUSED_VARIABLE") val lv = state.liveV
+    val items = state.dockItems.toList().filter { it !in com.tideclock.messmachine.PERFORM_SKIP }
+    Column(Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+            for (t in items) if (t != "pitch" && t != "filter") Box(Modifier.weight(1f)) { PerformKey(state, t) }
             var pick by remember { mutableStateOf(false) }
-            Box(Modifier.width(52.dp)) {
-                DockBtn("⋯", { pick = true }, tag = "perform-edit", enabled = !state.locked)
+            Box {
+                Btn("⋯", { pick = true }, small = true, tight = true, tag = "perform-edit", enabled = !state.locked, modifier = Modifier.width(40.dp))
                 DropdownMenu(expanded = pick, onDismissRequest = { pick = false }, modifier = Modifier.background(C.Ink)) {
                     T("IN THE PERFORM ROW", size = 11.sp, color = C.Yellow, spacing = .08.em, modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp))
                     for ((id, name) in DOCK_TYPES) if (id !in com.tideclock.messmachine.PERFORM_SKIP) {
@@ -101,7 +112,92 @@ fun PerformRow(state: AppState) {
                 }
             }
         }
+        if ("pitch" in items) SidePitch(state)
+        if ("filter" in items) SideFilter(state)
+    }
+}
+
+/** One key in the perform row: a word and its icon, as wide as its share of the row. */
+@Composable
+private fun PerformKey(state: AppState, t: String) {
+    val pad = state.project.sel
+    when (t) {
+        "lock" -> Column(horizontalAlignment = Alignment.CenterHorizontally) { LockButton(state) }
+        "repeat" -> Btn("Repeat", { state.setLive { nr = !nr } }, small = true, tight = true, on = state.live.nr, onColor = C.Pink, tag = "dock-repeat", icon = "Repeat", modifier = Modifier.fillMaxWidth())
+        "throws" -> Btn("Toss", { state.showFx = !state.showFx }, small = true, tight = true, on = state.showFx, onColor = C.Pink, tag = "dock-throws", icon = "FX", modifier = Modifier.fillMaxWidth())
+        "mouth" -> Btn(if (state.mouthOn && state.mouthHeard) "Wub" else "Mouth", { state.switchMouth() }, small = true, tight = true, on = state.mouthOn, onColor = C.Pink, tag = "dock-mouth", icon = "Mouth", modifier = Modifier.fillMaxWidth())
+        "xy" -> Btn(state.xyOf(pad).name.take(7), { if (state.project.kit[pad].isNotEmpty()) state.cycleXy(pad) }, small = true, tight = true, tag = "dock-xy", icon = "XY square", modifier = Modifier.fillMaxWidth())
+        "desk" -> Btn(state.desks.getOrNull(state.deskIdx)?.name?.take(7) ?: "Desk", { state.nextDesk() }, small = true, tight = true, tag = "dock-desk", icon = "Desk", modifier = Modifier.fillMaxWidth())
+        "stutter", "echo" -> FxButton(state, t, if (t == "echo") "ECHO" else "STUT", Modifier.fillMaxWidth().tagged("dock-$t"), if (t == "echo") C.Teal else C.Pink, height = 46.dp)
+        else -> {}
+    }
+}
+
+/** A word beside a sideways slider that is a key itself (the wheel's range, the filter's target): 32 dp tall. */
+@Composable
+private fun SideWord(text: String, color: androidx.compose.ui.graphics.Color, tag: String, onClick: () -> Unit) {
+    Box(Modifier.heightIn(min = 34.dp).widthIn(min = 44.dp).clickable { onClick() }.tagged(tag).padding(horizontal = 4.dp), contentAlignment = Alignment.Center) {
+        T(text, size = 10.sp, color = color, family = Mono, lines = 1)
+    }
+}
+
+/** A slider lying on its side: drag along it. From the middle out when [centred] (the pitch wheel), else from the left. */
+@Composable
+private fun SideSlider(value: Float, color: androidx.compose.ui.graphics.Color, tag: String, label: String, modifier: Modifier, centred: Boolean = false, onChange: (Float?, Boolean) -> Unit) {
+    Box(modifier.height(36.dp), contentAlignment = Alignment.CenterStart) {
+        Canvas(
+            Modifier.fillMaxSize().background(C.Well).tagged(tag)
+                .pointerInput(tag) {
+                    awaitEachGesture {
+                        val d = awaitFirstDown(requireUnconsumed = false)
+                        fun at(x: Float) = (x / size.width).coerceIn(0f, 1f).let { if (centred) it * 2f - 1f else it }
+                        d.consume()
+                        onChange(at(d.position.x), true)
+                        while (true) {
+                            val e = awaitPointerEvent()
+                            val c = e.changes.firstOrNull { it.id == d.id } ?: break
+                            if (!c.pressed) { c.consume(); break }
+                            onChange(at(c.position.x), true)
+                            c.consume()
+                        }
+                        onChange(null, false)
+                    }
+                },
+        ) {
+            if (centred) {
+                val mid = size.width / 2
+                drawLine(C.Dim, Offset(mid, 0f), Offset(mid, size.height), strokeWidth = 2.dp.toPx())
+                val x = mid + value * mid
+                drawRect(color.copy(alpha = .85f), topLeft = Offset(minOf(x, mid), 0f), size = Size(kotlin.math.abs(x - mid), size.height))
+                drawRect(C.Cream, topLeft = Offset(x - 5.dp.toPx(), 2f), size = Size(10.dp.toPx(), size.height - 4f))
+            } else drawRect(color.copy(alpha = .85f), size = Size(size.width * value, size.height))
+            drawRect(C.Cream, style = Stroke(2.dp.toPx()))
         }
+        T(label, size = 10.sp, color = C.Cream.copy(alpha = .7f), family = Mono, lines = 1, modifier = Modifier.padding(start = 8.dp))
+    }
+}
+
+/** The pitch wheel on its side: bends the picked pad (or all) while held; Spring goes home, Stay keeps the note. */
+@Composable
+private fun SidePitch(state: AppState) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        SideSlider(state.wheelAt, C.Yellow, "dock-pitch", "BEND", Modifier.weight(1f), centred = true) { v, on ->
+            if (v != null) state.pitchWheel(v, true) else if (!on) state.pitchWheel(state.wheelAt, false)
+        }
+        SideWord("±${state.wheelRange}", C.Yellow, "dock-pitch-range") { state.cycleWheelRange() }
+        SideWord(if (state.wheelAll) "ALL" else "PAD", C.Dim, "dock-pitch-what") { state.switchWheelAll() }
+        SideWord(if (state.wheelStay) "STAY" else "SPRING", if (state.wheelStay) C.Teal else C.Dim, "dock-pitch-stay") { state.switchWheelStay() }
+    }
+}
+
+/** Cut and resonance side by side on their sides, then what they filter and Stay or Spring. */
+@Composable
+private fun SideFilter(state: AppState) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        SideSlider(state.dockCut, C.Teal, "dock-cut", "CUT", Modifier.weight(1f)) { v, on -> if (on) state.midiAim(com.tideclock.messmachine.MidiTarget("dock", 0, 0, "cut")); if (v != null) state.dockCut = v; state.dockFilter(on) }
+        SideSlider(state.dockRes, C.Pink, "dock-res", "RES", Modifier.weight(1f)) { v, on -> if (on) state.midiAim(com.tideclock.messmachine.MidiTarget("dock", 0, 0, "res")); if (v != null) state.dockRes = v; state.dockFilter(on) }
+        SideWord(if (state.dockTarget < 0) "MIX" else "P${state.dockTarget + 1}", C.Yellow, "dock-target") { state.cycleDockTarget() }
+        SideWord(if (state.dockStay) "STAY" else "SPRING", if (state.dockStay) C.Teal else C.Dim, "dock-stay") { state.dockStay = !state.dockStay; if (!state.dockStay) state.dockFilter(false) }
     }
 }
 

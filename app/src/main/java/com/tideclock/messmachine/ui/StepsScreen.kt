@@ -55,20 +55,11 @@ import com.tideclock.messmachine.Overlay
 import com.tideclock.messmachine.engine.Project
 
 /**
- * Where you are: which loop and which bar Steps and Roll show. Tap it for the loop strip, where the loops, their bars
- * and their tools live now (Nov 22, Tyler: one place for loops, not a second row of them on every page).
+ * Nov 22 (second video): the one line that said which loop and bar Steps and Roll show is gone. The loop readout at
+ * the top says the loop, and pulling it down opens the loop strip with the bars. Kept as a no-op for the callers.
  */
 @Composable
-fun SlotBar(state: AppState, @Suppress("UNUSED_PARAMETER") tools: Boolean = false) {
-    val P = state.project
-    val bars = P.pat().len / 16
-    val where = "LOOP ${Project.LETTERS[P.cur]}" + (if (bars > 1) " · BAR ${state.page.coerceIn(0, bars - 1) + 1} OF $bars" else " · 1 BAR") + if (state.loopStripOpen) "" else "  ▾"
-    Box(
-        Modifier.fillMaxWidth().padding(bottom = 10.dp).height(34.dp).sticker(if (state.loopStripOpen) C.Card2 else C.Ink, shadow = 2.dp, border = 2.dp, borderColor = C.Letters[P.cur])
-            .clickable(enabled = !state.locked) { state.loopStripOpen = !state.loopStripOpen }.tagged("seq-where"),
-        contentAlignment = Alignment.Center,
-    ) { T(where, size = 12.sp, color = C.Yellow, family = Mono, weight = FontWeight.Bold, lines = 1) }
-}
+fun SlotBar(@Suppress("UNUSED_PARAMETER") state: AppState, @Suppress("UNUSED_PARAMETER") tools: Boolean = false) {}
 
 @Composable
 fun StepsScreen(state: AppState) {
@@ -100,20 +91,22 @@ fun StepsScreen(state: AppState) {
             Column(Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     // tap the name for its pitch strip; hold still and lift for the pad's menu
+                    // Nov 22 (second video, Tyler: the names "not quite lined up"): the name is a cell of the grid, the
+                    // same 30 dp as the steps beside it, its pad number and name on one plate
                     Row(
-                        Modifier.width(84.dp).heightIn(min = 34.dp).alpha(if (audible) 1f else .45f)
+                        Modifier.width(84.dp).height(30.dp).padding(end = 3.dp).background(if (i == P.sel) C.Card2 else C.Well).alpha(if (audible) 1f else .45f)
                             .tapOrHold(i, { state.openStepStrip(i) }, { if (!state.locked) state.padMenu = i }).tagged("steps-name-$i"),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Box(Modifier.width(4.dp).fillMaxHeight().background(col))
-                        Column(Modifier.padding(start = 5.dp, end = 3.dp)) {
-                            T(
-                                (if (muted) "M " else "") + (if (solo) "S " else "") + "${i + 1}" + if (state.stepStrip == i) " ▾" else "",
-                                size = 9.sp, color = if (muted) C.Riot else if (solo) C.Yellow else C.Dim, family = Mono, weight = FontWeight.Bold, lines = 1,
-                            )
-                            // two lines, so a name like KICK BASEMENT reads whole instead of KICK BASE… (Nov 14 test pass)
-                            T(state.lib.titleOf(k).uppercase(), size = 9.sp, lines = 2, spacing = .02.em, color = if (i == P.sel) C.Yellow else C.Cream)
-                        }
+                        T(
+                            (if (muted) "M " else "") + (if (solo) "S " else "") + "${i + 1}",
+                            size = 9.sp, color = if (muted) C.Riot else if (solo) C.Yellow else C.Dim, family = Mono, weight = FontWeight.Bold, lines = 1,
+                            modifier = Modifier.padding(start = 4.dp, end = 3.dp),
+                        )
+                        // two short lines, so a name like KICK BASEMENT reads whole (Nov 14 test pass)
+                        T(state.lib.titleOf(k).uppercase() + if (state.stepStrip == i) " ▾" else "", size = 8.5.sp, lines = 2, spacing = .02.em, color = if (i == P.sel) C.Yellow else C.Cream,
+                            modifier = Modifier.weight(1f).padding(end = 2.dp))
                         Box { PadMenu(state, i) }
                     }
                     Box(Modifier.weight(1f).alpha(if (audible) 1f else .45f).tagged("steps-$i")) { StepRow(state, k, col, off, state.version) }

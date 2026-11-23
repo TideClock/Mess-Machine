@@ -119,6 +119,19 @@ One line each, dated, with the reason and who decided (BT-2). Older decisions li
   sound takes a second tap. Look: only the milled tab slot with the raised current tab (Settings, Look, Tabs: keys
   goes back) and readouts that shrink to fit; help lines are off for everyone (Explain in Settings brings them back).
   Not built, per Tyler: the edit tray stopping above the dock, Song inside Seq, the rest of the look spec.
+- 2026-11-22 Second video and the look spec (Tyler's "3"): gone: the Sample key on Play (the pad's Edit tray has
+  Sample), the FannyPack's zipper bar (Pack opens and shuts it, a swipe up on Pack picks its strips), the where-line
+  on Steps and Roll, the loops row on Perform, the beat dot in the perform row, and every explanation line (Help is
+  a no-op; the FAQ still explains each control). Pick-one groups are sliders (a milled track, a raised block on the
+  pick, tap or drag and let go): synth kind, Simple/Full, Poly/Mono/Acid, LFO wave, pad filter Lo/Hi/Band,
+  Straight/Triplet/Dotted, Steps/Roll, and the loop strip's Loop/Song sides. Synth's top is two short rows beside its
+  pad. The loop strip's keys are as wide as what is on them; Song's keys read Play loop and Play song on one row.
+  The perform row is one short panel: keys in a row, the pitch wheel and the filter on their sides. Hold's tray is
+  one bar (-, count, +, Let go). A quick swipe up on Pack, Hold, Chords, Repeat, the key readout and the perform row's
+  keys opens their settings whatever the flick switch says; Edit stays for now. Steps names are grid cells, level with
+  their steps. Look: bars and trays are one plate (#24211F) framed by one brass rule; in the panel Look a lamp's
+  colour means one thing: yellow on, pink recording only, oxblood takes sound away, teal a shape, amber readouts.
+  Kept: the worn key font (Archivo or worn is still Tyler's call).
 - 2026-11-22 Review battery on build 153 (four reviewers: Tyler's notes, playability, code, device): fixed each finger
   tracked on its own for swipes (two-finger drumming dropped hits), count-in positions count back from the top (hits
   in the count were landing on steps 0 and 15; now only a hit within half a step of the downbeat records, on 0), pause

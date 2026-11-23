@@ -61,7 +61,7 @@ fun MovesPanel(state: AppState, onClose: () -> Unit = { state.movesOpen = false 
             Select("New lane… ▾", XY_TARGETS.filter { it.id >= 0 }.map { it.id to it.name }, { state.newLane(newPad, it) }, tag = "moves-newtarget")
         }
         if (lane.isEmpty()) {
-            Note("Nothing recorded yet: Rec and move something, or start a lane.", modifier = Modifier.padding(top = 8.dp))
+            Note("Nothing recorded yet.", modifier = Modifier.padding(top = 8.dp))
             return@Column
         }
         // the whole loop at once (Nov 18): every step of every bar across the lane

@@ -258,7 +258,6 @@ fun StartScreen(state: AppState) {
                 T(line, size = 15.sp)
             }
         }
-        Help("Stuck? The ☰ menu has lessons, and the ladybug sends notes.", modifier = Modifier.padding(top = 16.dp))
         Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Btn("Make a mess", { state.overlay = null }, color = C.Yellow, tag = "start-go")
             Btn("Take a lesson", { state.overlay = Overlay.Learn }, tag = "start-learn")
@@ -303,7 +302,8 @@ fun Transport(state: AppState) {
             val v = pulse.value
             val down = state.heardStep >= 0 && state.heardStep % 16 < 4
             if (v > .01f) drawRect(Brush.verticalGradient(listOf(Color.Transparent, (if (down) C.Pink else C.Yellow).copy(alpha = .35f * v)), startY = size.height * .5f, endY = size.height), topLeft = Offset(0f, size.height * .5f))
-            drawLine(lerp(C.Pink, if (down) C.Cream else C.Yellow, v), Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = (3 + 4 * v).dp.toPx())
+            // Nov 22 look spec: in the panel Look the frame's rule is brass, lighting up on the beat (pink is for recording)
+            drawLine(lerp(if (UiLook.panel) Hw.Brass else C.Pink, if (down) C.Cream else C.Yellow, v), Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = (if (UiLook.panel) 2 + 4 * v else 3 + 4 * v).dp.toPx())
         }.padding(start = 8.dp, end = 8.dp, top = 6.dp, bottom = 9.dp).tagged("topbar"),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(5.dp),
@@ -548,7 +548,8 @@ fun position(state: AppState): String {
 @Composable
 fun Tabs(state: AppState) {
     Row(Modifier.fillMaxWidth().rail(state).drawBehind {
-        drawLine(C.Pink, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 3.dp.toPx())
+        if (UiLook.panel) drawLine(Hw.Brass, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 2.dp.toPx())
+        else drawLine(C.Pink, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 3.dp.toPx())
     }.padding(horizontal = 4.dp, vertical = 7.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
         // the bug button in the bottom left corner of every page (note #16). Note #20: tap, talk, tap again, and the
         // note waits on the phone. Red while listening or when a crash waits (then it opens the note box)
@@ -667,9 +668,9 @@ fun UpdateBar(state: AppState) {
 
 
 /**
- * The loop strip (Nov 22, Tyler's video): the one place for loops. Pad-sized loops A to H, then when a pick lands,
- * the click and the count-in, and - + 2x for the loop you are in; its bars, its tools, and the song painter.
- * Steps, Roll and Song no longer carry their own rows of loops and bars.
+ * The loop strip (Nov 22, Tyler's video): the one place for loops. Two sides, Loop and Song (second video: with Song
+ * open it read as one long page). Loop: pad-sized loops A to H, when a pick lands, the click and the count-in, the
+ * loop's bars and its tools. Song: the song painter. Keys are only as wide as what is on them.
  */
 @Composable
 fun LoopStrip(state: AppState) {
@@ -679,25 +680,38 @@ fun LoopStrip(state: AppState) {
     val tall = (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp / state.uiScale * .5f).dp
     @Suppress("UNUSED_VARIABLE") val lv = state.liveV
     Column(
-        Modifier.fillMaxWidth().background(C.Ink).tagged("loopstrip").heightIn(max = tall)
+        Modifier.fillMaxWidth().plate(bottom = true).tagged("loopstrip").heightIn(max = tall)
             .verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 8.dp, vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            PickSlider(listOf("Loop" to null, (if (P.songMode) "Song on" else "Song") to null), if (state.songOpen) 1 else 0, { state.songOpen = it == 1 },
+                Modifier.weight(1f), tags = listOf("loop-tab-loop", "loop-song"), tag = "loopside-chips", onColor = C.Yellow, icons = false)
+            CloseScrew({ state.loopStripOpen = false }, tag = "loop-close", label = "Close the loops", small = true)
+        }
+        // no early return here: inside a Column it breaks Compose's bookkeeping (see the perform row)
+        if (state.songOpen) SongBody(state) else LoopSide(state, bars)
+    }
+}
+
+/** The Loop side of the strip. */
+@Composable
+private fun LoopSide(state: AppState, bars: Int) {
+    val P = state.project
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             for (i in 0 until com.tideclock.messmachine.engine.Project.NSLOTS) LoopPad(state, i, Modifier.weight(1f))
         }
-        // the loop you are in: when a pick lands, its bars (- + 2x, wide enough to hit), and the small X
+        // when a pick lands, the click and the count-in, then the loop's length: each key as wide as its icon and word
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Btn(if (state.loopAtBar) "Wait bar" else "Now", { state.switchLoopAtBar() }, small = true, tight = true, on = state.loopAtBar, onColor = C.Teal, tag = "loop-when", modifier = Modifier.weight(1.5f), icon = if (state.loopAtBar) "Wait bar" else "Now")
-            T("${bars} BAR${if (bars > 1) "S" else ""}", size = 11.sp, color = C.Dim, spacing = .06.em, lines = 1, modifier = Modifier.weight(1f).tagged("loop-bars"))
-            Btn("−", { state.dropBar() }, small = true, tight = true, enabled = bars > 1, tag = "loop-minus", modifier = Modifier.weight(1f), icon = "Bar minus")
-            Btn("+", { state.addBar() }, small = true, tight = true, enabled = bars < 8, tag = "loop-plus", modifier = Modifier.weight(1f), icon = "Bar plus")
-            Btn("2×", { state.doubleLoop() }, small = true, tight = true, enabled = bars <= 4, tag = "loop-double", modifier = Modifier.weight(1f), icon = "Double")
-            CloseScrew({ state.loopStripOpen = false }, tag = "loop-close", label = "Close the loops", small = true)
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Btn("Click", { state.switchClick() }, small = true, tight = true, on = state.live.click, onColor = C.Yellow, tag = "loop-click", modifier = Modifier.weight(1f), icon = "Click")
-            Btn(if (state.countInBars == 0) "Count off" else "Count ${state.countInBars}", { state.cycleCountIn() }, small = true, tight = true, on = state.countInBars > 0, onColor = C.Yellow, tag = "loop-countin", modifier = Modifier.weight(1f), icon = "Count in")
+            Btn(if (state.loopAtBar) "Wait bar" else "Now", { state.switchLoopAtBar() }, small = true, tight = true, on = state.loopAtBar, onColor = C.Teal, tag = "loop-when", icon = if (state.loopAtBar) "Wait bar" else "Now")
+            Btn("Click", { state.switchClick() }, small = true, tight = true, on = state.live.click, onColor = C.Yellow, tag = "loop-click", icon = "Click")
+            Btn(if (state.countInBars == 0) "Count off" else "Count ${state.countInBars}", { state.cycleCountIn() }, small = true, tight = true, on = state.countInBars > 0, onColor = C.Yellow, tag = "loop-countin", icon = "Count in")
+            Spacer(Modifier.weight(1f))
+            T("${bars} BAR${if (bars > 1) "S" else ""}", size = 11.sp, color = C.Dim, spacing = .06.em, lines = 1, modifier = Modifier.tagged("loop-bars"))
+            Btn("−", { state.dropBar() }, small = true, tight = true, enabled = bars > 1, tag = "loop-minus", icon = "Bar minus")
+            Btn("+", { state.addBar() }, small = true, tight = true, enabled = bars < 8, tag = "loop-plus", icon = "Bar plus")
+            Btn("2×", { state.doubleLoop() }, small = true, tight = true, enabled = bars <= 4, tag = "loop-double", icon = "Double")
         }
         // the bars of this loop: pick the one Steps and Roll show
         if (bars > 1) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -710,10 +724,8 @@ fun LoopStrip(state: AppState) {
             Btn("Auto", { state.movesOpen = !state.movesOpen }, on = state.movesOpen, onColor = C.Teal, small = true, tag = "moves-open")
             if (P.pat().hasMotion()) Btn("Clear auto", { state.clearMoves() }, small = true, tag = "clear-moves")
             Btn("Bottle it", { state.bottleIt() }, small = true, color = C.Pink, enabled = P.pat().used(), tag = "bottle")
-            Btn("Song", { state.songOpen = !state.songOpen }, on = state.songOpen || P.songMode, onColor = C.Yellow, small = true, tag = "loop-song")
         }
         if (state.movesOpen) MovesPanel(state)
-        if (state.songOpen) SongBody(state)
     }
 }
 
@@ -744,20 +756,6 @@ fun LoopPad(state: AppState, i: Int, modifier: Modifier) {
     }
 }
 
-/** The letters alone (the Perform page keeps them on the page itself). */
-@Composable
-fun LoopKeys(state: AppState, close: Boolean) {
-    val P = state.project
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-        for (i in 0 until com.tideclock.messmachine.engine.Project.NSLOTS) {
-            val cur = P.cur == i; val used = P.pats[i].used(); val wait = state.pendingSlot == i
-            Btn(com.tideclock.messmachine.engine.Project.LETTERS[i].toString(), { state.pickLoop(i) }, on = cur || wait, onColor = if (wait) C.Pink else C.Yellow,
-                color = if (used) C.Card2 else C.Ink, small = true, tight = true, tag = "loop-$i", modifier = Modifier.weight(1f))
-        }
-        Btn(if (state.loopAtBar) "Wait bar" else "Now", { state.switchLoopAtBar() }, small = true, on = state.loopAtBar, onColor = C.Teal, tag = "loop-when")
-        if (close) CloseScrew({ state.loopStripOpen = false }, tag = "loop-close", label = "Close the loops")
-    }
-}
 
 
 /**
@@ -809,7 +807,9 @@ fun Modifier.watchTouches(state: AppState): Modifier = composed {
                         // under the phone test's page scrolls and hid the tabs)
                         val quick = c.uptimeMillis - t.t < 300
                         val dir = dirOf(t.at, c.position)
-                        if (state.flickOn && t.tag != null && !t.tag.startsWith("pad-") && quick && dir == "up") state.openSettingsFor(t.tag)
+                        // Nov 22 (second video, Tyler: "I would just swipe up on these and they would give me my settings"): the bottom
+                        // bar's and the perform row's keys always flick up; other buttons only with the Settings switch
+                        if ((state.flickOn || t.tag in com.tideclock.messmachine.DOCK_FLICK) && t.tag != null && !t.tag.startsWith("pad-") && quick && dir == "up") state.openSettingsFor(t.tag)
                         // Nov 21: a quick swipe off a pad does what HotKeys (Settings) says for that direction:
                         // up the Edit tray, down the Padiano, left Sample, right FX, out of the box
                         else if (state.padFlick && (t.tag?.startsWith("pad-") == true || t.tag == "synth-tile") && quick && dir != null) {
@@ -860,8 +860,20 @@ fun SettingsTray(state: AppState, kind: String, modifier: Modifier = Modifier) {
         "glide" -> "GLIDE · PAD ${pad + 1}"; "lfo" -> "LFO · PAD ${pad + 1}"; "fx" -> "FX · PAD ${pad + 1}"; "padiano" -> "PADIANO · PAD ${pad + 1}"
         "pack" -> "FANNYPACK · PAD ${pad + 1}"; "edit" -> (if (pad == com.tideclock.messmachine.engine.Project.SCRATCH) "EDIT · SCRATCH SYNTH · " else "EDIT · PAD ${pad + 1} · ") + state.lib.titleOf(state.project.kit.getOrNull(pad).orEmpty()).uppercase(); "hold" -> "HOLD"; "repeat" -> "REPEAT"; "wheel" -> "PITCH WHEEL"; "dockfilter" -> "DOCK FILTER"; else -> kind.uppercase()
     }
+    // Nov 22 (second video): Hold's settings are three things, so its tray is one short bar, no title
+    if (kind == "hold") {
+        Row(
+            modifier.padding(start = 8.dp, end = 8.dp, bottom = if (dockUp) 100.dp else 52.dp).trayFrame()
+                .padding(horizontal = 8.dp, vertical = 6.dp).tagged("tray"),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            HoldBar(state)
+            CloseScrew({ state.tray = null }, tag = "tray-done", small = true)
+        }
+        return
+    }
     Column(
-        modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, bottom = if (dockUp) 100.dp else 52.dp).sticker(C.Ink, shadow = 5.dp, border = 3.dp, borderColor = C.Yellow)
+        modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, bottom = if (dockUp) 100.dp else 52.dp).trayFrame()
             .heightIn(min = if (kind.startsWith("edit:")) 430.dp else 0.dp, max = if (kind.startsWith("edit:")) 470.dp else 380.dp).verticalScroll(rememberScrollState()).padding(12.dp).tagged("tray"),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {

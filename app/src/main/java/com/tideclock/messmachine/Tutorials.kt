@@ -49,7 +49,14 @@ object Tutorials {
     private fun selEdit(s: AppState) = s.project.edit(selKey(s))
     private fun cut(s: AppState) = s.synthOn(s.project.sel)?.get("cut") ?: 0.0
 
-    private val openSample = TutStep("Tap Sample, by the bank numbers. It opens the selected pad's Sample sheet.", t("open-sample")) { s, _ -> s.overlay is Overlay.Doctor }
+    // Nov 22: the Sample key left the Play page; the Sample sheet opens from the pad's Edit tray
+    private fun toSample(s: AppState): String? = when {
+        s.overlay is Overlay.Doctor -> null
+        s.tray?.startsWith("edit:") == true -> "menu-doctor"
+        s.menuArmed -> "pad-${s.project.sel % com.tideclock.messmachine.engine.Project.BANK}"
+        else -> "open-padmenu"
+    }
+    private val openSample = TutStep("Tap Edit, then the pad, then Sample in its tray. That is the pad's Sample sheet.", { s -> toSample(s) }) { s, _ -> s.overlay is Overlay.Doctor }
     private val closeSheet = TutStep("Take the sheet off: tap the screw in its corner.", t("done")) { s, _ -> s.overlay == null }
 
     val all: List<Tutorial> = listOf(
@@ -86,7 +93,7 @@ object Tutorials {
         Tutorial("padiano", "Playing", "Padiano", "Any pad's sound as a keyboard, dropped right under its row.", listOf(
             TutStep("Tap the first pad, then Pack on the bar at the bottom: its FannyPack opens with the Padiano in it.", { s -> if (s.project.sel == 0) "pack-toggle" else "pad-0" }) { s, _ -> s.keyboards.isNotEmpty() },
             TutStep("Play some keys. In key only keeps every key in the mess's key.", { s -> s.keyboards.firstOrNull()?.let { "piano-keys-$it" } }) { s, c -> played(s, c, 4) },
-            TutStep("Zip the pack shut with the pull (▾) at the left of its zipper bar.", { s -> s.keyboards.firstOrNull()?.let { "pack-pull-$it" } }) { s, _ -> s.keyboards.isEmpty() },
+            TutStep("Tap Pack on the bottom bar to zip the pack shut.", t("pack-toggle")) { s, _ -> s.keyboards.isEmpty() },
         )),
         Tutorial("sphere", "Playing", "XY sphere", "Draw a circle on a pad and it becomes a ball you push around to bend the sound.", listOf(
             TutStep("Press a pad and, without lifting, draw a small circle on it.", t("pad-0")) { s, c -> if (s.sphere != null) c.seen.add("sphere"); "sphere" in c.seen },
@@ -98,7 +105,7 @@ object Tutorials {
             closeSheet,
             TutStep("Tap Pack on the bottom bar: the sound's Padiano opens under its row.", t("pack-toggle")) { s, _ -> s.project.sel in s.keyboards },
             TutStep("Play a low key and a high one: the high one is shorter.", { s -> "piano-keys-${s.project.sel}" }) { s, c -> played(s, c, 2) },
-            TutStep("Open Sample again and pick Grain.", { s -> if (s.overlay == null) "open-sample" else "pitch-grain" }) { s, _ -> selEdit(s).pitch == "grain" },
+            TutStep("Open Sample again and pick Grain.", { s -> if (s.overlay == null) toSample(s) else "pitch-grain" }) { s, _ -> selEdit(s).pitch == "grain" },
             TutStep("Close it and play low and high again: same length now.", { s -> if (s.overlay != null) "done" else "piano-keys-${s.project.sel}" }) { s, c -> s.overlay == null && played(s, c, 2) },
             TutStep("Tap Pack to zip it shut.", t("pack-toggle")) { s, _ -> s.project.sel !in s.keyboards },
         )),
@@ -121,7 +128,7 @@ object Tutorials {
             TutStep("Play the keyboard under the knobs.", { s -> "piano-keys-${s.project.sel}" }) { s, c -> played(s, c, 2) },
             TutStep("Drag the Cutoff knob up or down. Hold a key while you do it.", t("knob-cut")) { s, c -> Math.abs(cut(s) - c.num0) > c.num0 * .15 },
             TutStep("Double tap the knob to put it back.", t("knob-cut")) { s, _ -> Math.abs(cut(s) - 2400) < 1 },
-            TutStep("Pick Acid, then play the keys: one voice that slides.", t("synthmode-toggle")) { s, c -> s.synthOn(s.project.sel)?.get("mode") == 2.0 && played(s, c, 1) },
+            TutStep("Pick Acid, then play the keys: one voice that slides.", t("synthmode-2")) { s, c -> s.synthOn(s.project.sel)?.get("mode") == 2.0 && played(s, c, 1) },
             TutStep("Try three other kinds at the top (FM, Wavetable, Granular, Drums, Pluck).", t("synthkind-chips")) { s, c ->
                 s.synthOn(s.project.sel)?.kind?.id?.let { c.seen.add(it) }; c.seen.count { it != "analog" } >= 3
             },
@@ -220,7 +227,7 @@ object Tutorials {
         )),
         Tutorial("acid", "Synths", "Acid slides", "Notes that touch in Roll slide into each other on an Acid synth.", listOf(
             TutStep("Tap SYNTH, then On empty pad.", t("tab-Synth")) { s, _ -> s.synthOn(s.project.sel) != null },
-            TutStep("Pick Acid.", t("synthmode-toggle")) { s, _ -> s.synthOn(s.project.sel)?.get("mode") == 2.0 },
+            TutStep("Pick Acid.", t("synthmode-2")) { s, _ -> s.synthOn(s.project.sel)?.get("mode") == 2.0 },
             TutStep("Tap SEQ, then Roll at the top, and draw a few notes, some touching end to start.", { s -> if (s.tab == Tab.Roll) null else if (s.tab == Tab.Steps) "seq-roll" else "tab-Steps" }) { s, c -> s.tab == Tab.Roll && s.version >= c.v0 + 3 },
             TutStep("Press Play and listen for the slides.", t("play")) { s, _ -> s.playing },
             TutStep("Press Stop.", t("stop")) { s, _ -> !s.playing },

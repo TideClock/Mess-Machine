@@ -25,11 +25,7 @@ fun PerformScreen(state: AppState) {
     val pad = P.sel
     val k = P.kit.getOrNull(pad).orEmpty()
     ScrollPane {
-        // Nov 21: the loops on Perform (mutes are MUTE on the dock: the pads become the switches)
-        Column(Modifier.fillMaxWidth().padding(top = 6.dp).tagged("perform-live")) {
-            T("LOOPS", size = 11.sp, color = C.Yellow, spacing = .1.em, modifier = Modifier.padding(bottom = 4.dp))
-            LoopKeys(state, close = false)
-        }
+        // Nov 22 (second video): no row of loops here; the loop readout and the strip it pulls down are on every page
         FxPanel(state)
         Card(Modifier.fillMaxWidth().padding(top = 14.dp).tagged("perform-pad")) {
             Column {
@@ -37,7 +33,6 @@ fun PerformScreen(state: AppState) {
                     Heading(if (k.isEmpty()) "Pad ${pad + 1}" else "Pad ${pad + 1} · " + state.lib.titleOf(k), size = 18.sp, modifier = Modifier.weight(1f))
                 }
                 if (k.isEmpty()) {
-                    Help("Pick a loaded pad on Play and its XY square and FX faders show here.", modifier = Modifier.padding(top = 6.dp))
                 } else {
                     val col = padColor(Color(state.lib.colorOf(k)))
                     T("XY SQUARE · " + state.xyOf(pad).name.uppercase(), size = 11.sp, color = C.Yellow, spacing = .1.em, modifier = Modifier.padding(top = 8.dp, bottom = 6.dp))
@@ -55,7 +50,8 @@ fun PerformScreen(state: AppState) {
 fun SeqSwitch(state: AppState) {
     Row(Modifier.fillMaxWidth().padding(bottom = 8.dp).tagged("seq-switch"), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         T("SEQUENCE", size = 11.sp, color = C.Dim, spacing = .12.em)
-        Btn("Steps", { state.tab = Tab.Steps }, on = state.tab == Tab.Steps, onColor = C.Yellow, small = true, tag = "seq-steps", modifier = Modifier.weight(1f))
-        Btn("Roll", { state.tab = Tab.Roll }, on = state.tab == Tab.Roll, onColor = C.Teal, small = true, tag = "seq-roll", modifier = Modifier.weight(1f))
+        // Nov 22: two views, one pick, so a slider
+        PickSlider(listOf("Steps" to "Steps", "Roll" to "Roll"), if (state.tab == Tab.Roll) 1 else 0, { state.tab = if (it == 1) Tab.Roll else Tab.Steps },
+            Modifier.weight(1f), tags = listOf("seq-steps", "seq-roll"), tag = "seqview-chips", icons = false)
     }
 }

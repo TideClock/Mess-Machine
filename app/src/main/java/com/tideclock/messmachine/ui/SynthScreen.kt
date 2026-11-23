@@ -59,11 +59,12 @@ fun SynthScreen(state: AppState) {
     val pad = if (scratch) Project.SCRATCH else sel
     val sp = state.synthOn(pad) ?: return
     ScrollPane(hPad = 12.dp, vPad = 0.dp) {
-        // header: the synth's pad on the left, then which synth and its preset
-        Row(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 8.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        // Nov 22 (second video, Tyler: "a ludicrous amount of space at the top"): the synth's pad plays it, and beside it
+        // two short rows: which synth and its preset share one, Simple or Full and the mode slide under them
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 8.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SynthPadTile(state, pad, sp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     // which synth this page shows: the scratch one or any pad's (note #12)
                     Select(
                         if (scratch) "Scratch" else "Pad ${pad + 1}",
@@ -71,41 +72,43 @@ fun SynthScreen(state: AppState) {
                         { if (it < 0) state.synthScratch = true else { state.synthScratch = false; state.selectPad(it, false) } },
                         modifier = Modifier.weight(1f), tag = "synth-pad",
                     )
+                    Select(
+                        sp.name,
+                        sp.kind.presets.map { it.name to it.name },
+                        { n -> sp.kind.presets.firstOrNull { it.name == n }?.let { state.loadSynthPreset(pad, it) } },
+                        modifier = Modifier.weight(1.5f), tag = if (scratch) "nosynth-preset" else "synth-preset",
+                    )
                     // the same synth as a Padiano on the pad grid, next to your other pads (note #11)
-                    if (!scratch) Btn("🎹 On pads", { state.padianoOnGrid(pad) }, small = true, tag = "synth-to-pads")
+                    if (!scratch) Btn("Pads", { state.padianoOnGrid(pad) }, small = true, tight = true, tag = "synth-to-pads", icon = "Keys")
                 }
-                Select(
-                    sp.name,
-                    sp.kind.presets.map { it.name to it.name },
-                    { n -> sp.kind.presets.firstOrNull { it.name == n }?.let { state.loadSynthPreset(pad, it) } },
-                    modifier = Modifier.fillMaxWidth(), tag = if (scratch) "nosynth-preset" else "synth-preset",
-                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    val full = state.synthView == "full"
+                    PickSlider(listOf("Simple" to null, "Full" to null), if (full) 1 else 0, { state.synthView = if (it == 1) "full" else "simple" }, Modifier.weight(1f),
+                        tags = listOf("synthview-simple", "synthview-full"), tag = "synthview-chips", onColor = C.Teal, icons = false)
+                    sp.kind.params.firstOrNull { it.id == "mode" }?.let { mp ->
+                        val m = sp.get("mode").toInt().coerceIn(0, mp.choices.size - 1)
+                        PickSlider(mp.choices.map { it to null }, m, { state.setSynth(pad, "mode", it.toDouble(), true) }, Modifier.weight(1.5f),
+                            tags = mp.choices.indices.map { "synthmode-$it" }, tag = "synthmode-chips", onColor = C.Yellow, icons = false)
+                    }
+                }
             }
         }
-        // what kind of synth, in one row (Nov 22, Tyler: the menus took the whole page). Switching starts from that
-        // kind's first preset; Undo brings the old one back. Grain reads a sound off a pad, so scratch has no Grain.
-        Row(Modifier.fillMaxWidth().padding(bottom = 6.dp, end = 4.dp).tagged("synthkind-chips"), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            for (k in Synth.KINDS) if (!scratch || k != Synth.GRAIN) Btn(kindShort(k), { if (sp.kind != k) state.loadSynthPreset(pad, k.presets.first()) }, on = sp.kind == k, onColor = C.Yellow, small = true, tight = true,
-                tag = if (scratch) "scratchkind-${k.id}" else "synthkind-${k.id}", modifier = Modifier.weight(1f), icon = k.name)
-        }
-        // Simple or Full and Poly, Mono or Acid are switches, one tap each; the scratch synth goes onto a pad from here
-        Row(Modifier.fillMaxWidth().padding(bottom = 10.dp, end = 4.dp).tagged("synthview-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-            val full = state.synthView == "full"
-            Btn(if (full) "Full" else "Simple", { state.synthView = if (full) "simple" else "full" }, on = full, onColor = C.Teal, small = true, tight = true, tag = "synthview-toggle", modifier = Modifier.weight(1f), icon = if (full) "Full" else "Simple")
-            sp.kind.params.firstOrNull { it.id == "mode" }?.let { mp ->
-                val m = sp.get("mode").toInt().coerceIn(0, mp.choices.size - 1)
-                Btn(mp.choices[m], { state.setSynth(pad, "mode", ((m + 1) % mp.choices.size).toDouble(), true) }, on = m > 0, onColor = C.Yellow, small = true, tight = true, tag = "synthmode-toggle", modifier = Modifier.weight(1f), icon = mp.choices[m])
-            }
-            if (scratch) {
-                // the scratch synth onto a pad: an empty one in one tap; a pad with a sound on it takes a second tap
-                // (Nov 22: it was too easy to overwrite the snare you had picked)
+        // what kind of synth, as one slider (Nov 22). Switching starts from that kind's first preset; Undo brings the
+        // old one back. Grain reads a sound off a pad, so scratch has no Grain.
+        val kinds = Synth.KINDS.filter { !scratch || it != Synth.GRAIN }
+        PickSlider(kinds.map { kindShort(it) to it.name }, kinds.indexOf(sp.kind), { i -> val k = kinds[i]; if (sp.kind != k) state.loadSynthPreset(pad, k.presets.first()) },
+            Modifier.padding(bottom = 8.dp, end = 4.dp), tags = kinds.map { if (scratch) "scratchkind-${it.id}" else "synthkind-${it.id}" }, tag = "synthkind-chips", onColor = C.Yellow)
+        if (scratch) {
+            // the scratch synth onto a pad: an empty one in one tap; a pad with a sound on it takes a second tap
+            // (Nov 22: it was too easy to overwrite the snare you had picked)
+            Row(Modifier.fillMaxWidth().padding(bottom = 10.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
                 val empty = state.emptyPadInBank()
-                if (empty >= 0) Btn("To pad ${empty + 1}", { state.scratchToPad(empty) }, small = true, tight = true, tag = "synth-new-empty", modifier = Modifier.weight(1.2f))
+                if (empty >= 0) Btn("To pad ${empty + 1}", { state.scratchToPad(empty) }, small = true, tight = true, tag = "synth-new-empty")
                 val selFull = P.kit.getOrNull(sel).orEmpty().isNotEmpty()
                 val armed = state.replaceArmed == sel
-                if (!selFull) { if (empty != sel) Btn("To pad ${sel + 1}", { state.scratchToPad(sel) }, small = true, tight = true, tag = "synth-new-here", modifier = Modifier.weight(1.2f)) }
+                if (!selFull) { if (empty != sel) Btn("To pad ${sel + 1}", { state.scratchToPad(sel) }, small = true, tight = true, tag = "synth-new-here") }
                 else Btn(if (armed) "Replace ${sel + 1}?" else "Over ${sel + 1}", { if (armed) { if (state.replaceReady()) { state.replaceArmed = -1; state.scratchToPad(sel) } } else state.armReplace(sel) },
-                    on = armed, onColor = C.Riot, small = true, tight = true, tag = "synth-new-here", modifier = Modifier.weight(1.2f))
+                    on = armed, onColor = C.Riot, small = true, tight = true, tag = "synth-new-here")
             }
         }
         // the model choice some kinds have (drums' kit, the plucked string's body)
@@ -119,7 +122,7 @@ fun SynthScreen(state: AppState) {
             val srcs = state.grainSources()
             Row(Modifier.fillMaxWidth().padding(bottom = 10.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 T("GRAINS OF", size = 11.sp, color = C.Dim, spacing = .1.em)
-                if (srcs.isEmpty()) Note("Put a sound on a pad first: the grains come from it.", modifier = Modifier.weight(1f))
+                if (srcs.isEmpty()) Note("No sounds on pads yet.", modifier = Modifier.weight(1f))
                 else Select(state.lib.titleOf(sp.src).ifEmpty { "Pick a sound" }, srcs.map { it to state.lib.titleOf(it) }, { k -> state.setGrainSource(pad, k) }, modifier = Modifier.weight(1f), tag = "grain-src")
             }
         }

@@ -37,25 +37,26 @@ fun SongBody(state: AppState) {
     for (k in 0 until len) steps += if (P.song[k] >= 0) P.pats[P.song[k]].len else 16
     val secs = (steps * 60.0 / P.bpm / 4).toInt()
     Column(Modifier.tagged("song-body")) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 14.dp)) {
-            Btn("Play the loop", { state.setSongMode(false) }, on = !P.songMode, onColor = C.Teal)
-            Btn("Play the song", { state.setSongMode(true) }, on = P.songMode, onColor = C.Pink)
+        // Nov 22 (second video): short words on one row, never stacked
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
+            Btn("Play loop", { state.setSongMode(false) }, on = !P.songMode, onColor = C.Teal, small = true, tight = true, tag = "song-play-loop")
+            Btn("Play song", { state.setSongMode(true) }, on = P.songMode, onColor = C.Pink, small = true, tight = true, tag = "song-play-song")
         }
-        Heading("Song", size = 18.sp)
         Note(
             if (len == 0) "No bars yet"
             else "$len bars, about ${secs / 60}:${(secs % 60).toString().padStart(2, '0')} at ${P.bpm} BPM.",
-            color = C.Yellow, modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
+            color = C.Yellow, modifier = Modifier.padding(bottom = 8.dp),
         )
         T("PAINT WITH", size = 12.sp, color = C.Dim, spacing = .1.em)
-        Wrap(Modifier.padding(top = 6.dp, bottom = 12.dp), gap = 6.dp) {
+        // one row: the eight loops and Rest share the width (Nov 22: they used to wrap onto a second row)
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             for (i in 0 until Project.NSLOTS) {
                 Btn(
                     Project.LETTERS[i].toString() + if (P.pats[i].used()) "" else "·", { state.brush = i },
-                    on = state.brush == i, onColor = C.Letters[i], small = true,
+                    on = state.brush == i, onColor = C.Letters[i], small = true, tight = true, modifier = Modifier.weight(1f),
                 )
             }
-            Btn("Rest", { state.brush = -1 }, on = state.brush == -1, onColor = C.Cream, small = true)
+            Btn("Rest", { state.brush = -1 }, on = state.brush == -1, onColor = C.Cream, small = true, tight = true, modifier = Modifier.weight(1.4f))
         }
         val playBar = if (state.playing && P.songMode) state.heardSong else -1
         val shown = minOf(Project.MAXSONG, maxOf(16, ((len + 8) / 8) * 8))

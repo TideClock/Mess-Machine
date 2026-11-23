@@ -80,7 +80,6 @@ fun BoxScope.FaqOverlay(state: AppState) {
                     modifier = Modifier.padding(top = 8.dp))
             }
             Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Btn(if (state.helpOn) "Page help: on" else "Page help: first time", { state.switchHelp() }, small = true, tier = Tier.Quiet, tag = "faq-help")
                 Btn("Speed guide", { state.switchFaq(false); state.startSpeedGuide() }, small = true, tier = Tier.Quiet, tag = "faq-speed")
             }
         }

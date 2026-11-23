@@ -50,8 +50,8 @@ import com.tideclock.messmachine.PACK_STRIPS
 
 /**
  * The FannyPack (build 85, Tyler's idea): everything packed on one sound, dropped under its row of pads. It holds
- * only the strips you put in it (Keys, FX, LFO, XY). The zipper bar on top shows what is packed: tap the pull to
- * zip it shut, tap a strip's name to hide or show just that strip, + to pack or unpack strips.
+ * only the strips you put in it (Keys, FX, LFO, XY). Pack on the dock opens and shuts it; its settings (swipe up on
+ * Pack, or Menu twice) pick the strips.
  */
 @Composable
 fun FannyPack(state: AppState, pad: Int) {
@@ -62,54 +62,9 @@ fun FannyPack(state: AppState, pad: Int) {
     val packed = state.packOf(pad)
     val hidden = state.packHidden[pad] ?: emptySet()
     Column(Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 6.dp).tagged("pack-$pad")) {
-        Row(
-            Modifier.fillMaxWidth().padding(bottom = 6.dp).sticker(C.Ink, shadow = 3.dp, shadowColor = col).padding(horizontal = 6.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp),
-        ) {
-            // the pull: zips the pack shut (the pad keeps everything packed for next time)
-            Box(Modifier.size(width = 30.dp, height = 34.dp).tagged("pack-zip-$pad"), contentAlignment = Alignment.Center) {
-                Btn("▾", { state.togglePack(pad) }, small = true, tight = true, on = true, onColor = col, tag = "pack-pull-$pad")
-            }
-            Canvas(Modifier.width(26.dp).height(10.dp)) {
-                drawLine(col, Offset(0f, size.height / 2), Offset(size.width, size.height / 2), strokeWidth = 3.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 5f)))
-            }
-            T("${pad + 1} ${state.lib.titleOf(k).uppercase()}", size = 11.sp, color = C.Yellow, lines = 1, spacing = .04.em, modifier = Modifier.weight(1f))
-            for ((id, name) in PACK_STRIPS) if (id in packed) {
-                Btn(name, { state.togglePackHidden(pad, id) }, on = id !in hidden, onColor = C.Teal, small = true, tight = true, tag = "pack-show-$id-$pad")
-            }
-            var add by remember(pad) { mutableStateOf(false) }
-            Box {
-                Btn("+", { add = true }, small = true, tight = true, tag = "pack-add-$pad")
-                // Nov 18 (note #22): four colored tiles, an icon and a word each, lit when packed; no descriptions
-                DropdownMenu(expanded = add, onDismissRequest = { add = false }, modifier = Modifier.background(if (UiLook.panel) Hw.Plate else C.Ink).tagged("pack-menu")) {
-                    val tiles = listOf(Triple("keys", "Keys", C.Pink), Triple("fx", "FX", C.Teal), Triple("lfo", "LFO", C.Yellow), Triple("xy", "XY square", tileColor("place")))
-                    Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        for (row in tiles.chunked(2)) Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            for ((id, icon, col) in row) {
-                                val on = id in packed
-                                // Nov 21 (second video): in the panel Look the tiles are bakelite keys wearing their colour, like the rest
-                                if (UiLook.panel) Column(
-                                    Modifier.width(92.dp).bakelite(on, col, false, tint = col).clickable { state.togglePackStrip(pad, id); add = false }
-                                        .padding(top = 8.dp, bottom = 6.dp + UiLook.lip).tagged("pack-pick-$id"),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                ) {
-                                    Icons.all[icon]?.first?.let { InlayIcon(it, 46.dp, on, icon) }
-                                    T(PACK_STRIPS.first { it.first == id }.second.uppercase(), size = 12.sp, color = Hw.Engrave, family = Worn, weight = FontWeight.Normal, modifier = Modifier.padding(top = 4.dp))
-                                }
-                                else Column(
-                                    Modifier.width(84.dp).border(3.dp, if (on) C.Cream else C.Card2).clickable { state.togglePackStrip(pad, id); add = false }.padding(6.dp).tagged("pack-pick-$id"),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                ) {
-                                    PixIcon(icon, 56.dp, tile = col, dim = !on)
-                                    T(PACK_STRIPS.first { it.first == id }.second.uppercase(), size = 12.sp, color = if (on) C.Cream else C.Dim, modifier = Modifier.padding(top = 4.dp))
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        if (packed.isEmpty()) Note("Empty: tap +", color = C.Yellow)
+        // Nov 22 (second video): no zipper bar. Pack on the dock opens and shuts it; swipe up on Pack picks the strips.
+        // A pack emptied of every strip shows the strip picker in its place, so it never opens blank.
+        if (packed.isEmpty()) PackTray(state, pad)
         for (id in packed) if (id !in hidden) when (id) {
             "keys" -> PianoKeyboard(state, pad, close = false, synthBtn = true)
             "fx" -> FxStrip(state, pad, col, underRow = true)
@@ -424,11 +379,10 @@ fun LfoStrip(state: AppState, pad: Int, col: Color) {
             state.midiAim(com.tideclock.messmachine.MidiTarget("lfo", pad, 0, "rate"))
             set(done) { lfoRate = b * feel; lfoOn = true }
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
-            Btn("Straight", { set { lfoRate = base } }, on = feel == 1.0, onColor = C.Yellow, small = true, tight = true, tag = "lfo-straight-$pad")
-            Btn("T", { set { lfoRate = base * 2 / 3 } }, on = feel < 1.0, onColor = C.Yellow, small = true, tag = "lfo-trip-$pad")
-            Btn("Dot", { set { lfoRate = base * 1.5 } }, on = feel > 1.0, onColor = C.Yellow, small = true, tight = true, tag = "lfo-dot-$pad")
-        }
+        // straight, triplet or dotted: one pick, so a slider (Nov 22, second video)
+        PickSlider(listOf("Straight" to null, "Triplet" to null, "Dotted" to null), if (feel < 1.0) 1 else if (feel > 1.0) 2 else 0,
+            { i -> set { lfoRate = base * when (i) { 1 -> 2.0 / 3; 2 -> 1.5; else -> 1.0 } } }, Modifier.padding(top = 4.dp),
+            tags = listOf("lfo-straight-$pad", "lfo-trip-$pad", "lfo-dot-$pad"), tag = "lfofeel-chips", icons = false)
         SliderRow("Depth", o.lfoDepth.toFloat(), 0f..1f, { "${(it * 100).toInt()}%" }, { v -> state.midiAim(com.tideclock.messmachine.MidiTarget("lfo", pad, 0, "depth")); set(false) { lfoDepth = v.toDouble() } }, { set { } }, accent = col)
         // build 106: the LFO has no filter of its own; aimed at the filter it moves the pad filter, and these set where
         // that filter rests (the same as the FX strip's Cut and Res)
@@ -448,17 +402,18 @@ val LFO_WAVES = listOf(0 to "Sine", 1 to "Tri", 2 to "Saw ↑", 3 to "Saw ↓", 
 fun LfoTray(state: AppState, pad: Int) {
     val o = state.project.opt(pad)
     fun set(f: com.tideclock.messmachine.engine.PadOpts.() -> Unit) = state.setPadOpt(pad, true, f)
-    Wrap(Modifier.tagged("lfowave-chips"), gap = 6.dp) {
-        for ((w, n) in LFO_WAVES) Btn(n, { set { lfoWave = w; lfoOn = true } }, on = o.lfoWave == w, onColor = C.Teal, small = true, tight = true, tag = "lfo-wave-$w-$pad", icon = n)
+    // the wave is one pick, so a slider of its shapes (Nov 22); teal is the colour of shapes
+    PickSlider(LFO_WAVES.map { it.second to it.second }, LFO_WAVES.indexOfFirst { it.first == o.lfoWave }, { i -> set { lfoWave = LFO_WAVES[i].first; lfoOn = true } },
+        Modifier.padding(bottom = 6.dp), tags = LFO_WAVES.map { "lfo-wave-${it.first}-$pad" }, tag = "lfowave-chips", onColor = C.Teal)
+    Wrap(gap = 6.dp) {
         // the old Wobble effect, folded in as a preset (Nov 18): a gentle pitch sway on a quarter-note sine
         Btn("Wobble", { set { lfoOn = true; lfoWave = 0; lfoRate = 4.0; lfoTarget = com.tideclock.messmachine.engine.Engine.T_PITCH; lfoDepth = .03; lfoRetrig = false } },
             on = o.lfoOn && o.lfoTarget == com.tideclock.messmachine.engine.Engine.T_PITCH && o.lfoDepth <= .05, onColor = C.Yellow, small = true, tight = true, tag = "lfo-wobble-$pad", icon = "Wobble")
     }
-    Wrap(Modifier.padding(top = 8.dp).tagged("lfotype-chips"), gap = 6.dp) {
-        // build 106: the pad filter's kind (everything that moves the filter moves this one)
-        T("PAD FILTER", size = 11.sp, color = C.Dim, spacing = .1.em)
-        for ((ty, n) in listOf(1 to "Lo", 2 to "Hi", 3 to "Band")) Btn(n, { set { ftype = ty } }, on = o.ftype == ty, onColor = C.Yellow, small = true, tight = true, tag = "lfo-type-$ty-$pad", icon = n)
-    }
+    // build 106: the pad filter's kind (everything that moves the filter moves this one); one pick, a slider
+    T("PAD FILTER", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
+    PickSlider(listOf("Lo" to "Lo", "Hi" to "Hi", "Band" to "Band"), o.ftype - 1, { i -> set { ftype = i + 1 } },
+        tags = (1..3).map { "lfo-type-$it-$pad" }, tag = "lfotype-chips", onColor = C.Teal)
     Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
         Select("Target: " + (LFO_TARGETS.firstOrNull { it.first == o.lfoTarget }?.second ?: "Filter"), LFO_TARGETS, { t -> set { lfoTarget = t; lfoOn = true } }, tag = "lfo-target-$pad")
         Btn(if (o.lfoRetrig) "Each hit" else "With loop", { set { lfoRetrig = !lfoRetrig } }, small = true, tight = true, tier = Tier.Quiet, tag = "lfo-retrig-$pad")

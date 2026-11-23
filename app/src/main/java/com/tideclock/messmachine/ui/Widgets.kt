@@ -427,11 +427,9 @@ fun T(
     )
 }
 
-/** Small lab-notes text, like the site's mono captions. */
+/** Nov 22 (Tyler: remove the explanation lines): how-to sentences show nowhere now. The FAQ (?) still explains every control. */
 @Composable
-fun Help(text: String, modifier: Modifier = Modifier) {
-    if (LocalHelp.current) Note(text, modifier.tagged("help"), C.Teal)
-}
+fun Help(@Suppress("UNUSED_PARAMETER") text: String, @Suppress("UNUSED_PARAMETER") modifier: Modifier = Modifier) {}
 
 @Composable
 fun Note(text: String, modifier: Modifier = Modifier, color: Color = C.Dim, size: TextUnit = 12.sp) {
@@ -490,12 +488,14 @@ fun Btn(
         // Keys widen with the screen and stop at a cap, so a wide screen has bigger keys, not lonely little ones
         val minH = maxOf(if (small) 34f else 44f, 40f / UiLook.scale.coerceIn(.4f, 2f)) * UiLook.big + UiLook.lip.value
         val minW = if (tight) 0f else (UiLook.widthDp * (if (small) .14f else .18f)).coerceIn(if (small) 48f else 56f, if (small) 120f else 150f) * UiLook.big
+        // Nov 22 look spec: one meaning per colour (see lampFor)
+        val lamp = lampFor(tag, onColor, tier == Tier.Danger)
         Box(
             modifier
                 .heightIn(min = minH.dp)
                 .widthIn(min = minW.dp)
                 .offset(0.dp, if (pressed && enabled) 2.dp else 0.dp)
-                .bakelite(on, if (tier == Tier.Danger) Hw.Oxblood else onColor, pressed && enabled, danger = tier == Tier.Danger, brass = tier == Tier.Primary, lamped = lamped, tint = if (tight) null else capTint(text))
+                .bakelite(on, lamp, pressed && enabled, danger = tier == Tier.Danger, brass = tier == Tier.Primary, lamped = lamped, tint = if (tight) null else capTint(text))
                 .alpha(if (enabled) 1f else .4f)
                 .clickable(src, indication = null, enabled = enabled) { onClick() }
                 .then(if (tag != null) Modifier.tagged(tag) else Modifier)
@@ -511,11 +511,11 @@ fun Btn(
             val words = text.replace(Regex("^[^A-Za-z0-9\\s]+\\s+"), "").ifEmpty { text }
             if (iconRes != null && tight) Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 InlayIcon(iconRes, 30.dp * UiLook.big, on, text)
-                if (words.isNotBlank()) T(words.uppercase(), color = when { tier == Tier.Quiet -> Hw.Engrave.copy(alpha = .6f); on -> lerp(Hw.Engrave, onColor, .35f); else -> Hw.Engrave },
+                if (words.isNotBlank()) T(words.uppercase(), color = when { tier == Tier.Quiet -> Hw.Engrave.copy(alpha = .6f); on -> lerp(Hw.Engrave, lamp, .35f); else -> Hw.Engrave },
                     size = (10f * UiLook.big).sp, lines = 1, spacing = 0.em, family = Worn, weight = FontWeight.Normal, modifier = Modifier.padding(top = 1.dp))
             } else Row(verticalAlignment = Alignment.CenterVertically) {
                 if (iconRes != null) InlayIcon(iconRes, (if (small) 28.dp else 32.dp) * UiLook.big, on, text, Modifier.padding(end = 7.dp))
-                T(words.uppercase(), color = when { tier == Tier.Quiet -> Hw.Engrave.copy(alpha = .6f); on -> lerp(Hw.Engrave, onColor, .35f); else -> Hw.Engrave },
+                T(words.uppercase(), color = when { tier == Tier.Quiet -> Hw.Engrave.copy(alpha = .6f); on -> lerp(Hw.Engrave, lamp, .35f); else -> Hw.Engrave },
                     size = (if (small) 12f else 13f).let { (it * UiLook.big).sp }, lines = 1, spacing = if (tight) 0.em else .03.em, family = Worn, weight = FontWeight.Normal)
             }
         }
@@ -732,3 +732,106 @@ fun Modifier.fadeScroll(scroll: ScrollState): Modifier = this
         }
     }
     .horizontalScroll(scroll)
+
+/**
+ * Nov 22 (second video, Tyler: "for anything that you can only pick one, a slider instead of buttons"): a pick-one
+ * group as one milled track with a raised block on the pick. Tap a stop, or drag along the track and let go on one.
+ * Each stop keeps its own tag, so tests, lessons and the FAQ still find it by name.
+ */
+@Composable
+fun PickSlider(
+    stops: List<Pair<String, String?>>, picked: Int, onPick: (Int) -> Unit, modifier: Modifier = Modifier,
+    tags: List<String?> = List(stops.size) { null }, tag: String? = null, onColor: Color = C.Yellow, enabled: Boolean = true,
+    icons: Boolean = true,
+) {
+    val n = stops.size.coerceAtLeast(1)
+    var drag by remember { mutableStateOf(-1) }
+    val pick by androidx.compose.runtime.rememberUpdatedState(onPick)
+    val shown = if (drag >= 0) drag else picked
+    val hasIcon = icons && stops.any { it.second?.let { s -> Icons.named(s) } != null }
+    val iconDp = (26f * UiLook.big).dp
+    val h = if (hasIcon) (iconDp.value + 26f).dp else (36f * UiLook.big).coerceAtLeast(34f).dp
+    androidx.compose.foundation.layout.BoxWithConstraints(
+        modifier.fillMaxWidth().height(h + 6.dp).alpha(if (enabled) 1f else .45f)
+            .drawBehind {
+                val r = CornerRadius(7.dp.toPx())
+                // the track: milled into the plate like the tab slot, dark under its top edge
+                drawRoundRect(if (UiLook.panel) Color(0xFF14110F) else C.Card2, cornerRadius = r)
+                drawRoundRect(Brush.verticalGradient(listOf(Color.Black.copy(alpha = .55f), Color.Transparent), endY = 10.dp.toPx()), cornerRadius = r)
+                drawRoundRect(Color.White.copy(alpha = .08f), topLeft = Offset(0f, size.height - 1.5f), size = Size(size.width, 1.5f))
+                // a notch between stops, so the track reads as a row of places to land
+                for (i in 1 until n) { val x = size.width * i / n; drawLine(Color.White.copy(alpha = .07f), Offset(x, 8.dp.toPx()), Offset(x, size.height - 8.dp.toPx()), 1.dp.toPx()) }
+            }
+            .then(if (enabled) Modifier.pointerInput(n, picked) {
+                androidx.compose.foundation.gestures.detectHorizontalDragGestures(
+                    onDragStart = { o -> drag = (o.x / size.width * n).toInt().coerceIn(0, n - 1) },
+                    onDragEnd = { val d = drag; drag = -1; if (d >= 0 && d != picked) pick(d) },
+                    onDragCancel = { drag = -1 },
+                ) { ch, _ -> drag = (ch.position.x / size.width * n).toInt().coerceIn(0, n - 1) }
+            } else Modifier)
+            .then(if (tag != null) Modifier.tagged(tag) else Modifier)
+            .padding(3.dp),
+    ) {
+        val w = maxWidth / n
+        val x by androidx.compose.animation.core.animateDpAsState(w * shown.coerceIn(0, n - 1), androidx.compose.animation.core.tween(140), label = "pick")
+        // the raised block that slides to the pick
+        if (shown in 0 until n) Box(
+            Modifier.offset(x = x).size(w, h).let {
+                if (UiLook.panel) it.bakelite(true, onColor, false, lamped = false) else it.sticker(onColor, shadow = 2.dp, border = 2.dp, borderColor = C.Cream)
+            },
+        )
+        Row(Modifier.fillMaxWidth().height(h)) {
+            for ((i, st) in stops.withIndex()) {
+                val on = i == shown
+                val res = if (icons) st.second?.let { Icons.named(it) } else null
+                Column(
+                    Modifier.weight(1f).fillMaxHeight()
+                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, enabled = enabled) { if (i != picked) pick(i) }
+                        .then(tags.getOrNull(i)?.let { Modifier.tagged(it) } ?: Modifier)
+                        .semantics { selected = i == picked }
+                        .padding(bottom = if (UiLook.panel && on) UiLook.lip else 0.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
+                ) {
+                    if (res != null) Box(Modifier.alpha(if (on) 1f else .55f)) { InlayIcon(res, iconDp, on, st.first) }
+                    val wc = if (UiLook.panel) (if (on) lerp(Hw.Engrave, onColor, .35f) else Hw.Engrave.copy(alpha = .6f)) else if (on) ink(onColor) else C.Cream
+                    T(st.first.uppercase(), size = (if (res != null) 9.5f else 12f).let { (it * UiLook.big).sp }, color = wc, lines = 1, spacing = 0.em,
+                        family = if (UiLook.panel) Worn else Archivo, weight = if (UiLook.panel) FontWeight.Normal else FontWeight.ExtraBold,
+                        modifier = Modifier.padding(horizontal = 2.dp, vertical = if (res != null) 1.dp else 0.dp))
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Nov 22 look spec (Tyler's pick, "3"): in the panel Look each lamp colour means one thing. Yellow: on. Pink:
+ * recording, and nothing else. Oxblood: takes sound away (mute, drop, clear, overwrite). Teal: a shape (a wave, a
+ * filter's kind). Amber is for readouts (the LCDs). A sound's own colour (a loop letter, a pad) is kept.
+ */
+fun lampFor(tag: String?, onColor: Color, danger: Boolean): Color {
+    val t = tag.orEmpty()
+    val meaning = onColor == C.Yellow || onColor == C.Teal || onColor == C.Pink || onColor == C.Riot || onColor == C.Cream || onColor == Hw.Oxblood
+    return when {
+        danger || onColor == Hw.Oxblood || t == "mute-key" || t == "drop-key" || t == "synth-new-here" && onColor == C.Riot -> Hw.Oxblood
+        RECORDING.containsMatchIn(t) -> C.Pink
+        !meaning -> onColor
+        onColor == C.Teal && SHAPES.any { t.startsWith(it) } -> C.Teal
+        else -> C.Yellow
+    }
+}
+private val RECORDING = Regex("(^|-)(rec|record)($|-|hold|tap|exact)")
+private val SHAPES = listOf("lfo-wave-", "lfo-type-", "pfilt-type", "synthkind-", "scratchkind-")
+
+/** Nov 22 look spec: every bar and tray is the same plate, edged by one brass rule. Classic keeps its ink. */
+fun Modifier.plate(top: Boolean = false, bottom: Boolean = false): Modifier =
+    if (!UiLook.panel) this.background(C.Ink) else this.drawBehind {
+        drawRect(Hw.Plate)
+        val w = 1.5.dp.toPx()
+        if (top) drawLine(Hw.Brass, Offset(0f, w / 2), Offset(size.width, w / 2), w)
+        if (bottom) drawLine(Hw.Brass, Offset(0f, size.height - w / 2), Offset(size.width, size.height - w / 2), w)
+    }
+
+/** A tray's frame: the plate, a brass rule all round (panel); ink with a yellow edge (Classic). */
+fun Modifier.trayFrame(): Modifier =
+    if (UiLook.panel) this.sticker(Hw.Plate, shadow = 5.dp, border = 2.dp, borderColor = Hw.Brass, shadowColor = Color.Black.copy(alpha = .6f))
+    else this.sticker(C.Ink, shadow = 5.dp, border = 3.dp, borderColor = C.Yellow)

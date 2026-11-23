@@ -173,7 +173,6 @@ fun FxEditor(state: AppState) {
             Note("Gate length", modifier = Modifier.padding(top = 8.dp, bottom = 6.dp))
             Wrap(gap = 6.dp) { for ((st, n) in listOf(1 to "1/16", 2 to "1/8", 4 to "1/4")) Btn(n, { state.changeFx(id, s.copy(steps = st)) }, on = s.steps == st, small = true) }
         }
-        Help("Pads go to a bus from their menu (Route). Slide along an effect while you hold it to change how much it does.", modifier = Modifier.padding(top = 8.dp))
     }
 }
 

@@ -61,7 +61,6 @@ fun AudioCheckScreen(state: AppState) {
         if (ok) state.runSpeakerTest() else state.say("The speaker test needs the mic. You can allow it in the phone's settings for Mess Machine.")
     }
     ScrollPane(hPad = 14.dp, vPad = 0.dp) {
-        Note("What the phone adds between your tap and the sound. Every note you send carries these numbers.", modifier = Modifier.padding(top = 4.dp, bottom = 10.dp))
         Card(Modifier.fillMaxWidth().padding(bottom = 14.dp).tagged("check-live")) {
             Column {
                 T("RIGHT NOW", size = 12.sp, color = C.Yellow, spacing = .1.em)
@@ -71,7 +70,6 @@ fun AudioCheckScreen(state: AppState) {
         Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
             Column {
                 T("1. TAP", size = 12.sp, color = C.Yellow, spacing = .1.em)
-                Note("Tap the square ten times. Each tap plays a click and times your touch reaching the app.", modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
                 Box(
                     Modifier.fillMaxWidth().height(110.dp).sticker(C.Card2).tagged("check-pad")
                         .pointerInput(Unit) {
@@ -93,7 +91,6 @@ fun AudioCheckScreen(state: AppState) {
         Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
             Column {
                 T("2. SPEAKER TEST", size = 12.sp, color = C.Yellow, spacing = .1.em)
-                Note("Five clicks, timed by the mic. Volume up, headphones out, a quiet room. Takes 4 seconds.", modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
                 Btn("Run the speaker test", {
                     if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) state.runSpeakerTest()
                     else mic.launch(Manifest.permission.RECORD_AUDIO)
@@ -107,7 +104,6 @@ fun AudioCheckScreen(state: AppState) {
         Card(Modifier.fillMaxWidth().padding(bottom = 14.dp).tagged("check-light")) {
             Column {
                 T("3. KEEP IT LIGHT", size = 12.sp, color = C.Yellow, spacing = .1.em)
-                Note("Grain keeps a sound's length when it changes pitch, live, at about three times the work of Stretch. Bake does that work ahead of time, a few seconds per sound, and plays at Stretch's cost. It also sounds cleaner.", modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
                 val toBake = state.grainPadsToBake()
                 val baked = state.project.kit.filter { it.isNotEmpty() }.toSet().count { state.project.edit(it).bake }
                 T("Live grain voices now: ${state.engine.grainVoices()}. Sounds baked: $baked" + if (state.baking.isNotEmpty()) " (baking ${state.baking.size})" else "",
