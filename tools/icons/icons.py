@@ -347,15 +347,16 @@ def _():
     wave(d,lambda t:math.sin(t*2*math.pi*1.5),x0=100,x1=412,cy=345,amp=48,c=K,w=30); return im
 @icon('synth','FM')
 def _():
-    im,d=new(); wave(d,lambda t:math.sin(t*2*math.pi*1+2.2*math.sin(t*2*math.pi*3)),x0=50,x1=462,cy=300,amp=120,c=K,w=78,n=400)
-    wave(d,lambda t:math.sin(t*2*math.pi*1+2.2*math.sin(t*2*math.pi*3)),x0=50,x1=462,cy=300,amp=120,c=P,w=40,n=400)
+    im,d=new(); f=lambda t:math.sin(t*2*math.pi*1.5+1.1*math.sin(t*2*math.pi*4.5))
+    wave(d,f,x0=50,x1=462,cy=310,amp=110,c=K,w=74,n=400); wave(d,f,x0=50,x1=462,cy=310,amp=110,c=P,w=38,n=400)
     eye(d,256,110,58,iris=T); return im
 @icon('synth','Wavetable')
 def _():
     im,d=new()
-    for i,c in enumerate([PUD,PU,TL,Y]):
-        o=i*60; wave(d,lambda t,i=i:math.sin(t*2*math.pi)*(1-i*.18)+(i*.25)*(1 if (t*2)%1<.5 else -1),x0=50+o,x1=330+o,cy=170+o,amp=70,c=K,w=52,n=300)
-        wave(d,lambda t,i=i:math.sin(t*2*math.pi)*(1-i*.18)+(i*.25)*(1 if (t*2)%1<.5 else -1),x0=50+o,x1=330+o,cy=170+o,amp=70,c=c,w=26,n=300)
+    shapes=[(lambda t:math.sin(t*2*math.pi*1.5),PU),(lambda t:1-4*abs(((t*1.5)%1)-.5),T),(lambda t:1 if (t*1.5)%1<.5 else -1,Y)]
+    for i,(fn,c) in enumerate(shapes):
+        o=i*45; cy=120+i*135
+        wave(d,fn,x0=40+o,x1=380+o,cy=cy,amp=48,c=K,w=58,n=300); wave(d,fn,x0=40+o,x1=380+o,cy=cy,amp=48,c=c,w=28,n=300)
     return im
 @icon('synth','Granular')
 def _():
@@ -396,7 +397,7 @@ for nm,fn in [('Wobble',lambda t:math.sin(t*2*math.pi*2.5)*(.35+.65*abs(math.sin
               ('Low pass',lambda t:.6 if t<.55 else .6-((t-.55)/.45)**1.4*2.2),
               ('High pass',lambda t:.6 if t>.45 else .6-((.45-t)/.45)**1.4*2.2),
               ('Band pass',lambda t:-1.2+1.9*math.exp(-((t-.5)/.14)**2))]:
-    def mk(fn=fn):
+    def mk(fn=fn,nm=nm):
         def f():
             im,d=new(); rect(d,[40,80,472,432],K,o=CR,w=16,r=30); wave(d,fn,x0=90,x1=422,amp=110,c=Y if nm=='Wobble' else T,w=34,n=400); return im
         return f
