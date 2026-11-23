@@ -51,7 +51,7 @@ fun EditTray(state: AppState, pad: Int) {
                 ) {
                     // Nov 22: each drawer key carries its icon over its word
                     androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icons.named(name)?.let { InlayIcon(it, 24.dp * UiLook.big, on, name) }
+                        Icons.named(name)?.let { InlayIcon(it, 30.dp * UiLook.big, on, name) }
                         T(name.uppercase(), size = 11.sp, color = if (on) lerp(Hw.Engrave, col, .35f) else Hw.Engrave, lines = 1, spacing = 0.em, family = Worn, weight = androidx.compose.ui.text.font.FontWeight.Normal)
                     }
                 }

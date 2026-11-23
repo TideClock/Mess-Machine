@@ -510,7 +510,7 @@ fun Btn(
             // (in the panel Look the old symbols go anyway: the worn letters have no ● or ✂, and the lamp says on)
             val words = text.replace(Regex("^[^A-Za-z0-9\\s]+\\s+"), "").ifEmpty { text }
             if (iconRes != null && tight) Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                InlayIcon(iconRes, 26.dp * UiLook.big, on, text)
+                InlayIcon(iconRes, 30.dp * UiLook.big, on, text)
                 if (words.isNotBlank()) T(words.uppercase(), color = when { tier == Tier.Quiet -> Hw.Engrave.copy(alpha = .6f); on -> lerp(Hw.Engrave, onColor, .35f); else -> Hw.Engrave },
                     size = (10f * UiLook.big).sp, lines = 1, spacing = 0.em, family = Worn, weight = FontWeight.Normal, modifier = Modifier.padding(top = 1.dp))
             } else Row(verticalAlignment = Alignment.CenterVertically) {

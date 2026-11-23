@@ -235,7 +235,7 @@ fun VialStrip(state: AppState, pad: Int, underRow: Boolean = false) {
                         }
                     }
                     // Nov 22: the effect's icon over its name plate
-                    Icons.named(name)?.let { InlayIcon(it, (if (underRow) 26.dp else 20.dp) * UiLook.big, inNow, name, Modifier.padding(top = 4.dp).alpha(if (inNow) 1f else .5f)) }
+                    Icons.named(name)?.let { InlayIcon(it, 30.dp * UiLook.big, inNow, name, Modifier.padding(top = 4.dp).alpha(if (inNow) 1f else .5f)) }
                     // the name is a little plate: tap it for this effect's settings
                     Box(
                         Modifier.padding(top = 2.dp).fillMaxWidth().heightIn(min = 26.dp)
