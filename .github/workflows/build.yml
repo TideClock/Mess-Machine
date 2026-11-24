@@ -2,7 +2,8 @@ name: Build the app
 
 on:
   push:
-    branches: [main]
+    # accounts: the side branch for accounts and playing together builds and tests, but never publishes the phone download
+    branches: [main, accounts]
     paths-ignore: ['site/**', 'library/**']
   pull_request:
     paths-ignore: ['site/**', 'library/**']
