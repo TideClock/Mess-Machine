@@ -46,7 +46,8 @@ public final class WebEngine {
     /** Load a mess (the app's own file format). Returns how many pads name a sound this engine has not been given. */
     @JSExport public static int setMess(String json) {
         try {
-            Project.Loaded l = Project.fromJson(json, k -> samples.containsKey(k) || Project.isSynth(k));
+            // Every key is kept: a pad whose sound has not arrived yet is simply skipped by the snapshot until refresh().
+            Project.Loaded l = Project.fromJson(json, null);
             proj = l.project;
             rebuild();
             return l.missing;
@@ -195,6 +196,134 @@ public final class WebEngine {
             for (int k = 0; k < a.length; k++) o.set(k, a[k]);
             return o;
         } catch (Throwable t) { fail(t); return Float32Array.create(0); }
+    }
+
+
+    /* ---------- editing the mess (the page's own engine holds the working copy) ----------
+       Each one is a line-for-line port of the matching AppState function in the Android app, so an edit on the
+       web changes the mess exactly as the same tap on the phone does. The page sends messJson() to the worklet after. */
+
+    static Project.Pattern pat() { return proj.pats[proj.cur]; }
+
+    /** AppState.toggleStep: a dotted step clears; a lit step cycles normal, accent, ghost, off. Returns the new strength, -1 for off. */
+    @JSExport public static int toggleStep(String key, int j) {
+        Project.Pattern P = pat();
+        if (j < 0 || j >= P.len) return -1;
+        if (P.hasNoteAt(key, j)) { P.notes(key).removeIf(n -> n.s == j); P.setStep(key, j, false); return -1; }
+        if (P.step(key, j)) {
+            int st = P.strength(key, j);
+            if (st == 1) { P.setStrength(key, j, 2); return 2; }
+            if (st == 2) { P.setStrength(key, j, 0); return 0; }
+            P.setStep(key, j, false); P.setStrength(key, j, 1); return -1;
+        }
+        P.setStep(key, j, true); P.setStrength(key, j, 1); return 1;
+    }
+
+    /** Drag paint: every step the finger crosses takes the first step's state. */
+    @JSExport public static void paintStep(String key, int j, boolean on) {
+        Project.Pattern P = pat();
+        if (j < 0 || j >= P.len || P.step(key, j) == on) return;
+        P.setStep(key, j, on);
+        if (on) P.setStrength(key, j, 1);
+    }
+
+    /** AppState.setLen: longer with fill copies what is there; + adds an empty bar; shorter drops bars past the end. */
+    @JSExport public static boolean setLen(int n, boolean fill) {
+        Project.Pattern P = pat();
+        int old = P.len;
+        if (n == old || n < 16 || n > 128 || n % 16 != 0) return false;
+        if (n > old && !fill) {
+            // an empty bar at the end
+        } else if (n > old) {
+            for (boolean[] a : P.steps.values()) for (int j = old; j < n; j++) a[j] = a[j % old];
+            for (java.util.List<Project.Note> l : P.notes.values()) {
+                java.util.List<Project.Note> base = new java.util.ArrayList<>();
+                for (Project.Note x : l) if (x.s < old) base.add(x);
+                for (int rep = 1; rep < n / old; rep++) for (Project.Note x : base) l.add(new Project.Note(x.s + rep * old, x.p, x.l));
+            }
+            for (float[] a : P.motion.values()) for (int j = old; j < n; j++) a[j] = a[j % old];
+        } else {
+            for (boolean[] a : P.steps.values()) for (int j = n; j < a.length; j++) a[j] = false;
+            for (java.util.List<Project.Note> l : P.notes.values()) { l.removeIf(x -> x.s >= n); for (Project.Note x : l) x.l = Math.min(x.l, n - x.s); }
+            for (float[] a : P.motion.values()) for (int j = n; j < a.length; j++) a[j] = Float.NaN;
+        }
+        P.extrasFor(Math.min(old, n), Math.max(old, n), n > old && fill);
+        P.len = n;
+        return true;
+    }
+
+    @JSExport public static void clearLoop() { pat().clear(); }
+    @JSExport public static void copyLoopTo(int to) { if (to >= 0 && to < Project.NSLOTS && to != proj.cur) proj.pats[to] = proj.pats[proj.cur].copy(); }
+    @JSExport public static void clearSoundInLoop(int pad) { if (pad >= 0 && pad < Project.SLOTS && !proj.kit[pad].isEmpty()) pat().forget(proj.kit[pad]); }
+    @JSExport public static void clearNotes() { for (java.util.List<Project.Note> l : pat().notes.values()) l.clear(); }
+
+    /** AppState.randomDrums: fresh steps for every loaded pad in this bank, busier on the first. */
+    @JSExport public static boolean randomDrums(int bank) {
+        Project.Pattern P = pat();
+        int n = 0;
+        for (int i = bank * Project.BANK; i < (bank + 1) * Project.BANK && i < Project.NPADS; i++) {
+            String k = proj.kit[i];
+            if (k.isEmpty()) continue;
+            for (int j = 0; j < P.len; j++) P.setStep(k, j, Math.random() < (n == 0 ? .3 : .14));
+            n++;
+        }
+        return n > 0;
+    }
+
+    @JSExport public static void setCur(int i) { if (i >= 0 && i < Project.NSLOTS) proj.cur = i; }
+    @JSExport public static void setSel(int pad) { if (pad >= 0 && pad < Project.SLOTS) proj.sel = pad; }
+    @JSExport public static void setBpm(int bpm) { proj.bpm = Math.max(60, Math.min(180, bpm)); }
+    @JSExport public static void setSwing(int sw) { proj.swing = Math.max(0, Math.min(100, sw)); }
+    @JSExport public static void setName(String n) { proj.name = n == null ? "" : n; }
+    @JSExport public static void setKey(String scale, int root) { proj.scale = Theory.SCALES.containsKey(scale) ? scale : "Chromatic"; proj.root = Math.max(0, Math.min(11, root)); }
+    @JSExport public static void setSongMode(boolean on) { proj.songMode = on && proj.songLen() > 0; }
+    @JSExport public static void setSongBar(int i, int slot) { if (i >= 0 && i < Project.MAXSONG) proj.song[i] = slot < 0 || slot >= Project.NSLOTS ? -1 : slot; }
+    @JSExport public static void insertSongBar(int i) { for (int k = Project.MAXSONG - 1; k > i; k--) proj.song[k] = proj.song[k - 1]; if (i >= 0 && i < Project.MAXSONG) proj.song[i] = -1; }
+    @JSExport public static void deleteSongBar(int i) { for (int k = i; k < Project.MAXSONG - 1; k++) proj.song[k] = proj.song[k + 1]; proj.song[Project.MAXSONG - 1] = -1; }
+    @JSExport public static void setMaster(double squash, double level) { proj.squash = Math.max(0, Math.min(1, squash)); proj.level = Math.max(0, Math.min(1.6, level)); }
+
+    @JSExport public static void assign(int pad, String key) { if (pad >= 0 && pad < Project.SLOTS && key != null && !key.isEmpty()) proj.assign(pad, key); }
+    @JSExport public static void clearPad(int pad) { if (pad >= 0 && pad < Project.SLOTS) proj.clearPad(pad); }
+    @JSExport public static void swapPads(int a, int b) { proj.swapPads(a, b); }
+    @JSExport public static void toggleMute(String key) { if (!proj.mutes.remove(key)) proj.mutes.add(key); }
+    @JSExport public static void toggleSolo(String key) { if (!proj.solos.remove(key)) proj.solos.add(key); }
+    @JSExport public static void setMutes(String csvKeys) { proj.mutes.clear(); if (csvKeys != null && !csvKeys.isEmpty()) for (String k : csvKeys.split("\n")) proj.mutes.add(k); }
+
+    /** The pad's sound edit (the doctor's table) as JSON, and setting it back. */
+    @JSExport public static String editJson(String key) { return Json.write(proj.edit(key).toMap()); }
+    @JSExport public static void setEditJson(String key, String json) {
+        try { proj.setEdit(key, SoundEdit.fromMap(Json.map(Json.parse(json)))); } catch (Throwable t) { fail(t); }
+    }
+
+    /* ---------- a recorded hit coming back from the worklet (AppState's drain loop) ---------- */
+
+    static final java.util.LinkedHashMap<Integer, Boolean> hitNew = new java.util.LinkedHashMap<>();
+
+    /** Applies one RecEvent as pollRec() wrote it (type, pat, key, step, len, hit, strength, pitches). */
+    @JSExport public static void applyRec(int type, int pi, String key, int step, int len, int hit, int strength, String pitches) {
+        if (pi < 0 || pi >= Project.NSLOTS) return;
+        Project.Pattern P = proj.pats[pi];
+        if (type == Engine.RecEvent.STEP) {
+            if (hit != 0) hitNew.put(hit, !P.step(key, step));
+            P.setStep(key, step, true); P.setStrength(key, step, strength);
+        } else if (type == Engine.RecEvent.OFF) {
+            int t = Math.floorMod(step, P.len * Project.TICKS);
+            if (hit != 0) hitNew.put(hit, !(t % Project.TICKS == 0 ? P.step(key, t / Project.TICKS) : P.hasOff(key, step)));
+            P.addOff(key, step);
+        } else if (type == Engine.RecEvent.CANCEL) {
+            Boolean was = hitNew.remove(hit);
+            if (was != null && was) {
+                if (len == 1) { int t = Math.floorMod(step, P.len * Project.TICKS); if (t % Project.TICKS == 0) P.setStep(key, t / Project.TICKS, false); else P.removeOff(key, step); }
+                else P.setStep(key, step, false);
+            }
+        } else {
+            java.util.List<Project.Note> notes = P.notes(key);
+            for (int q : csv(pitches)) {
+                notes.removeIf(n -> n.s == step && n.p == q);
+                notes.add(new Project.Note(step, q, len));
+            }
+        }
+        if (hitNew.size() > 64) { java.util.Iterator<Integer> it = hitNew.keySet().iterator(); for (int k = 0; k < 32 && it.hasNext(); k++) { it.next(); it.remove(); } }
     }
 
     /* ---------- theory, shared with the page so Keys and Chords match the app ---------- */
