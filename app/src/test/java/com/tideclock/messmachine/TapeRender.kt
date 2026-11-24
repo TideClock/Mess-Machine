@@ -177,7 +177,7 @@ class TapeRender {
     private fun fingerMove(id: Int, tag: String, fx: Float, fy: Float, note: String = "$tag#$id") {
         val p = rootPoint(tag, fx, fy)
         log.append("$frameNo,move,${p.x.toInt()},${p.y.toInt()},$note\n")
-        rule.onNodeWithTag(tag).performTouchInput { moveTo(id, Offset(width * fx, height * fy), 0) }
+        rule.onNodeWithTag(tag).performTouchInput { moveTo(id, Offset(width * fx, height * fy), 33) }
     }
     private fun fingerUp(id: Int, tag: String, note: String = "$tag#$id") {
         log.append("$frameNo,up,0,0,$note\n")
@@ -369,7 +369,7 @@ class TapeRender {
         fingerUp(0, tag, "swipe-$dir"); frame()
     }
     private fun snap(name: String) {
-        settle(); dumpTags(name)
+        state.toast = null; settle(); dumpTags(name)
         grab().let { b -> File(dir, "$name.png").outputStream().use { b.compress(Bitmap.CompressFormat.PNG, 100, it) }; b.recycle() }
     }
     private fun step(name: String, body: () -> Unit) {
@@ -406,8 +406,8 @@ class TapeRender {
     private var fx0 = .5f; private var fy0 = .5f
     /** A circle on a pad: the finger stays down afterwards, inside the sphere it opened. */
     private fun circle(tag: String, f0: Int) {
-        at(f0); fingerDown(0, tag, .8f, .5f, "circle"); frame()
-        for (k in 1..20) { val a = k * (2 * Math.PI / 18); fx0 = .5f + .3f * kotlin.math.cos(a).toFloat(); fy0 = .5f + .3f * kotlin.math.sin(a).toFloat(); fingerMove(0, tag, fx0, fy0, "circle"); frame() }
+        at(f0); fingerDown(0, tag, .63f, .5f, "circle"); frame()
+        for (k in 1..20) { val a = k * (2 * Math.PI / 18); fx0 = .5f + .13f * kotlin.math.cos(a).toFloat(); fy0 = .5f + .13f * kotlin.math.sin(a).toFloat(); fingerMove(0, tag, fx0, fy0, "circle"); frame() }
     }
     /** The held finger glides to a new spot (in pad widths from the pad's corner) over n frames. */
     private fun glide(tag: String, x: Float, y: Float, n: Int) {
@@ -450,9 +450,10 @@ class TapeRender {
         state.putOnPad(5, dance); load(dance)
         roll()
         at(60); swipe("pad-5", "left")
-        at(92); tapExact("HEAR IT", hold = 3)
+        at(113); tapExact("HEAR IT", hold = 3)
         at(128); tap("dtab-trim", hold = 2)
         at(136); drag("sheet", .933f, .203f, .503f, .203f, 14, note = "trim")
+        println("DEMO x3 trim en=${state.project.edit(dance).en} st=${state.project.edit(dance).st}")
         at(165); tap("dtab-tools", hold = 2)
         at(176); tapExact("4 SLICES", hold = 2)
         at(196); tapExact("CHOP TO PADS", hold = 3)
@@ -485,14 +486,14 @@ class TapeRender {
         state.tab = Tab.Synth
         roll()
         dumpTags("synth-pad")
-        at(8); key(8, 0, 8); at(30); key(8, 7, 8); at(52); key(8, 3, 8)
-        val first = listOf(0, 3, 7, 8, 0, 12); val second = listOf(7, 7, 12, 3, 7, 7)
+        at(6); key(8, 0, 26); at(40); key(8, 7, 26)
+        val first = listOf(0, 3, 7, 8, 0, 12)
         for ((i, k) in listOf("analog", "fm", "wave", "grain", "drum", "pluck").withIndex()) {
             val f = 75 + i * 30
             at(f); if (i > 0) { tap("synthkind-$k", hold = 2); println("DEMO x5 kind=${state.synthOn(8)?.kind?.id}") }
-            at(f + 5); key(8, first[i], 9); at(f + 17); key(8, second[i], 9)
+            at(f + 4); key(8, first[i], 22)
         }
-        for ((i, n) in listOf(0, 3, 7, 12, 8, 7, 3, 0).withIndex()) { at(262 + i * 11); key(8, n, 6) }
+        for ((i, n) in listOf(0, 3, 7, 12, 8, 7, 3, 0).withIndex()) { at(262 + i * 11); key(8, n, 8) }
         at(360)
     }
 
@@ -512,7 +513,7 @@ class TapeRender {
         circle(p, 240)
         glide(p, 1.45f, .5f, 10); glide(p, .5f, .5f, 6); glide(p, -.45f, .5f, 10); glide(p, 1.3f, .1f, 8)
         at(297); fingerUp(0, p, "sphere"); frame()
-        println("DEMO x6 moves=${state.project.pat().notes(state.project.kit[5]).size} notes")
+        frames(4); println("DEMO x6 notes=${state.project.pat().notes(state.project.kit[5]).size} sphere=${state.sphere}")
         at(480)
     }
 
@@ -522,8 +523,8 @@ class TapeRender {
         state.tab = Tab.Perform
         roll()
         at(60); press("fx-stutter", 30)
-        at(105); press("fx-echo", 30)
-        at(172); press("fx-tape", 66)
+        at(97); press("fx-echo", 30)
+        at(157); press("fx-tape", 52)
         at(300)
     }
 
@@ -557,12 +558,12 @@ class TapeRender {
         println("DEMO x9 layers " + listOf(0, 3, 2, 4, 8, 5).joinToString(" ") { "${it}:${pr.pat().notes(pr.kit[it]).size}" })
         at(495); tap("rec", hold = 3)
         for ((i, b) in listOf(1, 2, 3, 0).withIndex()) { at(525 + i * 15); tap("bank-$b", hold = 2) }
-        at(600); tap("tab-Synth", hold = 2); at(645); tap("tab-Pads", hold = 2)
-        for ((i, s) in listOf("classic", "stage", "felt", "rust", "specimen").withIndex()) { at(675 + i * 15); state.pickSkin(s) }
+        at(573); tap("tab-Synth", hold = 2); at(603); tap("tab-Pads", hold = 2)
+        for ((i, s) in listOf("classic", "stage", "felt", "rust", "specimen").withIndex()) { at(618 + i * 15); state.pickSkin(s) }
         at(900); state.fxPress("tape", true, 1f)
         at(958); state.stop(); state.fxPress("tape", false)
-        at(990); tap("pad-7", hold = 3)
-        at(1080)
+        at(1035); tap("pad-7", hold = 3)
+        at(1140)
     }
 
     /** Not part of the video's motion: still close-ups of the inventory screens for exhibit 8. */
