@@ -49,6 +49,7 @@ public final class WebEngine {
             // Every key is kept: a pad whose sound has not arrived yet is simply skipped by the snapshot until refresh().
             Project.Loaded l = Project.fromJson(json, null);
             proj = l.project;
+            proj.dropKeep = dropKeep;
             rebuild();
             return l.missing;
         } catch (Throwable t) { fail(t); return -1; }
@@ -324,6 +325,229 @@ public final class WebEngine {
             }
         }
         if (hitNew.size() > 64) { java.util.Iterator<Integer> it = hitNew.keySet().iterator(); for (int k = 0; k < 32 && it.hasNext(); k++) { it.next(); it.remove(); } }
+    }
+
+
+    /* ---------- Drop (held: only the pads you touch keep sounding; never saved) ---------- */
+
+    static java.util.Set<String> dropKeep;
+    /** keys separated by newlines; null or "-" ends Drop. */
+    @JSExport public static void setDrop(String keys) {
+        if (keys == null || keys.equals("-")) dropKeep = null;
+        else { dropKeep = new java.util.HashSet<>(); if (!keys.isEmpty()) for (String k : keys.split("\n")) dropKeep.add(k); }
+        proj.dropKeep = dropKeep;
+        rebuild();
+    }
+
+    /* ---------- per-pad settings (padOpts: glide, LFO, FX strip resting places, XY, pack) ---------- */
+
+    @JSExport public static String padOptsJson(int pad) { return Json.write(proj.opt(pad).toMap()); }
+    @JSExport public static void setPadOptsJson(int pad, String json) {
+        try { proj.setOpt(pad, PadOpts.fromMap(Json.map(Json.parse(json)))); } catch (Throwable t) { fail(t); }
+    }
+
+    /* ---------- the step sheet: strength, chance, locks ---------- */
+
+    @JSExport public static String stepJson(String key, int j) {
+        Project.Pattern P = pat();
+        StringBuilder b = new StringBuilder("{\"on\":").append(P.step(key, j)).append(",\"strength\":").append(P.strength(key, j))
+            .append(",\"chance\":").append(P.chance(key, j)).append(",\"label\":").append(Json.write(Project.Pattern.chanceLabel(P.chance(key, j))))
+            .append(",\"locks\":{");
+        boolean first = true;
+        for (int t = 0; t < Engine.NT; t++) { float v = P.lock(key, t, j); if (Float.isNaN(v)) continue; if (!first) b.append(','); first = false; b.append('"').append(t).append("\":").append(v); }
+        return b.append("}}").toString();
+    }
+    @JSExport public static void setStrength(String key, int j, int v) { pat().setStrength(key, j, v); }
+    @JSExport public static void setChance(String key, int j, int v) { pat().setChance(key, j, v); }
+    @JSExport public static void setLock(String key, int t, int j, float v) { pat().setLock(key, t, j, v); }
+    @JSExport public static void rowTool(String key, String tool, int n) {
+        Project.Pattern P = pat();
+        if (tool.equals("every")) P.rowEvery(key, n);
+        else if (tool.equals("repeat")) P.rowRepeat(key, n);
+        else if (tool.equals("nudge")) P.rowNudge(key, n);
+        else if (tool.equals("spread")) P.rowSpread(key, n);
+        else if (tool.equals("clear")) P.rowClear(key);
+    }
+
+    /* ---------- the Roll: notes on the current loop ---------- */
+
+    /** "s.p.l" triples of one sound's notes in the current loop, comma separated. */
+    @JSExport public static String notesOf(String key) {
+        StringBuilder b = new StringBuilder();
+        java.util.List<Project.Note> l = pat().notes.get(key);
+        if (l != null) for (Project.Note n : l) { if (b.length() > 0) b.append(','); b.append(n.s).append('.').append(n.p).append('.').append(n.l); }
+        return b.toString();
+    }
+    /** A note (or a chord as pitches "p,p,p") at step s, length l: replaces notes at the same step and pitch. */
+    @JSExport public static void addNotes(String key, int s, String pitches, int l) {
+        Project.Pattern P = pat();
+        if (s < 0 || s >= P.len) return;
+        java.util.List<Project.Note> notes = P.notes(key);
+        for (int q : csv(pitches)) { notes.removeIf(n -> n.s == s && n.p == q); notes.add(new Project.Note(s, q, Math.max(1, Math.min(l, P.len - s)))); }
+    }
+    @JSExport public static void removeNote(String key, int s, int p) { java.util.List<Project.Note> l = pat().notes.get(key); if (l != null) l.removeIf(n -> n.s == s && n.p == p); }
+    @JSExport public static void setFold(boolean on) { proj.fold = on; }
+
+    /* ---------- synths (SE-11) ---------- */
+
+    /** Every synth kind with its knobs and preset names, for the Synth page. */
+    @JSExport public static String synthKinds() {
+        java.util.List<Object> out = new java.util.ArrayList<>();
+        for (Synth.Kind k : Synth.KINDS) {
+            Map<String, Object> m = new java.util.LinkedHashMap<>();
+            m.put("id", k.id); m.put("name", k.name); m.put("blurb", k.blurb);
+            java.util.List<Object> ps = new java.util.ArrayList<>();
+            for (Synth.Param q : k.params) {
+                Map<String, Object> pm = new java.util.LinkedHashMap<>();
+                pm.put("id", q.id); pm.put("name", q.name); pm.put("group", q.group); pm.put("curve", (double) q.curve);
+                pm.put("min", q.min); pm.put("max", q.max); pm.put("def", q.def); pm.put("unit", q.unit); pm.put("simple", q.simple);
+                java.util.List<Object> ch = new java.util.ArrayList<>(); for (String c : q.choices) ch.add(c); pm.put("choices", ch);
+                ps.add(pm);
+            }
+            m.put("params", ps);
+            java.util.List<Object> pr = new java.util.ArrayList<>(); for (Synth.Patch x : k.presets) pr.add(x.name); m.put("presets", pr);
+            out.add(m);
+        }
+        return Json.write(out);
+    }
+    @JSExport public static String paramShow(String kind, String id, double v) { Synth.Kind k = Synth.kind(kind); int i = k.at(id); return i < 0 ? "" : k.params[i].show(v); }
+    @JSExport public static double paramFromKnob(String kind, String id, double knob) { Synth.Kind k = Synth.kind(kind); int i = k.at(id); return i < 0 ? 0 : k.params[i].fromKnob(knob); }
+    @JSExport public static double paramToKnob(String kind, String id, double v) { Synth.Kind k = Synth.kind(kind); int i = k.at(id); return i < 0 ? 0 : k.params[i].toKnob(v); }
+
+    @JSExport public static String synthJson(int pad) { Synth.Patch sp = proj.synth(pad >= 0 && pad < Project.SLOTS ? proj.kit[pad] : null); return sp == null ? "" : Json.write(sp.toMap()); }
+
+    /** AppState.ensureScratch: the scratch slot always holds a synth. */
+    @JSExport public static boolean ensureScratch() {
+        String k = proj.kit[Project.SCRATCH];
+        if (!k.isEmpty() && Project.isSynth(k) && proj.synths.containsKey(k)) return false;
+        String key = proj.newSynthKey();
+        proj.synths.put(key, Synth.ANALOG.presets.get(0).copy());
+        proj.kit[Project.SCRATCH] = key;
+        return true;
+    }
+
+    static String defaultGrainSource(int pad) {
+        String here = pad >= 0 && pad < Project.SLOTS ? proj.kit[pad] : "";
+        if (!here.isEmpty() && !Project.isSynth(here)) return here;
+        for (String k : proj.kit) if (!k.isEmpty() && !Project.isSynth(k)) return k;
+        return "samples/glass-harp.wav";
+    }
+
+    /** AppState.newSynth: a new synth from a preset on a pad (replacing what was there). */
+    @JSExport public static String newSynth(int pad, String kind, int preset) {
+        if (pad < 0 || pad >= Project.SLOTS) return "";
+        Synth.Kind k = Synth.kind(kind);
+        Synth.Patch made = (preset >= 0 && preset < k.presets.size() ? k.presets.get(preset) : new Synth.Patch(k, k.name)).copy();
+        if (k == Synth.GRAIN && made.src.isEmpty()) made.src = defaultGrainSource(pad);
+        String key = proj.newSynthKey();
+        String old = proj.kit[pad];
+        proj.synths.put(key, made);
+        proj.kit[pad] = key;
+        if (!old.isEmpty() && Project.isSynth(old) && proj.padOf(old) < 0 && !old.equals(proj.kit[Project.SCRATCH])) proj.synths.remove(old);
+        if (pad < Project.NPADS) proj.sel = pad;
+        return key;
+    }
+
+    /** AppState.loadSynthPreset: a preset's knobs into a pad's synth (the key stays, so steps and notes stay). */
+    @JSExport public static void loadSynthPreset(int pad, String kind, int preset) {
+        String k = proj.kit[pad];
+        if (!Project.isSynth(k)) return;
+        Synth.Kind kk = Synth.kind(kind);
+        if (preset < 0 || preset >= kk.presets.size()) return;
+        Synth.Patch old = proj.synths.get(k);
+        String keep = old == null ? "" : old.src;
+        Synth.Patch made = kk.presets.get(preset).copy();
+        if (kk == Synth.GRAIN && made.src.isEmpty()) made.src = keep.isEmpty() ? defaultGrainSource(pad) : keep;
+        proj.synths.put(k, made);
+    }
+    /** A new kind on a pad's synth, keeping its key: the kind's first preset. */
+    @JSExport public static void setSynthKind(int pad, String kind) { loadSynthPreset(pad, kind, 0); }
+    @JSExport public static void setSynth(int pad, String id, double v) { Synth.Patch sp = proj.synth(proj.kit[pad]); if (sp != null) sp.set(id, v); }
+    @JSExport public static void setGrainSource(int pad, String key) { Synth.Patch sp = proj.synth(proj.kit[pad]); if (sp != null) sp.src = key == null ? "" : key; }
+    @JSExport public static void setSynthName(int pad, String name) { Synth.Patch sp = proj.synth(proj.kit[pad]); if (sp != null && name != null && !name.isEmpty()) sp.name = name; }
+
+    /** AppState.scratchToPad: the scratch synth's key moves to the pad (its notes go with it); a copy stays. */
+    @JSExport public static boolean scratchToPad(int pad) {
+        if (pad < 0 || pad >= Project.NPADS) return false;
+        String key = proj.kit[Project.SCRATCH];
+        Synth.Patch sp = proj.synths.get(key);
+        if (sp == null) return false;
+        String old = proj.kit[pad];
+        proj.kit[pad] = key;
+        proj.opts[pad] = proj.opts[Project.SCRATCH] == null ? null : proj.opts[Project.SCRATCH].copy();
+        boolean still = false; for (String k2 : proj.kit) if (k2.equals(old)) still = true;
+        if (!old.isEmpty() && Project.isSynth(old) && !still) proj.synths.remove(old);
+        String nk = proj.newSynthKey();
+        proj.synths.put(nk, sp.copy());
+        proj.kit[Project.SCRATCH] = nk;
+        proj.sel = pad;
+        return true;
+    }
+
+    /* ---------- chords ---------- */
+
+    @JSExport public static String chordSetsJson() {
+        java.util.List<Object> out = new java.util.ArrayList<>();
+        for (Theory.ChordSet c : Theory.CHORDSETS.values()) { Map<String, Object> m = new java.util.LinkedHashMap<>(); m.put("name", c.name); m.put("home", c.home); out.add(m); }
+        return Json.write(out);
+    }
+    /** AppState.chordFor: the notes a key plays in a chord mode ("off", "triad", "seventh", "sus", "set:<name>"), as CSV. */
+    @JSExport public static String chordFor(int p, String mode, String scale, int root) {
+        if (mode == null || mode.equals("off")) return String.valueOf(p);
+        int idx = mode.startsWith("set:") ? Theory.setIndexOfKey(p, mode, scale, root) : 0;
+        if (idx == Integer.MIN_VALUE) return String.valueOf(p);
+        return csvOf(Theory.chordOf(p, idx, mode, scale, root));
+    }
+    @JSExport public static String chordName(int p, String mode, String scale, int root) {
+        if (mode == null || mode.equals("off")) return Theory.noteName(p);
+        int idx = mode.startsWith("set:") ? Theory.setIndexOfKey(p, mode, scale, root) : 0;
+        if (idx == Integer.MIN_VALUE) return Theory.noteName(p);
+        return Theory.chordLabel(p, idx, mode, scale, root);
+    }
+    @JSExport public static String smooth(String chord, String prev) { return csvOf(Theory.smooth(csv(chord), prev == null || prev.isEmpty() ? null : csv(prev))); }
+    @JSExport public static String chordNotes(String chord) { return Theory.chordNotes(csv(chord)); }
+    @JSExport public static int foldP(int p) { return Theory.foldP(p); }
+
+    /* ---------- exports: the app's own bounce, stems, WAV and MIDI writers ---------- */
+
+    static Int8Array bytesOf(byte[] b) { Int8Array o = Int8Array.create(b.length); for (int k = 0; k < b.length; k++) o.set(k, b[k]); return o; }
+    static int exportRate() { return en == null ? 44100 : en.rate(); }
+
+    /** The mess as a stereo 16-bit WAV: the loop played `loops` times, or the song. */
+    @JSExport public static Int8Array wavOf(boolean song, int loops) {
+        try {
+            float[] a = Engine.bounce(proj, SRC, exportRate(), song, loops);
+            java.io.ByteArrayOutputStream os = new java.io.ByteArrayOutputStream();
+            Wav.writeStereo16(os, a, exportRate());
+            return bytesOf(os.toByteArray());
+        } catch (Throwable t) { fail(t); return Int8Array.create(0); }
+    }
+    static java.util.List<String> stemKeys = new java.util.ArrayList<>();
+    static java.util.List<float[]> stemData = new java.util.ArrayList<>();
+    /** Renders every sound on its own (all the same length); returns the keys, newline separated. */
+    @JSExport public static String stems(boolean song, int loops) {
+        stemKeys.clear(); stemData.clear();
+        try {
+            for (Map.Entry<String, float[]> e : Engine.bounceStems(proj, SRC, exportRate(), song, loops).entrySet()) { stemKeys.add(e.getKey()); stemData.add(e.getValue()); }
+        } catch (Throwable t) { fail(t); }
+        return String.join("\n", stemKeys);
+    }
+    @JSExport public static Int8Array stemWav(int i) {
+        try {
+            java.io.ByteArrayOutputStream os = new java.io.ByteArrayOutputStream();
+            Wav.writeStereo16(os, stemData.get(i), exportRate());
+            return bytesOf(os.toByteArray());
+        } catch (Throwable t) { fail(t); return Int8Array.create(0); }
+    }
+    /** A format 1 MIDI file (PPQ 96). names: JSON object key to track name. */
+    @JSExport public static Int8Array midiOf(boolean song, int loops, String names) {
+        try {
+            Map<String, String> nm = new java.util.HashMap<>();
+            for (Map.Entry<String, Object> e : Json.map(Json.parse(names)).entrySet()) nm.put(e.getKey(), String.valueOf(e.getValue()));
+            java.io.ByteArrayOutputStream os = new java.io.ByteArrayOutputStream();
+            MidiOut.write(proj, song, loops, nm, os);
+            return bytesOf(os.toByteArray());
+        } catch (Throwable t) { fail(t); return Int8Array.create(0); }
     }
 
     /* ---------- theory, shared with the page so Keys and Chords match the app ---------- */
