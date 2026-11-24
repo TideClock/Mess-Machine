@@ -123,7 +123,7 @@ One line each, dated, with the reason and who decided (BT-2). Older decisions li
   phone plays only its own sound and the other's new recordings arrive at the start of the next loop; sounds cap at
   100 s but recorded live parts may be song length; Supabase Pro the day accounts reach Play; deleting an account
   removes that person's sounds from others' messes unless they were submitted to the Vault (kept with credit, usable in
-  new packs); Netlify hosts the web side. Open: storage per account for song-length takes.
+  new packs); Netlify hosts the web side; 250 MB of cloud sounds per account at full quality (about 38 minutes).
 - 2026-11-22 Sizing and colour (Tyler: "the sizing is crazy", dock keys enormous on the tablet next to the synth's,
   Steps' keys huge next to the dock's; "why didn't you keep the colors behind all the buttons"): keys no longer grow
   with the screen (Btn, PanelKey, the tab slot): one size in real dp. A key with an icon is filled with its group's
