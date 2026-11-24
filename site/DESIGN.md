@@ -14,7 +14,6 @@ Rewritten at the end of every session and at each step of a long job. Read this 
   https://claude.ai/artifact/R5WS6FZMoKc86LYuHYDcV2 (its Outcome section says what shipped and what changed from the plan).
   `python3 site/build.py` rebuilds; `NSD_SNAPSHOT=1` also refreshes `house.snapshot.html` (the ready-made house).
 - **Earlier proposal doc:** https://claude.ai/artifact/L2m9XThxcL5SvrZeQnJd9s, items NSD-1 to NSD-29.
-  says what shipped.
 - **Not done:** NSD-27 (an alpha copy with the BUG button). It needs its own session: the alpha is a second artifact
   that needs a copy of the live assets (about 180 MB) and the recorder's database rules. NSD-29's bugtest.json waits
   for it; `site/tools/precheck.sh` covers the checks until then.
