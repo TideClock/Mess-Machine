@@ -11,7 +11,8 @@ const URL = process.env.NSD_URL || ('file://' + (process.env.NSD_PAGE || '/home/
     for (const v of VIEWS) {
       const p = await ctx.newPage(); const errs = [];
       p.on('pageerror', e => errs.push('pageerror: ' + e.message));
-      p.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 200)); });
+      p.on('console', m => { if (m.type() === 'error' && !/^Failed to load resource/.test(m.text())) errs.push('console: ' + m.text().slice(0, 200)); });
+      p.on('response', r => { if (r.status() >= 400) errs.push('failed: ' + r.url() + ' ' + r.status()); });
       p.on('requestfailed', r => { const u = r.url(); if (!/fonts\.g/.test(u)) errs.push('failed: ' + u.replace('file:///home/claude/site/', '')); });
       const t0 = Date.now();
       await p.goto(URL + '#' + v, { waitUntil: 'load' }).catch(e => errs.push('goto ' + e.message));

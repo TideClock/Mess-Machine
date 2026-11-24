@@ -215,7 +215,7 @@ details.pile[open] > summary small::after{content:''}
 .shelfhead{font-family:var(--font-display);font-weight:400;font-size:22px;margin:26px 0 4px;padding:0 6px}
 @media (max-width:700px){.deck .top{grid-template-columns:1fr}}
 
-/* SPECIMENS: the laboratory. Wall of cabinets from a distance -> click a cabinet -> zoomed shelves of small jars. Sequencer + logbook below. */
+/* SPECIMENS: the laboratory. Wall of cabinets from a distance -> click a cabinet -> zoomed shelves of small jars. The Mess Machine opens in its own room. */
 #v-specimens{--lab-wall:#101716;--lab-tile:#19231f;--steel:#141b1b;--steel-l:#2b3a39;--brass:#c9a24b;--tag:#efe0b3}
 .labbar{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin-bottom:16px}
 .labbar .spacer{flex:1}
@@ -330,138 +330,21 @@ details.pile[open] > summary small::after{content:''}
 .pile .jar2:nth-child(3n) svg{transform:rotate(-8deg)}.pile .jar2:nth-child(4n+1) svg{transform:rotate(6deg)}
 .jar2.picked svg{animation:wob .35s ease-out 3;filter:drop-shadow(0 0 10px var(--yellow))}
 
-
-/* sequencer */
-.paneswitch{display:flex;width:max-content;max-width:100%;margin:0 0 20px;border:var(--stroke) solid var(--rule);box-shadow:var(--shadow-hard);background:var(--paper)}
-.paneswitch button{all:unset;box-sizing:border-box;cursor:pointer;padding:12px 18px;font-family:var(--font-display);font-size:clamp(16px,2.4vw,24px);line-height:1;text-transform:uppercase;color:var(--ink);min-width:0}
-.paneswitch button+button{border-left:var(--stroke) solid var(--rule)}
-.paneswitch button small{display:block;margin-top:5px;font:500 11px var(--font-mono);text-transform:none;letter-spacing:0;opacity:.75}
-.paneswitch button[aria-selected="true"]{background:#18161a;color:var(--yellow)}
-.paneswitch button:hover:not([aria-selected="true"]){background:color-mix(in srgb,var(--yellow) 35%,transparent)}
-.paneswitch button:focus-visible{outline:3px solid var(--focus);outline-offset:-7px}
-@media (max-width:760px){.paneswitch{width:100%}.paneswitch button{flex:1 1 50%;padding:10px 10px}}
-.seq{margin-top:0;border:var(--stroke) solid var(--rule);background:#18161a;color:#fff4e2;padding:18px;box-shadow:var(--shadow-hard)}
-.seq h2{font-family:var(--font-display);font-weight:400;font-size:clamp(22px,3.4vw,32px);line-height:1;text-transform:uppercase;margin-bottom:12px;color:var(--yellow)}
-.seq .ctl{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin-bottom:14px}
-.seq .ctl label{font-family:var(--font-mono);font-size:13px;display:flex;gap:8px;align-items:center}
-.seq .btn.ghost{background:#2b272e;color:#fff4e2;border-color:#fff4e2}
-.seq .btn.ghost:hover,.seq .btn.ghost[aria-pressed="true"]{background:var(--yellow);color:#18161a}
-.seq .now-seq{font-family:var(--font-mono);font-size:13px;color:#bdb2bd}
-.seqgrid{overflow-x:auto}
-.seqgrid table{border-collapse:separate;border-spacing:4px;min-width:600px}
-.seqgrid th{font:800 12px var(--font-sans);letter-spacing:.04em;text-transform:uppercase;text-align:right;padding-right:6px;white-space:nowrap;color:#fff4e2}
-.seqgrid th .rn{all:unset;cursor:pointer;border-bottom:2px dotted #fff4e2}
-.seqgrid th .rx{all:unset;cursor:pointer;margin-left:6px;color:#bdb2bd;padding:0 4px}
-.seqgrid th .rx:hover,.seqgrid th .rn:hover{color:var(--yellow)}
-.seqgrid td button{width:30px;height:30px;border:2px solid #fff4e2;background:#2b272e;cursor:pointer;padding:0}
-.seqgrid td:nth-child(4n+2) button{background:#3a3440}
-.seqgrid td button[aria-pressed="true"]{background:var(--c,var(--pink))}
-.seqgrid td button.now{outline:3px solid #fff4e2;outline-offset:1px}
-.kitnote{font-family:var(--font-mono);font-size:12px;color:#bdb2bd;margin:10px 0 0}
-/* mess machine v2: loop slots, piano roll, song lane, FX */
-.modesw{display:flex}.modesw .btn{box-shadow:none}.modesw .btn+.btn{border-left:0}
-.loopbar{display:flex;flex-wrap:wrap;gap:10px 12px;align-items:center;padding:12px 0;border-top:2px dashed #555}
-.mlabel{font:800 12px var(--font-sans);letter-spacing:.1em;text-transform:uppercase;color:#bdb2bd}
-.slots{display:flex;flex-wrap:wrap;gap:6px}
-.slots button{all:unset;box-sizing:border-box;cursor:pointer;min-width:34px;height:34px;display:grid;place-items:center;border:2px solid #fff4e2;background:#2b272e;color:#fff4e2;font:900 15px var(--font-display);position:relative}
-.slots button.used::after{content:"";position:absolute;right:3px;top:3px;width:6px;height:6px;border-radius:50%;background:var(--pink)}
-.slots button[aria-selected="true"]{background:var(--yellow);color:#18161a}
-.slots button:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
-.slots.lane{gap:4px}
-.slots.lane button{min-width:30px;height:30px;font-size:13px}
-.slots.lane button.used{background:#3d2a46}.slots.lane button.used::after{display:none}
-.slots.lane button.past{opacity:.45}
-.slots.lane button:nth-child(4n+1){margin-left:6px}
-.slots.lane button.now{background:var(--pink);color:#18161a;opacity:1}
-.mhead{display:flex;flex-wrap:wrap;gap:10px;align-items:center;font:800 13px var(--font-sans);letter-spacing:.12em;text-transform:uppercase;color:var(--yellow);margin:18px 0 8px;padding-top:14px;border-top:2px dashed #555}
-.rollbar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-bottom:8px;font:500 13px var(--font-mono)}
-.rollbar select{font:500 14px var(--font-mono);background:#2b272e;color:#fff4e2;border:2px solid #fff4e2;padding:6px 8px;border-radius:0;max-width:220px}
-.rollwrap{overflow:auto;max-height:470px;border:2px solid #fff4e2;background:#100e12}
-.roll{display:grid;grid-template-columns:46px repeat(var(--cols),minmax(20px,34px));grid-auto-rows:17px;gap:1px;width:max-content;background:#100e12}
-.roll button{all:unset;box-sizing:border-box;cursor:pointer;background:#2b272e}
-.roll button.blk{background:#211e24}
-.roll button.beat{box-shadow:inset 2px 0 0 #4a4450}
-/* each row takes a shade of the paint: root starts on teal and walks to riot across the octave */
-.roll .pc0{--rc:var(--teal)}.roll .pc1{--rc:color-mix(in oklab,var(--teal) 75%,var(--pink))}.roll .pc2{--rc:color-mix(in oklab,var(--teal) 50%,var(--pink))}.roll .pc3{--rc:color-mix(in oklab,var(--teal) 25%,var(--pink))}.roll .pc4{--rc:var(--pink)}.roll .pc5{--rc:color-mix(in oklab,var(--pink) 75%,var(--yellow))}.roll .pc6{--rc:color-mix(in oklab,var(--pink) 50%,var(--yellow))}.roll .pc7{--rc:color-mix(in oklab,var(--pink) 25%,var(--yellow))}.roll .pc8{--rc:var(--yellow)}.roll .pc9{--rc:color-mix(in oklab,var(--yellow) 75%,var(--riot))}.roll .pc10{--rc:color-mix(in oklab,var(--yellow) 50%,var(--riot))}.roll .pc11{--rc:color-mix(in oklab,var(--yellow) 25%,var(--riot))}
-.roll button[data-s]{background:color-mix(in srgb,var(--rc,#2b272e) 15%,#2b272e)}
-.roll button[data-s].blk{background:color-mix(in srgb,var(--rc,#211e24) 9%,#211e24)}
-.roll .rk{box-shadow:inset -6px 0 0 var(--rc,transparent)}
-.roll button.on,.roll button[data-s].on{background:var(--rc,var(--teal))}
-.roll button.on.head,.roll button[data-s].on.head{box-shadow:inset 3px 0 0 #fff4e2;background:var(--rc,var(--teal))}
-.roll button.on.end{border-right:2px solid #18161a}
-.roll button.now{outline:2px solid #fff4e2;outline-offset:-2px}
-.roll .rk{position:sticky;left:0;z-index:1;background:#fff4e2;color:#18161a;font:800 10px/17px var(--font-mono);padding-left:4px;border-bottom:1px solid #18161a}
-.roll .rk.blk{background:#18161a;color:#fff4e2}
-.roll .rk.root{background:var(--yellow);color:#18161a}
-.roll button:focus-visible{outline:2px solid var(--yellow);outline-offset:-2px}
-.fxrow{display:grid;grid-template-columns:minmax(0,220px) 1fr;gap:14px;align-items:stretch}
-.xy{position:relative;aspect-ratio:1;border:2px solid #fff4e2;background:radial-gradient(circle at 100% 0,#3a1f2e,transparent 70%),linear-gradient(90deg,#1c2a29,#2b272e);cursor:crosshair;touch-action:none;overflow:hidden;user-select:none}
-.xy span{position:absolute;left:10px;top:8px;font:800 12px var(--font-sans);letter-spacing:.1em;text-transform:uppercase}
-.xy small{position:absolute;left:10px;bottom:8px;font:500 11px var(--font-mono);color:#bdb2bd}
-.xy i{position:absolute;left:100%;top:100%;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;border:3px solid #fff4e2;background:var(--pink);transition:opacity .2s;opacity:.35}
-.xy.on i{opacity:1;box-shadow:0 0 18px var(--pink)}
-.fxbtns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.fxb{all:unset;box-sizing:border-box;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;display:grid;place-items:center;gap:4px;min-height:64px;padding:10px;border:3px solid #fff4e2;background:#2b272e;color:#fff4e2;font:900 16px var(--font-display);text-transform:uppercase;text-align:center;box-shadow:4px 4px 0 #000}
-.fxb kbd{font:500 11px var(--font-mono);color:#bdb2bd;border:1px solid #bdb2bd;padding:0 5px}
-.fxb[aria-pressed="true"]{background:var(--pink);color:#18161a;transform:translate(2px,2px);box-shadow:2px 2px 0 #000}
-.fxb[aria-pressed="true"] kbd{color:#18161a;border-color:#18161a}
-.fxb:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
-@media (max-width:620px){.fxrow{grid-template-columns:1fr}.xy{aspect-ratio:2/1}}
-/* ---- Koala-style machine ---- */
-.padzone{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px;padding:14px 0;border-top:2px dashed #555}
-.padbar{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin-bottom:10px}
-.padbar select{font:500 13px var(--font-mono);background:#2b272e;color:#fff4e2;border:2px solid #fff4e2;padding:5px 6px;border-radius:0}
-.banks{display:flex;gap:6px;flex-wrap:wrap}
-.banks button{all:unset;cursor:pointer;box-sizing:border-box;padding:6px 10px;border:2px solid #fff4e2;background:#2b272e;color:#fff4e2;font:800 12px var(--font-sans);letter-spacing:.06em;text-transform:uppercase;display:flex;gap:6px;align-items:center}
-.banks button small{font:500 11px var(--font-mono);color:#bdb2bd}
-.banks button[aria-selected="true"]{background:var(--yellow);color:#18161a}.banks button[aria-selected="true"] small{color:#18161a}
-.banks button:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
-.recbtn[aria-pressed="true"]{background:#ff2e4d!important;color:#fff!important;border-color:#fff!important}
-.padgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));max-width:460px;gap:8px;touch-action:none;user-select:none;-webkit-user-select:none}
-.kpad{all:unset;box-sizing:border-box;cursor:pointer;position:relative;aspect-ratio:1;min-width:0;display:grid;align-content:space-between;padding:7px;border:2px solid #000;border-radius:6px;background:linear-gradient(160deg,color-mix(in srgb,var(--c) 75%,#fff 10%),color-mix(in srgb,var(--c) 55%,#000));color:#18161a;box-shadow:0 5px 0 #000;transition:transform .05s,box-shadow .05s;-webkit-tap-highlight-color:transparent}
-.kpad.empty{background:#221f25;color:#6e6672;border-style:dashed;border-color:#4a4450;box-shadow:none}
-.kpad.sel{outline:3px solid #fff4e2;outline-offset:2px}
-.kpad.hit{transform:translateY(4px);box-shadow:0 1px 0 #000;filter:brightness(1.35)}
-.kpad .pn{font:800 11px var(--font-mono)}
-.kpad b{font:800 clamp(10px,2.6vw,12px)/1.1 var(--font-sans);text-transform:uppercase;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow-wrap:break-word;hyphens:auto}
-.kpad kbd{position:absolute;right:6px;top:5px;font:500 10px var(--font-mono);opacity:.7}
-.kpad.ed::after{content:"\2702";position:absolute;right:6px;bottom:4px;font-size:12px}
-.padgrid.keys .kpad b{font:900 18px var(--font-display);text-transform:none}
-.kpad:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
-.padgrid.keys.chords .kpad .pn{font:800 13px var(--font-sans);text-transform:none}
-.keystrip{margin-top:12px;max-width:460px;background:#0b0a0c;border:2px solid #000;border-top:6px solid var(--c);padding:8px;box-shadow:0 5px 0 #000;animation:ksdrop .18s ease-out}
-@keyframes ksdrop{from{transform:translateY(-10px);opacity:0}}
-.ksbar{display:flex;align-items:center;gap:10px;margin-bottom:8px;min-width:0}
-.ksbar b{flex:1;min-width:0;font:800 12px var(--font-sans);letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#kschord{font:500 12px var(--font-mono);color:var(--yellow);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55%}
-.kskeys{display:flex;gap:3px;height:128px;touch-action:none;user-select:none;-webkit-user-select:none}
-.wk{all:unset;box-sizing:border-box;cursor:pointer;flex:1 1 0;min-width:0;display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px;background:linear-gradient(#fff4e2 0 80%,#d6c8b0);border:2px solid #000;border-radius:0 0 6px 6px;color:#18161a;box-shadow:0 4px 0 #000;transition:transform .04s;-webkit-tap-highlight-color:transparent}
-.wk span{font:800 10px var(--font-mono);writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;opacity:.8;pointer-events:none}
-.wk.rt{background:linear-gradient(#fff4e2 0 66%,var(--c))}
-.wk.hit{transform:translateY(3px);box-shadow:0 1px 0 #000;background:var(--c)}
-.wk:focus-visible{outline:3px solid var(--yellow);outline-offset:1px}
-.padpick{display:grid;gap:4px;margin:0 0 12px;font:500 12px var(--font-mono);color:#bdb2bd}
-.padpick select{max-width:100%;height:36px;background:#000;color:#fff4e2;border:2px solid #fff4e2;border-radius:0;font:700 13px var(--font-sans);padding:0 6px}
-#nrarp{height:34px;background:#000;color:#fff4e2;border:2px solid #fff4e2;border-radius:0;font:700 12px var(--font-sans)}
-.padsel{font:500 14px var(--font-mono);margin:0 0 10px;color:#fff4e2}.padsel b{color:var(--yellow);margin-right:6px}
-.edtag{background:var(--yellow);color:#18161a;padding:0 6px;font-size:11px}
+/* the lab's hint line and its own sounds */
+#labhint{border-left:4px solid var(--teal);padding:8px 12px;color:var(--ink-muted);background:color-mix(in srgb,var(--teal) 10%,transparent);margin:0 0 14px;max-width:70ch}
 .srcbtns{display:flex;flex-wrap:wrap;gap:8px}
 #micbtn[aria-pressed="true"]{background:#ff2e4d;color:#fff;border-color:#fff;animation:recblink 1s steps(2) infinite}
 @keyframes recblink{50%{opacity:.6}}
-.seqgrid th .pnum{font:500 10px var(--font-mono);color:#bdb2bd;margin-right:6px}
-.seqgrid th .rb{all:unset;cursor:pointer;margin-left:4px;padding:1px 5px;border:1px solid #6e6672;color:#bdb2bd;font:800 10px var(--font-mono)}
-.seqgrid th .rb.on{background:var(--yellow);color:#18161a;border-color:var(--yellow)}
-.seqgrid th .rb:hover,.seqgrid th .rb:focus-visible{border-color:var(--yellow);color:var(--yellow)}
-.seqgrid th .rb.on:hover{color:#18161a}
-.seqgrid tr.muted td button{opacity:.35}
-.seqgrid td button.nt{background-image:radial-gradient(circle at 50% 50%,var(--teal) 0 4px,transparent 5px)}
-.roll button.out{filter:brightness(.55)}
-.roll .rk.out{opacity:.5}
-.rollbar select#rollroot{max-width:70px}
-.xywrap{display:grid;gap:8px;align-content:start}
-.fxbtns{grid-template-columns:repeat(3,minmax(0,1fr))!important}
-.fxb{min-height:56px!important;font-size:14px!important}
-@media (max-width:760px){.padzone{grid-template-columns:1fr}}
+/* the doctor's table uses these too */
+.modesw{display:flex}.modesw .btn{box-shadow:none}.modesw .btn+.btn{border-left:0}
+.mlabel{font:800 12px var(--font-sans);letter-spacing:.1em;text-transform:uppercase;color:#bdb2bd}
+.mhead{display:flex;flex-wrap:wrap;gap:10px;align-items:center;font:800 13px var(--font-sans);letter-spacing:.12em;text-transform:uppercase;color:var(--yellow);margin:18px 0 8px;padding-top:14px;border-top:2px dashed #555}
+/* keys: the jam's keyboard */
+.kskeys{display:flex;gap:3px;height:128px;touch-action:none;user-select:none;-webkit-user-select:none}
+.wk{all:unset;box-sizing:border-box;cursor:pointer;flex:1 1 0;min-width:0;display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px;background:linear-gradient(#fff4e2 0 80%,#d6c8b0);border:2px solid #000;border-radius:0 0 6px 6px;color:#18161a;box-shadow:0 4px 0 #000;transition:transform .04s;-webkit-tap-highlight-color:transparent}
+.wk span{font:800 10px var(--font-mono);writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;opacity:.8;pointer-events:none}
+.wk.hit{transform:translateY(3px);box-shadow:0 1px 0 #000;background:var(--c)}
+.wk:focus-visible{outline:3px solid var(--yellow);outline-offset:1px}
 /* the doctor's table */
 .docmodal{position:fixed;inset:0;z-index:56;background:rgba(14,12,16,.84);overflow:auto;padding:max(12px,env(safe-area-inset-top,0px)) 12px 24px}
 .docpanel{max-width:980px;margin:0 auto;background:#18161a;color:#fff4e2;border:3px solid #fff4e2;box-shadow:8px 8px 0 #000;padding:16px}
@@ -490,26 +373,9 @@ details.pile[open] > summary small::after{content:''}
 .toggles label{display:flex;gap:6px;font:800 12px var(--font-sans);text-transform:uppercase}
 .fitbar,.chopbar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
 .chopbar label{display:flex;gap:6px;align-items:center;font:800 12px var(--font-sans);text-transform:uppercase}
-.chopbar .spec{color:#bdb2bd}
+.chopbar .spec,.fitbar .spec{color:#bdb2bd}
+.fitbar input{width:4.2em;height:32px;box-sizing:border-box;font:500 13px var(--font-mono);background:#2b272e;color:#fff4e2;border:2px solid #fff4e2;padding:4px 6px;border-radius:0}
 @media (max-width:620px){.trims{grid-template-columns:1fr}.knobs label{grid-template-columns:4.6em 1fr;}.knobs output{grid-column:2;text-align:left}}
-
-
-.savebar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px;padding-top:14px;border-top:2px dashed #555}
-.savebar input{font:500 15px var(--font-mono);background:#2b272e;color:#fff4e2;border:2px solid #fff4e2;padding:8px 10px;border-radius:0;min-width:0;width:min(260px,100%)}
-
-/* logbook (sequence organizer) */
-.logbook{margin-top:30px}
-.logbook h2{font-family:var(--font-display);font-weight:400;font-size:clamp(22px,3.4vw,32px);line-height:1;text-transform:uppercase}
-.logs{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px;margin-top:14px}
-.logcard{background:var(--manila);color:#18161a;border:2px solid #18161a;box-shadow:4px 4px 0 #18161a;padding:12px 14px;display:grid;gap:6px;position:relative;background-image:repeating-linear-gradient(transparent 0 23px,#00000014 23px 24px)}
-.logcard.on{outline:4px solid var(--pink);outline-offset:2px}
-.logcard b{font-family:var(--font-type);font-size:18px;line-height:1.2;font-weight:400;overflow-wrap:anywhere}
-.logcard .spec{color:#3d3640}
-.logcard .mini-grid{display:grid;grid-template-columns:repeat(16,1fr);gap:1px;height:30px;background:#18161a;border:1px solid #18161a}
-.logcard .mini-grid i{background:#efe0b3}
-.logcard .mini-grid i.on{background:var(--pink)}
-.logcard .acts{display:flex;gap:6px;flex-wrap:wrap}
-.logcard .btn{box-shadow:2px 2px 0 #18161a;padding:6px 10px}
 
 /* specimen card */
 .cardmodal{position:fixed;inset:0;z-index:55;background:rgba(14,12,16,.82);display:block;padding:16px;overflow:auto}
@@ -1122,30 +988,6 @@ footer.site .wrap{display:flex;flex-wrap:wrap;gap:16px 40px;align-items:center}
 .hwatok:hover{background:var(--pink);color:#18161a}
 .hwatok:focus-visible{outline:3px solid var(--pink);outline-offset:3px}
 @media (prefers-reduced-motion:reduce){.hwatmodal,.hwatbub{animation:none}}
-/* ---- pad micro menu ---- */
-.padmenu{position:fixed;z-index:58;width:min(330px,calc(100vw - 16px));max-height:min(390px,62vh);display:grid;grid-template-rows:auto auto minmax(0,1fr);background:#18161a;color:#fff4e2;border:3px solid #000;box-shadow:6px 6px 0 var(--yellow)}
-.padmenu[hidden]{display:none}
-.pmhead{display:flex;gap:6px;align-items:center;padding:8px;border-bottom:2px solid #000}
-.pmhead b{font:800 12px var(--font-sans);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
-#pm-q{flex:1;min-width:0;height:34px;background:#000;color:#fff4e2;border:2px solid #fff4e2;border-radius:0;font:600 14px var(--font-sans);padding:0 8px}
-#pm-q:focus-visible{outline:3px solid var(--yellow);outline-offset:1px}
-.pmx{all:unset;box-sizing:border-box;cursor:pointer;width:34px;height:34px;display:grid;place-items:center;border:2px solid #fff4e2;font-size:18px}
-.pmx:hover{background:#3a3440}.pmx:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
-.pmcabs{display:flex;gap:4px;padding:6px 8px;overflow-x:auto;scrollbar-width:none;border-bottom:2px solid #000}
-.pmcabs::-webkit-scrollbar{display:none}
-.pmcabs button{all:unset;box-sizing:border-box;cursor:pointer;flex:none;padding:5px 8px;font:800 10px var(--font-sans);letter-spacing:.06em;text-transform:uppercase;border:2px solid var(--c);color:var(--c)}
-.pmcabs button[aria-selected="true"]{background:var(--c);color:#18161a}
-.pmcabs button:focus-visible{outline:3px solid #fff4e2;outline-offset:1px}
-.pmlist{overflow:auto;overscroll-behavior:contain;padding:2px 0}
-.pmrow{display:flex;align-items:stretch;border-left:6px solid var(--c)}
-.pmrow+.pmrow{border-top:1px solid #2b272e}
-.pmhear{all:unset;box-sizing:border-box;cursor:pointer;width:38px;display:grid;place-items:center;font-size:12px;color:var(--c)}
-.pmput{all:unset;box-sizing:border-box;cursor:pointer;flex:1;min-width:0;min-height:38px;padding:8px 10px 8px 4px;display:flex;align-items:center;justify-content:space-between;gap:8px;font:700 13px/1.2 var(--font-sans)}
-.pmput span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pmput small{flex:none;font:500 11px var(--font-mono);color:#bdb2bd}
-.pmput:hover,.pmhear:hover{background:#2b272e}
-.pmput:focus-visible,.pmhear:focus-visible{outline:3px solid var(--yellow);outline-offset:-3px}
-.pmnone{margin:0;padding:14px;font:500 12px var(--font-mono);color:#bdb2bd}
 /* ---- the Brotherwife site build ---- */
 html.bws #housebtn,html.bws #walkbtn,html.bws #radio,html.bws #tourguide,html.bws footer.site,html.bws .nsd-only,html.bws .homehero{display:none!important}
 .bwnav{display:none}
@@ -1175,7 +1017,7 @@ html.bws .bwnav a:focus-visible{outline:3px solid var(--focus);outline-offset:2p
 .mpask[hidden]{display:none}.mpask p{margin:0 0 10px;font:700 15px/1.35 var(--font-sans)}.mpa-b{display:flex;gap:8px}
 /* ---- jam ---- */
 body.jamming{overflow:hidden}
-body.jamming .mdock,body.ringing .mdock,body.jamming #tourguide,body.ringing #tourguide{display:none!important}
+body.jamming .jarbar,body.ringing .jarbar,body.jamming #tourguide,body.ringing #tourguide{display:none!important}
 .jam{position:fixed;inset:0;z-index:56;background:rgba(10,8,12,.9);overflow:auto;padding:max(12px,env(safe-area-inset-top,0px)) 12px 24px}
 .jam[hidden]{display:none}
 .jampanel{max-width:1000px;margin:0 auto;background:#18161a;color:#fff4e2;border:3px solid #000;box-shadow:8px 8px 0 var(--teal);padding:16px}
@@ -1279,7 +1121,7 @@ em.clash{font-style:normal;color:#c4a1ff;font-weight:800}
 .walkinlink{text-align:center;margin:6px 0 4px}.linkbtn{all:unset;cursor:pointer;font:800 15px var(--font-sans);text-decoration:underline;text-decoration-color:var(--pink);text-decoration-thickness:3px;text-underline-offset:4px;padding:8px 6px}.linkbtn:hover{background:var(--yellow);color:var(--on-accent)}.linkbtn:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
 body.night .linkbtn{color:#fff4e2}
 body.walking{overflow:hidden}
-body.walking #tourguide,body.walking .mdock{display:none!important}
+body.walking #tourguide,body.walking .jarbar{display:none!important}
 #walkbtn[aria-pressed="true"]{background:var(--yellow);color:#18161a}
 .walk{position:fixed;inset:0;z-index:52;background:#07060a;touch-action:none;user-select:none;-webkit-user-select:none;overscroll-behavior:none}
 .walk[hidden]{display:none}
@@ -1332,178 +1174,35 @@ body.walking #tourguide,body.walking .mdock{display:none!important}
 @media (max-width:620px){.hbar .radio{flex:none}}
 @media (max-width:420px){.hbar{gap:6px}.hbar .hbtn{padding:7px 7px}}
 @media (max-width:620px){#walkbtn .wlab{display:none}.wtop{flex-wrap:nowrap}.wtop .wbtn{padding:7px 9px;font-size:11px}.wlong{display:none}.wroom{padding:6px 10px}.wroom b{font-size:15px}.wroom small{display:none}.wsay{top:calc(64px + env(safe-area-inset-top,0px));font-size:14px}.wshelf{top:calc(64px + env(safe-area-inset-top,0px));max-height:calc(100% - 170px)}}
-/* ---- the dock ---- */
-.mdock{display:none}
-body.has-dock .mdock{display:grid;position:fixed;left:50%;bottom:max(12px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:44;width:max-content;max-width:calc(100vw - 24px);gap:6px;justify-items:center}
+/* ---- the jar bar: the picked jar's tools, fixed at the bottom of the lab and the heap ---- */
 body.has-dock{--dock-h:76px}
 body.has-dock .guide-dragon{bottom:calc(max(12px,env(safe-area-inset-bottom,0px)) + var(--dock-h))}
 body.has-dock .toast{bottom:calc(24px + env(safe-area-inset-bottom,0px) + var(--dock-h))}
 body.has-dock #v-specimens,body.has-dock #v-crawlspace{padding-bottom:150px}
-.dockbar,.jarbar{display:flex;align-items:center;gap:6px;background:#18161a;color:#fff4e2;border:3px solid #000;box-shadow:6px 6px 0 var(--pink);padding:7px;max-width:100%;overflow-x:auto;scrollbar-width:none}
-.dockbar::-webkit-scrollbar,.jarbar::-webkit-scrollbar{display:none}
-.jarbar{box-shadow:6px 6px 0 var(--yellow);padding:6px 7px}
+.jarbar{display:none}
+body.has-dock .jarbar{display:flex;align-items:center;gap:6px;position:fixed;left:50%;bottom:max(12px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:44;width:max-content;max-width:calc(100vw - 24px);box-sizing:border-box;background:#18161a;color:#fff4e2;border:3px solid #000;box-shadow:6px 6px 0 var(--yellow);padding:6px 7px;overflow-x:auto;scrollbar-width:none}
+.jarbar::-webkit-scrollbar{display:none}
 .dk{all:unset;box-sizing:border-box;cursor:pointer;flex:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:40px;min-width:40px;padding:0 12px;background:#2b272e;color:#fff4e2;border:2px solid #fff4e2;font:800 12px var(--font-sans);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;user-select:none}
 .dk.sm{min-height:34px;min-width:34px;padding:0 9px;font-size:11px}
 .dk:hover{background:#3a3440}
 .dk:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
 .dk[aria-pressed="true"],.dk.on{background:var(--yellow);color:#18161a;border-color:var(--yellow)}
-.dk.play{background:var(--yellow);color:#18161a;border-color:var(--yellow);min-width:96px}
-.dk.play.on{background:var(--pink);border-color:var(--pink);color:#18161a}
-.dk .ic{display:inline-block;width:0;height:0;border-left:12px solid currentColor;border-block:8px solid transparent}
-.dk.play.on .ic{width:12px;height:14px;border:0;background:linear-gradient(90deg,currentColor 0 4px,transparent 4px 8px,currentColor 8px)}
-.dk .ic.sq{width:12px;height:12px;border:0;background:currentColor}
-.dk .ic.dot{width:12px;height:12px;border:0;border-radius:50%;background:#ff2e4d}
-.dk.rec[aria-pressed="true"]{background:#ff2e4d;border-color:#ff2e4d;color:#fff}
-.dk.rec[aria-pressed="true"] .ic.dot{background:#fff;animation:recblink 1s steps(2) infinite}
-.dk.hush{border-color:#ff2e4d;color:#ff8b9c}
-.dk.hush:hover{background:#ff2e4d;color:#fff}
-#tap.hit{animation:tapflash .15s}
-@keyframes tapflash{from{background:var(--pink);color:#18161a}}
-.dpos{flex:none;font:500 13px var(--font-mono);background:#000;color:var(--yellow);border:2px solid #4a4450;padding:6px 10px;min-width:8.5em;text-align:center;font-variant-numeric:tabular-nums}
-.dsep{flex:none;width:2px;align-self:stretch;background:#4a4450;margin:0 2px}
-.mdock .modesw{display:flex;flex:none}.mdock .modesw .dk+.dk{border-left:0}
-.dtempo{display:flex;align-items:center;gap:4px;flex:none}
-.dtempo input{width:3.4em;box-sizing:border-box;height:34px;background:#000;color:#fff4e2;border:2px solid #fff4e2;font:800 15px var(--font-mono);text-align:center;border-radius:0;-moz-appearance:textfield}
-.dtempo input::-webkit-inner-spin-button,.dtempo input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
-.dtempo .u{font:800 10px var(--font-sans);letter-spacing:.1em;color:#bdb2bd}
-.mdock.min .min-hide{display:none!important}
 .jb-sw{flex:none;width:14px;align-self:stretch;background:var(--c);border:2px solid #fff4e2}
 .jb-nm{display:grid;min-width:0;max-width:18em;line-height:1.15;flex:none}
 .jb-nm b{font:800 13px var(--font-sans);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .jb-nm small{font:500 11px var(--font-mono);color:#bdb2bd;white-space:nowrap}
 .jb-acts{display:flex;gap:6px;flex:none}
-.jarbar.away{display:none}
-.dockmel{display:flex;align-items:center;gap:6px;background:#18161a;color:#fff4e2;border:3px solid #000;box-shadow:6px 6px 0 var(--teal);padding:6px 8px;max-width:100%;overflow-x:auto;scrollbar-width:none}
-.dockmel::-webkit-scrollbar{display:none}
-.dockmel .dml{flex:none;font:800 10px var(--font-sans);letter-spacing:.1em;text-transform:uppercase;color:#bdb2bd}
-.dockmel select{flex:none;height:34px;max-width:13em;background:#000;color:#fff4e2;border:2px solid #fff4e2;border-radius:0;font:800 12px var(--font-sans);padding:0 4px}
-.dockmel select:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
 @media (max-width:760px){
-  body.has-dock .mdock{left:8px;right:8px;transform:none;width:auto;max-width:none;justify-items:stretch}
-  
-  .mdock .tx{display:none}
-  .dockbar{flex-wrap:wrap;justify-content:center;overflow:visible;gap:4px;padding:5px}
-  .dockbar{gap:3px}
-  .dockbar .dk{min-height:36px;min-width:32px;padding:0 7px}
-  .dockbar .dk.sm{padding:0 5px;font-size:10px;letter-spacing:.03em;min-width:30px}
-  #dockgo{display:none!important}
-  .dockbar .dsep{display:none}
-  .dtempo input{width:2.6em;height:36px;font-size:14px}
+  body.has-dock .jarbar{left:8px;right:8px;transform:none;width:auto;max-width:none;flex-wrap:wrap;gap:6px}
   body.has-dock .guide-dragon{display:none}
+  .jb-nm{max-width:calc(100% - 30px);flex:1 1 auto}.jb-acts{overflow-x:auto;max-width:100%;scrollbar-width:none}
   .jb-acts .dk{min-height:34px}
-  .dk.play{min-width:52px}
-  .dpos{min-width:0;flex:1 1 auto}
-  .dtempo .u{display:none}
-  .jarbar{flex-wrap:wrap;gap:6px}.jb-nm{max-width:calc(100% - 30px);flex:1 1 auto}.jb-acts{overflow-x:auto;max-width:100%;scrollbar-width:none}
   .jarrow{grid-template-columns:repeat(auto-fill,minmax(84px,1fr))}
-  .dockmel{flex-wrap:wrap;justify-content:center;gap:4px;padding:5px}
-  .dockmel .dml{display:none}
-  .dockmel select{max-width:38vw;height:32px}
   /* two rows of fat keys on a phone, low octave on the bottom */
   .kskeys{flex-wrap:wrap-reverse;height:auto;gap:4px 3px}
   .wk{flex:0 0 calc((100% - 21px) / 8);height:60px;padding-bottom:5px}
 }
 
-.docknav{display:flex;gap:0;background:#000;border:3px solid #000;border-bottom:0;max-width:100%;overflow-x:auto;scrollbar-width:none;margin-bottom:-6px;justify-self:start}
-.docknav::-webkit-scrollbar{display:none}
-.dn{all:unset;box-sizing:border-box;cursor:pointer;flex:none;padding:7px 13px;font:400 13px var(--font-display);text-transform:uppercase;color:#bdb2bd;background:#18161a;border-right:2px solid #000}
-.dn:hover{color:#fff4e2;background:#2b272e}
-.dn[aria-current="true"]{background:var(--yellow);color:#18161a}
-.dn:focus-visible{outline:3px solid var(--yellow);outline-offset:-3px}
-@media (max-width:760px){.docknav{justify-self:stretch}.dn{flex:1 0 auto;padding:7px 9px;font-size:11px;text-align:center}}
-/* ---- machine: header, tabs, panels ---- */
-.seqhead{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:space-between;margin-bottom:8px}
-.seqhead h2{margin:0}
-.seqhead .ctl{margin:0}
-.mtabs{display:flex;gap:0;border-bottom:3px solid #fff4e2;margin:6px 0 16px;overflow-x:auto;scrollbar-width:none}
-.mtabs::-webkit-scrollbar{display:none}
-.mtabs button{all:unset;box-sizing:border-box;cursor:pointer;flex:none;padding:10px 16px;font:400 15px var(--font-display);text-transform:uppercase;color:#bdb2bd;border:3px solid transparent;border-bottom:0;margin-bottom:-3px}
-.mtabs button:hover{color:#fff4e2}
-.mtabs button[aria-selected="true"]{color:#18161a;background:var(--yellow);border-color:#fff4e2}
-.mtabs button:focus-visible{outline:3px solid var(--yellow);outline-offset:-3px}
-.mpanel{min-height:200px}
-.mpanel .padzone{border-top:0;padding-top:0}
-.seqgrid td:nth-child(4n+2){padding-left:7px}
-@media (max-width:620px){
-  .loopbar .slots{gap:4px}.loopbar .slots button{min-width:30px;height:32px;font-size:13px}
-  .seqhead .ctl{gap:8px}.seqhead .ctl .btn{padding:8px 10px}
-  .kpad b{font-size:9.5px;letter-spacing:0;hyphens:none;overflow-wrap:normal;word-break:normal}
-  .mtabs button{padding:9px 11px;font-size:13px}
-}
-
-/* ===== the Mess Machine, rebuilt to follow the Android app (NSD-23): darker bench, grit, one section row ===== */
-:root{--grit:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 .95 0 0 0 0 .88 0 0 0 .11 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  --scratch:repeating-linear-gradient(103deg,transparent 0 37px,rgba(255,244,226,.025) 37px 38px,transparent 38px 91px);--mm-bg:#110f12;--mm-card:#1b181d;--mm-card2:#2a2530;--mm-line:#3a3440}
-.seq{background:var(--grit),var(--scratch),radial-gradient(120% 80% at 50% 0%,#1d1a20 0,var(--mm-bg) 70%);background-color:var(--mm-bg);border:3px solid #000;box-shadow:6px 6px 0 var(--pink),inset 0 0 0 2px #2a2530,inset 0 0 60px rgba(0,0,0,.6);padding:16px 16px 18px;position:relative}
-.seq::before{content:"";position:absolute;inset:6px;border:1px dashed rgba(255,244,226,.08);pointer-events:none}
-.seqhead{margin:0 0 6px;align-items:baseline}
-.seqhead h2{font-size:clamp(20px,3vw,28px);color:#fff4e2;text-shadow:3px 3px 0 var(--pink),-1px -1px 0 #000;letter-spacing:.02em}
-.seq .btn.ghost{background:var(--mm-card2);color:#fff4e2;border-color:#5b5360;box-shadow:2px 2px 0 #000}
-.seq .btn.ghost.danger,.messes .btn.ghost.danger{border-color:#ff4a2e;color:#ffb3a6}
-.loopbar{border-top:0;padding:4px 0 12px;gap:8px 10px}
-.loopbar[hidden],.playsw[hidden],.looptools[hidden]{display:none!important}
-.looptools{position:relative}
-.ltpop{position:absolute;z-index:30;top:calc(100% + 6px);left:0;display:grid;gap:6px;min-width:210px;padding:10px;background:var(--mm-card);background-image:var(--grit);border:3px solid #000;box-shadow:5px 5px 0 var(--yellow)}
-.ltpop .btn{justify-content:flex-start;text-align:left}
-.playsw,.songhead .modesw{display:inline-flex;margin:2px 0 14px;border:3px solid #000;box-shadow:3px 3px 0 #000;background:#000}
-.songhead{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
-.pswb{all:unset;box-sizing:border-box;cursor:pointer;min-height:38px;padding:8px 16px;font:400 14px var(--font-display);text-transform:uppercase;color:#bdb2bd;background:var(--mm-card)}
-.pswb+.pswb{border-left:2px solid #000}
-.pswb:hover{color:#fff4e2;background:var(--mm-card2)}
-.pswb[aria-pressed="true"]{background:var(--yellow);color:#18161a}
-.pswb:focus-visible{outline:3px solid var(--yellow);outline-offset:-4px}
-.padzone{display:block;padding:0;border:0}
-.padbar{justify-content:space-between}
-.nrgroup{display:inline-flex;gap:6px;align-items:center}
-.padgrid{max-width:520px;gap:9px}
-.kpad{background:var(--grit),linear-gradient(165deg,color-mix(in srgb,var(--c) 62%,#000) 0,color-mix(in srgb,var(--c) 34%,#0b0a0c) 100%);color:#fff4e2;border:2px solid #000;border-bottom:5px solid var(--c);box-shadow:0 4px 0 #000,inset 0 1px 0 rgba(255,255,255,.12)}
-.kpad .pn,.kpad kbd{color:color-mix(in srgb,var(--c) 70%,#fff)}
-.kpad.empty{background:var(--grit),#141216;border-bottom-width:2px}
-.kpad.hit{filter:none;background:var(--grit),linear-gradient(165deg,var(--c),color-mix(in srgb,var(--c) 70%,#000));color:#18161a;box-shadow:0 1px 0 #000,0 0 22px color-mix(in srgb,var(--c) 70%,transparent)}
-.kpad.hit .pn,.kpad.hit kbd{color:#18161a}
-.kpad.sel{outline:3px solid var(--yellow)}
-.seqgrid td button{background:var(--mm-card2);border-color:#5b5360}
-.seqgrid td:nth-child(4n+2) button{background:#352f3b}
-.seqgrid td button[aria-pressed="true"]{background:var(--c,var(--pink));border-color:#000;box-shadow:inset 0 -3px 0 rgba(0,0,0,.35)}
-.seqgrid th .rn{border-bottom:2px dotted #6e6672;padding:6px 0;touch-action:none;-webkit-user-select:none;user-select:none}
-.seqgrid th .rtag{margin-left:6px;padding:0 5px;font:800 10px var(--font-mono);background:#5b5360;color:#fff4e2}
-.seqgrid th .rtag.s{background:var(--yellow);color:#18161a}
-.kitnote{color:#c9bfc9}
-.mmhelp{border-left:4px solid var(--teal);padding:8px 12px;background:rgba(0,190,180,.08)}
-#pane-jars .mmhelp{color:var(--ink-muted);background:color-mix(in srgb,var(--teal) 10%,transparent);margin:0 0 14px;max-width:70ch}
-.pmacts{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:10px}
-.pmacts button{all:unset;box-sizing:border-box;cursor:pointer;min-height:40px;padding:8px 10px;background:var(--mm-card2);color:#fff4e2;border:2px solid #5b5360;font:800 12px var(--font-sans);text-transform:uppercase;letter-spacing:.03em}
-.pmacts button:hover{border-color:var(--yellow)}.pmacts button[aria-pressed="true"]{background:var(--yellow);color:#18161a;border-color:var(--yellow)}
-.pmacts button.danger{border-color:#ff4a2e;color:#ffb3a6}
-.pmacts button:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
-.pmname{flex:1;min-width:0;font:500 12px var(--font-mono);color:#bdb2bd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.toast.act{pointer-events:auto;display:flex;gap:14px;align-items:center}
-.tundo{all:unset;cursor:pointer;padding:6px 12px;background:var(--yellow);color:#18161a;font:800 12px var(--font-sans);text-transform:uppercase;letter-spacing:.06em}
-.tundo:focus-visible{outline:3px solid #fff4e2;outline-offset:2px}
-/* the dock: one section row and the transport, folded on phones */
-body.has-dock .mdock{gap:6px}
-.dockbar{background:var(--grit),#110f12;gap:8px;padding:6px 7px;box-shadow:6px 6px 0 var(--pink);flex-wrap:nowrap}
-.docknav{display:flex;margin:0;border:0;background:#000;flex:none;gap:2px;padding:2px}
-.dn{padding:9px 12px;border:0;background:var(--mm-card)}
-.dtrans{display:flex;gap:5px;align-items:center;flex:none}
-.dtempob{all:unset;box-sizing:border-box;cursor:pointer;display:grid;gap:1px;justify-items:center;min-height:40px;padding:3px 10px;background:#000;border:2px solid #4a4450}
-.dtempob b{font:800 11px var(--font-mono);color:#fff4e2}
-.dtempob .dpos{all:unset;font:700 11px var(--font-mono);color:var(--yellow);font-variant-numeric:tabular-nums;min-width:7em;text-align:center}
-.dtempob:hover,.dtempob[aria-expanded="true"]{border-color:var(--yellow)}
-.dtempob:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
-.dpop{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;background:var(--grit),#110f12;color:#fff4e2;border:3px solid #000;box-shadow:5px 5px 0 var(--yellow);padding:9px 10px;max-width:100%}
-.mmmenu{display:grid;justify-self:end}
-.mmmenu .dk{justify-content:flex-start;min-height:40px}
-.dswing{display:flex;gap:8px;align-items:center;font:800 11px var(--font-sans);text-transform:uppercase;letter-spacing:.08em}
-.dswing input{width:120px;accent-color:var(--pink)}
-.dfold{border-color:#5b5360;color:#bdb2bd}
-body.in-crawl .dockbar,body.in-crawl .dockmel,body.in-crawl .dpop{display:none!important}
-.messes{position:fixed;inset:0;z-index:70;background:rgba(10,8,12,.8);display:grid;place-items:center;padding:16px}
-.messes[hidden]{display:none}
-.messpanel{width:min(620px,100%);background:var(--grit),#141215;color:#fff4e2;border:3px solid #000;box-shadow:8px 8px 0 var(--pink);padding:16px 18px}
-.messpanel h2{font-family:var(--font-display);font-weight:400;text-transform:uppercase;font-size:24px;color:var(--yellow);margin:0}
-.messpanel .ringhead{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px}
-.messpanel .btn.ghost{background:#2b272e;color:#fff4e2;border-color:#fff4e2}
 /* the apps shelf (NSD-15) */
 .appshelf{display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px 26px;align-items:center;margin-top:30px;padding:20px 22px;border:3px solid var(--rule);background:var(--paper-raised);box-shadow:var(--shadow-hard)}
 .appshelf h2{font-family:var(--font-display);font-weight:400;text-transform:uppercase;font-size:clamp(22px,3vw,30px);line-height:1;margin:4px 0 8px}
@@ -1512,22 +1211,7 @@ body.in-crawl .dockbar,body.in-crawl .dockmel,body.in-crawl .dpop{display:none!i
 .apps-phone{display:grid;grid-template-columns:repeat(3,22px);gap:6px;padding:26px 12px 30px;background:#141215;border:4px solid #18161a;border-radius:18px;box-shadow:6px 6px 0 var(--teal);transform:rotate(-5deg)}
 .apps-phone i{width:22px;height:22px;border-radius:4px;background:var(--pink);box-shadow:0 3px 0 #000}
 .apps-phone i:nth-child(3n+2){background:var(--teal)}.apps-phone i:nth-child(4n){background:var(--yellow)}
-@media (max-width:760px){
-  .dockbar{flex-wrap:wrap;justify-content:space-between;gap:5px;padding:5px}
-  .docknav{flex:1 1 auto;overflow-x:auto}
-  .dn{padding:9px 9px;font-size:12px;flex:1 0 auto;text-align:center}
-  .dtrans{flex:1 1 100%;justify-content:space-between}
-  .mdock.min .dtrans{flex:0 0 auto}
-  .mdock.min .dockbar{flex-wrap:nowrap}
-  .dtempob .dpos{min-width:0}
-  .dk.play{min-width:46px}
-  .appshelf{grid-template-columns:1fr}.apps-art{display:none}
-  .pmacts{grid-template-columns:1fr 1fr}
-  .playsw .pswb{padding:8px 12px;font-size:13px}
-  .seqgrid th .rn{display:inline-block;max-width:6.5em;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;font-size:11px}
-  .seqgrid th .pnum{display:none}
-  .seqgrid table{min-width:0}
-}
+@media (max-width:760px){.appshelf{grid-template-columns:1fr}.apps-art{display:none}}
 
 /* the band page's arcade cabinet and in-page clips */
 .bwcab{display:grid;grid-template-columns:minmax(240px,340px) 1fr;gap:28px;align-items:center}
@@ -1556,9 +1240,7 @@ html.bws #v-shop .pagehead h1{color:#ff7a1a;text-shadow:4px 4px 0 #5b21b6}
 html.bws #v-shop .drawer{background:#2e1157;border-color:#c4a1ff}
 html.bws #v-shop [data-filter="plaque"]{display:none}
 
-/* Nov 24: the Mess Machine is the Android app's own machine (mm/), in a room of its own. The old machine stays out. */
-#seq{display:none!important}
-body.has-dock .mdock > :not(#jarbar){display:none!important}
+/* Nov 24: the Mess Machine is the Android app's own machine (mm/), in a room of its own */
 .mmopenbtn{background:var(--pink,#ff4fa3);color:#18161a;font-weight:800}
 #mmroom{position:fixed;inset:0;z-index:200;background:#141215}
 #mmroom[hidden]{display:none}
@@ -1888,7 +1570,7 @@ body.mmopen{overflow:hidden}
   <div class="wrap pagehead"><p class="label muted">Free samples</p><h1 class="display">The Specimen Lab</h1>
     <p>Weird little noises, free to use in whatever you make. Pick a big jar off the wall, tap a specimen to hear it, star the ones you love, and load them into the Mess Machine to build beats. Every specimen also has a creature card, grown from its sound.</p></div>
   <div class="wrap section">
-    <div id="pane-jars" role="tabpanel" aria-label="Sounds">
+    <div id="pane-jars">
     <div class="labbar">
       <button class="btn small mmopenbtn" id="mmopen">Open the Mess Machine</button>
       <div class="labtabs" role="group" aria-label="Lab view">
@@ -1902,7 +1584,7 @@ body.mmopen{overflow:hidden}
       </div>
       <input type="file" id="impfile" accept="audio/*,.wav,.mp3,.m4a,.aif,.aiff,.ogg,.flac" multiple hidden>
     </div>
-    <p class="spec mmhelp" data-help="jars" id="labhint">Pick a jar to open its shelf. Tap a specimen to hear it; the dock stars it, puts it on a pad, doctors it or flips it to its creature card. Import a sound or sample the mic and it lands in your Workbench jar.</p>
+    <p class="spec" id="labhint">Pick a jar to open its shelf.</p>
     <div class="labroom" id="labroom"></div>
     <aside class="appshelf" id="appshelf" aria-labelledby="apps-t">
       <div class="apps-art" aria-hidden="true"><span class="apps-phone"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div>
@@ -1923,105 +1605,6 @@ body.mmopen{overflow:hidden}
     </aside>
     </div>
 
-    <div class="seq" id="seq" hidden>
-      <div class="seqhead"><h2>The Mess Machine</h2><span class="now-seq" id="seqstat"></span></div>
-
-      <div class="loopbar" id="loopbar">
-        <span class="mlabel">Loop</span>
-        <div class="slots" id="slots" role="tablist" aria-label="Loop slots"></div>
-        <span class="looptools" id="looptools">
-          <button class="btn ghost small" id="ltbtn" aria-expanded="false" aria-controls="ltpop">Loop tools &#9662;</button>
-          <span class="ltpop" id="ltpop" hidden role="group" aria-label="Loop tools">
-            <button class="btn ghost small" id="looplen">1 bar</button>
-            <button class="btn ghost small" id="loopcopy">Copy to next slot</button>
-            <button class="btn ghost small" id="seqrand">Random drums</button>
-            <button class="btn ghost small" id="rsbtn">Resample to a pad</button>
-            <button class="btn small" id="seqrec" style="background:var(--pink);color:var(--on-pink)">Bottle it (WAV)</button>
-            <button class="btn ghost small danger" id="seqclear">Clear loop</button>
-          </span>
-        </span>
-        <span class="now-seq" id="loopname"></span>
-      </div>
-
-      <div class="playsw" id="playsw" role="group" aria-label="Play">
-        <button class="pswb" id="pm-pads" aria-pressed="true">Pads</button><button class="pswb" id="pm-keys" aria-pressed="false">Keys</button><button class="pswb" id="pm-fx" aria-pressed="false">Perform</button>
-      </div>
-
-      <div class="mpanel" id="mp-pads" role="tabpanel" aria-label="Play">
-        <div class="padzone">
-          <div class="padbar">
-            <div class="banks" id="banks" role="tablist" aria-label="Pad banks"></div>
-            <span class="nrgroup">
-              <button class="btn ghost small" id="nr" aria-pressed="false">Repeat</button>
-              <select id="nrrate" aria-label="Note repeat rate"><option value="2">1/8</option><option value="1" selected>1/16</option><option value="0.5">1/32</option></select>
-              <select id="nrarp" aria-label="Note repeat style"><option value="rep">Repeat</option><option value="up">Arp up</option><option value="down">Arp down</option><option value="updown">Arp up-down</option><option value="rand">Arp random</option></select>
-            </span>
-          </div>
-          <div class="padgrid" id="padgrid"></div>
-          <div class="keystrip" id="keystrip" hidden>
-            <div class="ksbar"><b id="ksname"></b><span id="kschord"></span><button class="btn ghost small" id="ksx" aria-label="Fold the keys away">&times;</button></div>
-            <div class="kskeys" id="kskeys" role="group" aria-label="Keys for the picked pad"></div>
-          </div>
-          <p class="kitnote" id="keysinfo" hidden></p>
-          <p class="kitnote mmhelp" data-help="pads">Tap a pad to play it. Hold a pad (or right-click it) for its menu: keys under the pads, doctor it, swap the sound, mute, solo, resample or clear. Double tap an empty pad for every sound in the lab. On a keyboard, 1 to 4, Q to R, A to F and Z to V play the pads.</p>
-        </div>
-      </div>
-
-      <div class="mpanel" id="mp-steps" role="tabpanel" aria-label="Steps" hidden>
-        <div class="seqgrid"><table id="seqtable"></table></div>
-        <p class="kitnote mmhelp" data-help="steps" id="kitnote"></p>
-      </div>
-
-      <div class="mpanel" id="mp-roll" role="tabpanel" aria-label="Piano roll" hidden>
-        <div class="rollbar">
-          <label for="rollinst">Pad</label><select id="rollinst"></select>
-          <label for="rolllen">Note</label><select id="rolllen"><option value="1">1 step</option><option value="2" selected>2 steps</option><option value="4">1 beat</option><option value="8">Half a bar</option><option value="16">Whole bar</option></select>
-          <button class="btn ghost small" id="rollfold" aria-pressed="false">Fold to scale</button>
-          <button class="btn ghost small" id="rollclear">Clear notes</button>
-        </div>
-        <p class="kitnote mmhelp" data-help="roll" id="rollnote" style="margin:0 0 8px"></p>
-        <div class="rollwrap"><div class="roll" id="roll"></div></div>
-      </div>
-
-      <div class="mpanel" id="mp-song" role="tabpanel" aria-label="Song" hidden>
-        <div class="songhead"><div class="modesw" role="group" aria-label="What plays"><button class="pswb" id="m-loop" aria-pressed="true">Play the loop</button><button class="pswb" id="m-song" aria-pressed="false">Play the song</button></div><span class="now-seq" id="mm-songinfo"></span></div>
-        <div class="songlane"><div class="slots lane" id="mm-songlane"></div></div>
-        <div class="ctl" style="margin:10px 0 0">
-          <button class="btn ghost small" id="mm-songfill">Rough it in</button>
-          <button class="btn ghost small" id="mm-songmore">+8 bars</button>
-          <button class="btn ghost small danger" id="mm-songclear">Clear song</button>
-        </div>
-        <p class="kitnote mmhelp" data-help="song">Pick a loop letter up top, then tap a bar to paint it in (right-click goes back). A dot is a bar of silence. Switch to Play the song and hit play.</p>
-      </div>
-
-      <div class="mpanel" id="mp-fx" role="tabpanel" aria-label="Perform" hidden>
-      <div class="fxrow">
-        <div class="xywrap">
-          <div class="xy" id="xy" role="slider" aria-label="Filter pad. Drag while it plays." aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" tabindex="0"><span>Mud filter</span><small>drag me</small><i id="xydot"></i></div>
-          <button class="btn ghost small" id="xymode">Low pass</button>
-        </div>
-        <div class="fxbtns">
-          <button class="fxb" data-fx="stutter" aria-pressed="false">Stutter<kbd>U</kbd></button>
-          <button class="fxb" data-fx="echo" aria-pressed="false">Echo throw<kbd>I</kbd></button>
-          <button class="fxb" data-fx="crush" aria-pressed="false">Crush<kbd>O</kbd></button>
-          <button class="fxb" data-fx="tape" aria-pressed="false">Tape stop<kbd>P</kbd></button>
-          <button class="fxb" data-fx="gate" aria-pressed="false">Gate<kbd>H</kbd></button>
-          <button class="fxb" data-fx="dirty" aria-pressed="false">Dirty<kbd>J</kbd></button>
-          <button class="fxb" data-fx="ring" aria-pressed="false">Ring mod<kbd>K</kbd></button>
-          <button class="fxb" data-fx="oct" aria-pressed="false">Octave down<kbd>L</kbd></button>
-          <button class="fxb" data-fx="rev" aria-pressed="false">Reverse<kbd>;</kbd></button>
-        </div>
-      </div>
-      <p class="kitnote mmhelp" data-help="fx">Hold an effect, let go and it snaps back. They work on the pads too. Bottle it saves the clean version. Space plays and pauses; Ctrl or Cmd Z undoes.</p>
-      </div>
-    </div>
-
-    <div class="logbook">
-      <h2>Lab logbook</h2>
-      <p class="muted" style="margin:6px 0 0">Every sequence you save. Load one back into the machine, copy it, or toss it.</p>
-      <div class="logs" id="logs"></div>
-    </div>
-
     <div class="drop" id="drop" hidden>
       <p class="label">Add a specimen</p>
       <p style="margin:0">Drop a WAV or MP3 here (up to 14 MB), name it, pick a cabinet, and it goes on the shelf for everyone.</p>
@@ -2032,57 +1615,7 @@ body.mmopen{overflow:hidden}
   </div>
 </section>
 
-<div class="mdock" id="dock">
-  <div class="jarbar" id="jarbar" hidden role="group" aria-label="Picked jar"></div>
-  <div class="dockmel min-hide" id="dockmel" hidden role="group" aria-label="Scale and chords">
-    <span class="dml">Scale</span><select id="rollroot" aria-label="Scale root"></select><select id="rollscale" aria-label="Scale"></select>
-    <span class="dml">Chords</span><select id="chordmode" aria-label="Chord mode"></select>
-  </div>
-  <div class="tempopop dpop" id="tempopop" hidden role="group" aria-label="Tempo, swing and click">
-    <div class="dtempo"><button class="dk sm" id="bpmdn" aria-label="Slower">&minus;</button><input id="bpm" type="number" min="60" max="180" value="112" inputmode="numeric" aria-label="Tempo in BPM"><span class="u" aria-hidden="true">BPM</span><button class="dk sm" id="bpmup" aria-label="Faster">+</button><button class="dk sm" id="tap" aria-label="Tap tempo">Tap</button><span id="bpmv" hidden>112</span></div>
-    <label class="dswing">Swing <input id="swing" type="range" min="0" max="100" value="0"> <span id="swingv">0%</span></label>
-    <button class="dk sm" id="clickbtn" aria-pressed="false" aria-label="Metronome click">Click</button>
-  </div>
-  <div class="mmmenu dpop" id="mmmenu" hidden role="menu" aria-label="Mess Machine menu">
-    <button class="dk" role="menuitem" id="mm-messes">Messes: save, open, new</button>
-    <button class="dk" role="menuitem" id="redo" aria-label="Redo">Redo</button>
-    <button class="dk" role="menuitem" id="poc" aria-pressed="true" title="When on, clicking a step or a note also plays it">Click to hear: on</button>
-    <button class="dk" role="menuitem" id="dockjam">Jam with whoever is here</button>
-  </div>
-  <div class="dockbar" role="toolbar" aria-label="Mess Machine">
-    <div class="docknav" role="group" aria-label="Lab sections">
-      <button class="dn" data-go="jars">Sounds</button><button class="dn" data-go="play">Play</button><button class="dn" data-go="steps">Steps</button><button class="dn" data-go="roll">Roll</button><button class="dn" data-go="song">Song</button>
-    </div>
-    <div class="dtrans">
-      <button class="dk play" id="seqplay" aria-pressed="false" aria-label="Play"><span class="ic" aria-hidden="true"></span><span class="tx">Play</span></button>
-      <button class="dk min-hide" id="seqstop" aria-label="Stop. Press again to hush every sound"><span class="ic sq" aria-hidden="true"></span></button>
-      <button class="dk rec min-hide" id="rec" aria-pressed="false" aria-label="Record what you play into the loop"><span class="ic dot" aria-hidden="true"></span><span class="tx">Rec</span></button>
-      <button class="dk sm min-hide" id="undo" aria-label="Undo">&#8630;</button>
-      <button class="dtempob min-hide" id="tempobtn" aria-expanded="false" aria-controls="tempopop" aria-label="Tempo, swing and click"><b id="tempolab">112 BPM</b><output class="dpos" id="dockpos" aria-live="off" title="Loop, bar, beat, step">A 1.1.1</output></button>
-      <button class="dk sm min-hide" id="mmhelpbtn" aria-pressed="false" aria-label="Show how this page works">?</button>
-      <button class="dk sm min-hide" id="mmmenubtn" aria-expanded="false" aria-controls="mmmenu" aria-label="Messes and settings">&#9776;</button>
-      <button class="dk sm dfold" id="dockmin" aria-expanded="true" aria-label="Fold the dock">&ndash;</button>
-    </div>
-  </div>
-</div>
-<div class="messes" id="messes" hidden role="dialog" aria-modal="true" aria-labelledby="messes-t">
-  <div class="messpanel">
-    <div class="ringhead"><h2 id="messes-t">Messes</h2><button class="btn ghost small" id="messesx">Done</button></div>
-    <div class="savebar">
-      <label class="spec" for="seqname" style="color:#bdb2bd">Name it</label>
-      <input id="seqname" type="text" maxlength="48" placeholder="Wet Basement Groove">
-      <button class="btn small" id="seqsave">Save</button>
-      <button class="btn ghost small" id="seqsavenew">Save as new</button>
-    </div>
-    <div class="savebar">
-      <button class="btn ghost small" id="seqnew">New blank</button>
-      <button class="btn ghost small" id="seqfile" title="Download this mess as a file the Mess Machine phone app opens">Save as file</button>
-      <button class="btn ghost small" id="seqopen" title="Open a mess file from the phone app">Open a file</button>
-      <input type="file" id="seqopenfile" accept=".json,application/json,text/plain" hidden>
-    </div>
-    <p class="kitnote">Saved messes go in the Lab logbook under the machine. Save as file makes a mess the Android app opens, and Open a file brings one back from it.</p>
-  </div>
-</div>
+<div class="jarbar" id="jarbar" hidden role="group" aria-label="Picked jar"></div>
 <div class="mppop" id="mppop" hidden role="dialog" aria-label="People here right now"></div>
 <div class="mpask" id="mpask" hidden role="alertdialog" aria-live="assertive"></div>
 <div class="jam" id="jam" hidden role="dialog" aria-modal="true" aria-labelledby="jam-t">
@@ -2091,7 +1624,6 @@ body.mmopen{overflow:hidden}
     <div class="jam-ctl">
       <label>Your sound <select id="jamsnd"></select></label>
       <label>Tempo <input id="jambpm" type="number" min="60" max="180" inputmode="numeric"></label><small id="jambpmn"></small>
-      <button class="btn small" id="jamsave">Save the jam to the Mess Machine</button>
     </div>
     <div class="jamgrid" id="jamgrid"></div>
     <div class="jam-live"><button class="jamhit" id="jamhit" style="--c:var(--pink)">Hit</button><div class="kskeys jamkeys" id="jamkeys"></div></div>
@@ -2112,7 +1644,6 @@ body.mmopen{overflow:hidden}
   <div class="wstick" id="wstick" hidden><i></i></div>
 </div>
 <div class="wzoom" id="wzoom" hidden></div>
-<div class="padmenu" id="padmenu" hidden role="dialog" aria-label="Pick a sound for this pad"></div>
 <div class="hwatmodal" id="hwatmodal" hidden role="dialog" aria-modal="true" aria-labelledby="hwat-t">
   <div class="hwatbub"><h2 id="hwat-t"></h2><div id="hwat-b"></div><button type="button" class="hwatok" id="hwatx">Got it</button></div>
 </div>
@@ -2149,7 +1680,7 @@ body.mmopen{overflow:hidden}
       <label>Choke <select id="ed-choke"><option value="0">None</option><option value="1">Group 1</option><option value="2">Group 2</option><option value="3">Group 3</option><option value="4">Group 4</option><option value="5">Group 5</option><option value="6">Group 6</option></select></label>
       <div class="toggles"><label><input type="checkbox" id="ed-rev"> Reverse</label><label><input type="checkbox" id="ed-loop"> Loop</label><label><input type="checkbox" id="ed-norm"> Normalize</label></div>
     </div>
-    <div class="fitbar"><span class="mlabel">Re-pitch to fit</span><select id="doc-fitbars" aria-label="Length to fit"><option value="0.25">1 beat</option><option value="0.5">2 beats</option><option value="1" selected>1 bar</option><option value="2">2 bars</option><option value="4">4 bars</option></select><button class="btn ghost small" id="doc-fit">Fit it to the tempo</button></div>
+    <div class="fitbar"><span class="mlabel">Re-pitch to fit</span><select id="doc-fitbars" aria-label="Length to fit"><option value="0.25">1 beat</option><option value="0.5">2 beats</option><option value="1" selected>1 bar</option><option value="2">2 bars</option><option value="4">4 bars</option></select><label class="spec" for="doc-bpm">at</label><input id="doc-bpm" type="number" min="60" max="180" value="112" inputmode="numeric"><span class="spec">BPM</span><button class="btn ghost small" id="doc-fit">Fit it to the tempo</button></div>
     <h3 class="mhead">Chop to pads</h3>
     <div class="chopbar">
       <select id="chopmode" aria-label="Chop mode"><option value="equal">Equal slices</option><option value="auto">Auto (by hits)</option><option value="lazy">Lazy (tap it out)</option></select>
@@ -2705,29 +2236,17 @@ function jarSVG(col, i, shape='mason'){
     <rect x="27" y="${Math.max(top + 14, 38)}" width="46" height="17" fill="var(--ink)"/><text x="50" y="${Math.max(top + 14, 38) + 13}" text-anchor="middle" font-family="Bungee, Arial Black, sans-serif" font-size="12" fill="var(--jar-num,#ffd23f)">${i+1}</text></svg>`;
 }
 
-/* per-viewer storage: favorites + saved sequences. Signed-in viewers who can write keep them in their private
+/* per-viewer storage: favorites. Signed-in viewers who can write keep them in their private
    data/users/<id> space; everyone else keeps them in this browser. */
 const lsGet = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? d; } catch(e){ return d; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} };
-const store = {mode:'local', base:null, favs:new Set(lsGet('nsd.favs', [])), seqs:lsGet('nsd.seqs', [])};
+const store = {mode:'local', base:null, favs:new Set(lsGet('nsd.favs', []))};
 function goLocal(why){ if (store.mode !== 'local'){ store.mode = 'local'; toast(why || 'Saving in this browser only.'); } }
 async function saveFavs(){
   lsSet('nsd.favs', [...store.favs]);
   if (store.mode === 'db'){ try { await db.doc(store.base+'/lab').set({favs:[...store.favs], at:new Date().toISOString()}); } catch(e){ goLocal('Favorites are saved in this browser only.'); } }
   $('#favcount').textContent = store.favs.size;
   houseRefresh();
-}
-async function putSeq(obj, id){
-  if (store.mode === 'db'){
-    try { if (id){ await db.doc(store.base+'/lab/seqs/'+id).set(obj); return id; } const r = await db.collection(store.base+'/lab/seqs').add(obj); return r.id; }
-    catch(e){ goLocal('Sequences are saved in this browser only.'); }
-  }
-  id = id || ('l' + Date.now().toString(36));
-  store.seqs = [{id, ...obj}, ...store.seqs.filter(x => x.id !== id)]; lsSet('nsd.seqs', store.seqs); renderLogs(); return id;
-}
-async function dropSeq(id){
-  if (store.mode === 'db'){ try { await db.doc(store.base+'/lab/seqs/'+id).delete(); return; } catch(e){ goLocal(); } }
-  store.seqs = store.seqs.filter(x => x.id !== id); lsSet('nsd.seqs', store.seqs); renderLogs();
 }
 async function wireLabStore(){
   await capsReady; if (!db || !user) return;
@@ -2739,11 +2258,6 @@ async function wireLabStore(){
       if (d.exists){ store.favs = new Set(d.data().favs || []); }
       else if (store.favs.size) saveFavs();
       $('#favcount').textContent = store.favs.size; renderLab(); }, () => {}); } catch(e){}
-  try { db.collection(store.base+'/lab/seqs').orderBy('at','desc').onSnapshot(snap => {
-      const local = lsGet('nsd.seqs', []);
-      store.seqs = snap.docs.map(d => ({id:d.id, ...d.data()}));
-      if (!store.seqs.length && local.length && !store.migrated){ store.migrated = true; local.forEach(s => { const {id, ...rest} = s; putSeq(rest); }); }
-      renderLogs(); }, () => {}); } catch(e){}
 }
 
 /* the room */
@@ -2763,17 +2277,17 @@ function renderLab(){
   }
   const items = favMode ? [...store.favs].map(byKey).filter(Boolean) : cabItems(labView);
   const cab = favMode ? {name:'Favorites', col:'#ff4fa3'} : CABBY[labView];
-  $('#labhint').textContent = favMode ? 'Your starred specimens.' : 'Tap a jar to hear it. Its tools pop up in the dock.';
+  $('#labhint').textContent = favMode ? 'Your starred specimens.' : 'Tap a jar to hear it. Its tools pop up in the bar at the bottom.';
   room.innerHTML = `<div class="shelfview"><div class="shelfhead">${favMode ? '' : '<button class="btn ghost small" id="labback">&larr; Back to the lab</button>'}<span class="plate">${esc(cab.name)}</span><span class="spec">${items.length} specimen${items.length===1?'':'s'}</span></div>
     <div class="bigcab">${!favMode && items.some(s => s.shelf) ? QSHELVES.map(sh => { const xs = items.filter(s => s.shelf === sh.id); return xs.length ? `<div class="shelftag"><span>${esc(sh.name)}</span><small>${xs.length}</small></div><div class="jarrow">${xs.map(s => jarHTML(s)).join('')}</div>` : ''; }).join('')
-      : `<div class="jarrow">${items.length ? items.map(s => jarHTML(s)).join('') : `<p class="emptyshelf">${favMode ? 'Nothing starred yet. Tap a jar, then Star in the dock.' : 'Empty shelf. The band is working on it.'}</p>`}</div>`}</div></div>`;
+      : `<div class="jarrow">${items.length ? items.map(s => jarHTML(s)).join('') : `<p class="emptyshelf">${favMode ? 'Nothing starred yet. Tap a jar, then Star in the bar at the bottom.' : 'Empty shelf. The band is working on it.'}</p>`}</div>`}</div></div>`;
   const back = $('#labback'); if (back) back.onclick = () => { labView = 'wall'; renderLab(); };
   wireJars(room);
 }
 function jarHTML(s){
-  const k = keyOf(s), i = specimens.indexOf(s), pad = kit.indexOf(k), fav = store.favs.has(k), ed = isEdited(k) || !!s.base;
-  const badges = (fav ? '<i class="bg-fav" title="Starred">&#9733;</i>' : '') + (pad >= 0 ? `<i class="bg-pad" title="On pad ${pad+1}">P${pad+1}</i>` : '') + (ed ? '<i class="bg-ed" title="Doctored">&#9986;</i>' : '');
-  return `<div class="jar2${ed ? ' ed' : ''}${k === selJar ? ' sel' : ''}" data-k="${esc(k)}"><button class="j" aria-pressed="${k === selJar}" aria-label="${esc(s.title)}${fav ? ', starred' : ''}${pad >= 0 ? ', on pad ' + (pad+1) : ''}${ed ? ', doctored' : ''}. Play it and pick it.">${jarSVG(colOf(s), i, JAR_SHAPE[s.cat] || 'mason')}<span class="nm">${esc(s.title)}</span></button>${badges ? `<span class="badges" aria-hidden="true">${badges}</span>` : ''}</div>`;
+  const k = keyOf(s), i = specimens.indexOf(s), fav = store.favs.has(k), ed = isEdited(k) || !!s.base;
+  const badges = (fav ? '<i class="bg-fav" title="Starred">&#9733;</i>' : '') + (ed ? '<i class="bg-ed" title="Doctored">&#9986;</i>' : '');
+  return `<div class="jar2${ed ? ' ed' : ''}${k === selJar ? ' sel' : ''}" data-k="${esc(k)}"><button class="j" aria-pressed="${k === selJar}" aria-label="${esc(s.title)}${fav ? ', starred' : ''}${ed ? ', doctored' : ''}. Play it and pick it.">${jarSVG(colOf(s), i, JAR_SHAPE[s.cat] || 'mason')}<span class="nm">${esc(s.title)}</span></button>${badges ? `<span class="badges" aria-hidden="true">${badges}</span>` : ''}</div>`;
 }
 function wireJars(root){
   root.querySelectorAll('.jar2').forEach(el => {
@@ -2794,140 +2308,15 @@ $('#tab-lab').onclick = () => { favMode = false; renderLab(); };
 $('#tab-fav').onclick = () => { favMode = true; renderLab(); };
 
 /* =====================================================================
-   THE MESS MACHINE, Koala-style.
-   4 banks x 16 pads. Pads or Keys mode (9 scales). Realtime record, note repeat, click.
-   Step grid + a piano roll for every pad. 8 loops, a song lane, swing, mute/solo, choke, undo.
-   The doctor's table: trim front and back, zoom, snap, attack/release, tune, volume, pan,
-   tone, reverse, loop, gate, normalize, choke, re-pitch to tempo, chop to pads.
-   Your Workbench: chops, resamples, imports and mic takes. Perform FX on a live bus.
+   THE SOUND CORE. The Mess Machine itself is the app's own machine now, in a room of its own
+   (the end of this script). What stays here is what the lab, the doctor's table, walk mode,
+   the jam and the ring play through: the doctor's settings, the Workbench, the live bus.
    ===================================================================== */
-const STEPS = 16, NPADS = 64, BANK = 16, NSLOTS = 8, LETTERS = 'ABCDEFGH', ROLL_HI = 12, ROLL_LO = -12, MAXSONG = 64;
-const MAXROWS = NPADS;
 const NN = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 const noteName = p => NN[((p % 12) + 12) % 12] + (4 + Math.floor(p / 12));
-const SCALES = {'Chromatic':[0,1,2,3,4,5,6,7,8,9,10,11], 'Major':[0,2,4,5,7,9,11], 'Minor':[0,2,3,5,7,8,10], 'Harmonic minor':[0,2,3,5,7,8,11],
-  'Dorian':[0,2,3,5,7,9,10], 'Phrygian':[0,1,3,5,7,8,10], 'Mixolydian':[0,2,4,5,7,9,10], 'Major pentatonic':[0,2,4,7,9], 'Minor pentatonic':[0,3,5,7,10], 'Blues':[0,3,5,6,7,10]};
-const PADKEYS = ['1','2','3','4','q','w','e','r','a','s','d','f','z','x','c','v'];
-const DEFAULT_KIT = ['basement-kick','wet-clap','pot-lid-hat','bw-snare','tom-of-doom','bubble-pop','spring-doink','tape-wobble-chord'].map(f => 'samples/'+f+'.wav');
-const padsFrom = list => Array.from({length:NPADS}, (_, i) => list[i] || '');
-const blankPat = () => ({len:STEPS, steps:{}, notes:{}});
-let kit = padsFrom(DEFAULT_KIT), bank = 0, selPad = 7, pats = Array.from({length:NSLOTS}, blankPat), mmCur = 0, mmSong = Array(16).fill(-1), mode = 'loop', follow = true;
-let swing = 0, mutes = new Set(), solos = new Set(), scale = 'Minor', sroot = 0, fold = false;
-let padMode = 'pads', recOn = false, nrOn = false, clickOn = false;
-
-/* ---------- melody: the keys strip, scale-built chords, Maschine-style chord sets, the arp ---------- */
-let mtab = lsGet('nsd.mtab', 'pads'), pane = lsGet('nsd.pane', 'jars'), stripOpen = false, chordMode = lsGet('nsd.chord', 'off'), arpMode = lsGet('nsd.arp', 'rep'), arpI = 0, freeNrT = null, lpT = 0;
-const QUAL = {maj:[0,4,7], min:[0,3,7], dim:[0,3,6], aug:[0,4,8], '5':[0,7,12], sus2:[0,2,7], sus4:[0,5,7], add9:[0,4,7,14], '7':[0,4,7,10], maj7:[0,4,7,11], m7:[0,3,7,10], m7b5:[0,3,6,10], mMaj7:[0,3,7,11], m9:[0,3,7,10,14], '9':[0,4,7,10,14]};
-const QSUF = {maj:'', min:'m', dim:'°', aug:'+', '5':'5', sus2:'sus2', sus4:'sus4', add9:'add9', '7':'7', maj7:'maj7', m7:'m7', m7b5:'m7♭5', mMaj7:'m(maj7)', m9:'m9', '9':'9'};
-const IVSUF = {'0,4,7':'', '0,3,7':'m', '0,3,6':'°', '0,4,8':'+', '0,7,12':'5', '0,4,7,11':'maj7', '0,4,7,10':'7', '0,3,7,10':'m7', '0,3,6,10':'m7♭5', '0,3,7,11':'m(maj7)', '0,3,6,9':'°7', '0,4,8,11':'+maj7', '0,2,7':'sus2', '0,5,7':'sus4'};
-/* eight chords per set, roots in semitones above the scale root; each set lists the scale it was written in */
-const CHORDSETS = {
-  'Sunday Pop':     {home:'Major',          ch:[[0,'maj'],[7,'maj'],[9,'min'],[5,'maj'],[2,'min'],[4,'min'],[5,'maj7'],[7,'7']]},
-  'Dreamy Sus':     {home:'Major',          ch:[[0,'sus2'],[5,'add9'],[9,'m7'],[7,'sus4'],[0,'maj7'],[4,'m7'],[5,'maj7'],[7,'sus2']]},
-  'Gospel Drip':    {home:'Major',          ch:[[0,'add9'],[4,'m7'],[9,'m9'],[2,'m9'],[7,'9'],[5,'maj7'],[11,'m7b5'],[0,'maj7']]},
-  'Basement Minor': {home:'Minor',          ch:[[0,'min'],[8,'maj'],[3,'maj'],[10,'maj'],[5,'min'],[7,'min'],[0,'m7'],[8,'maj7']]},
-  'Neo Soul':       {home:'Dorian',         ch:[[0,'m9'],[5,'9'],[10,'maj7'],[3,'maj7'],[7,'m7'],[2,'m7'],[9,'m7b5'],[0,'m7']]},
-  'Haunted':        {home:'Harmonic minor', ch:[[0,'min'],[7,'7'],[8,'maj'],[5,'min'],[11,'dim'],[2,'dim'],[3,'aug'],[0,'mMaj7']]},
-  'Trap Dread':     {home:'Phrygian',       ch:[[0,'min'],[1,'maj'],[8,'maj'],[5,'min'],[3,'maj'],[10,'min'],[0,'m7'],[1,'maj7']]},
-  'Power Stabs':    {home:'Minor',          ch:[[0,'5'],[3,'5'],[5,'5'],[7,'5'],[8,'5'],[10,'5'],[12,'5'],[-2,'5']]},
-};
-const pcOf = p => ((p % 12) + 12) % 12;
-const foldP = p => { while (p > ROLL_HI) p -= 12; while (p < ROLL_LO) p += 12; return p; };
-const setFits = (S, sc) => S.ch.every(([r, q]) => QUAL[q].every(iv => SCALES[sc].includes(pcOf(r + iv))));
-const harmScale = () => scale === 'Chromatic' || scale === 'Major pentatonic' ? SCALES.Major : (scale === 'Minor pentatonic' || scale === 'Blues') ? SCALES.Minor : SCALES[scale];
-const stripScale = () => scale === 'Chromatic' ? SCALES.Major : SCALES[scale];
-function stripNotes(){ const sc = stripScale(), out = []; for (let p = ROLL_LO; p <= ROLL_HI; p++) if (sc.includes(pcOf(p - sroot))) out.push(p); return out; }
-const chordGain = n => n > 1 ? .85 * Math.min(1, 1.15 / Math.sqrt(n)) : .85;
-const arpLive = () => nrOn && arpMode !== 'rep';
-/* the chord a key plays, before folding into the roll's two octaves */
-function chordRaw(p, idx){
-  if (chordMode === 'power') return [p, p + 7, p + 12];
-  if (chordMode.startsWith('set:')){
-    const S = CHORDSETS[chordMode.slice(4)]; if (!S) return [p];
-    const [r, q] = S.ch[((idx % 8) + 8) % 8], base = (sroot > 5 ? sroot - 12 : sroot) + r + (idx >= 8 ? 12 : 0);
-    return QUAL[q].map(iv => base + iv);
-  }
-  if (chordMode === 'triad' || chordMode === 'seventh'){
-    const sc = harmScale(), n = sc.length, rel = pcOf(p - sroot), deg = sc.indexOf(rel), stack = chordMode === 'seventh' ? [0,2,4,6] : [0,2,4];
-    if (deg < 0) return (chordMode === 'seventh' ? [0,4,7,10] : [0,4,7]).map(iv => p + iv);
-    const base = p - rel; return stack.map(st => { const j = deg + st; return base + sc[j % n] + 12 * Math.floor(j / n); });
-  }
-  return [p];
-}
-const chordOf = (p, idx) => chordMode === 'off' ? [p] : [...new Set(chordRaw(p, idx).map(foldP))].sort((a, b) => a - b);
-function chordLabel(p, idx){
-  if (chordMode === 'off') return noteName(p);
-  if (chordMode.startsWith('set:')){ const S = CHORDSETS[chordMode.slice(4)]; if (!S) return noteName(p); const [r, q] = S.ch[((idx % 8) + 8) % 8]; return NN[pcOf(sroot + r)] + QSUF[q]; }
-  const t = chordRaw(p, idx), iv = t.map(x => x - t[0]).join(',');
-  return NN[pcOf(t[0])] + (iv in IVSUF ? IVSUF[iv] : '');
-}
-function renderStrip(){
-  const el = $('#keystrip'); if (!el) return; el.hidden = !stripOpen; if (!stripOpen) return;
-  const s = byKey(selKey());
-  $('#ksname').textContent = s ? `Pad ${selPad + 1} · ${s.title}` : 'Pick a pad with a jar on it';
-  el.style.setProperty('--c', s ? colOf(s) : '#555');
-  $('#kskeys').innerHTML = stripNotes().map((p, i) => { const lab = chordLabel(p, i); return `<button class="wk${pcOf(p - sroot) === 0 ? ' rt' : ''}" data-i="${i}" aria-label="Play ${esc(lab)}"><span>${esc(lab)}</span></button>`; }).join('');
-}
-function openStrip(v){ stripOpen = v; renderStrip(); melUI();
-  if (!v) return; const r = $('#keystrip').getBoundingClientRect(), lim = innerHeight - ($('#dock')?.getBoundingClientRect().height || 0) - 24;
-  if (r.bottom > lim) scrollBy({top: r.bottom - lim, behavior: reduce ? 'auto' : 'smooth'}); else if (r.top < headH() + 8) scrollBy({top: r.top - headH() - 8, behavior: reduce ? 'auto' : 'smooth'}); }
-function melUI(){
-  const m = $('#dockmel'); if (!m) return;
-  const lab = curView === 'specimens';
-  m.hidden = !(lab && pane === 'machine' && (((stripOpen || padMode === 'keys') && mtab === 'pads') || mtab === 'roll'));
-}
-function renderChordOpts(){
-  const fit = [], other = []; for (const [n, S] of Object.entries(CHORDSETS)) (setFits(S, scale) ? fit : other).push(n);
-  const o = (v, l) => `<option value="${v}"${chordMode === v ? ' selected' : ''}>${l}</option>`;
-  $('#chordmode').innerHTML = o('off', 'Off') + `<optgroup label="Stacked from the scale">${o('triad','Triads')}${o('seventh','7ths')}${o('power','Power')}</optgroup>`
-    + (fit.length ? `<optgroup label="Chord sets in ${NN[sroot]} ${scale.toLowerCase()}">${fit.map(n => o('set:' + n, n)).join('')}</optgroup>` : '')
-    + (other.length ? `<optgroup label="Other chord sets (they move the scale)">${other.map(n => o('set:' + n, n)).join('')}</optgroup>` : '');
-}
-function arpNext(){
-  const L = []; held.forEach(h => (h.ps || [h.p]).forEach(p => L.push({h, p}))); if (!L.length) return null;
-  L.sort((a, b) => a.p - b.p); const n = L.length; let i;
-  if (arpMode === 'down') i = n - 1 - arpI % n;
-  else if (arpMode === 'updown'){ const per = Math.max(1, 2*n - 2), x = arpI % per; i = x < n ? x : per - x; }
-  else if (arpMode === 'rand') i = Math.floor(Math.random() * n);
-  else i = arpI % n;
-  arpI++; return L[i];
-}
-/* note repeat with the transport stopped runs on its own little clock */
-function nrFree(dur){
-  if (arpMode !== 'rep'){ const n = arpNext(); if (n){ const s = byKey(n.h.k); if (s) hitNow(s, 2 ** (n.p/12), dur); } return; }
-  held.forEach(h => { const s = byKey(h.k); if (s) (h.ps || [h.p]).forEach(p => hitNow(s, 2 ** (p/12), dur, {gain: chordGain((h.ps || []).length)})); });
-}
-function freeNrSync(){
-  const want = nrOn && !seqOn && held.size > 0;
-  if (want && !freeNrT){ const ms = Math.max(.5, +$('#nrrate').value) * spbNow() * 1000; if (arpMode !== 'rep') nrFree(ms/1000*.9); freeNrT = setInterval(() => nrFree(ms/1000*.9), ms); }
-  else if (!want && freeNrT){ clearInterval(freeNrT); freeNrT = null; }
-}
-function melDown(id, idx, src){
-  const k = selKey(), s = byKey(k);
-  if (!s){ toast('Pick a pad with a jar on it first. The keys play whichever pad you picked last.'); return; }
-  const p = src === 'strip' ? stripNotes()[idx] : keyNote(idx); if (p === undefined) return;
-  const ps = chordOf(p, idx), h = {k, p, ps, d:id, at: seqOn ? nowStep() : 0, v:[], mel:true};
-  held.set(id, h);
-  const hold = edOf(k).mode !== 'one' || edOf(k).loop, g = chordGain(ps.length);
-  if (!(nrOn && seqOn) && !arpLive()) h.v = mmLive.get(k) ? ps.map(q => hitNow(s, 2 ** (q/12), 0, {hold, gain:g})) : [hitNow(s)];
-  if (nrOn && !seqOn) freeNrSync();
-  const kc = $('#kschord'); if (kc) kc.textContent = ps.length > 1 ? `${chordLabel(p, idx)} · ${ps.map(noteName).join(' ')}` : noteName(p);
-}
-let seqOn = false, seqTimer = null, step = 0, songPos = 0, nextTime = 0, lastStep = 0, curSeq = null;
-let playOnClick = lsGet('nsd.poc', true);
-const P_ = () => pats[mmCur];
-const selKey = () => kit[selPad] || '';
-const patUsed = P => P && (Object.values(P.notes).some(a => a && a.length) || Object.values(P.steps).some(a => a && a.some(Boolean)));
-const mmSongLen = () => { let n = 0; mmSong.forEach((v, i) => { if (v >= 0) n = i + 1; }); return n; };
-const loadedPads = () => kit.map((k, i) => k && byKey(k) ? {i, k, s:byKey(k)} : null).filter(Boolean);
-const kitRows = () => loadedPads().map(x => x.s);
-const bankRows = () => loadedPads().filter(x => Math.floor(x.i / BANK) === bank);
-const audible = k => solos.size ? solos.has(k) : !mutes.has(k);
-const bpmNow = () => { const v = Math.round(+($('#bpm').value)); return v >= 40 && v <= 240 ? v : 112; };
-const spbNow = () => 60/bpmNow()/4;
-function setPoc(){ $('#poc').setAttribute('aria-pressed', String(playOnClick)); $('#poc').textContent = 'Click to hear: ' + (playOnClick ? 'on' : 'off'); }
-$('#poc').onclick = () => { playOnClick = !playOnClick; lsSet('nsd.poc', playOnClick); setPoc(); };
-setPoc();
+/* the jam's keys: two octaves of C minor around the jar's own pitch */
+const MINOR = [0,2,3,5,7,8,10];
+function stripNotes(){ const out = []; for (let p = -12; p <= 12; p++) if (MINOR.includes(((p % 12) + 12) % 12)) out.push(p); return out; }
 
 /* ---------- the doctor's settings, per jar, non-destructive ---------- */
 const ED_DEF = {st:0, en:1, att:0, rel:0, rev:false, loop:false, mode:'one', tune:0, fine:0, vol:1, pan:0, tone:0, norm:false, choke:0};
@@ -2987,7 +2376,7 @@ async function renderEdited(s){
   voiceEd(oc, oc.destination, s, buf, 0, {gain:1}); return oc.startRendering();
 }
 
-/* ---------- your workbench: chops, resamples, imports, mic takes (this browser) ---------- */
+/* ---------- your workbench: chops, imports, mic takes (this browser) ---------- */
 const idb = (() => { let pr;
   const open = () => pr ||= new Promise((res, rej) => { try { const r = indexedDB.open('nsd-bench', 1); r.onupgradeneeded = () => r.result.createObjectStore('wav'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); } catch(e){ rej(e); } });
   const tx = (m, fn) => open().then(db => new Promise((res, rej) => { const t = db.transaction('wav', m), q = fn(t.objectStore('wav')); t.oncomplete = () => res(q && q.result); t.onerror = () => rej(t.error); }));
@@ -3000,382 +2389,37 @@ function rebuildBench(){
 }
 function saveBench(){ lsSet('nsd.bench', BENCH); rebuildBench(); }
 const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-function freePad(){ const own = Array.from({length:BANK}, (_, j) => bank*BANK + j).find(i => !kit[i]); return own ?? kit.findIndex(k => !k); }
-function putOnPad(k, quiet){
-  if (kit.includes(k)){ selPad = kit.indexOf(k); return true; }
-  const i = freePad(); if (i < 0){ if (!quiet) toast('All 64 pads are full. Clear one first.'); return false; }
-  kit[i] = k; selPad = i; mmPrime(byKey(k)); return true;
-}
+/* an imported sound or a mic take goes in the Workbench, then on a pad in the Mess Machine */
 async function addAudioJar(kind, title, bytes, extraEd){
   const id = newId();
   try { await idb.put(id, bytes); } catch(e){ toast('This browser will not keep sounds on this page. Try another browser.'); return null; }
   BENCH = [...BENCH, {id, kind, title:title.slice(0, 40), at:Date.now()}]; saveBench();
   const k = 'bn:' + id; if (extraEd) setEd(k, extraEd);
-  putOnPad(k); renderSeq(); renderLab(); return k;
+  renderLab(); await sendToMachine(byKey(k), true); return k;
 }
 async function tossBench(k){
   const s = byKey(k); if (!s || !s.bench) return;
   BENCH = BENCH.filter(b => b.id !== s.bench); if (s.idb) idb.del(s.bench).catch(() => {});
-  kit = kit.map(x => x === k ? '' : x); delete EDITS[k]; saveEdits(); saveBench(); store.favs.delete(k);
-  buffers.delete(k); mmLive.delete(k); renderSeq(); renderLab();
+  delete EDITS[k]; saveEdits(); saveBench(); store.favs.delete(k);
+  buffers.delete(k); mmLive.delete(k); renderLab();
 }
 
-/* decoded buffers the clock can reach without waiting */
+/* decoded buffers the jam can reach without waiting */
 const mmLive = new Map();
 function mmPrime(s){ if (s && !mmLive.has(keyOf(s))) bufferOf(s).then(b => mmLive.set(keyOf(s), b)).catch(() => {}); }
-async function primeAll(){ await Promise.all(kitRows().map(s => bufferOf(s).then(b => mmLive.set(keyOf(s), b)).catch(() => null))); }
 
-/* ---------- undo / redo ---------- */
-const snap = () => JSON.stringify({kit, pats, mmSong, swing, mutes:[...mutes], solos:[...solos]});
-let hist = [], hi = -1;
-function commit(){ const j = snap(); if (hist[hi] === j) return; hist = hist.slice(0, hi + 1); hist.push(j); if (hist.length > 80) hist.shift(); hi = hist.length - 1; undoUI(); }
-function restore(j){ const o = JSON.parse(j); kit = o.kit; pats = o.pats; mmSong = o.mmSong; swing = o.swing; mutes = new Set(o.mutes); solos = new Set(o.solos);
-  $('#swing').value = swing; $('#swingv').textContent = swing + '%'; renderSeq(); }
-function undo(){ if (hi > 0){ hi--; restore(hist[hi]); undoUI(); } }
-function redo(){ if (hi < hist.length - 1){ hi++; restore(hist[hi]); undoUI(); } }
-function undoUI(){ $('#undo').disabled = hi <= 0; $('#redo').disabled = hi >= hist.length - 1; }
-$('#undo').onclick = undo; $('#redo').onclick = redo;
-
-/* ---------- drawing ---------- */
-function keyNote(d){ const r = Math.floor(d/4), c = d % 4, idx = (3 - r)*4 + c, sc = SCALES[scale]; return sroot + sc[idx % sc.length] + 12*Math.floor(idx / sc.length) - (sroot > 5 ? 12 : 0); }
-function renderPads(){
-  $('#banks').innerHTML = [0,1,2,3].map(b => `<button role="tab" aria-selected="${b===bank}" data-bank="${b}">Bank ${b+1}<small>${kit.slice(b*BANK, b*BANK+BANK).filter(Boolean).length}</small></button>`).join('');
-  $('#banks').querySelectorAll('[data-bank]').forEach(x => x.onclick = () => { bank = +x.dataset.bank; renderPads(); renderDrums(); });
-  const keys = padMode === 'keys', ks = byKey(selKey());
-  $('#padgrid').classList.toggle('keys', keys); $('#padgrid').classList.toggle('chords', chordMode !== 'off');
-  $('#padgrid').innerHTML = Array.from({length:BANK}, (_, d) => {
-    if (keys){ const p = keyNote(d), lab = chordLabel(p, d); return `<button class="kpad" data-d="${d}" style="--c:${ks ? colOf(ks) : '#555'}" aria-label="Play ${esc(lab)}"><span class="pn">${esc(lab)}</span><b>${p === 0 ? 'root' : (p > 0 ? '+' : '') + p}</b><kbd>${PADKEYS[d].toUpperCase()}</kbd></button>`; }
-    const i = bank*BANK + d, k = kit[i], s = k && byKey(k);
-    return `<button class="kpad${s ? '' : ' empty'}${i === selPad ? ' sel' : ''}${s && isEdited(k) ? ' ed' : ''}" data-d="${d}" style="--c:${s ? colOf(s) : '#3a3440'}" aria-label="Pad ${i+1}${s ? ': '+esc(s.title) : ', empty'}"><span class="pn">${i+1}</span><b>${s ? esc(s.title) : 'empty'}</b><kbd>${PADKEYS[d].toUpperCase()}</kbd></button>`; }).join('');
-  const sp = byKey(selKey());
-  playswUI();
-  $('#keysinfo').hidden = !keys; if (keys) $('#keysinfo').textContent = sp ? `Keys mode plays ${sp.title} in ${NN[sroot]} ${scale.toLowerCase()}${chordMode !== 'off' ? ', one chord per pad' : ''}. Scale and chords sit in the dock.` : 'Pick a pad first, then switch to Keys.';
-  renderStrip(); renderPadPick(); if (typeof melUI === 'function' && $('#dockmel')) melUI();
-}
-let padPickSig = '';
-function renderPadPick(){
-  const el = $('#padpick'); if (!el) return;
-  const sig = kit.join('|') + '#' + specimens.length + '#' + selPad;
-  if (sig === padPickSig) return; padPickSig = sig;
-  const cur = kit[selPad] || '';
-  el.innerHTML = `<option value="">${cur ? 'Swap in another jar…' : 'Pick a jar…'}</option>` + CABS.map(c => { const xs = cabItems(c.id); if (!xs.length) return '';
-    return `<optgroup label="${esc(c.name)}">${xs.map(s => { const k = keyOf(s), at = kit.indexOf(k); return `<option value="${esc(k)}"${k === cur ? ' selected' : ''}>${esc(s.title)}${at >= 0 ? ' · pad ' + (at + 1) : ''}</option>`; }).join('')}</optgroup>`; }).join('');
-}
-function renderSlots(){
-  $('#slots').innerHTML = pats.map((P, i) => `<button role="tab" aria-selected="${i===mmCur}" data-slot="${i}" class="${patUsed(P)?'used':''}" aria-label="Loop ${LETTERS[i]}${patUsed(P)?'':', empty'}">${LETTERS[i]}</button>`).join('');
-  $('#slots').querySelectorAll('[data-slot]').forEach(b => b.onclick = () => { mmCur = +b.dataset.slot; if (seqOn && mode === 'song') follow = false; renderSeq(); });
-  { const nb = P_().len / STEPS; $('#looplen').textContent = `Length: ${nb} bar${nb === 1 ? '' : 's'}`; }
-  $('#loopname').textContent = `Editing loop ${LETTERS[mmCur]}`;
-  commit();
-}
-function renderDrums(){
-  const rows = bankRows(), P = P_();
-  $('#seqtable').innerHTML = rows.length ? rows.map(({i, k, s}) => { const nts = new Set((P.notes[k] || []).map(n => n.s));
-    return `<tr class="${audible(k) ? '' : 'muted'}"><th scope="row"><span class="pnum">${i+1}</span><button class="rn" data-pad="${i}" aria-label="${esc(s.title)}. Tap to hear, hold for its menu">${esc(s.title)}</button>${mutes.has(k) ? '<span class="rtag">M</span>' : ''}${solos.has(k) ? '<span class="rtag s">S</span>' : ''}</th>${Array.from({length:P.len},(_,j)=>`<td><button class="${nts.has(j)?'nt':''}" aria-label="${esc(s.title)} step ${j+1}" aria-pressed="${!!(P.steps[k]||[])[j]}" data-k="${esc(k)}" data-j="${j}" style="--c:${colOf(s)}"></button></td>`).join('')}</tr>`; }).join('')
-    : `<tr><td class="kitnote" style="padding:14px">Bank ${bank+1} is empty. Tap a jar in the lab and hit Put on a pad in the dock, or import a sound.</td></tr>`;
-  $('#seqtable').querySelectorAll('td button').forEach(b => b.onclick = () => { const P = P_(), k = b.dataset.k, j = +b.dataset.j; (P.steps[k] ||= [])[j] = !P.steps[k][j]; b.setAttribute('aria-pressed', String(!!P.steps[k][j])); if (P.steps[k][j] && playOnClick) playSpec(byKey(k)); renderSlots(); });
-  $('#seqtable').querySelectorAll('.rn').forEach(b => { b.onclick = () => { if (b._held){ b._held = false; return; } selPad = +b.dataset.pad; playSpec(byKey(kit[selPad])); renderPads(); renderRoll(); };
-    holdMenu(b, () => +b.dataset.pad); });
-  $('#seqtable').querySelectorAll('[data-mute]').forEach(b => b.onclick = () => { const k = b.dataset.mute; mutes.has(k) ? mutes.delete(k) : mutes.add(k); renderDrums(); commit(); });
-  $('#seqtable').querySelectorAll('[data-solo]').forEach(b => b.onclick = () => { const k = b.dataset.solo; solos.has(k) ? solos.delete(k) : solos.add(k); renderDrums(); commit(); });
-  $('#seqtable').querySelectorAll('[data-doc]').forEach(b => b.onclick = () => openDoctor(byKey(b.dataset.doc)));
-  $('#seqtable').querySelectorAll('.rx').forEach(b => b.onclick = () => toggleKit(b.dataset.x));
-  $('#kitnote').textContent = `Bank ${bank+1}: ${rows.length} of 16 pads loaded, ${loadedPads().length} of 64 in all. One row per sound: tap a square to drop a hit. Hold a sound's name (or right-click it) to mute, solo, doctor or clear it. A dot in a square means that pad has piano roll notes there. Loop tools up top change the length, copy, bottle or clear the loop.`;
-}
-function inScale(p){ return SCALES[scale].includes((((p - sroot) % 12) + 12) % 12); }
-function renderRoll(){
-  const P = P_(), k = selKey(), s = byKey(k), notes = P.notes[k] || [];
-  $('#rollinst').innerHTML = loadedPads().map(({i, k:kk, s:ss}) => `<option value="${i}"${i===selPad?' selected':''}>Pad ${i+1} · ${esc(ss.title)}</option>`).join('') || '<option value="">Load a jar first</option>';
-  $('#rollscale').innerHTML = Object.keys(SCALES).map(n => `<option${n===scale?' selected':''}>${n}</option>`).join('');
-  $('#rollroot').innerHTML = NN.map((n, i) => `<option value="${i}"${i===sroot?' selected':''}>${n}</option>`).join('');
-  renderChordOpts();
-  $('#rollfold').setAttribute('aria-pressed', String(fold)); $('#rollfold').textContent = fold ? 'Unfold' : 'Fold to scale';
-  const cells = [];
-  let rows = 0;
-  for (let p = ROLL_HI; p >= ROLL_LO; p--){
-    const ins = inScale(p); if (fold && !ins) continue; rows++;
-    const black = [1,3,6,8,10].includes(((p % 12) + 12) % 12);
-    const pcx = ' pc' + pcOf(p - sroot);
-    cells.push(`<button class="rk${black?' blk':''}${p===0?' root':''}${ins?'':' out'}${pcx}" data-pk="${p}" aria-label="Hear ${noteName(p)}">${p % 12 === 0 || p === ROLL_HI || fold ? noteName(p) : ''}</button>`);
-    for (let st = 0; st < P.len; st++){
-      const n = notes.find(n => n.p === p && st >= n.s && st < n.s + n.l);
-      const cls = pcx.trim() + ' ' + (black ? 'blk ' : '') + (ins ? '' : 'out ') + (st % 4 === 0 ? 'beat ' : '') + (n ? (n.s === st ? 'on head' : 'on tail') + (st === n.s + n.l - 1 ? ' end' : '') : '');
-      cells.push(`<button class="${cls}" data-s="${st}" data-p="${p}" aria-pressed="${!!n}" aria-label="${noteName(p)} step ${st+1}"></button>`);
-    }
-  }
-  const R = $('#roll'); R.style.setProperty('--cols', P.len); R.innerHTML = cells.join('');
-  $('#rollnote').textContent = s ? `Pad ${selPad+1}, ${s.title}. Its own pitch sits on C4 (the yellow row); every other row speeds it up or slows it down. Click a square to drop a note, click it again to pull it. Scale and chords sit in the dock; with chords on, one click drops the whole chord.` : 'Pick a pad with a jar on it.';
-}
-function mmRenderSong(){
-  const L = mmSongLen();
-  $('#mm-songlane').innerHTML = mmSong.map((v, i) => `<button data-sl="${i}" class="${v>=0?'used':''}${i>=L?' past':''}" aria-label="Song bar ${i+1}: ${v>=0 ? 'loop '+LETTERS[v] : 'silence'}. Click to change.">${v>=0 ? LETTERS[v] : '&middot;'}</button>`).join('');
-  $('#mm-songlane').querySelectorAll('[data-sl]').forEach(b => {
-    const cycle = dir => { const i = +b.dataset.sl; let v = mmSong[i] + dir; if (v >= NSLOTS) v = -1; if (v < -1) v = NSLOTS - 1; mmSong[i] = v; mmRenderSong(); $(`#mm-songlane [data-sl="${i}"]`)?.focus(); };
-    b.onclick = () => cycle(1);
-    b.oncontextmenu = e => { e.preventDefault(); cycle(-1); };
-  });
-  $('#mm-songinfo').textContent = L ? `${L} bar${L===1?'':'s'}` : 'empty';
-  $('#mm-songmore').disabled = mmSong.length >= MAXSONG;
-  commit();
-}
-function renderSeq(){ if (!kit[selPad]){ const f = loadedPads()[0]; if (f) selPad = f.i; } renderPads(); renderSlots(); renderDrums(); renderRoll(); mmRenderSong(); }
-
-/* ---------- editing ---------- */
-$('#roll').addEventListener('click', e => {
-  const b = e.target.closest('button'); if (!b) return; const P = P_(), k = selKey(), s = byKey(k); if (!s) return;
-  if (b.dataset.pk !== undefined){ hitNow(s, 2 ** (+b.dataset.pk / 12)); return; }
-  const st = +b.dataset.s, p = +b.dataset.p, notes = (P.notes[k] ||= []);
-  const hit = notes.find(n => n.p === p && st >= n.s && st < n.s + n.l);
-  if (hit) P.notes[k] = notes.filter(n => n !== hit);
-  else { const l = Math.min(+$('#rolllen').value, P.len - st), sn = stripNotes(), ri = sn.indexOf(p), ps = chordOf(p, ri >= 0 ? ri : sn.filter(x => x < p).length);
-    let ns = notes; ps.forEach(q => { ns = [...ns.filter(n => !(n.p === q && n.s < st + l && st < n.s + n.l)), {s:st, p:q, l}]; }); P.notes[k] = ns;
-    if (playOnClick) ps.forEach(q => hitNow(s, 2 ** (q / 12), l * spbNow(), {gain: chordGain(ps.length)})); }
-  renderRoll(); renderDrums(); renderSlots();
-});
-$('#rollinst').onchange = e => { selPad = +e.target.value; renderPads(); renderRoll(); const s = byKey(selKey()); if (s) playSpec(s); };
-$('#rollscale').onchange = e => { scale = e.target.value; renderRoll(); renderPads(); commit(); };
-$('#rollroot').onchange = e => { sroot = +e.target.value; renderRoll(); renderPads(); commit(); };
-$('#chordmode').onchange = e => { const v = e.target.value;
-  if (v.startsWith('set:')){ const S = CHORDSETS[v.slice(4)]; if (S && !setFits(S, scale)){ scale = S.home; toast(`${v.slice(4)} was written in ${S.home.toLowerCase()}, so the scale moved to ${NN[sroot]} ${S.home.toLowerCase()}.`); } }
-  chordMode = v; lsSet('nsd.chord', v); renderRoll(); renderPads(); commit(); };
-$('#rollfold').onclick = () => { fold = !fold; renderRoll(); };
-$('#rollclear').onclick = () => { P_().notes[selKey()] = []; renderRoll(); renderDrums(); renderSlots(); toastUndo('Notes cleared.'); };
-$('#looplen').onclick = () => {
-  /* 1, 2, 4, 8 bars, as in the app. Growing copies what is there; shrinking keeps the front */
-  const P = P_(), from = P.len, to = from >= STEPS*8 ? STEPS : from * 2;
-  if (to > from){ Object.values(P.steps).forEach(a => { for (let j = from; j < to; j++) a[j] = !!a[j % from]; }); for (const k in P.notes) P.notes[k] = [...P.notes[k], ...P.notes[k].map(n => ({...n, s:n.s + from}))]; }
-  else { Object.values(P.steps).forEach(a => a.length = Math.min(a.length, to)); for (const k in P.notes) P.notes[k] = P.notes[k].filter(n => n.s < to).map(n => ({...n, l:Math.min(n.l, to - n.s)})); }
-  P.len = to; const nb = to / STEPS;
-  toast(to > from ? `Loop ${LETTERS[mmCur]} is ${nb} bars now. What was there got copied forward.` : `Loop ${LETTERS[mmCur]} is back to one bar.`);
-  renderSeq();
-};
-$('#loopcopy').onclick = () => {
-  let to = pats.findIndex((P, i) => i > mmCur && !patUsed(P)); if (to < 0) to = pats.findIndex(P => !patUsed(P));
-  if (to < 0){ toast('Every slot has something in it. Clear one first.'); return; }
-  pats[to] = JSON.parse(JSON.stringify(P_())); toast(`Copied loop ${LETTERS[mmCur]} into ${LETTERS[to]}.`); mmCur = to; renderSeq();
-};
-$('#mm-songmore').onclick = () => { mmSong = [...mmSong, ...Array(8).fill(-1)].slice(0, MAXSONG); mmRenderSong(); };
-$('#mm-songclear').onclick = () => { mmSong = Array(16).fill(-1); mmRenderSong(); toastUndo('Song cleared.'); };
-$('#mm-songfill').onclick = () => { const used = pats.map((P,i) => patUsed(P) ? i : -1).filter(i => i >= 0); if (!used.length){ toast('Make a loop first.'); return; }
-  mmSong = Array(Math.max(16, used.length*2)).fill(-1).map((_, i) => i < used.length*2 ? used[Math.floor(i/2)] : -1); mmRenderSong(); };
-function setMode(m){ mode = m; follow = true; $('#m-loop').setAttribute('aria-pressed', String(m==='loop')); $('#m-song').setAttribute('aria-pressed', String(m==='song')); songPos = 0; step = 0; }
-$('#m-loop').onclick = () => setMode('loop');
-$('#m-song').onclick = () => { if (!mmSongLen()){ toast('The song lane is empty. Tap a slot to put a loop in it.'); return; } setMode('song'); };
-$('#swing').oninput = e => { swing = +e.target.value; $('#swingv').textContent = swing + '%'; };
-$('#swing').onchange = () => commit();
-function toggleKit(k){
-  if (kit.includes(k)){ kit = kit.map(x => x === k ? '' : x); }
-  else if (!putOnPad(k)) return;
-  renderSeq(); renderLab(); if (curView === 'crawlspace') renderCrawl();
-}
-function defaultPattern(){
-  const P = blankPat(); const set = (f, st) => { P.steps['samples/'+f+'.wav'] = Array.from({length:STEPS}, (_,k) => st.includes(k)); };
-  set('basement-kick',[0,6,8,11]); set('wet-clap',[4,12]); set('pot-lid-hat',[2,6,10,14]); set('bw-snare',[15]); set('bubble-pop',[7]); set('spring-doink',[13]);
-  P.notes['samples/tape-wobble-chord.wav'] = [{s:0,p:0,l:4},{s:6,p:3,l:2},{s:8,p:7,l:4},{s:14,p:5,l:2}];
-  pats = Array.from({length:NSLOTS}, blankPat); pats[0] = P; mmCur = 0; kit = padsFrom(DEFAULT_KIT); selPad = 7;
-}
-$('#seqclear').onclick = () => { pats[mmCur] = {...blankPat(), len:P_().len}; renderSeq(); ltClose(); toastUndo(`Loop ${LETTERS[mmCur]} cleared.`); };
-$('#seqrand').onclick = () => { const P = P_(); bankRows().forEach(({k}, i) => { P.steps[k] = Array.from({length:P.len}, () => Math.random() < (i===0 ? .3 : .14)); }); renderSeq(); };
-
-/* ---------- the live bus: filter, dirt, ring mod, gate, crusher, echo ---------- */
-let FX = null, LO = null;
-/* everything the machine and the jars play goes through one gain, so Hush can cut it all at once */
+/* ---------- the live bus ---------- */
+let LO = null, LB = null;
+/* everything the jars play goes through one gain */
 function liveOut(){ const c = ac(); if (!LO || LO.context !== c){ LO = c.createGain(); LO.connect(c.destination); } return LO; }
-const fxs = {stut:null, tape:0, crush:false, echo:false, xy:false, rev:false, oct:false, hp:false};
-function crushCurve(bits){ const n = 4096, c = new Float32Array(n), q = 2 ** (bits - 1); for (let i=0;i<n;i++){ const x = i/(n-1)*2 - 1; c[i] = Math.round(x*q)/q; } return c; }
-function driveCurve(k){ const n = 4096, c = new Float32Array(n); for (let i=0;i<n;i++){ const x = i/(n-1)*2 - 1; c[i] = Math.tanh(k*x) / Math.tanh(k); } return c; }
-function fxBus(){
-  const c = ac(); if (FX && FX.c === c) return FX;
-  const stage = (input, proc, wetLvl) => { const d = c.createGain(), w = c.createGain(), o = c.createGain(); w.gain.value = 0; input.connect(d); d.connect(o); input.connect(proc); proc.connect(w); w.connect(o); return {o, d, w, lvl:wetLvl}; };
-  const inp = c.createGain(), filt = c.createBiquadFilter(), out = master(c);
-  filt.type = 'lowpass'; filt.frequency.value = 20000; filt.Q.value = .7; inp.connect(filt);
-  const ws = c.createWaveShaper(); ws.curve = driveCurve(9); const dirt = stage(filt, ws, .55);
-  const rg = c.createGain(); rg.gain.value = 0; const rosc = c.createOscillator(); rosc.frequency.value = 220; rosc.connect(rg.gain); rosc.start(); const ring = stage(dirt.o, rg, 1);
-  const gt = c.createGain(); gt.gain.value = 1; const gosc = c.createOscillator(); gosc.type = 'square'; const gdep = c.createGain(); gdep.gain.value = 0; gosc.connect(gdep); gdep.connect(gt.gain); gosc.start(); ring.o.connect(gt);
-  const cr = c.createWaveShaper(); cr.curve = crushCurve(4); const crush = stage(gt, cr, .9);
-  out.disconnect(); out.connect(liveOut()); crush.o.connect(out);
-  const dly = c.createDelay(2), fb = c.createGain(), send = c.createGain(), hp = c.createBiquadFilter();
-  hp.type = 'highpass'; hp.frequency.value = 350; send.gain.value = 0; fb.gain.value = .55;
-  crush.o.connect(send); send.connect(dly); dly.connect(hp); hp.connect(fb); fb.connect(dly); hp.connect(out);
-  FX = {c, inp, filt, dirt, ring, rosc, gt, gosc, gdep, crush, send, dly}; return FX;
-}
+/* the jam's hits and loop go through a gentle squash on the way out */
+function liveBus(){ const c = ac(); if (!LB || LB.context !== c){ LB = master(c); LB.disconnect(); LB.connect(liveOut()); } return LB; }
 function hitNow(s, rate=1, dur=0, opts={}){
   const b = mmLive.get(keyOf(s)); if (!b){ mmPrime(s); playSpec(s); return null; }
-  const c = ac(), F = fxBus(); return voiceEd(c, F.inp, s, b, c.currentTime + .005, {rate: rate * (fxs.oct ? .5 : 1), dur: dur || 0, gate: !!dur, rev: fxs.rev, ...opts});
+  const c = ac(); return voiceEd(c, liveBus(), s, b, c.currentTime + .005, {rate, dur: dur || 0, gate: !!dur, ...opts});
 }
-const metro = (c, t, hi) => { try { const o = c.createOscillator(), g = c.createGain(); o.frequency.value = hi ? 1760 : 1100; g.gain.setValueAtTime(.18, t); g.gain.exponentialRampToValueAtTime(.001, t + .05); o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + .06); } catch(e){} };
 
-/* ---------- the clock ---------- */
-const playingPat = () => mode === 'song' ? (mmSong[songPos] ?? -1) : mmCur;
-const gapOf = (a, s, len) => { for (let d = 1; d <= len; d++) if (a[(s + d) % len]) return d; return len; };
-function mmTick(){
-  if (freeNrT){ clearInterval(freeNrT); freeNrT = null; }
-  const c = ac(), bus = fxBus(), bpm = bpmNow();
-  while (nextTime < c.currentTime + .12){
-    const pi = playingPat(), P = pi >= 0 ? pats[pi] : null, len = P ? P.len : STEPS;
-    let spb = 60/bpm/4, rate = fxs.oct ? .5 : 1, mute = false;
-    if (fxs.tape){ const f = Math.min(1, Math.max(0, (nextTime - fxs.tape) / 1.1)); rate *= 1 - .82*f; spb = spb / Math.max(.18, 1 - .82*f); mute = f >= .97; }
-    let s = step;
-    if (fxs.stut){ s = fxs.stut.a + (((step - fxs.stut.b) % 2) + 2) % 2; if (s >= len) s = 0; }
-    const t = nextTime + (s % 2 ? swing/100 * spb * .5 : 0);
-    if (P && !mute){
-      loadedPads().forEach(({k, s:sp}) => {
-        const b = mmLive.get(k); if (!b || !audible(k)) return;
-        const arr = P.steps[k] || []; if (arr[s]) voiceEd(c, bus.inp, sp, b, t, {rate, dur: gapOf(arr, s, len) * spb, rev: fxs.rev});
-        (P.notes[k] || []).forEach(n => { if (n.s === s) voiceEd(c, bus.inp, sp, b, t, {rate: rate * 2 ** (n.p/12), dur: (fxs.stut ? Math.min(n.l, 2) : n.l) * spb, gate:true, gain:.78, rev: fxs.rev}); });
-      });
-    }
-    if (clickOn && s % 4 === 0) metro(c, t, s === 0);
-    if (nrOn && held.size){ const every = +$('#nrrate').value; if (every >= 1 ? s % every === 0 : true){ nrTick(t, s, pi, false, every); if (every < 1) nrTick(t + spb/2, s, pi, true, every); } }
-    lastStep = s;
-    const sp = songPos, delay = Math.max(0, (nextTime - c.currentTime)*1000);
-    setTimeout(() => markNow(pi, s, sp), delay);
-    nextTime += spb; step++;
-    if (step >= len){ step = 0; if (mode === 'song'){ const L = mmSongLen() || 1; songPos = (songPos + 1) % L; } }
-  }
-}
-function dockPos(pi, s, sp){ const el = $('#dockpos'); if (!el) return; el.textContent = `${mode === 'song' ? 'Bar ' + (sp + 1) + ' · ' : ''}${pi >= 0 ? LETTERS[pi] : 'rest'} ${Math.floor(s/16) + 1}.${Math.floor(s % 16 / 4) + 1}.${s % 4 + 1}`; const tl = $('#tempolab'); if (tl) tl.textContent = bpmNow() + ' BPM'; }
-function markNow(pi, s, sp){
-  document.querySelectorAll('#seq .now').forEach(b => b.classList.remove('now'));
-  if (!seqOn) return;
-  dockPos(pi, s, sp);
-  if (mode === 'song'){
-    $(`#mm-songlane [data-sl="${sp}"]`)?.classList.add('now');
-    if (follow && pi >= 0 && pi !== mmCur){ mmCur = pi; renderSlots(); renderDrums(); renderRoll(); }
-  }
-  if (pi !== mmCur) return;
-  document.querySelectorAll(`#seqtable button[data-j="${s}"], #roll button[data-s="${s}"]`).forEach(b => b.classList.add('now'));
-}
-let paused = false;
-function setPlayUI(){ const b = $('#seqplay'); b.setAttribute('aria-pressed', String(seqOn)); b.setAttribute('aria-label', seqOn ? 'Pause' : (paused ? 'Resume' : 'Play')); b.querySelector('.tx').textContent = seqOn ? 'Pause' : (paused ? 'Resume' : 'Play'); b.classList.toggle('on', seqOn); }
-function pauseSeq(){ if (!seqOn) return;
-  /* the clock runs a hair ahead; rewind to the step you actually heard so Resume picks up right after it */
-  const heard = Math.floor(nowStep()); step = Math.max(0, heard + 1);
-  seqOn = false; paused = true; clearInterval(seqTimer); fxOff(); setPlayUI(); }
-function stopSeq(){ seqOn = false; paused = false; clearInterval(seqTimer); step = 0; songPos = 0; markNow(-1, -1, -1); fxOff(); setPlayUI(); dockPos(mode === 'song' ? (mmSong[0] ?? -1) : mmCur, 0, 0); }
-async function startSeq(){
-  if (mode === 'song' && !mmSongLen()) setMode('loop');
-  const c = ac(); fxBus(); await primeAll();
-  audioBus.claim('seq'); if (!paused){ step = 0; songPos = 0; } paused = false; seqOn = true; follow = true; nextTime = c.currentTime + .06; seqTimer = setInterval(mmTick, 25);
-  setPlayUI();
-}
-$('#seqplay').onclick = () => seqOn ? pauseSeq() : startSeq();
-/* Stop twice hushes every sound (the app dropped its Hush button for this) */
-$('#seqstop').onclick = () => { if (!seqOn && !paused) hushAll(); else stopSeq(); };
-$('#bpm').oninput = e => { $('#bpmv').textContent = e.target.value; };
-
-/* ---------- playing the pads: tap, keys, record, note repeat ---------- */
-const held = new Map();
-function nowStep(){ const c = ac(), spb = spbNow(); const ahead = (nextTime - c.currentTime) / spb; return step - ahead; }
-function recPat(){ const pi = playingPat(); return pi >= 0 ? pats[pi] : null; }
-function recHit(k, p, at){
-  const P = recPat(); if (!P) return null; const q = ((Math.round(at) % P.len) + P.len) % P.len;
-  if (p === null){ (P.steps[k] ||= [])[q] = true; return q; }
-  return q;
-}
-function nrOne(h, p, t, s, pi, half, g, every){
-  const P = pi >= 0 ? pats[pi] : null, b = mmLive.get(h.k), sp = byKey(h.k); if (!b || !sp) return;
-  voiceEd(ac(), fxBus().inp, sp, b, t, {rate:(fxs.oct ? .5 : 1) * 2 ** (p/12), dur: spbNow()*.9*Math.max(1, every >= 1 ? every : 1), gate: h.mel || p !== 0, rev: fxs.rev, gain: g});
-  if (recOn && P && !half){ if (h.mel){ const notes = (P.notes[h.k] ||= []); if (!notes.some(n => n.s === s && n.p === p)) notes.push({s, p, l: every >= 2 ? 2 : 1}); } else (P.steps[h.k] ||= [])[s] = true; h.dirty = true; }
-}
-function nrTick(t, s, pi, half, every){
-  if (arpMode === 'rep') held.forEach(h => { const ps = h.ps || [h.p]; ps.forEach(p => nrOne(h, p, t, s, pi, half, chordGain(ps.length), every)); });
-  else { const n = arpNext(); if (n) nrOne(n.h, n.p, t, s, pi, half, .85, every); }
-}
-function padDown(d){
-  if (padMode === 'keys'){ document.querySelector(`#padgrid [data-d="${d}"]`)?.classList.add('hit'); return melDown(d, d, 'pads'); }
-  const i = bank*BANK + d, k = kit[i], s = k && byKey(k);
-  selPad = i;
-  if (!s){ renderPads(); renderRoll(); toast('Empty pad. Double tap it to pick a sound.'); return; }
-  const h = {k, p:0, ps:[0], d, at: seqOn ? nowStep() : 0, v:null};
-  held.set(d, h);
-  document.querySelector(`#padgrid [data-d="${d}"]`)?.classList.add('hit');
-  if (!(nrOn && seqOn) && !arpLive()) h.v = hitNow(s, 1, 0, {});
-  if (nrOn && !seqOn) freeNrSync();
-  if (recOn && seqOn && !nrOn){ recHit(k, null, h.at); h.dirty = true; }
-  renderPads();
-}
-function padUp(d){
-  const h = held.get(d); if (!h) return; held.delete(d);
-  (typeof d === 'string' ? document.querySelector(`#kskeys [data-i="${d.slice(1)}"]`) : document.querySelector(`#padgrid [data-d="${d}"]`))?.classList.remove('hit');
-  if (h.mel && (edOf(h.k).mode !== 'one' || edOf(h.k).loop)) (h.v || []).forEach(v => v && v.release && v.release());
-  if (recOn && seqOn && h.mel && !nrOn){
-    const P = recPat(); if (P){ const q = ((Math.round(h.at) % P.len) + P.len) % P.len, l = Math.max(1, Math.min(P.len - q, Math.round(nowStep() - h.at)));
-      let ns = P.notes[h.k] || []; h.ps.forEach(p => { ns = [...ns.filter(n => !(n.p === p && n.s === q)), {s:q, p, l}]; }); P.notes[h.k] = ns; h.dirty = true; }
-  }
-  if (!held.size) arpI = 0;
-  freeNrSync();
-  if (h.dirty){ renderDrums(); renderRoll(); renderSlots(); }
-}
-const ptrPads = new Map();
-let lastTap = {d:-1, t:0};
-$('#padgrid').addEventListener('pointerdown', e => { const b = e.target.closest('.kpad'); if (!b) return; e.preventDefault(); const d = +b.dataset.d; if (held.has(d)) return;
-  if (padMode === 'pads'){ const i = bank*BANK + d; if (!byKey(kit[i] || '')){ const now = performance.now();
-    if (lastTap.d === d && now - lastTap.t < 420){ lastTap = {d:-1, t:0}; selPad = i; renderPads(); openPadMenu(i); return; }
-    lastTap = {d, t:now}; } }
-  ptrPads.set(e.pointerId, d); padDown(d);
-  /* hold a pad still for its menu, as in the app; any move cancels it */
-  clearTimeout(lpT); if (padMode === 'pads'){ const i = bank*BANK + d, x0 = e.clientX, y0 = e.clientY, pid = e.pointerId;
-    const mv = ev => { if (ev.pointerId === pid && Math.hypot(ev.clientX - x0, ev.clientY - y0) > 10){ clearTimeout(lpT); removeEventListener('pointermove', mv); } };
-    addEventListener('pointermove', mv); lpT = setTimeout(() => { removeEventListener('pointermove', mv); if (held.has(d)){ padUp(d); ptrPads.delete(pid); openPadActs(i); } }, 450); } });
-$('#padgrid').addEventListener('contextmenu', e => { const b = e.target.closest('.kpad'); if (!b || padMode !== 'pads') return; e.preventDefault(); openPadActs(bank*BANK + +b.dataset.d); });
-$('#kskeys').addEventListener('pointerdown', e => { const b = e.target.closest('.wk'); if (!b) return; e.preventDefault(); const id = 'w' + b.dataset.i; if (held.has(id)) return; ptrPads.set(e.pointerId, id); b.classList.add('hit'); melDown(id, +b.dataset.i, 'strip'); });
-$('#kskeys').addEventListener('keydown', e => { if ((e.key !== ' ' && e.key !== 'Enter') || e.repeat) return; const b = e.target.closest('.wk'); if (!b) return; e.preventDefault(); e.stopPropagation(); const id = 'w' + b.dataset.i; if (held.has(id)) return; b.classList.add('hit'); melDown(id, +b.dataset.i, 'strip'); setTimeout(() => padUp(id), 280); });
-$('#kskeys').addEventListener('contextmenu', e => e.preventDefault());
-$('#ksx').onclick = () => openStrip(false);
-$('#dockjam').onclick = () => openJam();
-$('#nrarp').value = arpMode;
-$('#nrarp').onchange = e => { arpMode = e.target.value; arpI = 0; lsSet('nsd.arp', arpMode); if (arpMode !== 'rep' && !nrOn){ nrOn = true; $('#nr').setAttribute('aria-pressed', 'true'); toast('Note repeat is on. Hold a few keys or a chord and the arp walks through them.'); } };
-function assignPad(i, k){ const s = byKey(k); if (!s) return;
-  const old = kit.indexOf(k); if (old >= 0 && old !== i) kit[old] = '';
-  kit[i] = k; selPad = i; mmPrime(s); renderSeq(); renderLab(); renderJarBar(); playSpec(s); toast(`${s.title} is on pad ${i + 1}.`); }
-$('#padgrid').addEventListener('keydown', e => { if (e.key !== 'Enter' || padMode !== 'pads') return; const b = e.target.closest('.kpad'); if (!b) return; const i = bank*BANK + +b.dataset.d; if (byKey(kit[i] || '')) return; e.preventDefault(); selPad = i; renderPads(); openPadMenu(i); });
-/* the micro menu: cabinet tabs, a search box, hear or put */
-const PMSHORT = {thumps:'Thumps', bodily:'Bodily', machines:'Machines', tones:'Tones', goo:'Goo', bw:'Brotherwife', qbldy:'Qbldy', mine:'Workbench', donated:'Donated'};
-let pmPad = -1, pmCab = lsGet('nsd.pmcab', 'tones'), pmBack = null;
-function openPadMenu(i){
-  pmPad = i; pmAnchor = null; pmBack = document.activeElement; const m = $('#padmenu'), cabs = CABS.filter(c => cabItems(c.id).length);
-  if (!cabs.some(c => c.id === pmCab)) pmCab = cabs[0]?.id;
-  m.innerHTML = `<div class="pmhead"><b>Pad ${i + 1}</b><input id="pm-q" type="search" placeholder="Find a sound" aria-label="Find a sound" autocomplete="off"><button type="button" class="pmx" aria-label="Close the picker">&times;</button></div>
-    <div class="pmcabs" role="tablist" aria-label="Cabinets">${cabs.map(c => `<button type="button" role="tab" data-pc="${c.id}" style="--c:${c.col}">${PMSHORT[c.id] || esc(c.name)}</button>`).join('')}</div><div class="pmlist" id="pm-list"></div>`;
-  m.hidden = false; pmList('');
-  m.querySelector('.pmx').onclick = closePadMenu;
-  m.querySelectorAll('[data-pc]').forEach(b => b.onclick = () => { pmCab = b.dataset.pc; lsSet('nsd.pmcab', pmCab); $('#pm-q').value = ''; pmList(''); });
-  $('#pm-q').oninput = e => pmList(e.target.value);
-  placePadMenu(); $('#pm-q').focus({preventScroll:true});
-}
-function pmList(q){
-  const ql = q.trim().toLowerCase(), all = CABS.flatMap(c => cabItems(c.id));
-  const items = ql ? all.filter(s => s.title.toLowerCase().includes(ql)).slice(0, 60) : cabItems(pmCab);
-  document.querySelectorAll('#padmenu [data-pc]').forEach(b => b.setAttribute('aria-selected', String(!ql && b.dataset.pc === pmCab)));
-  $('#pm-list').innerHTML = items.length ? items.map(s => { const k = keyOf(s), at = kit.indexOf(k);
-    return `<div class="pmrow" style="--c:${colOf(s)}"><button type="button" class="pmhear" data-hear="${esc(k)}" aria-label="Hear ${esc(s.title)}">&#9654;</button><button type="button" class="pmput" data-put="${esc(k)}"><span>${esc(s.title)}</span>${at >= 0 ? `<small>pad ${at + 1}</small>` : ''}</button></div>`; }).join('')
-    : '<p class="pmnone">Nothing in the lab by that name.</p>';
-  $('#pm-list').querySelectorAll('[data-hear]').forEach(b => b.onclick = () => playSpec(byKey(b.dataset.hear)));
-  $('#pm-list').querySelectorAll('[data-put]').forEach(b => b.onclick = () => { const i = pmPad; closePadMenu(); assignPad(i, b.dataset.put); });
-}
-function placePadMenu(){
-  const m = $('#padmenu'), a = (pmAnchor && pmAnchor.isConnected) ? pmAnchor : document.querySelector(`#padgrid [data-d="${pmPad % BANK}"]`); if (!a || m.hidden) return;
-  const r = a.getBoundingClientRect(), w = m.offsetWidth, h = m.offsetHeight, dockTop = $('#dock')?.getBoundingClientRect().top || innerHeight;
-  let top = r.bottom + 6; if (top + h > Math.min(innerHeight, dockTop) - 8) top = Math.max(8, r.top - h - 6);
-  m.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + 'px'; m.style.top = top + 'px';
-}
-function closePadMenu(){ const m = $('#padmenu'); if (m.hidden) return; m.hidden = true; m.innerHTML = ''; pmBack?.focus?.({preventScroll:true}); }
-addEventListener('pointerdown', e => { const m = $('#padmenu'); if (!m.hidden && !m.contains(e.target) && !e.target.closest('#padgrid,.rn')) closePadMenu(); }, true);
-addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#padmenu').hidden){ e.stopPropagation(); closePadMenu(); } }, true);
-addEventListener('resize', () => placePadMenu());
-addEventListener('scroll', () => placePadMenu(), {passive:true});
-['pointerup','pointercancel'].forEach(ev => addEventListener(ev, e => { clearTimeout(lpT); const d = ptrPads.get(e.pointerId); if (d === undefined) return; ptrPads.delete(e.pointerId); padUp(d); }));
-$('#pm-pads').onclick = () => { [...held.keys()].forEach(d => padUp(d)); padMode = 'pads'; setTab('pads'); renderPads(); };
-$('#pm-keys').onclick = () => { if (!byKey(selKey())){ toast('Pick a pad with a jar on it first.'); return; } [...held.keys()].forEach(d => padUp(d)); padMode = 'keys'; setTab('pads'); renderPads(); };
-$('#pm-fx').onclick = () => { [...held.keys()].forEach(d => padUp(d)); setTab('fx'); playswUI(); };
-function playswUI(){ const fx = mtab === 'fx', keys = padMode === 'keys';
-  $('#pm-pads').setAttribute('aria-pressed', String(!fx && !keys)); $('#pm-keys').setAttribute('aria-pressed', String(!fx && keys)); $('#pm-fx').setAttribute('aria-pressed', String(fx)); }
-$('#rec').onclick = () => { recOn = !recOn; $('#rec').setAttribute('aria-pressed', String(recOn)); if (recOn && !seqOn){ toast('Recording. Hit Make a mess and play the pads; hits land on the nearest step.'); } };
-$('#nr').onclick = () => { nrOn = !nrOn; $('#nr').setAttribute('aria-pressed', String(nrOn)); freeNrSync(); };
-$('#clickbtn').onclick = () => { clickOn = !clickOn; $('#clickbtn').setAttribute('aria-pressed', String(clickOn)); };
-
-/* sample sources: import, mic, resample */
+/* sample sources: import, mic */
 $('#impbtn').onclick = () => $('#impfile').click();
 $('#impfile').onchange = async e => {
   const files = [...e.target.files].slice(0, 16); e.target.value = '';
@@ -3385,7 +2429,7 @@ $('#impfile').onchange = async e => {
     try { await ac().decodeAudioData(ab.slice(0)); } catch(err){ toast(`${f.name} would not open as audio.`); continue; }
     await addAudioJar('imp', f.name.replace(/\.[^.]+$/, ''), ab);
   }
-  if (files.length) toast(files.length === 1 ? 'Imported. It is on a pad and in your Workbench.' : `${files.length} sounds imported onto pads.`);
+  if (files.length) toast(files.length === 1 ? 'Imported. It is in your Workbench and on a pad in the Mess Machine.' : `${files.length} sounds imported into your Workbench and onto pads in the Mess Machine.`);
 };
 let micRec = null;
 $('#micbtn').onclick = async () => {
@@ -3399,133 +2443,25 @@ $('#micbtn').onclick = async () => {
     const ab = await new Blob(chunks, {type: mr.mimeType}).arrayBuffer();
     try { await ac().decodeAudioData(ab.slice(0)); } catch(e){ toast('That take would not decode. Try again.'); return; }
     const n = BENCH.filter(b => b.kind === 'mic').length + 1;
-    if (await addAudioJar('mic', `Mic take ${n}`, ab, {norm:true})) toast('Got it. The take is on a pad, normalized. Trim it on the doctor\'s table.'); };
+    if (await addAudioJar('mic', `Mic take ${n}`, ab, {norm:true})) toast('Got it. The take is in your Workbench and on a pad in the Mess Machine. Trim it on the doctor\'s table.'); };
   mr.start(); mr.cap = setTimeout(() => mr.state === 'recording' && mr.stop(), 30000);
   $('#micbtn').setAttribute('aria-pressed','true'); $('#micbtn').textContent = 'Stop recording';
-};
-$('#rsbtn').onclick = async () => {
-  const P = P_(); if (!patUsed(P)){ toast('This loop is empty. Make a mess first.'); return; }
-  const btn = $('#rsbtn'); btn.disabled = true;
-  try {
-    const buf = await renderOrder([mmCur], false);
-    const n = BENCH.filter(b => b.kind === 'rs').length + 1;
-    if (await addAudioJar('rs', `Resample ${LETTERS[mmCur]} ${n}`, encodeWav(buf).buffer)) toast(`Loop ${LETTERS[mmCur]} is now one jar, on pad ${selPad+1}.`);
-  } catch(e){ toast('The resample broke. Try again.'); }
-  btn.disabled = false;
-};
-
-/* ---------- performance FX: hold to use, let go to stop ---------- */
-function fxOn(name){
-  const F = fxBus(), t = F.c.currentTime, spb = spbNow();
-  if ((name === 'stutter' || name === 'tape') && !seqOn){ toast('Stutter and tape stop work on the sequencer. Hit Make a mess first.'); return; }
-  if (name === 'stutter' && !fxs.stut) fxs.stut = {a: lastStep - (lastStep % 2), b: step};
-  if (name === 'tape' && !fxs.tape) fxs.tape = nextTime;
-  if (name === 'crush'){ fxs.crush = true; F.crush.d.gain.setTargetAtTime(0, t, .01); F.crush.w.gain.setTargetAtTime(F.crush.lvl, t, .01); }
-  if (name === 'dirty'){ F.dirt.d.gain.setTargetAtTime(0, t, .01); F.dirt.w.gain.setTargetAtTime(F.dirt.lvl, t, .01); }
-  if (name === 'ring'){ F.rosc.frequency.setValueAtTime(110 + Math.random()*440, t); F.ring.d.gain.setTargetAtTime(0, t, .01); F.ring.w.gain.setTargetAtTime(1, t, .01); }
-  if (name === 'gate'){ F.gosc.frequency.setValueAtTime(1/spb, t); F.gt.gain.setTargetAtTime(.5, t, .005); F.gdep.gain.setTargetAtTime(.5, t, .005); }
-  if (name === 'echo'){ fxs.echo = true; F.dly.delayTime.setValueAtTime(Math.min(1.9, spb*3), t); F.send.gain.setTargetAtTime(.85, t, .02); }
-  if (name === 'rev') fxs.rev = true;
-  if (name === 'oct') fxs.oct = true;
-  document.querySelector(`[data-fx="${name}"]`)?.setAttribute('aria-pressed', 'true');
-}
-function fxUp(name){
-  const F = FX, t = F ? F.c.currentTime : 0;
-  if (name === 'stutter') fxs.stut = null;
-  if (name === 'tape') fxs.tape = 0;
-  if (name === 'rev') fxs.rev = false;
-  if (name === 'oct') fxs.oct = false;
-  if (F){
-    if (name === 'crush'){ fxs.crush = false; F.crush.d.gain.setTargetAtTime(1, t, .01); F.crush.w.gain.setTargetAtTime(0, t, .01); }
-    if (name === 'dirty'){ F.dirt.d.gain.setTargetAtTime(1, t, .01); F.dirt.w.gain.setTargetAtTime(0, t, .01); }
-    if (name === 'ring'){ F.ring.d.gain.setTargetAtTime(1, t, .01); F.ring.w.gain.setTargetAtTime(0, t, .01); }
-    if (name === 'gate'){ F.gt.gain.setTargetAtTime(1, t, .005); F.gdep.gain.setTargetAtTime(0, t, .005); }
-    if (name === 'echo'){ fxs.echo = false; F.send.gain.setTargetAtTime(0, t, .05); }
-  }
-  document.querySelector(`[data-fx="${name}"]`)?.setAttribute('aria-pressed', 'false');
-}
-const FXNAMES = ['stutter','echo','crush','tape','gate','dirty','ring','oct','rev'];
-function fxOff(){ FXNAMES.forEach(fxUp); xyRelease(); }
-const heldFx = new Set();
-document.querySelectorAll('[data-fx]').forEach(b => {
-  const n = b.dataset.fx;
-  b.addEventListener('pointerdown', e => { e.preventDefault(); heldFx.add(n); fxOn(n); });
-  b.addEventListener('keydown', e => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat){ e.preventDefault(); fxOn(n); } });
-  b.addEventListener('keyup', e => { if (e.key === ' ' || e.key === 'Enter') fxUp(n); });
-  b.addEventListener('contextmenu', e => e.preventDefault());
-});
-const FXKEY = {u:'stutter', i:'echo', o:'crush', p:'tape', h:'gate', j:'dirty', k:'ring', l:'oct', ';':'rev'};
-['pointerup','pointercancel','blur'].forEach(ev => addEventListener(ev, () => { heldFx.forEach(fxUp); heldFx.clear(); if (fxs.xy) xyRelease(); }));
-addEventListener('pointermove', e => { if (fxs.xy) xySet(e); });
-function xySet(e){
-  const pad = $('#xy'), r = pad.getBoundingClientRect(), x = Math.min(1, Math.max(0, (e.clientX - r.left)/r.width)), y = Math.min(1, Math.max(0, (e.clientY - r.top)/r.height));
-  $('#xydot').style.left = (x*100)+'%'; $('#xydot').style.top = (y*100)+'%'; pad.classList.add('on');
-  const F = fxBus(), t = F.c.currentTime;
-  F.filt.type = fxs.hp ? 'highpass' : 'lowpass';
-  F.filt.frequency.setTargetAtTime(fxs.hp ? 20 * Math.pow(6000/20, x) : 120 * Math.pow(18000/120, x), t, .02); F.filt.Q.setTargetAtTime(.7 + (1 - y) * 14, t, .02);
-}
-function xyRelease(){ const pad = $('#xy'); pad.classList.remove('on'); fxs.xy = false; $('#xydot').style.left = fxs.hp ? '0%' : '100%'; $('#xydot').style.top = '100%';
-  if (FX){ const t = FX.c.currentTime; FX.filt.frequency.setTargetAtTime(fxs.hp ? 10 : 20000, t, .12); FX.filt.Q.setTargetAtTime(.7, t, .12); } }
-$('#xy').addEventListener('pointerdown', e => { e.preventDefault(); fxs.xy = true; fxBus(); xySet(e); });
-$('#xymode').onclick = () => { fxs.hp = !fxs.hp; $('#xymode').textContent = fxs.hp ? 'High pass' : 'Low pass'; $('#xy span').textContent = fxs.hp ? 'Thin filter' : 'Mud filter'; xyRelease(); };
-
-/* keyboard: pads, FX, undo */
-addEventListener('keydown', e => {
-  if (!$('#v-specimens').classList.contains('on') || e.target.closest('input,textarea,select') || !$('#cardmodal').hidden || !$('#docmodal').hidden || !$('#hwatmodal').hidden || !$('#padmenu').hidden) return;
-  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z'){ e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
-  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y'){ e.preventDefault(); redo(); return; }
-  if (e.metaKey || e.ctrlKey || e.altKey) return;
-  const key = e.key.toLowerCase(), fx = FXKEY[key];
-  if (fx){ if (!e.repeat) fxOn(fx); return; }
-  const d = PADKEYS.indexOf(key); if (d >= 0){ e.preventDefault(); if (!e.repeat && !held.has(d)) padDown(d); return; }
-  if (key === ' ' && (e.target === document.body || e.target.closest('.jar2,.kpad'))){ e.preventDefault(); seqOn ? pauseSeq() : startSeq(); }
-});
-addEventListener('keyup', e => { const key = e.key.toLowerCase(), fx = FXKEY[key]; if (fx) fxUp(fx); const d = PADKEYS.indexOf(key); if (d >= 0) padUp(d); });
-
-/* ---------- rendering loops and songs offline (bottle it, resample) ---------- */
-async function renderOrder(order, tail){
-  const bpm = bpmNow(), sr = 44100, spb = 60/bpm/4;
-  const bufs = new Map(); await Promise.all(loadedPads().map(({k, s}) => bufferOf(s).then(b => bufs.set(k, b)).catch(() => {})));
-  const total = order.reduce((a, i) => a + (i >= 0 ? pats[i].len : STEPS), 0);
-  const oc = new OfflineAudioContext(2, Math.ceil((total*spb + (tail ? 2.5 : 0))*sr), sr), out = master(oc);
-  let t0 = 0;
-  order.forEach(i => { const P = i >= 0 ? pats[i] : null, len = P ? P.len : STEPS;
-    if (P) for (let s = 0; s < len; s++){
-      const t = t0 + s*spb + (s % 2 ? swing/100 * spb * .5 : 0);
-      loadedPads().forEach(({k, s:sp}) => { const b = bufs.get(k); if (!b || !audible(k)) return;
-        const arr = P.steps[k] || []; if (arr[s]) voiceEd(oc, out, sp, b, t, {dur: gapOf(arr, s, len)*spb});
-        (P.notes[k] || []).forEach(n => { if (n.s === s) voiceEd(oc, out, sp, b, t, {rate: 2 ** (n.p/12), dur: n.l*spb, gate:true, gain:.78}); }); });
-    }
-    t0 += len*spb; });
-  return oc.startRendering();
-}
-$('#seqrec').onclick = async () => {
-  const btn = $('#seqrec'), bpm = bpmNow();
-  const order = mode === 'song' && mmSongLen() ? mmSong.slice(0, mmSongLen()) : Array(P_().len === 32 ? 2 : 4).fill(mmCur);
-  if (!order.some(i => i >= 0 && patUsed(pats[i]))){ toast('Nothing to bottle yet. Make a mess first.'); return; }
-  btn.disabled = true; btn.textContent = 'Bottling...';
-  try {
-    const rendered = await renderOrder(order, true);
-    const name = slugify(curSeq?.name || $('#seqname').value || 'specimen-lab-mess') + (mode === 'song' ? '-song' : '-loop-' + LETTERS[mmCur].toLowerCase()) + `-${bpm}bpm`;
-    if (await saveZip(name+'.zip', [{name:name+'.wav', data:encodeWav(rendered)}])) toast(mode === 'song' ? 'Bottled the whole song.' : `Bottled loop ${LETTERS[mmCur]}, ready to drop into anything.`);
-  } catch(e){ toast('The bottle broke. Try again.'); }
-  btn.disabled = false; btn.textContent = 'Bottle it';
 };
 
 /* ---------- the doctor's table ---------- */
 let docS = null, docBuf = null, docView = [0, 1], docFocus = 'whole', docMarks = [], docVoice = null, docRAF = 0, docDrag = null, docLoopV = null;
 const docK = () => keyOf(docS);
 function openDoctor(s){
-  if (!s){ toast('Pick a pad with a jar on it first.'); return; }
+  if (!s) return;
   docS = s; docBuf = null; docMarks = []; docFocus = 'whole'; docView = [0, 1];
   $('#docmodal').hidden = false; $('#doc-title').textContent = s.title;
-  $('#doc-toss').hidden = !s.bench; $('#doc-load').textContent = kit.includes(keyOf(s)) ? `On pad ${kit.indexOf(keyOf(s))+1}` : 'Put it on a pad'; $('#doc-load').disabled = kit.includes(keyOf(s));
+  $('#doc-toss').hidden = !s.bench; $('#doc-load').textContent = 'Put it on a pad'; $('#doc-load').disabled = false;
   $('#doc-src').textContent = s.bench ? 'From your Workbench (kept in this browser).' : `${(CABBY[s.cat] || CABBY.donated).name}. The original jar stays untouched; these settings ride on top.`;
   docSync(); docFocusSet('whole');
   bufferOf(s).then(b => { if (docS === s){ docBuf = b; mmLive.set(keyOf(s), b); docSync(); docDraw(); } }).catch(() => toast('That jar would not open.'));
   setTimeout(() => $('#docx').focus(), 30);
 }
-function closeDoctor(){ docStop(); $('#docmodal').hidden = true; renderPads(); renderDrums(); renderLab(); if (curView === 'crawlspace') renderCrawl(); }
+function closeDoctor(){ docStop(); $('#docmodal').hidden = true; renderLab(); if (curView === 'crawlspace') renderCrawl(); }
 $('#docx').onclick = closeDoctor; $('#docdone').onclick = closeDoctor;
 $('#docmodal').addEventListener('keydown', e => { if (e.key === 'Escape') closeDoctor(); if (e.key.toLowerCase() === 'c' && $('#chopmode').value === 'lazy' && !e.target.closest('input,select')) docLazyMark(); });
 const fmtS = v => v < 1 ? Math.round(v*1000) + ' ms' : v.toFixed(3) + ' s';
@@ -3609,14 +2545,16 @@ $('#doc-play').onclick = () => { docPlay(false); };
 $('#doc-loopprev').onclick = () => docLoopV ? docStop() : docPlay(true);
 $('#doc-reset').onclick = () => { delete EDITS[docK()]; saveEdits(); docSync(); docFocusSet('whole'); toast('Back to the original jar.'); };
 $('#doc-take').onclick = async () => { try { const b = await renderEdited(docS); await saveZip(slugify(docS.title) + '-doctored.zip', [{name: slugify(docS.title) + '.wav', data: encodeWav(b)}]); } catch(e){ toast('That would not render. Try again.'); } };
-$('#doc-load').onclick = () => { if (putOnPad(docK())){ renderSeq(); renderLab(); $('#doc-load').textContent = `On pad ${selPad+1}`; $('#doc-load').disabled = true; } };
+$('#doc-load').onclick = async () => { const b = $('#doc-load'); b.disabled = true; if (await sendToMachine(docS)) b.textContent = 'On a pad in the machine'; else b.disabled = false; };
 $('#doc-toss').onclick = async e => { const b = e.currentTarget; if (b.dataset.sure !== '1'){ b.dataset.sure = '1'; b.textContent = 'Really toss it?'; setTimeout(() => { b.dataset.sure = ''; b.textContent = 'Toss from Workbench'; }, 3000); return; }
   const k = docK(); closeDoctor(); await tossBench(k); toast('Tossed.'); };
+/* fit to a tempo of its own: the machine keeps its tempo in its room */
+const docBpm = () => { const v = Math.round(+$('#doc-bpm').value); return v >= 40 && v <= 240 ? v : 112; };
 $('#doc-fit').onclick = () => {
-  if (!docBuf) return; const e = edOf(docK()), len = (e.en - e.st) * docBuf.duration, target = +$('#doc-fitbars').value * 16 * spbNow(), semis = 12 * Math.log2(len / target);
+  if (!docBuf) return; const e = edOf(docK()), len = (e.en - e.st) * docBuf.duration, target = +$('#doc-fitbars').value * 4 * 60 / docBpm(), semis = 12 * Math.log2(len / target);
   if (Math.abs(semis) > 24.5){ toast('That would take more than two octaves of re-pitching. Trim closer to the length first.'); return; }
   let tune = Math.round(semis), fine = Math.round((semis - tune) * 100); setEd(docK(), {tune, fine}); docSync();
-  toast(`Re-pitched ${semis > 0 ? 'up' : 'down'} ${Math.abs(semis).toFixed(2)} semitones so it fills ${$('#doc-fitbars').selectedOptions[0].textContent} at ${bpmNow()} BPM.`);
+  toast(`Re-pitched ${semis > 0 ? 'up' : 'down'} ${Math.abs(semis).toFixed(2)} semitones so it fills ${$('#doc-fitbars').selectedOptions[0].textContent} at ${docBpm()} BPM.`);
 };
 /* chop */
 function docAutoMarks(){
@@ -3645,226 +2583,28 @@ function docLazyMark(){
 }
 $('#doc-lazy').onclick = docLazyMark;
 $('#doc-chopclear').onclick = () => { docMarks = []; docChopPreview(); };
-$('#doc-chop').onclick = () => {
+$('#doc-chop').onclick = async () => {
   if (!docBuf) return; const e = edOf(docK()), bounds = [e.st, ...docMarks.filter(m => m > e.st && m < e.en), e.en];
   if (bounds.length < 3){ toast('No cuts yet. Pick Equal or Auto, or tap out some cuts.'); return; }
   const base = docS.base || docK(), parentEd = {...edOf(docK())}, root = docS.title.replace(/ chop \d+$/, '').slice(0, 22);
-  const room = kit.filter(k => !k).length; let placed = 0;
   for (let i = 0; i < bounds.length - 1; i++){
     const id = newId(), title = `${root} chop ${i+1}`;
     BENCH = [...BENCH, {id, kind:'chop', base, title, at:Date.now()}];
     EDITS['chop:'+id] = {...parentEd, st:bounds[i], en:bounds[i+1]};
   }
-  saveEdits(); saveBench();
-  BENCH.slice(-(bounds.length - 1)).forEach(b => { if (putOnPad('chop:'+b.id, true)) placed++; });
-  renderSeq(); renderLab();
-  toast(`${bounds.length - 1} chops made${placed ? `, ${placed} on pads` : ''}${placed < bounds.length - 1 ? '. The rest wait in your Workbench.' : '.'}`);
+  saveEdits(); saveBench(); renderLab();
   docMarks = []; docChopPreview();
+  /* every chop goes in the Workbench and on a pad in the Mess Machine */
+  let sent = 0; for (const b of BENCH.slice(-(bounds.length - 1))) if (await sendToMachine(byKey('chop:' + b.id), true)) sent++;
+  toast(`${bounds.length - 1} chops made, in your Workbench${sent ? ` and ${sent} on pads in the Mess Machine` : ''}.`);
 };
 addEventListener('resize', () => { if (!$('#docmodal').hidden) docDraw(); });
 
-/* ---------- saving + the logbook ---------- */
-const encSteps = P => Object.fromEntries(kit.filter(Boolean).map(k => [k, Array.from({length:P.len}, (_,j) => (P.steps[k]||[])[j] ? '1' : '0').join('')]));
-const seqObj = name => { const keys = kit.filter(Boolean);
-  return {name: (name || 'Untitled mess').slice(0,48), bpm: bpmNow(), v:3, kit: [...kit], sel: selPad,
-    steps: encSteps(pats[0]),
-    pats: pats.map(P => ({len:P.len, steps:encSteps(P), notes:Object.fromEntries(Object.entries(P.notes).filter(([k, a]) => a && a.length && keys.includes(k)).map(([k, a]) => [k, a.map(n => `${n.s}.${n.p}.${n.l}`).join(',')]))})),
-    song: mmSong.map(v => v >= 0 ? LETTERS[v] : '-').join(''), swing, mutes:[...mutes], solos:[...solos], scale, root:sroot, fold,
-    edits: Object.fromEntries(keys.filter(isEdited).map(k => [k, EDITS[k]])), at: new Date().toISOString()}; };
-function setSeqStat(){ $('#seqstat').textContent = curSeq ? `Loaded: ${curSeq.name}` : 'Unsaved mess'; }
-$('#seqsave').onclick = async () => { const name = $('#seqname').value.trim() || curSeq?.name || 'Untitled mess'; const id = await putSeq(seqObj(name), curSeq?.id); curSeq = {id, name}; setSeqStat(); toast(`Saved "${name}": ${pats.filter(patUsed).length} loops, the song and every pad's settings.`); renderLogs(); };
-$('#seqsavenew').onclick = async () => { const name = $('#seqname').value.trim() || (curSeq ? curSeq.name + ' (copy)' : 'Untitled mess'); const id = await putSeq(seqObj(name)); curSeq = {id, name}; $('#seqname').value = name; setSeqStat(); toast(`Saved "${name}" as a new entry.`); renderLogs(); };
-$('#seqnew').onclick = () => { stopSeq(); pats = Array.from({length:NSLOTS}, blankPat); mmCur = 0; mmSong = Array(16).fill(-1); swing = 0; $('#swing').value = 0; $('#swingv').textContent = '0%'; mutes = new Set(); solos = new Set(); scale = 'Minor'; sroot = 0; setMode('loop'); curSeq = null; $('#seqname').value = ''; renderSeq(); setSeqStat(); renderLogs(); };
-/* a mess as a file: the same JSON the Mess Machine phone app saves and opens */
-$('#seqfile').onclick = async () => {
-  const name = $('#seqname').value.trim() || curSeq?.name || 'Untitled mess', obj = seqObj(name);
-  await capsReady;
-  if (!dls){ toast('File downloads are not switched on in this view.'); return; }
-  try { await dls.save({filename: slugify(name) + '.json', data: JSON.stringify(obj)}); toast('Saved as a file. Open it in the Mess Machine app (Messes, Open a mess file).'); }
-  catch(e){ if (!(e && e.code === 'declined')) toast('That download did not go through.'); }
-};
-$('#seqopen').onclick = () => $('#seqopenfile').click();
-$('#seqopenfile').onchange = async e => {
-  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
-  try { const q = JSON.parse(await f.text()); if (!q || !Array.isArray(q.kit)) throw 0; stopSeq(); loadSeq({...q, id: null}); toast(`Opened "${q.name || 'Untitled mess'}". Hit Save to keep it here too.`); }
-  catch(err){ toast('That does not look like a Mess Machine file.'); }
-};
-const decSteps = (obj, len) => Object.fromEntries(Object.entries(obj||{}).map(([k,v]) => [k, Array.from({length:len}, (_,j) => v[j]==='1')]));
-const decNotes = (str, len) => String(str||'').split(',').filter(Boolean).map(t => { const [s,p,l] = t.split('.').map(Number); return {s,p,l}; }).filter(n => n.s < len);
-function loadSeq(q){
-  const want = (q.kit||[]).filter(Boolean), missing = want.filter(k => !byKey(k)).length;
-  kit = padsFrom([]); (q.kit||[]).forEach((k, i) => { if (k && byKey(k) && i < NPADS) kit[i] = k; });
-  if (q.edits){ want.forEach(k => { if (q.edits[k]) EDITS[k] = q.edits[k]; else delete EDITS[k]; }); saveEdits(); }
-  if (Array.isArray(q.pats) && q.pats.length){
-    pats = Array.from({length:NSLOTS}, (_, i) => { const x = q.pats[i]; if (!x) return blankPat(); const len = x.len === 32 ? 32 : 16;
-      let notes = {};
-      if (typeof x.notes === 'string'){ if (x.inst && x.notes) notes[x.inst] = decNotes(x.notes, len); }
-      else notes = Object.fromEntries(Object.entries(x.notes||{}).map(([k, v]) => [k, decNotes(v, len)]));
-      return {len, steps:decSteps(x.steps, len), notes}; });
-    mmSong = String(q.song || '').split('').map(ch => LETTERS.indexOf(ch)); while (mmSong.length < 16) mmSong.push(-1);
-  } else { pats = Array.from({length:NSLOTS}, blankPat); pats[0].steps = decSteps(q.steps, STEPS); mmSong = Array(16).fill(-1); }
-  swing = q.swing || 0; mutes = new Set(q.mutes || []); solos = new Set(q.solos || []); scale = SCALES[q.scale] ? q.scale : 'Chromatic'; sroot = q.root || 0; fold = !!q.fold;
-  $('#swing').value = swing; $('#swingv').textContent = swing + '%';
-  selPad = typeof q.sel === 'number' && kit[q.sel] ? q.sel : (loadedPads()[0]?.i ?? 0); bank = Math.floor(selPad / BANK);
-  mmCur = 0; setMode('loop');
-  $('#bpm').value = q.bpm || 112; $('#bpmv').textContent = $('#bpm').value; $('#seqname').value = q.name || '';
-  curSeq = {id:q.id, name:q.name}; setPane('machine'); renderSeq(); renderLab(); setSeqStat(); renderLogs(); primeAll();
-  if (missing) toast(`${missing} jar${missing>1?'s':''} from that sequence are gone from the lab.`);
-  $('#seq').scrollIntoView({behavior: reduce ? 'auto' : 'smooth', block:'start'});
-}
-function renderLogs(){
-  const L = store.seqs;
-  $('#logs').innerHTML = L.length ? L.map(q => { const on = Array.from({length:STEPS}, (_,j) => Object.values(q.steps||{}).some(v => v[j]==='1'));
-    const when = q.at ? new Date(q.at).toLocaleDateString([], {month:'short', day:'numeric'}) : '';
-    const nl = Array.isArray(q.pats) ? q.pats.filter(x => (typeof x.notes === 'string' ? x.notes : Object.values(x.notes||{}).join('')) || Object.values(x.steps||{}).some(v => v.includes('1'))).length : 1;
-    const sl = String(q.song||'').replace(/-+$/,'').length, np = (q.kit||[]).filter(Boolean).length;
-    return `<div class="logcard${curSeq?.id===q.id?' on':''}"><b>${esc(q.name || 'Untitled mess')}</b><span class="spec">${q.bpm||112} BPM &middot; ${np} pads &middot; ${nl} loop${nl===1?'':'s'}${sl ? ` &middot; ${sl} bar song` : ''} &middot; ${when}</span>
-      <div class="mini-grid" aria-hidden="true">${on.map(x => `<i class="${x?'on':''}"></i>`).join('')}</div>
-      <div class="acts"><button class="btn small" data-load="${esc(q.id)}">Load</button><button class="btn ghost small" data-dup="${esc(q.id)}">Copy</button><button class="btn ghost small" data-del="${esc(q.id)}">Toss</button></div></div>`; }).join('')
-    : `<p class="muted" style="margin:0">Nothing logged yet. Make a mess, name it, and hit Save.</p>`;
-  const find = id => store.seqs.find(x => x.id === id);
-  $('#logs').querySelectorAll('[data-load]').forEach(b => b.onclick = () => loadSeq(find(b.dataset.load)));
-  $('#logs').querySelectorAll('[data-dup]').forEach(b => b.onclick = async () => { const q = find(b.dataset.dup); const {id, ...rest} = q; await putSeq({...rest, name:(q.name||'Untitled')+' (copy)', at:new Date().toISOString()}); toast('Copied.'); });
-  $('#logs').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { if (b.dataset.sure !== '1'){ b.dataset.sure='1'; b.textContent='Really?'; setTimeout(() => { b.dataset.sure=''; b.textContent='Toss'; }, 3000); return; }
-    await dropSeq(b.dataset.del); if (curSeq?.id === b.dataset.del){ curSeq = null; setSeqStat(); } });
-}
-
-/* ---------- the dock: transport, tempo, tools, and the picked jar ---------- */
-function setBpm(v){ v = Math.max(60, Math.min(180, Math.round(v))); $('#bpm').value = v; $('#bpmv').textContent = v; $('#tempolab').textContent = v + ' BPM'; if (FX) FX.dly.delayTime.value = Math.min(1.9, spbNow()*3); }
-$('#bpm').addEventListener('change', () => { const v = +$('#bpm').value; setBpm(v > 0 ? v : 112); });
-$('#bpmdn').onclick = e => setBpm(bpmNow() - (e.shiftKey ? 5 : 1));
-$('#bpmup').onclick = e => setBpm(bpmNow() + (e.shiftKey ? 5 : 1));
-let taps = [];
-$('#tap').onclick = () => { const t = performance.now(); taps = [...taps.filter(x => t - x < 2500), t].slice(-6);
-  if (taps.length >= 2){ const gaps = taps.slice(1).map((x, i) => x - taps[i]); setBpm(60000 / (gaps.reduce((a, b) => a + b, 0) / gaps.length)); }
-  const b = $('#tap'); b.classList.remove('hit'); void b.offsetWidth; b.classList.add('hit'); };
-function hushAll(){
-  if (LO){ const old = LO; try { old.gain.setTargetAtTime(0, old.context.currentTime, .008); } catch(e){} setTimeout(() => { try { old.disconnect(); } catch(e){} }, 90); LO = null; }
-  FX = null; [...held.keys()].forEach(d => padUp(d)); if (docLoopV || docVoice) docStop();
-  if (seqOn) pauseSeq(); toast('Hushed. Every sound is cut.');
-}
-let dockMin = lsGet('nsd.dockmin', matchMedia('(max-width:760px)').matches);
-function dockMinUI(){ $('#dock').classList.toggle('min', dockMin); $('#dockmin').setAttribute('aria-expanded', String(!dockMin)); $('#dockmin').setAttribute('aria-label', dockMin ? 'Unfold the dock: stop, record, undo, tempo, help and the menu' : 'Fold the dock'); $('#dockmin').innerHTML = dockMin ? '&#9650;' : '&ndash;'; dpopClose(); }
-$('#dockmin').onclick = () => { dockMin = !dockMin; lsSet('nsd.dockmin', dockMin); dockMinUI(); };
-dockMinUI();
-
-/* ---------- the app's way of doing things, on the web (NSD-23, the web machine follows the app) ---------- */
-/* toasts after a clear carry an Undo, so clears never need to ask first */
-function toastUndo(msg){ const t = $('#toast'); t.innerHTML = `<span></span><button type="button" class="tundo">Undo</button>`; t.firstChild.textContent = msg; t.hidden = false; t.classList.add('act');
-  t.querySelector('.tundo').onclick = () => { undo(); t.hidden = true; t.classList.remove('act'); renderSeq(); };
-  clearTimeout(t._h); t._h = setTimeout(() => { t.hidden = true; t.classList.remove('act'); }, 5000); }
-/* hold still (or right-click) for a menu; a move cancels it */
-function holdMenu(el, padOf){
-  let T = null; el.addEventListener('pointerdown', e => { const x0 = e.clientX, y0 = e.clientY; clearTimeout(T);
-    const mv = ev => { if (Math.hypot(ev.clientX - x0, ev.clientY - y0) > 10){ clearTimeout(T); removeEventListener('pointermove', mv); } };
-    addEventListener('pointermove', mv); T = setTimeout(() => { removeEventListener('pointermove', mv); el._held = true; openPadActs(padOf(), el); }, 450);
-    const up = () => { clearTimeout(T); removeEventListener('pointermove', mv); removeEventListener('pointerup', up); }; addEventListener('pointerup', up); });
-  el.addEventListener('contextmenu', e => { e.preventDefault(); openPadActs(padOf(), el); });
-}
-/* the pad menu: everything the old pad card did, one hold away */
-function openPadActs(i, anchor){
-  selPad = i; const k = kit[i], s = k && byKey(k); renderPads(); renderRoll();
-  if (!s){ openPadMenu(i); return; }
-  pmPad = i; pmBack = document.activeElement; const m = $('#padmenu');
-  m.innerHTML = `<div class="pmhead"><b>Pad ${i + 1}</b><span class="pmname">${esc(s.title)}${isEdited(k) ? ' · doctored' : ''}</span><button type="button" class="pmx" aria-label="Close the pad menu">&times;</button></div>
-    <div class="pmacts" role="menu">
-      <button type="button" role="menuitem" data-a="keys">&#9835; Keys under the pads</button>
-      <button type="button" role="menuitem" data-a="hear">&#9654; Hear it</button>
-      <button type="button" role="menuitem" data-a="doc">&#9986; Doctor it</button>
-      <button type="button" role="menuitem" data-a="swap">&#8644; Swap the sound</button>
-      <button type="button" role="menuitem" data-a="mute" aria-pressed="${mutes.has(k)}">Mute</button>
-      <button type="button" role="menuitem" data-a="solo" aria-pressed="${solos.has(k)}">Solo</button>
-      <button type="button" role="menuitem" data-a="star" aria-pressed="${store.favs.has(k)}">&#9733; Star</button>
-      <button type="button" role="menuitem" data-a="clear" class="danger">Clear pad</button>
-    </div>`;
-  m.hidden = false; m.querySelector('.pmx').onclick = closePadMenu;
-  const go = {keys:() => { setPane('machine'); padMode = 'pads'; setTab('pads'); openStrip(true); }, hear:() => playSpec(s), doc:() => openDoctor(s), swap:() => openPadMenu(i),
-    mute:() => { mutes.has(k) ? mutes.delete(k) : mutes.add(k); renderDrums(); commit(); }, solo:() => { solos.has(k) ? solos.delete(k) : solos.add(k); renderDrums(); commit(); },
-    star:() => toggleFav(s), clear:() => { kit[i] = ''; renderSeq(); renderLab(); renderJarBar(); toastUndo(`Pad ${i + 1} cleared.`); }};
-  m.querySelectorAll('[data-a]').forEach(b => b.onclick = () => { const a = b.dataset.a; if (a !== 'hear') closePadMenu(); go[a](); });
-  pmAnchor = anchor || null; placePadMenu(); m.querySelector('[data-a]').focus({preventScroll:true});
-}
-let pmAnchor = null;
-/* loop tools: one menu beside the letters, in Steps */
-function ltClose(){ const p = $('#ltpop'); if (!p || p.hidden) return; p.hidden = true; $('#ltbtn').setAttribute('aria-expanded', 'false'); }
-$('#ltbtn').onclick = e => { e.stopPropagation(); const p = $('#ltpop'), open = p.hidden; p.hidden = !open; $('#ltbtn').setAttribute('aria-expanded', String(open)); };
-document.addEventListener('click', e => { if (!e.target.closest('#looptools')) ltClose(); if (!e.target.closest('.dpop,#tempobtn,#mmmenubtn')) dpopClose(); });
-['#loopcopy','#seqrand','#rsbtn','#seqrec','#looplen'].forEach(q => $(q).addEventListener('click', () => { if (q !== '#looplen') ltClose(); }));
-/* tempo and the menu pop up over the dock */
-function dpopClose(){ ['#tempopop','#mmmenu'].forEach(q => { const p = $(q); if (p) p.hidden = true; }); $('#tempobtn')?.setAttribute('aria-expanded', 'false'); $('#mmmenubtn')?.setAttribute('aria-expanded', 'false'); }
-function dpop(q, btn){ const p = $(q), open = p.hidden; dpopClose(); p.hidden = !open; $(btn).setAttribute('aria-expanded', String(open)); if (open) p.querySelector('button,input')?.focus({preventScroll:true}); }
-$('#tempobtn').onclick = e => { e.stopPropagation(); dpop('#tempopop', '#tempobtn'); };
-$('#mmmenubtn').onclick = e => { e.stopPropagation(); dpop('#mmmenu', '#mmmenubtn'); };
-addEventListener('keydown', e => { if (e.key === 'Escape'){ dpopClose(); ltClose(); if (!$('#messes').hidden) closeMesses(); } });
-/* messes: save, open and new, in one sheet off the menu */
-let messBack = null;
-function openMesses(){ dpopClose(); messBack = document.activeElement; $('#messes').hidden = false; $('#seqname').focus(); }
-function closeMesses(){ $('#messes').hidden = true; messBack?.focus?.({preventScroll:true}); }
-$('#mm-messes').onclick = openMesses; $('#messesx').onclick = closeMesses;
-$('#messes').addEventListener('click', e => { if (e.target === e.currentTarget) closeMesses(); });
-['#redo','#poc','#dockjam'].forEach(q => $(q).addEventListener('click', () => { if (q !== '#poc') dpopClose(); }));
-/* help behind ?: each section's how-to shows the first time you open it, then hides until you ask */
-let mmHelpOn = false, mmSeen = new Set(lsGet('nsd.mmhelp', []));
-function mmHelpUI(){
-  const cur = pane === 'jars' ? 'jars' : mtab, first = !mmSeen.has(cur);
-  document.querySelectorAll('.mmhelp').forEach(n => { n.hidden = !(n.dataset.help === cur && (mmHelpOn || first)); });
-  if (first && curView === 'specimens'){ mmSeen.add(cur); lsSet('nsd.mmhelp', [...mmSeen]); }
-  const b = $('#mmhelpbtn'); if (b){ b.setAttribute('aria-pressed', String(mmHelpOn)); b.setAttribute('aria-label', mmHelpOn ? 'Hide how this page works' : 'Show how this page works'); }
-}
-$('#mmhelpbtn').onclick = () => { mmHelpOn = !mmHelpOn; mmHelpUI(); if (mmHelpOn){ const n = [...document.querySelectorAll('.mmhelp')].find(x => !x.hidden); n?.scrollIntoView({block:'nearest', behavior: reduce ? 'auto' : 'smooth'}); } };
-/* section strip: one tap jumps to the jars or straight into a machine section */
-function headH(){ const h = document.querySelector('header.site'); return h ? h.getBoundingClientRect().height : 64; }
-/* one pane at a time: the jars or the machine. The picked jar stays in the dock either way, so it is one tap onto a pad. */
-function setPane(p){ pane = p === 'machine' ? 'machine' : 'jars'; lsSet('nsd.pane', pane);
-  $('#pane-jars').hidden = pane !== 'jars'; $('#seq').hidden = pane !== 'machine';
-  document.querySelectorAll('[data-pane]').forEach(b => { const on = b.dataset.pane === pane; b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; });
-  if (pane !== 'machine'){ [...held.keys()].forEach(d => padUp(d)); }
-  mmHelpUI(); navUI(); }
-document.querySelectorAll('[data-pane]').forEach(b => {
-  b.onclick = () => setPane(b.dataset.pane);
-  b.onkeydown = e => { if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return; const n = document.querySelector(`[data-pane="${b.dataset.pane === 'jars' ? 'machine' : 'jars'}"]`); setPane(n.dataset.pane); n.focus(); };
-});
-function goSection(k){
-  if (curView !== 'specimens') return;
-  if (k === 'jars') setPane('jars'); else { setPane('machine'); setTab(k === 'play' ? (mtab === 'fx' ? 'fx' : 'pads') : k); }
-  const el = document.querySelector('#v-specimens .section'), top = el.getBoundingClientRect().top + scrollY - headH() - 10;
-  if (Math.abs(scrollY - top) > 4) scrollTo({top, behavior: reduce ? 'auto' : 'smooth'});
-  navUI(k);
-}
-function navUI(force){
-  melUI();
-  const nav = document.querySelector('.docknav'); if (!nav) return;
-  nav.hidden = curView !== 'specimens'; if (nav.hidden) return;
-  const sec = t => t === 'pads' || t === 'fx' ? 'play' : t;
-  const cur = sec(force || (pane === 'jars' ? 'jars' : mtab));
-  nav.querySelectorAll('[data-go]').forEach(b => b.setAttribute('aria-current', String(b.dataset.go === cur)));
-  /* in the machine the picked jar only stays up until it is on a pad */
-  const sj = selJar && byKey(selJar);
-  $('#jarbar').classList.toggle('away', pane === 'machine' && !!sj && kit.includes(keyOf(sj)));
-}
-function dockGoUI(){ navUI(); }
-document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => goSection(b.dataset.go));
-let dgRAF = 0; addEventListener('scroll', () => { cancelAnimationFrame(dgRAF); dgRAF = requestAnimationFrame(() => navUI()); }, {passive:true});
-/* machine tabs */
-const MTABS = ['pads','steps','roll','song','fx'];
-function setTab(t){ mtab = MTABS.includes(t) ? t : 'pads'; lsSet('nsd.mtab', mtab);
-  document.querySelectorAll('[data-mt]').forEach(b => { const on = b.dataset.mt === mtab; b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; });
-  MTABS.forEach(x => $('#mp-'+x).hidden = x !== mtab);
-  /* loop letters live where a loop is edited or played (Steps, Roll, Song); loop tools only in Steps */
-  const play = mtab === 'pads' || mtab === 'fx';
-  $('#loopbar').hidden = play; $('#looptools').hidden = mtab !== 'steps'; $('#playsw').hidden = !play; ltClose();
-  if (typeof playswUI === 'function') playswUI(); mmHelpUI();
-  if (typeof navUI === 'function' && $('#labroom')) navUI(); }
-document.querySelectorAll('[data-mt]').forEach(b => {
-  b.onclick = () => setTab(b.dataset.mt);
-  b.onkeydown = e => { if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return; const L = [...document.querySelectorAll('[data-mt]')], i = L.indexOf(b), n = L[(i + (e.key === 'ArrowRight' ? 1 : L.length - 1)) % L.length]; setTab(n.dataset.mt); n.focus(); };
-});
-setTab(mtab);
-/* the picked jar: its actions live in the dock instead of on every jar */
+/* the picked jar: its actions live in one bar at the bottom instead of on every jar */
 function renderJarBar(){
   const bar = $('#jarbar'), s = selJar && byKey(selJar);
   if (!s){ bar.hidden = true; return; }
-  const k = keyOf(s), fav = store.favs.has(k), pad = kit.indexOf(k), ed = isEdited(k) || s.base;
+  const k = keyOf(s), fav = store.favs.has(k), ed = isEdited(k) || s.base;
   bar.hidden = false;
   bar.innerHTML = `<span class="jb-sw" style="--c:${colOf(s)}" aria-hidden="true"></span><span class="jb-nm"><b>${esc(s.title)}</b><small>${esc((CABBY[s.cat] || CABBY.donated).name)}${ed ? ' · doctored' : ''}</small></span>
     <span class="jb-acts"><button class="dk sm" data-jb="play" aria-label="Hear ${esc(s.title)}">&#9654; Hear</button>
@@ -3882,11 +2622,11 @@ function renderJarBar(){
   q('x').onclick = () => pickJar(null);
 }
 function pickJar(k){ selJar = k; document.querySelectorAll('.jar2').forEach(el => { const on = el.dataset.k === k; el.classList.toggle('sel', on); el.querySelector('.j')?.setAttribute('aria-pressed', String(on)); }); renderJarBar(); }
-setPlayUI(); dockPos(0, 0, 0); setPane(pane); setTab(mtab);
-/* keep the guide and toasts clear of the dock, whatever its height right now */
-if (window.ResizeObserver) new ResizeObserver(() => { const h = $('#dock').offsetHeight; if (h) document.body.style.setProperty('--dock-h', h + 8 + 'px'); }).observe($('#dock'));
+/* keep the guide and toasts clear of the jar bar, whatever its height right now */
+if (window.ResizeObserver) new ResizeObserver(() => { const h = $('#jarbar').offsetHeight; document.body.style.setProperty('--dock-h', (h ? h + 8 : 0) + 'px'); }).observe($('#jarbar'));
 
 rebuildBench();
+
 
 /* ---------- specimen cards: a sound's spectrum becomes a creature ---------- */
 const ELEMENTS = [
@@ -3984,21 +2724,21 @@ async function openCard(s){
   const mod = $('#cardmodal'); mod.hidden = false; cardFor = s;
   $('#cardwrap').innerHTML = `<div class="cardside"><p class="spec">Growing the card from the sound...</p></div>`;
   let C; try { C = cardOf(s, await features(s)); } catch(e){ $('#cardwrap').innerHTML = `<div class="cardside"><p>That jar would not open.</p><button class="btn small" id="cardx">Close</button></div>`; $('#cardx').onclick = closeCard; return; }
-  const fav = store.favs.has(keyOf(s)), inKit = kit.includes(keyOf(s));
+  const fav = store.favs.has(keyOf(s));
   $('#cardwrap').innerHTML = cardHTML(C, 0) + `<div class="cardside">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h3>Specimen card</h3><button class="btn ghost small" id="cardx">Close</button></div>
     <p style="margin:0;font-size:15px;line-height:22px">Grown from the sound itself. Where its energy sits sets the element, the hit sets POW, how long it rings sets GUT, how fast it peaks sets SPD, and how noisy and restless it is sets WRD. The loudest pitch is its key.</p>
     <p class="spec" style="margin:0">Reading: energy centered at ${Math.round(C.F.centroid).toLocaleString()} Hz (${C.el.name}: ${C.el.range}), peaks in ${(C.F.attack*1000).toFixed(1)} ms, rings for ${C.F.sustain.toFixed(2)} s.</p>
     <p class="wheel">${ELEMENTS.map((e,i) => `${e.name} ${VERB[e.id]} ${ELEMENTS[(i+1)%5].name} and ${ELEMENTS[(i+2)%5].name}.`).join(' ')}</p>
     <div class="acts"><button class="btn small" id="c-play">Hear it</button><button class="btn small" id="c-duel" style="background:var(--pink)">Take it to the ring</button>
-      <button class="btn ghost small" id="c-fav" aria-pressed="${fav}">${fav?'Starred':'Star it'}</button><button class="btn ghost small" id="c-kit">${inKit?'Unload':'Load into machine'}</button><button class="btn ghost small" id="c-take">Take the sample</button>
+      <button class="btn ghost small" id="c-fav" aria-pressed="${fav}">${fav?'Starred':'Star it'}</button><button class="btn ghost small" id="c-pad">Put on a pad</button><button class="btn ghost small" id="c-take">Take the sample</button>
       ${(!s.starter && canEdit) ? '<button class="btn ghost small" id="c-toss">Toss</button>' : ''}</div>
     <pre class="duellog" id="duellog" hidden></pre></div>`;
   drawSpec($('#cardwrap canvas[data-spec="0"]'), C.F, '#18161a');
   $('#cardx').onclick = closeCard; $('#cardx').focus();
   $('#c-play').onclick = () => playSpec(s);
   $('#c-fav').onclick = () => { toggleFav(s); const f = store.favs.has(keyOf(s)); $('#c-fav').setAttribute('aria-pressed', String(f)); $('#c-fav').textContent = f ? 'Starred' : 'Star it'; };
-  $('#c-kit').onclick = () => { toggleKit(keyOf(s)); $('#c-kit').textContent = kit.includes(keyOf(s)) ? 'Unload' : 'Load into machine'; };
+  $('#c-pad').onclick = async () => { const b = $('#c-pad'); b.disabled = true; if (await sendToMachine(s)) b.textContent = 'On a pad in the machine'; else b.disabled = false; };
   $('#c-take').onclick = () => takeSpec(s);
   const tb = $('#c-toss'); if (tb) tb.onclick = () => tossSpec(s, tb);
   $('#c-duel').onclick = () => openRing({with:s});
@@ -4063,7 +2803,7 @@ async function wireSpecimens(){
   if (db){
     try { db.collection('samples').orderBy('at').onSnapshot(snap => {
       uploaded = snap.docs.map(d => ({id:d.id, ...d.data()})).filter(x => x.asset && x.title).map(x => ({...x, cat: CABBY[x.cat] ? x.cat : 'donated'}));
-      rebuildBench(); renderLab(); renderSeq();
+      rebuildBench(); renderLab();
     }, () => {}); } catch(e){}
   }
   if (canEdit && assets && db){
@@ -4088,7 +2828,7 @@ async function wireSpecimens(){
     renderLab();
   }
 }
-defaultPattern(); renderLab(); renderSeq(); renderLogs(); setSeqStat();
+renderLab();
 wireSpecimens(); wireLabStore();
 
 
@@ -4510,7 +3250,7 @@ const ROOMS = [
   {id:'internship', room:'Intern Desk', page:'The Unpaid Internship', tag:'Make a song', floor:'Basement', area:'desk', c:'#ffb547',
    how:['Tap loops on and off to jam.','Light up squares in the song builder.','Bounce it to a WAV, then turn it in.']},
   {id:'specimens', room:'Basement Lab', page:'The Specimen Lab', tag:'Samples', floor:'Basement', area:'lab', c:'#00beb4',
-   how:['Pick a big jar off the wall, then tap a specimen to hear it.','The dock at the bottom stars it, puts it on a pad, doctors it or flips it to its creature card.','Play, Steps, Roll and Song in the dock open the Mess Machine. Hold a pad for its menu, and the ? in the dock explains whichever part you are on.']},
+   how:['Pick a big jar off the wall, then tap a specimen to hear it.','The bar at the bottom stars it, puts it on a pad in the Mess Machine, doctors it or flips it to its creature card.','Open the Mess Machine to play what is on its pads. Its Lab key, Escape or Back brings you back here.']},
   {id:'arcade', room:'Basement Arcade', page:'Coin-Op Purgatory', tag:'Games', floor:'Basement', area:'arc', c:'#ff4a2e',
    how:['Insert a coin to play.']},
   {id:'attic', room:'Attic', page:'The Attic', tag:'Hidden', floor:'Attic', c:'#a87b4f', hidden:true},
@@ -4642,7 +3382,6 @@ function placeNotes(){
     if (head){ head.classList.add('roomhead'); head.insertAdjacentHTML('beforeend', note); const lab = head.querySelector('p.label'); if (lab) lab.textContent = `${r.room} · ${r.tag}`; hwatify(head.querySelector('.hownote'), r.page); return; }
     const alt = sec.querySelector('.bwhero > div, .jobhead > div'); if (alt){ alt.insertAdjacentHTML('beforeend', `<div style="margin-top:16px">${note}</div>`); hwatify(alt.querySelector('.hownote'), r.page); }
   });
-  hwatAll();
 }
 
 /* ---------- radio: one player for the whole house ---------- */
@@ -4658,13 +3397,8 @@ function hwatify(el, title){
   const b = document.createElement('button'); b.type = 'button'; b.className = 'hwat'; b.setAttribute('aria-haspopup', 'dialog'); b.setAttribute('aria-label', 'Hwat? How ' + title.toLowerCase() + ' works');
   b.innerHTML = 'Hwat?'; b.title = title; b.onclick = () => openHwat(title, el.innerHTML); el.before(b);
 }
-function hwatAll(){
-  /* the machine's own how-to sits behind the ? in its dock, as in the app; only the logbook keeps a bubble */
-  [['#v-specimens .logbook > p.muted', 'The logbook']].forEach(([q, t]) => document.querySelectorAll(q).forEach(el => hwatify(el, t)));
-}
 const audioBus = {owners:{}, claim(who){ for (const [k, stop] of Object.entries(this.owners)) if (k !== who) { try { stop(); } catch(e){} } }};
 audioBus.owners.radio = () => { if (!audio.paused) audio.pause(); };
-audioBus.owners.seq = () => { if (seqOn) stopSeq(); };
 audioBus.owners.jam = () => stopJam();
 audioBus.owners.song = () => stopSong();
 function radioUI(){
@@ -5147,9 +3881,8 @@ function houseOnShow(v){
   if (v === 'home'){ renderHouse(); document.querySelectorAll('#v-home img[data-src]').forEach(i => { i.src = i.dataset.src; i.removeAttribute('data-src'); }); }
   if (v === 'attic') renderAttic();
   if (v === 'crawlspace') renderCrawl();
-  if (v === 'specimens' && typeof mmHelpUI === 'function') mmHelpUI();
   document.body.classList.toggle('in-crawl', v === 'crawlspace');
-  document.body.classList.toggle('has-dock', v === 'specimens' || v === 'crawlspace'); if (typeof dockGoUI === 'function') dockGoUI();
+  document.body.classList.toggle('has-dock', v === 'specimens' || v === 'crawlspace');
   toggleMenu(false);
   /* NSD-38: the dragon hosts the house once per visit, then goes quiet everywhere */
   const host = v === 'home' && !dragonSaid; if (host) dragonSaid = true;
@@ -5294,11 +4027,10 @@ function wObjects(f){
     if (ME.data.vault) add({kind:'hole', x:6.9, y:4.05, w:2.2, h:1, solid:false, deco:true});
     else add({kind:'crack', x:6.9, y:4, w:2.2, h:1.1, solid:false, label:'A crack in the wall', look: wCrack});
     deco('drain', 7.2, 10.4, .8, .8); deco('cables', 3.2, 7.6, 3, 1.4);
-    add({kind:'console', x:4.8, y:8, w:4.2, h:1.9, label:'The Mess Machine', ...page('specimens', () => { setPane('machine'); setTab('pads'); })});
+    add({kind:'console', x:4.8, y:8, w:4.2, h:1.9, label:'The Mess Machine', ...page('specimens', () => openMachine())});
     { const seals = ME.data.seals || [], ki = KEEPERS.findIndex((k, i) => keeperOpen(i) && !seals.includes(k.cab) && (!k.heap || ME.data.vault));
       if (ki >= 0){ const k = KEEPERS[ki]; add({kind:'keeper', k, col:(k.heap ? CABBY.heap : CABBY[k.cab])?.col || '#ff4fa3', shape:ringShape({s:{title:k.name}}), x:10.4, y:8.1, w:1.4, h:1.2, label:`${k.name} wants a fight`, look: () => openRing({fight:true, keeper:k})}); } }
     add({kind:'ring', x:9.4, y:9.8, w:3.2, h:2.8, solid:false, label:'The fight ring', look: () => typeof openRing === 'function' ? openRing() : wSay('The ring is still being built.')});
-    add({kind:'lectern', x:2.8, y:11.3, w:1.4, h:1.1, label:'The lab logbook', ...page('specimens', () => setPane('machine'))});
     stub('specimens', 4.6, 11.9); brk('bottle', 11, 12.2); brk('bottle', 5.6, 12.3); brk('bottle', 8.6, 6.8);
     /* the intern desk */
     add({kind:'desk', x:16.6, y:5.2, w:3.6, h:1.2, label:'The intern desk', ...page('internship')});
@@ -5625,17 +4357,17 @@ function wPlayGame(url, title){ coinSound(); credits++; $('#credits').textConten
 function wShelf(cab){
   const c = CABBY[cab], items = cabItems(cab), el = $('#wshelf');
   el.innerHTML = `<div class="wsh-head" style="--c:${c.col}"><img loading="lazy" src="img/jar_${cab}.png" alt=""><div><b>${esc(c.name)}</b><small>${items.length} specimen${items.length === 1 ? '' : 's'}</small></div><button class="wbtn sm" id="wsh-x" aria-label="Put the jar back">&times;</button></div>
-    <div class="wsh-list">${items.length ? items.map(s => { const k = keyOf(s), fav = store.favs.has(k), pad = kit.indexOf(k);
-      return `<div class="wsh-row" style="--c:${colOf(s)}"><button class="wsh-play" data-k="${esc(k)}">&#9654; ${esc(s.title)}</button><button class="wsh-sm${fav ? ' on' : ''}" data-fav="${esc(k)}" aria-pressed="${fav}" aria-label="Star ${esc(s.title)}">&#9733;</button><button class="wsh-sm${pad >= 0 ? ' on' : ''}" data-pad="${esc(k)}" aria-label="${pad >= 0 ? 'On pad ' + (pad + 1) : 'Put ' + esc(s.title) + ' on a pad'}">${pad >= 0 ? 'P' + (pad + 1) : '+Pad'}</button><button class="wsh-sm" data-card="${esc(k)}" aria-label="Creature card for ${esc(s.title)}">&#9638;</button></div>`; }).join('')
+    <div class="wsh-list">${items.length ? items.map(s => { const k = keyOf(s), fav = store.favs.has(k);
+      return `<div class="wsh-row" style="--c:${colOf(s)}"><button class="wsh-play" data-k="${esc(k)}">&#9654; ${esc(s.title)}</button><button class="wsh-sm${fav ? ' on' : ''}" data-fav="${esc(k)}" aria-pressed="${fav}" aria-label="Star ${esc(s.title)}">&#9733;</button><button class="wsh-sm" data-pad="${esc(k)}" aria-label="Put ${esc(s.title)} on a pad in the Mess Machine">+Pad</button><button class="wsh-sm" data-card="${esc(k)}" aria-label="Creature card for ${esc(s.title)}">&#9638;</button></div>`; }).join('')
       : '<p class="wsh-none">Empty jar. Nothing floating in it yet.</p>'}</div>
     <div class="wsh-foot"><button class="wbtn sm" id="wsh-page">Look closer on the page</button></div>`;
   el.hidden = false;
   $('#wsh-x').onclick = () => { el.hidden = true; };
   el.querySelectorAll('[data-k]').forEach(b => b.onclick = () => playSpec(byKey(b.dataset.k)));
   el.querySelectorAll('[data-fav]').forEach(b => b.onclick = () => { toggleFav(byKey(b.dataset.fav)); wShelf(cab); });
-  el.querySelectorAll('[data-pad]').forEach(b => b.onclick = () => { toggleKit(b.dataset.pad); wShelf(cab); });
+  el.querySelectorAll('[data-pad]').forEach(b => b.onclick = async () => { if (await sendToMachine(byKey(b.dataset.pad))){ b.classList.add('on'); b.textContent = 'On'; } });
   el.querySelectorAll('[data-card]').forEach(b => b.onclick = () => openCard(byKey(b.dataset.card)));
-  $('#wsh-page').onclick = () => { el.hidden = true; wGoPage(wF.objs.find(o => o.cab === cab), 'specimens', () => { setPane('jars'); labView = cab; favMode = false; renderLab(); }); };
+  $('#wsh-page').onclick = () => { el.hidden = true; wGoPage(wF.objs.find(o => o.cab === cab), 'specimens', () => { labView = cab; favMode = false; renderLab(); }); };
   el.querySelector('.wsh-play')?.focus({preventScroll:true});
 }
 /* the magnifying glass: zoom from where the thing is into its page */
@@ -5734,7 +4466,6 @@ function wDrawObj(c, o, t, near){
       c.fillStyle = '#ff4fa322'; c.fill(); c.fillStyle = '#ff4fa3'; c.font = '400 13px Bungee, sans-serif'; c.textAlign = 'center'; c.fillText('FIGHT', X + W / 2, Y + H / 2 + 5); break;
     case 'keeper': { const m = {x:X + W / 2, y:Y + H / 2 + 4, shape:o.shape, col:o.col, seed:hashN(o.k.name) % 97, hop:t / 160}; wDrawMob(c, m, t);
       c.fillStyle = '#ffd23f'; c.strokeStyle = '#18161a'; c.lineWidth = 2.5; const cy = Y + H / 2 - 18 - Math.abs(Math.sin(t / 160)) * 4; c.beginPath(); c.moveTo(X + W / 2 - 11, cy); c.lineTo(X + W / 2 - 11, cy - 10); c.lineTo(X + W / 2 - 5, cy - 4); c.lineTo(X + W / 2, cy - 12); c.lineTo(X + W / 2 + 5, cy - 4); c.lineTo(X + W / 2 + 11, cy - 10); c.lineTo(X + W / 2 + 11, cy); c.closePath(); c.fill(); c.stroke(); break; }
-    case 'lectern': wBox(c, X, Y, W, H, '#6f5236', 4); c.fillStyle = '#fff4e2'; c.fillRect(X + 8, Y + 6, W - 16, H - 14); break;
     case 'board': wBox(c, X, Y, W, H, '#18161a', 3); c.fillStyle = '#ffd23f'; for (let i = 0; i < 6; i++) c.fillRect(X + 8, Y + 12 + i * 16, W - 16 - (i * 3), 5); break;
     case 'pile': c.fillStyle = '#b39b5a'; c.beginPath(); c.ellipse(X + W / 2, Y + H * .6, W / 2, H / 2.2, 0, 0, 7); c.fill(); c.lineWidth = 3; c.strokeStyle = '#18161a'; c.stroke();
       ['#00beb4', '#ff4fa3', '#ffd23f', '#ff4a2e'].forEach((k, i) => { c.fillStyle = k; c.fillRect(X + 10 + i * 16, Y + H * .3 + (i % 2) * 10, 10, 14); }); break;
@@ -5811,7 +4542,6 @@ function walkOn_(){
   if (wSolidAt(wP.x, wP.y, 12)){ const [x, y] = wF.D.spawn; wP.x = (x + .5) * WT; wP.y = (y + .5) * WT; }
   walkOn = true; wRoom = null; wNear = null; wPath = null; wFade = 1; wKeys.clear(); wCamS = null; wP.vx = wP.vy = 0; wP.roll = 0;
   $('#walk').hidden = false; document.body.classList.add('walking'); $('#walkbtn').setAttribute('aria-pressed', 'true');
-  [...held.keys()].forEach(d => padUp(d)); closePadMenu?.();
   lsSet('nsd.mode', 'walk'); wLast = 0; wRAF = requestAnimationFrame(wTick); $('#wcv').focus({preventScroll:true});
   if (!lsGet('nsd.walkhelp', false)){ lsSet('nsd.walkhelp', true); setTimeout(() => wSay(matchMedia('(pointer:coarse)').matches ? 'Drag anywhere to walk. Tap a thing to go look at it.' : 'Arrow keys or WASD to walk, Shift to run, Space to roll. E looks at things. Esc goes back to the page.'), 600); }
 }
@@ -6336,7 +5066,7 @@ function pvpTryResolve(dmv){
 const JAM = {room:null, on:false, snd:lsGet('nsd.jamsnd', ''), row:lsGet('nsd.jamrow', '1000100010001000'), bpm:lsGet('nsd.jambpm', 100), hitsN:0, hits:[], heard:{}, timer:0, last:-1, peers:[]};
 const jamNow = () => performance.timeOrigin + performance.now();
 async function openJam(){
-  if (!JAM.snd || !byKey(JAM.snd)){ const k = kit.find(k => k && byKey(k)) || keyOf(specimens[0]); JAM.snd = k; }
+  if (!JAM.snd || !byKey(JAM.snd)){ const k = [...store.favs].find(k => byKey(k)) || keyOf(byKey('samples/basement-kick.wav') || specimens[0]); JAM.snd = k; }
   $('#jam').hidden = false; document.body.classList.add('jamming'); JAM.on = true;
   if (MP.room && !JAM.room){ try { JAM.room = await MP.room.join('jam'); JAM.room.onPeers(ch => { JAM.peers = ch.peers.filter(p => !p.sameTab && p.kind === 'viewer'); jamHear(); jamUI(); }); } catch(e){ JAM.room = null; } }
   jamPush(); jamUI(); clearInterval(JAM.timer); JAM.timer = setInterval(jamTick, 25);
@@ -6373,7 +5103,7 @@ function jamTick(){
   for (; next * stepMs < now + ahead; next++){
     JAM.last = next; const i = next % 16, when = c.currentTime + Math.max(0, (next * stepMs - now) / 1000);
     for (const r of jamRows()){ if (r.row[i] !== '1') continue; const s = byKey(r.snd); if (!s) continue; const b = mmLive.get(keyOf(s));
-      if (b) voiceEd(c, fxBus().inp, s, b, when, {rate:1, dur: stepMs / 1000 * 1.8, gate:true, gain:.7}); else mmPrime(s); }
+      if (b) voiceEd(c, liveBus(), s, b, when, {rate:1, dur: stepMs / 1000 * 1.8, gate:true, gain:.7}); else mmPrime(s); }
     const col = i; setTimeout(() => { document.querySelectorAll('#jamgrid .jg-st.now').forEach(x => x.classList.remove('now')); document.querySelectorAll(`#jamgrid .jg-st[data-i="${col}"]`).forEach(x => x.classList.add('now')); }, Math.max(0, next * stepMs - now));
   }
 }
@@ -6381,14 +5111,6 @@ $('#jamx').onclick = closeJam;
 $('#jamsnd').onchange = e => { JAM.snd = e.target.value; lsSet('nsd.jamsnd', JAM.snd); mmPrime(byKey(JAM.snd)); jamPush(); jamUI(); };
 $('#jambpm').onchange = e => { JAM.bpm = Math.max(60, Math.min(180, +e.target.value || 100)); lsSet('nsd.jambpm', JAM.bpm); jamPush(); };
 $('#jamhit').onpointerdown = e => { e.preventDefault(); jamHit(0); };
-$('#jamsave').onclick = () => {
-  /* the jam becomes a loop in the Mess Machine: every row that is on a sound goes on a pad */
-  const P = pats[mmCur]; let placed = 0;
-  for (const r of jamRows()){ const s = byKey(r.snd); if (!s || !r.row.includes('1')) continue; const k = keyOf(s); let i = kit.indexOf(k);
-    if (i < 0){ i = kit.findIndex(x => !x); if (i < 0) continue; kit[i] = k; mmPrime(s); }
-    P.steps[k] = Array.from({length:P.len}, (_, j) => r.row[j % 16] === '1'); placed++; }
-  setBpm(jamBpm()); renderSeq(); commit(); toast(placed ? `The jam is in loop ${String.fromCharCode(65 + mmCur)} of the Mess Machine. ${placed} row${placed === 1 ? '' : 's'}.` : 'Turn on some steps first.');
-};
 addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#jam').hidden){ e.stopPropagation(); closeJam(); } }, true);
 setTimeout(mpInit, 50);
 
@@ -6440,9 +5162,6 @@ addEventListener('message', e => {
   if (e.data.t === 'mm-playing') audioBus.claim('mm');
 });
 audioBus.owners.mm = () => mmPost({t:'mm-hush'});
-setPane = function(p){ if (p === 'machine'){ openMachine(); p = 'jars'; }
-  pane = 'jars'; lsSet('nsd.pane', pane); $('#pane-jars').hidden = false; $('#seq').hidden = true; mmHelpUI(); navUI(); };
-if (lsGet('nsd.pane', 'jars') === 'machine') lsSet('nsd.pane', 'jars');
 
 /* A jar sent to the machine: its sound as the site plays it (doctored, sliced, imported) goes into the
    machine's own sound store (IndexedDB mmweb/snd), then its key into the inbox. The machine uses its own
@@ -6472,7 +5191,6 @@ async function sendToMachine(s, quiet){
   if (!quiet) toast(`${s.title} waits on a pad in the Mess Machine.`);
   return true;
 }
-putOnPad = function(k, quiet){ return sendToMachine(byKey(k), quiet); };
 
 /* Back closes what is open before it changes the room (NSD-31) */
 const OVERLAYS = [['#hwatmodal', () => closeHwat()], ['#modal', () => closeModal()], ['#cardmodal', () => closeCard()],

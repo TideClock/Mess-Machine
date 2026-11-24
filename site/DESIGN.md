@@ -18,7 +18,9 @@ Rewritten at the end of every session and at each step of a long job. Read this 
   that needs a copy of the live assets (about 180 MB) and the recorder's database rules. NSD-29's bugtest.json waits
   for it; `site/tools/precheck.sh` covers the checks until then.
 - **Not done:** the three Nov 3 comment threads on the site are fixed but open; they are not sent to Claude.
-- **Watch:** Tyler has not seen the walk overhaul or the darker machine yet. Feel numbers are in `tools/walk.js`.
+- **Watch:** Tyler has not seen the walk overhaul yet. Feel numbers are in `tools/walk.js`.
+- **Nov 24 (NSD-41):** the old in-page machine is deleted (about 114 KB of source, a third of the DOM on #home). The lab,
+  doctor, walk jars, jam and ring play through the kept sound core; every "put on a pad" goes to the machine room.
 - **Nov 12:** the band page's game block is an arcade cabinet (the broken "Find it in Coin-Op Purgatory" button is gone).
   Clips uploaded in Channel Nowhere also play on the band page (`renderClips`); full episodes still open YouTube,
   because claude.ai blocks YouTube inside a page. The Brotherwife site has a Merch room: the Junk Drawer engine
@@ -42,9 +44,11 @@ Rewritten at the end of every session and at each step of a long job. Read this 
   `img/bw_flyer.webp`, `img/flyer_collage.webp` (made from the PNG and JPG originals with Pillow, quality 80, 760 px max).
 - build.py now writes a whole document (doctype and viewport meta): publishing requires the doctype, and the page
   no longer relies on claude.ai's wrapper for the phone viewport.
-- Before every publish: `ASSETS=<folder holding img/> bash site/tools/precheck.sh`. It runs `mm.js` on both sites,
-  `walk.js`, every room at phone and desktop (`run.js`) and the first-load weight (`weight.js`).
-- `deep.js` still covers the lab, Hwat?, the house menu, Pockets and walk mode by eye (logs, no checks).
+- Before every publish: `ASSETS=<folder holding img/> MM=<folder holding mm/index.html> bash site/tools/precheck.sh`.
+  It serves the build over http on a free port (the machine room will not load from file://), then runs `mmroom.js`
+  on both sites (open the room, a jar lands on a pad, Escape and Back close it), `lab.js` (jar bar, doctor, card,
+  import, walk shelf and console, jam, ring, heap, size of #home), `walk.js`, every room at phone and desktop
+  (`run.js`) and the first-load weight (`weight.js`). It fails if the machine room is missing.
 - Test hook: `window.__walk` (between `@@TEST` markers) exposes the walk mode to `walk.js`.
 
 ## Decisions
@@ -80,17 +84,11 @@ Walk mode follows the same floors, with the garage off the main hallway.
 | Walk the house | Header Walk | Small link under the house | The invitation for a new visitor (decision 6) |
 | House radio | Terrible Noise deck | Header player | Keeps music going in every room |
 | Go to the internship | House menu | Brotherwife hero button | The band's own call to action; the other two links cut (NSD-20) |
-| Pick a machine section | Dock: Sounds, Play, Steps, Roll, Song | none | Pane switch and tab row cut (NSD-22) |
-| Pads, Keys, Perform | Play switch | none | As the app's Play tab |
-| Keys under the pads | Pad menu | none | The dock Keys button is gone |
-| Doctor a pad | Pad menu | Jar dock (Doctor), Sounds | Different starting points: a pad or a jar |
-| Mute, solo, clear a pad | Pad menu (hold a pad or a Steps name) | none | The pad card and Steps row buttons are gone |
-| Loop length, copy, clear, bottle, resample, random drums | Loop tools in Steps | none | As the app |
-| Loop letters | Steps | Roll, Song | Roll edits one loop and Song paints with them |
-| Tempo, swing, click | Tempo button in the dock | none | As the app's tempo sheet |
-| Messes, redo, click to hear, jam | Dock menu (☰) | Studio amp (jam, in walk mode) | The amp is the jam's place in the house |
-| Hush | Stop twice | none | As the app |
-| How-to text | ? in the dock, shown once per section | none | As the app |
+| Open the Mess Machine | Lab: Open the Mess Machine | Walk mode: the lab console | The app's own machine, in a room of its own (Nov 24) |
+| Put a jar on a pad | Jar bar: Put on a pad | Card, doctor, walk shelf (+Pad); imports, mic takes and chops go too | One path into the machine's inbox, `sendToMachine` (NSD-41) |
+| Doctor a jar | Jar bar: Doctor | none | The doctor's table stays on the site; it has its own tempo box for Fit |
+| Jam | Studio amp (walk mode) | People button: Jam | Save to the Mess Machine cut (NSD-41) |
+| Pads, loops, tempo, messes, hush, how-to | Inside the machine | none | The site's old machine and its dock are gone (NSD-41) |
 | Help for a room | Hwat? bubble | Dragon on the house and first visits | The dragon is the host (NSD-6) |
 
 ## Wishlist
