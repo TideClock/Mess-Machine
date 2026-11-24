@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.teavm.jso.JSExport;
 import org.teavm.jso.typedarrays.Float32Array;
+import org.teavm.jso.typedarrays.Int8Array;
 
 /**
  * The web's door into the app's own engine. Compiled to JavaScript by TeaVM (web/engine/build.sh),
@@ -71,6 +72,20 @@ public final class WebEngine {
         Sample s = new Sample(key, d, rate);
         if (bpm > 0 && beats > 0) { s.bpm = bpm; s.beats = beats; }
         samples.put(key, s);
+    }
+    /** A sound file's bytes (FLAC or WAV), decoded by the app's own decoders so every sample matches the phone. */
+    @JSExport public static double addFile(String key, Int8Array bytes, double bpm, int beats) {
+        try {
+            int n = bytes.getLength();
+            byte[] b = new byte[n];
+            for (int k = 0; k < n; k++) b[k] = bytes.get(k);
+            Sample s = n > 4 && b[0] == 'f' && b[1] == 'L' && b[2] == 'a' && b[3] == 'C'
+                ? Flac.read(key, b) : Wav.read(key, new java.io.ByteArrayInputStream(b));
+            if (s == null) return -1;
+            if (bpm > 0 && beats > 0) { s.bpm = bpm; s.beats = beats; }
+            samples.put(key, s);
+            return s.seconds();
+        } catch (Throwable t) { fail(t); return -1; }
     }
     @JSExport public static boolean hasSample(String key) { return samples.containsKey(key); }
     @JSExport public static void dropSample(String key) { samples.remove(key); }

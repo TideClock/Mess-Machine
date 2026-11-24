@@ -17,3 +17,8 @@ cp "$JS" out/engine.js
 ( cd ../.. && git rev-parse HEAD ) > out/source-commit.txt
 ls -la out
 node smoke.mjs | tee out/smoke.txt
+# Parity: the same demo mess rendered by the JVM and by the JavaScript build must match.
+rm -rf build/golden && mkdir -p build/golden
+javac -nowarn -d build/golden $(find test/stub -name "*.java") "$SRC"/*.java src/main/java/com/tideclock/messmachine/engine/WebEngine.java test/Golden.java
+java -cp build/golden Golden ../../app/src/main/assets/sounds build/golden/demo.f32 | tee out/golden.txt
+node compare.mjs ../../app/src/main/assets/sounds build/golden/demo.f32 | tee out/parity.txt
