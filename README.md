@@ -8,7 +8,7 @@ A mess saved here is the same file the site saves, so you can move one between y
 
 ## Put it on your phone
 
-1. On your phone, open **Releases** on this repo (or go to `github.com/TideClock/Mess-Machine/releases/tag/latest`).
+1. On your phone, open **Releases** on this repo (or go to `github.com/hubbub0/Mess-Machine/releases/tag/latest`).
 2. Tap **MessMachine.apk**.
 3. Open the download. If Android asks, allow installs from your browser.
 

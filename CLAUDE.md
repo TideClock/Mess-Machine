@@ -7,7 +7,7 @@ Never use em dashes in anything written for Tyler (docs, replies, release notes,
 
 The cloud workspace cannot reach Google's Android servers, so the APK builds on GitHub Actions
 (`.github/workflows/build.yml`). Push to `main`, then watch the run with
-`gh api repos/TideClock/Mess-Machine/actions/runs`. A green run republishes the `latest` release,
+`gh api repos/hubbub0/Mess-Machine/actions/runs`. A green run republishes the `latest` release,
 which is where Tyler installs from. The engine (`app/src/main/java/.../engine/`, plain Java) can be
 tested here: see README.md.
 
@@ -27,7 +27,7 @@ Before each push that Tyler will install, rewrite `app/src/main/assets/guide.jso
 ## Tyler's notes (the in-app bug button)
 
 Notes arrive as GitHub issues labeled `from-app` plus a category label. Read them with
-`gh api "repos/TideClock/Mess-Machine/issues?labels=from-app&state=open&per_page=100"`.
+`gh api "repos/hubbub0/Mess-Machine/issues?labels=from-app&state=open&per_page=100"`.
 Each body has the build, device, audio buffer and underruns, the lag line and slow audio blocks, the mess summary (bug notes and crashes only), the last actions, a
 crash trace when there was one, and a hidden `mm-note:<id>` marker the app uses to find replies.
 

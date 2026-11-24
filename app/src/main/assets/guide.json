@@ -1,20 +1,14 @@
 {
-  "title": "One key size, colours back on the keys",
+  "title": "Mess Machine moved to your new GitHub",
   "thisBuild": [
-    "Every key is one size in real dp now: the dock, the synth, Steps and the tabs no longer grow with the screen, so a tablet no longer gets enormous dock keys.",
-    "Keys with an icon are filled with their tile colour from the icon boards: yellow transport, purple pages and synth, pink playing tools, teal sound shapes, slate tools.",
-    "Simple/Full and Poly/Mono/Acid have their icons back, in colour; every slider's icons stay in colour, not dimmed.",
-    "The synth's pad shows its kind's icon instead of repeating SCRATCH and the preset name.",
-    "Click and Count sit on the Play page by the bank numbers. A swipe's hit is taken back sooner. Scrolling a sheet over a pad no longer sets the pad off.",
-    "Chords and Repeat stay on the bottom bar; when folded the keys go a little narrower so all seven fit."
+    "The app now gets its updates, sound packs and note replies from hubbub0/Mess-Machine instead of TideClock.",
+    "Nothing else changed: same keys, sounds and layout as the last build."
   ],
   "watch": [
-    "Do the dock, Synth and Steps keys look like one family now, on the phone and the tablet?",
-    "Too much colour, or right?",
-    "Swipe off a drum pad: is the blip short enough?"
+    "Does Check for updates still find this build?",
+    "Send one test note: does it reach GitHub and come back with a reply?"
   ],
   "limits": [
-    "The top bar keeps its old sizes until you pick which of its keys go behind More.",
-    "Menu size and Pad layout are not built yet."
+    "Your saved notes token was made on TideClock and stops working after the move. In Notes, make a new one while signed in as hubbub0 (the app shows the steps) and paste it in."
   ]
 }

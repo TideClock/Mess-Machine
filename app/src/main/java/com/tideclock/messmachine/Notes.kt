@@ -19,7 +19,7 @@ import java.util.concurrent.Executors
 
 /**
  * The BUG button, native edition. Notes are kept on the phone, sent to Claude as GitHub issues on
- * TideClock/Mess-Machine (labels from-app plus the category), and Claude's replies come back from
+ * hubbub0/Mess-Machine (labels from-app plus the category), and Claude's replies come back from
  * the issue comments. Categories match the bug-testing skill: Bug, Tuning, Feature, Question,
  * Discuss (Note and discuss, grouped by topic) and Wishlist.
  */
@@ -36,7 +36,7 @@ data class MNote(
 val NOTE_CATS = listOf("bug" to "Bug", "tuning" to "Tuning", "feature" to "Feature", "question" to "Question", "discuss" to "Discuss", "wishlist" to "Wishlist")
 fun catLabel(c: String) = NOTE_CATS.firstOrNull { it.first == c }?.second ?: "Note"
 
-const val REPO = "TideClock/Mess-Machine"
+const val REPO = "hubbub0/Mess-Machine"
 
 class NotesBook(private val app: Context) {
     private val file = File(app.filesDir, "notes.json")

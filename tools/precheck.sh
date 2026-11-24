@@ -83,7 +83,7 @@ EOF
 
 # 4. the guide changes when the app changes (against the commit of the build Tyler last got)
 if command -v gh >/dev/null 2>&1; then
-  sha=$(gh api repos/TideClock/Mess-Machine/releases/tags/latest --jq .body 2>/dev/null | sed -n 's/.* from \([0-9a-f]\{7,\}\)\..*/\1/p' | head -1)
+  sha=$(gh api repos/hubbub0/Mess-Machine/releases/tags/latest --jq .body 2>/dev/null | sed -n 's/.* from \([0-9a-f]\{7,\}\)\..*/\1/p' | head -1)
   if [ -n "$sha" ] && git cat-file -e "$sha^{commit}" 2>/dev/null; then
     if ! git diff --quiet "$sha" -- app/src/main ':!app/src/main/assets/guide.json' && git diff --quiet "$sha" -- app/src/main/assets/guide.json; then
       echo "PRECHECK the app changed since build $sha but app/src/main/assets/guide.json did not: rewrite thisBuild, watch and limits"; fail=1

@@ -109,7 +109,7 @@ fun NotesScreen(state: AppState) {
                 }
                 T(
                     (if (state.notes.hasKey) "Send posts the note straight to GitHub with your key"
-                    else "Send opens GitHub with the note filled in; tap Submit there while signed in as TideClock") +
+                    else "Send opens GitHub with the note filled in; tap Submit there while signed in as hubbub0") +
                         ". It carries the build, your phone, the audio buffer and your last few taps. The repo is public, so anyone can read these notes.",
                     size = 11.sp, color = C.Dim, weight = FontWeight.Medium, modifier = Modifier.padding(top = 8.dp),
                 )
@@ -217,8 +217,8 @@ fun NoteKeyCard(state: AppState) {
             }
             if (open) {
                 T(
-                    "On GitHub, signed in as TideClock: Settings, Developer settings, Personal access tokens, Fine-grained tokens, Generate new token. " +
-                        "Repository access: only TideClock/Mess-Machine. Permissions: Issues, read and write. Nothing else. Copy the token and paste it here.",
+                    "On GitHub, signed in as hubbub0: Settings, Developer settings, Personal access tokens, Fine-grained tokens, Generate new token. " +
+                        "Repository access: only hubbub0/Mess-Machine. Permissions: Issues, read and write. Nothing else. Copy the token and paste it here.",
                     size = 12.sp, color = C.Dim, weight = FontWeight.Medium, modifier = Modifier.padding(top = 6.dp),
                 )
                 OutlinedTextField(
