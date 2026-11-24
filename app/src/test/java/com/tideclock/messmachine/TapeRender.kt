@@ -19,6 +19,7 @@ import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipe
 import androidx.core.view.drawToBitmap
 import androidx.test.core.app.ApplicationProvider
 import com.tideclock.messmachine.engine.Synth
@@ -452,7 +453,15 @@ class TapeRender {
         at(60); swipe("pad-5", "left")
         at(113); tapExact("HEAR IT", hold = 3)
         at(128); tap("dtab-trim", hold = 2)
-        at(136); drag("sheet", .933f, .203f, .503f, .203f, 14, note = "trim")
+        at(136); drag("sheet", .9f, .203f, .503f, .203f, 16, note = "trim")
+        if (state.project.edit(dance).en > .99) {
+            // the frame by frame drag did not take: the same drag as one gesture
+            println("DEMO x3 trim: frame drag did nothing (en=${state.project.edit(dance).en}), one-call swipe")
+            val a = rootPoint("sheet", .9f, .203f); val b = rootPoint("sheet", .503f, .203f)
+            for (i in 0..8) log.append("${frameNo + i},${if (i == 0) "down" else "move"},${(a.x + (b.x - a.x) * i / 8f).toInt()},${a.y.toInt()},trim\n")
+            rule.onNodeWithTag("sheet").performTouchInput { swipe(Offset(width * .9f, height * .203f), Offset(width * .503f, height * .203f), 280) }
+            frames(9); log.append("$frameNo,up,0,0,trim\n")
+        }
         println("DEMO x3 trim en=${state.project.edit(dance).en} st=${state.project.edit(dance).st}")
         at(165); tap("dtab-tools", hold = 2)
         at(176); tapExact("4 SLICES", hold = 2)
@@ -499,8 +508,9 @@ class TapeRender {
 
     /** Exhibit 6, It Has Eyes: a circle opens the sphere, a push bends the sound, one recorded move keeps playing. */
     @Test fun x6() = shoot("x6") {
-        mess { steps(kit[0], 0, 4, 8, 12); steps(kit[2], 2, 6, 10, 14) }
-        state.newSynth(5, analog("Warm pad"))
+        mess { }
+        state.putOnPad(5, dance); load(dance)
+        state.edit { pat().setStep(dance, 0, true) }
         state.setXy(5, XySetup.PRESETS[2])
         state.selectPad(0, false)
         roll()
@@ -538,7 +548,7 @@ class TapeRender {
     /** Exhibit 9 and the close: six layers recorded in six bars, then banks, skins, a tape stop and one last hit. */
     @Test fun x9() = shoot("x9") {
         mess { }
-        state.newSynth(5, analog("Warm pad")); state.setXy(5, XySetup.PRESETS[2])
+        state.putOnPad(5, harp); load(harp); state.setXy(5, XySetup.PRESETS[2])
         state.newSynth(8, analog("Soft keys"))
         state.pickChordMode("set:Haunted")
         state.openPadiano(8)
