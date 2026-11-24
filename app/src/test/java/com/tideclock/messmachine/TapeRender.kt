@@ -523,7 +523,8 @@ class TapeRender {
         circle(p, 240)
         glide(p, 1.45f, .5f, 10); glide(p, .5f, .5f, 6); glide(p, -.45f, .5f, 10); glide(p, 1.3f, .1f, 8)
         at(297); fingerUp(0, p, "sphere"); frame()
-        frames(4); println("DEMO x6 notes=${state.project.pat().notes(state.project.kit[5]).size} sphere=${state.sphere}")
+        at(302); println("DEMO x6 motion=" + state.project.pat().motion.map { (k, v) -> "$k=" + v.take(16).joinToString(",") { if (it.isNaN()) "-" else "%.1f".format(it) } })
+        for (f in listOf(330, 345, 352, 356, 400, 412)) { at(f); println("DEMO x6 f=$f step=${state.heardStep} rate=${state.engine.padRate(5)} rec=${state.live.rec} playing=${state.playing}") }
         at(480)
     }
 
@@ -574,6 +575,14 @@ class TapeRender {
         at(958); state.stop(); state.fxPress("tape", false)
         at(1035); tap("pad-7", hold = 3)
         at(1140)
+    }
+
+    /** A short of its own, It Changes Its Skin: one loop, the five skins, two beats each. */
+    @Test fun x10() = shoot("x10") {
+        mess { fullBeat() }
+        roll()
+        for ((i, k) in listOf("classic", "stage", "felt", "rust", "specimen", "classic", "stage", "felt", "rust", "specimen").withIndex()) { at(60 + i * 30); state.pickSkin(k) }
+        at(420)
     }
 
     /** Not part of the video's motion: still close-ups of the inventory screens for exhibit 8. */
