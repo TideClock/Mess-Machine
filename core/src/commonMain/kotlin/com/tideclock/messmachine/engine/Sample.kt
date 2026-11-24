@@ -12,9 +12,9 @@ import kotlin.math.sqrt
 
 /** One decoded sound, mono floats at its own sample rate. */
 class Sample(@JvmField val key: String, @JvmField val data: FloatArray, @JvmField val rate: Int) {
-    // was a synchronized lazy field: now computed once and published (a rare second computation is harmless)
+    // was a locked lazy field: now computed once and published (a rare second computation is harmless)
     @Volatile private var reversed: FloatArray? = null
-    // was a HashMap behind synchronized: a CowMap, read without locks
+    // was a HashMap behind a lock: a CowMap, read without locks
     private val peaks = CowMap<Long, Double>()
 
     fun seconds(): Double { return data.size / rate.toDouble() }
@@ -153,7 +153,7 @@ class Sample(@JvmField val key: String, @JvmField val data: FloatArray, @JvmFiel
             return Sample(key, d, sprite.rate)
         }
 
-        /** Java's Math.round(double): roundToLong, but NaN gives 0 instead of throwing. */
+        /** Rounds like the Java engine did (half up): roundToLong, but NaN gives 0 instead of throwing. */
         private fun jround(d: Double): Long = if (d.isNaN()) 0L else d.roundToLong()
     }
 }

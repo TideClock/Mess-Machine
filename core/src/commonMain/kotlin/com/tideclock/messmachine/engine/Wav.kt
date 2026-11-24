@@ -91,7 +91,7 @@ object Wav {
         return h
     }
 
-    /** Java's Math.round(float): roundToInt, but NaN gives 0 instead of throwing. */
+    /** Rounds like the Java engine did (half up): roundToInt, but NaN gives 0 instead of throwing. */
     private fun jround(f: Float): Int = if (f.isNaN()) 0 else f.roundToInt()
 
     private fun tag(b: ByteArray, p: Int, t: String): Boolean {

@@ -196,7 +196,7 @@ object Theory {
     /**
      * A piano key's slot in a chord set (Nov 22): a key in the scale plays its degree's chord (rooted on the key), a
      * key outside the scale plays one of the colour chords. The same key in every octave plays the same chord, an
-     * octave apart. Integer.MIN_VALUE when the set has no such slot.
+     * octave apart. Int.MIN_VALUE when the set has no such slot.
      */
     @JvmStatic
     fun setIndexOfKey(p: Int, mode: String, scale: String, root: Int): Int {

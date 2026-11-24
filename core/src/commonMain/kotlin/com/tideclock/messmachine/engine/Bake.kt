@@ -30,7 +30,7 @@ object Bake {
 
     /**
      * All the versions, index semis + RANGE; the centre slot stays null (the sound itself).
-     * stop was a java.util.function.BooleanSupplier; now a plain function (null for never).
+     * stop was a JVM BooleanSupplier; now a plain function (null for never).
      */
     @JvmStatic
     fun all(x: FloatArray, stop: (() -> Boolean)?): Array<FloatArray?>? {
@@ -238,6 +238,6 @@ object Bake {
         }
     }
 
-    /** Java's Math.round(double): roundToLong, but NaN gives 0 instead of throwing. */
+    /** Rounds like the Java engine did (half up): roundToLong, but NaN gives 0 instead of throwing. */
     private fun jround(d: Double): Long = if (d.isNaN()) 0L else d.roundToLong()
 }

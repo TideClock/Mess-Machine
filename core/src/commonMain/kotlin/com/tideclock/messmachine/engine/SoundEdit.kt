@@ -111,7 +111,7 @@ class SoundEdit {
         @JvmStatic
         fun clamp(v: Double, a: Double, b: Double): Double { return if (v.isNaN()) a else maxOf(a, minOf(b, v)) }
 
-        // Kotlin note: Java's Math.round(double) gives 0 for NaN where roundToLong throws; otherwise the same
+        // Kotlin note: Java's round of a double gives 0 for NaN where roundToLong throws; otherwise the same
         private fun javaRound(d: Double): Long = if (d.isNaN()) 0L else d.roundToLong()
     }
 }

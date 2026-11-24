@@ -113,10 +113,10 @@ object MidiOut {
     internal fun int32(o: Out, v: Int) { o.write(v ushr 24); o.write((v shr 16) and 0xFF); o.write((v shr 8) and 0xFF); o.write(v and 0xFF) }
     internal fun int16(o: Out, v: Int) { o.write((v shr 8) and 0xFF); o.write(v and 0xFF) }
 
-    /** Java's Math.round(double): roundToLong, but NaN gives 0 instead of throwing. */
+    /** Rounds like the Java engine did (half up): roundToLong, but NaN gives 0 instead of throwing. */
     private fun jround(d: Double): Long = if (d.isNaN()) 0L else d.roundToLong()
 
-    /** A growing byte buffer, in place of java.io.ByteArrayOutputStream. write(int) keeps the low 8 bits, like it did. */
+    /** A growing byte buffer, in place of the JVM ByteArrayOutputStream. write(int) keeps the low 8 bits, like it did. */
     internal class Out {
         private var a = ByteArray(256)
         private var n = 0
