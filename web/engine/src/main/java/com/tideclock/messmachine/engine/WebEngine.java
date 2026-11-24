@@ -89,6 +89,16 @@ public final class WebEngine {
             return s.seconds();
         } catch (Throwable t) { fail(t); return -1; }
     }
+    /** Min/max pairs for drawing a sound's waveform (fractions a..z of it), or an empty array if this engine lacks it. */
+    @JSExport public static Float32Array overview(String key, double a, double z, int cols) {
+        Sample s = samples.get(key);
+        if (s == null) return Float32Array.create(0);
+        float[] o = s.overview(a, z, cols);
+        Float32Array r = Float32Array.create(o.length);
+        for (int k = 0; k < o.length; k++) r.set(k, o[k]);
+        return r;
+    }
+    @JSExport public static double seconds(String key) { Sample s = samples.get(key); return s == null ? 0 : s.seconds(); }
     @JSExport public static boolean hasSample(String key) { return samples.containsKey(key); }
     @JSExport public static void dropSample(String key) { samples.remove(key); }
     /** After a batch of addSample calls: rebuild the snapshot so the new sounds play. */
