@@ -1,0 +1,42 @@
+name: Web engine
+# Compiles the app's engine to JavaScript for the web Mess Machine and commits it back to this branch.
+on:
+  push:
+    branches: [web-engine]
+    paths: ['web/engine/*', 'web/engine/src/**', 'app/src/main/java/com/tideclock/messmachine/engine/**', '.github/workflows/web-engine.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: web-engine
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.11.1"
+      - name: Build
+        run: |
+          mkdir -p web/engine/out
+          set +e
+          bash web/engine/build.sh > web/engine/out/log.txt 2>&1
+          echo $? > web/engine/out/status.txt
+          tail -40 web/engine/out/log.txt
+      - name: Commit the result (pass or fail) back to the branch
+        run: |
+          git config user.name "web-engine build"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f web/engine/out
+          git commit -m "Web engine build ${{ github.run_number }}: status $(cat web/engine/out/status.txt) [skip ci]" || exit 0
+          git pull --rebase -q || true
+          git push
