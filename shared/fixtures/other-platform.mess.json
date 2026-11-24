@@ -1,0 +1,25 @@
+{
+  "name": "From another platform",
+  "bpm": 98,
+  "v": 3,
+  "kit": ["samples/basement-kick.wav", "ios:take-7", "", "web:mic-3"],
+  "sel": 1,
+  "pats": [
+    {
+      "len": 16,
+      "steps": { "samples/basement-kick.wav": "1000100010001000", "ios:take-7": "0010001000100010" },
+      "notes": { "web:mic-3": "0.0.4" },
+      "iosLane": { "points": [0, 0.5, 1], "note": "kept as is" }
+    }
+  ],
+  "song": "A---------------",
+  "swing": 0,
+  "mutes": [],
+  "solos": [],
+  "scale": "Minor",
+  "root": 0,
+  "fold": false,
+  "edits": { "ios:take-7": { "tune": 3 } },
+  "cloud": { "owner": "user-1", "rev": 12, "shared": true },
+  "app": "ios"
+}

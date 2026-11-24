@@ -1,14 +1,15 @@
 {
-  "title": "Mess Machine moved to your new GitHub",
+  "title": "Saving no longer loses pads",
   "thisBuild": [
-    "The app now gets its updates, sound packs and note replies from hubbub0/Mess-Machine instead of TideClock.",
+    "A mess with sounds this phone does not have (from the site, a pack you have not got, or later the iPhone) keeps those pads. They read MISSING and stay quiet, and saving keeps them, their steps and their settings.",
+    "Anything the site or the iPhone app adds to a mess file now survives a save here.",
     "Nothing else changed: same keys, sounds and layout as the last build."
   ],
   "watch": [
-    "Does Check for updates still find this build?",
-    "Send one test note: does it reach GitHub and come back with a reply?"
+    "Open a mess from the site that uses one of your uploaded sounds: does its pad say MISSING instead of going empty?",
+    "Save it, reopen it: is the pad still there?"
   ],
   "limits": [
-    "Your saved notes token was made on TideClock and stops working after the move. In Notes, make a new one while signed in as hubbub0 (the app shows the steps) and paste it in."
+    "A MISSING pad stays quiet until its sound is on this phone. To use a different sound there, put one on it from the Sounds tab as usual."
   ]
 }

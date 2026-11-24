@@ -3195,6 +3195,23 @@ class BigTest {
         }
     }
 
+    /** Nov 23 (shared format): a mess from another platform keeps pads whose sounds this phone lacks, and its own keys. */
+    @Test fun nov23MissingSoundKeepsItsPad() {
+        val other = """{"name":"From iOS","bpm":100,"v":3,"kit":["ios:take-7","samples/basement-kick.wav"],
+            "pats":[{"len":16,"steps":{"ios:take-7":"1000100010001000","samples/basement-kick.wav":"0010001000100010"},"notes":{},"iosLane":{"a":1}}],
+            "song":"A","cloud":{"owner":"u1","rev":12}}"""
+        state.importText(other)
+        settle()
+        assertEquals("the missing sound stays on its pad", "ios:take-7", state.project.kit[0])
+        assertTrue("and its steps stay", state.project.pat().step("ios:take-7", 4))
+        assertTrue("the pad says Missing", rule.onAllNodesWithText("MISSING", substring = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty())
+        state.togglePlay(); loudest(2048); state.stop(); settle()
+        val saved = state.project.toJson()
+        assertTrue("a save keeps the missing pad", saved.contains("\"ios:take-7\":\"1000100010001000\""))
+        assertTrue("and the other platform's keys", saved.contains("\"cloud\":{\"owner\":\"u1\",\"rev\":12}") && saved.contains("\"iosLane\":{\"a\":1}"))
+        shot("nov23-missing-pad")
+    }
+
     @Test fun hushStopsEverything() {
         state.togglePlay()
         loudest(4800)

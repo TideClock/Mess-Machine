@@ -3,6 +3,24 @@
 Written Nov 23 2026 for Tyler to decide on. Nothing here is built. Tags: [Certain] means checked, with a link in
 Sources; [Likely] means strong reasons but not checked; [Guessing] means an estimate or a judgment call.
 
+## Decided (Tyler, Nov 23 2026)
+
+1. **Email code only to start.** Yes. Google and Apple come later, together.
+2. **Live edits shared, live pad hits not.** Yes, and more precisely: when two people play at once, each phone plays
+   only its own sound. What the other person records lands on your phone **at the start of the next loop**, so you
+   hear it the next time round, never mid-loop. (Edits are held and applied together on the loop's downbeat.)
+3. **Sound length.** A sound is capped at 100 seconds, **except recorded live parts**, which may be as long as a song:
+   anyone must be able to record a live part over the whole thing.
+4. **Pro the day accounts reach the Play Store.** Yes.
+5. **Deleting an account removes that person's sounds from other people's messes, unless the sound was submitted to
+   the Vault.** Vault sounds stay, with credit to the person, and may be used in new packs. Submitting to the Vault
+   therefore needs a clear grant at submission time (credit, use in packs, survives account deletion).
+6. **Netlify hosts the web side.** Yes.
+7. **Cloud storage: 250 MB per account, full quality.** No compressed takes. [Likely] About 38 minutes of audio at
+   roughly 6.5 MB a minute (FLAC, mono 48 kHz), so 5 to 8 song-length takes plus a normal library. Pro's 100 GB covers
+   about 400 accounts at the full cap; after that storage costs $0.0213 per GB a month, about half a cent per full
+   account. The app shows how much of the 250 MB is used and says plainly when a take will not fit.
+
 ## 1. Recommendation
 
 Use one Supabase project for Android, iOS and the web: email code sign-in first (Google and Apple later, together),
@@ -159,8 +177,8 @@ another table goes in a "security definer" function so policies do not loop; `au
 
 | Thing | Limit | Why |
 |---|---|---|
-| One sound | 60 seconds | [Certain] the Workbench import already stops at 60 s. About 3 MB as FLAC [Likely]. |
-| Your sounds in the cloud | 100 MB per free account | [Guessing] about 30 minutes of audio; storage is the first wall (section 6). |
+| One sound | 100 seconds (decided Nov 23); recorded live parts up to song length | [Certain] the Workbench import already stops at 60 s. About 3 MB as FLAC [Likely]. |
+| Your sounds in the cloud | 250 MB per account (decided Nov 23) | [Likely] about 38 minutes of full-quality audio; storage is the first wall (section 6). |
 | One mess | 1 MB of JSON | 10 times a big mess. Protects the database. |
 | Messes per account | 200 | Protects the database from scripts. |
 | People on one mess | 8 members, 4 editing live at once | See section 5. |
@@ -392,6 +410,7 @@ GitHub Actions. iOS and web take each step through the shared core when they rea
    loops or stayed on one Wi-Fi.
 3. **Sound limits for a free account: 60 seconds a sound, 100 MB in total, no paid tier for now?**
    Recommended: yes. Storage is the first cost wall; a paid tier needs Play and Apple billing, a project of its own.
+   Decided: 100 seconds a sound, song-length live takes allowed, 250 MB per account at full quality, no paid tier.
 4. **When to pay for Supabase Pro ($25 a month)?**
    Recommended: stay on Free for you and a test group, and move to Pro the day accounts reach the Play Store, or
    sooner if your two free projects are already used. Pausing alone makes Free unsafe for real users.
