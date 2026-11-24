@@ -88,7 +88,8 @@ class CloudStore(private val api: CloudApi, private val tokens: TokenStore, priv
         var created = false; var needPut = false; var clashes = 0; var attached = 0
     }
 
-    private class Known(val sha: String, val owner: String, var here: Boolean)
+    /** A bn: key some sounds list named. owner "": not known. gone: its maker deleted it (never uploaded by me unless I made it). */
+    private class Known(val sha: String, val owner: String, var here: Boolean) { var gone = false }
 
     private val links = ArrayList<Link>()
     private var session: Session? = null
@@ -554,7 +555,9 @@ class CloudStore(private val api: CloudApi, private val tokens: TokenStore, priv
         try {
             for ((k, v) in Json.map(Json.map(Json.parse(text))["sounds"])) {
                 val m = Json.map(v)
-                known[k] = Known(Json.str(m["sha256"], ""), Json.str(m["owner"], ""), Json.bool(m["here"], false))
+                val x = Known(Json.str(m["sha256"], ""), Json.str(m["owner"], ""), Json.bool(m["here"], false))
+                x.gone = Json.bool(m["gone"], false)
+                known[k] = x
             }
         } catch (e: Exception) { known.clear() }
     }
@@ -564,6 +567,7 @@ class CloudStore(private val api: CloudApi, private val tokens: TokenStore, priv
         for ((k, v) in known) {
             val m = LinkedHashMap<String, Any?>()
             m["sha256"] = v.sha; m["owner"] = v.owner; m["here"] = v.here
+            if (v.gone) m["gone"] = true
             out[k] = m
         }
         val top = LinkedHashMap<String, Any?>()
@@ -703,7 +707,9 @@ class CloudStore(private val api: CloudApi, private val tokens: TokenStore, priv
         val key = p.keys[i]
         val on = if (l.made()) listed(l, key) else null
         if (skip.contains(key) || (on != null && on.src != "gone")) { soundStep(p, i + 1); return }    // refused before, or this mess lists it already
-        if (known[key] != null) { p.attach.add(key); soundStep(p, i + 1); return }                      // the file is on the server: attach, no upload
+        val k = known[key]
+        if (k != null && !k.gone) { p.attach.add(key); soundStep(p, i + 1); return }                    // the file is on the server: attach, no upload
+        if (k != null && k.owner != (me?.id ?: "-")) { soundStep(p, i + 1); return }                   // its maker deleted it: never uploaded by me (Review A M5)
         if (!dataOk && !l.force) { l.snd = true; l.sndAt = 0L; soundStep(p, i + 1); return }           // sounds wait for Wi-Fi
         api.prepareUpload(key) { pr, _ ->
             if (live(p)) { if (pr == null) soundStep(p, i + 1) else register(p, i, key, pr) }           // not on this phone: nothing to send
@@ -837,7 +843,7 @@ class CloudStore(private val api: CloudApi, private val tokens: TokenStore, priv
                 if (o == null) pushFail(p, err)
                 else {
                     val s = soundFor(p, key, k)
-                    known.remove(key)
+                    k.gone = true; k.here = false
                     saveKnown()
                     if (k.owner != (me?.id ?: "")) {
                         // its maker left: drop the cache file and the Library entry before anything plays
@@ -1102,7 +1108,8 @@ class CloudStore(private val api: CloudApi, private val tokens: TokenStore, priv
             if (s.src == "gone") {
                 api.dropSound(s.sha256)
                 have.remove(s.key + "|" + s.sha256)
-                if (k != null && k.sha == s.sha256) { known.remove(s.key); touched = true }
+                if (k != null && k.sha == s.sha256) { if (!k.gone) { k.gone = true; k.here = false; touched = true } }
+                else { val x = Known(s.sha256, s.owner, false); x.gone = true; known[s.key] = x; touched = true }
                 host.soundGone(s)
             } else if (s.sha256.isNotEmpty() && (k == null || k.sha != s.sha256 || k.owner != s.owner)) {
                 known[s.key] = Known(s.sha256, s.owner, false)
