@@ -119,6 +119,11 @@ One line each, dated, with the reason and who decided (BT-2). Older decisions li
   sound takes a second tap. Look: only the milled tab slot with the raised current tab (Settings, Look, Tabs: keys
   goes back) and readouts that shrink to fit; help lines are off for everyone (Explain in Settings brings them back).
   Not built, per Tyler: the edit tray stopping above the dock, Song inside Seq, the rest of the look spec.
+- 2026-11-23 Accounts (Tyler, on docs/ACCOUNTS-PLAN.md): email code sign-in first; when two people play at once each
+  phone plays only its own sound and the other's new recordings arrive at the start of the next loop; sounds cap at
+  100 s but recorded live parts may be song length; Supabase Pro the day accounts reach Play; deleting an account
+  removes that person's sounds from others' messes unless they were submitted to the Vault (kept with credit, usable in
+  new packs); Netlify hosts the web side. Open: storage per account for song-length takes.
 - 2026-11-22 Sizing and colour (Tyler: "the sizing is crazy", dock keys enormous on the tablet next to the synth's,
   Steps' keys huge next to the dock's; "why didn't you keep the colors behind all the buttons"): keys no longer grow
   with the screen (Btn, PanelKey, the tab slot): one size in real dp. A key with an icon is filled with its group's

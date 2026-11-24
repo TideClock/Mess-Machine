@@ -3,6 +3,23 @@
 Written Nov 23 2026 for Tyler to decide on. Nothing here is built. Tags: [Certain] means checked, with a link in
 Sources; [Likely] means strong reasons but not checked; [Guessing] means an estimate or a judgment call.
 
+## Decided (Tyler, Nov 23 2026)
+
+1. **Email code only to start.** Yes. Google and Apple come later, together.
+2. **Live edits shared, live pad hits not.** Yes, and more precisely: when two people play at once, each phone plays
+   only its own sound. What the other person records lands on your phone **at the start of the next loop**, so you
+   hear it the next time round, never mid-loop. (Edits are held and applied together on the loop's downbeat.)
+3. **Sound length.** A sound is capped at 100 seconds, **except recorded live parts**, which may be as long as a song:
+   anyone must be able to record a live part over the whole thing. Open: the 100 MB per account total does not fit
+   song-length takes (see the question below).
+4. **Pro the day accounts reach the Play Store.** Yes.
+5. **Deleting an account removes that person's sounds from other people's messes, unless the sound was submitted to
+   the Vault.** Vault sounds stay, with credit to the person, and may be used in new packs. Submitting to the Vault
+   therefore needs a clear grant at submission time (credit, use in packs, survives account deletion).
+6. **Netlify hosts the web side.** Yes.
+
+Still to decide: how much cloud storage an account gets once song-length takes exist.
+
 ## 1. Recommendation
 
 Use one Supabase project for Android, iOS and the web: email code sign-in first (Google and Apple later, together),
@@ -159,7 +176,7 @@ another table goes in a "security definer" function so policies do not loop; `au
 
 | Thing | Limit | Why |
 |---|---|---|
-| One sound | 60 seconds | [Certain] the Workbench import already stops at 60 s. About 3 MB as FLAC [Likely]. |
+| One sound | 100 seconds (decided Nov 23); recorded live parts up to song length | [Certain] the Workbench import already stops at 60 s. About 3 MB as FLAC [Likely]. |
 | Your sounds in the cloud | 100 MB per free account | [Guessing] about 30 minutes of audio; storage is the first wall (section 6). |
 | One mess | 1 MB of JSON | 10 times a big mess. Protects the database. |
 | Messes per account | 200 | Protects the database from scripts. |
