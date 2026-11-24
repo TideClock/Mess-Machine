@@ -381,6 +381,207 @@ class TapeRender {
     }
     private fun note(name: String, text: String) { File(dir, "$name.txt").writeText(text + "\n") }
 
+    /* ---------- the tape: MM-V2 "Evidence Tape" ---------- */
+
+    private val harp = "samples/glass-harp.wav"
+    private val dance = "loop:new-dance-1"
+    private fun analog(name: String) = Synth.ANALOG.presets.first { it.name == name }
+    private fun Project.steps(k: String, vararg js: Int) { for (j in js) pat().setStep(k, j, true) }
+
+    /** A new mess at 120 in C harmonic minor, with whatever steps the shot wants under it. */
+    private fun mess(block: Project.() -> Unit = {}) {
+        state.newMess(); state.setBpm(120)
+        state.edit { scale = "Harmonic minor"; root = 0; block() }
+        settle()
+    }
+    private fun Project.fullBeat() {
+        steps(kit[0], 0, 4, 8, 12); steps(kit[2], 2, 6, 10, 14); steps(kit[3], 4, 12)
+        steps(kit[5], 3, 7, 11, 14); steps(kit[4], 10); steps(kit[7], 0)
+    }
+    /** Filming starts and the loop starts with it, so bar lines sit on whole seconds. */
+    private fun roll() { settle(); action(); state.togglePlay() }
+    private fun at(f: Int) { while (frameNo < f) frame() }
+    private fun slot(pad: Int, j: Int, hold: Int) = tap("chord-slots-$pad", (j % 6 + .5f) / 6f, (j / 6 + .5f) / 2f, hold = hold, note = "chord $j")
+    private fun press(tag: String, n: Int) { fingerDown(0, tag, .5f, .12f, tag); frames(n); fingerUp(0, tag, tag); frame() }
+    private var fx0 = .5f; private var fy0 = .5f
+    /** A circle on a pad: the finger stays down afterwards, inside the sphere it opened. */
+    private fun circle(tag: String, f0: Int) {
+        at(f0); fingerDown(0, tag, .8f, .5f, "circle"); frame()
+        for (k in 1..20) { val a = k * (2 * Math.PI / 18); fx0 = .5f + .3f * kotlin.math.cos(a).toFloat(); fy0 = .5f + .3f * kotlin.math.sin(a).toFloat(); fingerMove(0, tag, fx0, fy0, "circle"); frame() }
+    }
+    /** The held finger glides to a new spot (in pad widths from the pad's corner) over n frames. */
+    private fun glide(tag: String, x: Float, y: Float, n: Int) {
+        val x0 = fx0; val y0 = fy0
+        for (i in 1..n) { val t = i / n.toFloat(); val e = t * t * (3 - 2 * t); fx0 = x0 + (x - x0) * e; fy0 = y0 + (y - y0) * e; fingerMove(0, tag, fx0, fy0, "sphere"); frame() }
+    }
+
+    /** Exhibit 1, Four Ways In: every swipe off one pad, opened and closed, then all four in a row. */
+    @Test fun x1() = shoot("x1") {
+        mess { steps(kit[0], 0, 4, 8, 12) }
+        roll()
+        val p = "pad-5"
+        at(105); swipe(p, "up"); at(135); swipe(p, "up")
+        at(165); swipe(p, "right"); at(195); swipe(p, "right")
+        at(225); swipe(p, "down"); at(255); swipe(p, "down")
+        at(285); swipe(p, "left"); at(318); tap("done", hold = 2)
+        at(330); swipe(p, "up", 3); at(345); swipe(p, "right", 3); at(360); swipe(p, "down", 3); at(375); swipe(p, "left", 3)
+        at(402); tap("done", hold = 2)
+        at(420)
+    }
+
+    /** Exhibit 2, It Grows Keys: the Padiano out of a pad, then the Haunted chord set. */
+    @Test fun x2() = shoot("x2") {
+        mess { steps(kit[0], 0, 4, 8, 12); steps(kit[2], 2, 6, 10, 14) }
+        state.putOnPad(5, harp); load(harp)
+        state.pickChordMode("set:Haunted"); state.toggleChords(); settle()
+        roll()
+        at(60); swipe("pad-5", "down")
+        for ((i, n) in listOf(0, 3, 7, 12, 7, 3, 0).withIndex()) { at(135 + i * 15); key(5, n, hold = 7) }
+        at(240); tap("chords-toggle", hold = 3)
+        println("DEMO x2 chord=${state.chordMode} scale=${state.project.scale}")
+        at(330); slot(5, 0, 24)
+        at(360); slot(5, 3, 24); at(390); slot(5, 4, 24); at(420); slot(5, 5, 24); at(450); slot(5, 0, 26)
+        at(480)
+    }
+
+    /** Exhibit 3, It Takes Sounds Apart: the Sample sheet, a trim, a chop onto pads, the pieces played. */
+    @Test fun x3() = shoot("x3") {
+        mess { steps(kit[0], 0, 4, 8, 12) }
+        state.putOnPad(5, dance); load(dance)
+        roll()
+        at(60); swipe("pad-5", "left")
+        at(92); tapExact("HEAR IT", hold = 3)
+        at(128); tap("dtab-trim", hold = 2)
+        at(136); drag("sheet", .933f, .203f, .503f, .203f, 14, note = "trim")
+        at(165); tap("dtab-tools", hold = 2)
+        at(176); tapExact("4 SLICES", hold = 2)
+        at(196); tapExact("CHOP TO PADS", hold = 3)
+        println("DEMO x3 kit=${state.project.kit.take(16)} overlay=${state.overlay}")
+        frames(4)
+        val end = System.currentTimeMillis() + 15000
+        while (!state.project.kit.filter { it.isNotEmpty() }.all { state.lib.loaded(it) } && System.currentTimeMillis() < end) { Thread.sleep(20); settle() }
+        val seq = listOf(8, 9, 10, 11, 8, 8, 10, 11, 9, 9, 10, 8, 11, 10, 9, 8)
+        for ((i, p) in seq.withIndex()) { at(240 + (i * 7.5).toInt()); tap("pad-$p", hold = 2) }
+        at(360)
+    }
+
+    /** Exhibit 4, The Vials: a pad's own effects poured in, bypassed, and back. */
+    @Test fun x4() = shoot("x4") {
+        mess { steps(kit[0], 0, 4, 8, 12); steps(kit[5], 3, 6, 11, 14); steps(kit[2], 2, 10) }
+        roll()
+        at(45); swipe("pad-5", "right")
+        at(125); drag("fx-8-5", .5f, .92f, .5f, .3f, 18, note = "vial")
+        at(152); drag("fx-9-5", .5f, .92f, .5f, .45f, 18, note = "vial")
+        println("DEMO x4 sends=${state.fxSend}")
+        at(195); tap("fxstrip-off-5", hold = 3)
+        at(232); tap("fxstrip-off-5", hold = 3)
+        at(300)
+    }
+
+    /** Exhibit 5, Six Kinds Live Inside: one synth pad, all six kinds, the same notes on each. */
+    @Test fun x5() = shoot("x5") {
+        mess { steps(kit[0], 0, 4, 8, 12) }
+        state.newSynth(8, analog("Warm pad"))
+        state.tab = Tab.Synth
+        roll()
+        dumpTags("synth-pad")
+        at(8); key(8, 0, 8); at(30); key(8, 7, 8); at(52); key(8, 3, 8)
+        val first = listOf(0, 3, 7, 8, 0, 12); val second = listOf(7, 7, 12, 3, 7, 7)
+        for ((i, k) in listOf("analog", "fm", "wave", "grain", "drum", "pluck").withIndex()) {
+            val f = 75 + i * 30
+            at(f); if (i > 0) { tap("synthkind-$k", hold = 2); println("DEMO x5 kind=${state.synthOn(8)?.kind?.id}") }
+            at(f + 5); key(8, first[i], 9); at(f + 17); key(8, second[i], 9)
+        }
+        for ((i, n) in listOf(0, 3, 7, 12, 8, 7, 3, 0).withIndex()) { at(262 + i * 11); key(8, n, 6) }
+        at(360)
+    }
+
+    /** Exhibit 6, It Has Eyes: a circle opens the sphere, a push bends the sound, one recorded move keeps playing. */
+    @Test fun x6() = shoot("x6") {
+        mess { steps(kit[0], 0, 4, 8, 12); steps(kit[2], 2, 6, 10, 14) }
+        state.newSynth(5, analog("Warm pad"))
+        state.setXy(5, XySetup.PRESETS[2])
+        state.selectPad(0, false)
+        roll()
+        val p = "pad-5"
+        circle(p, 90)
+        println("DEMO x6 sphere=${state.sphere}")
+        at(128); glide(p, 1.45f, .5f, 18); frames(6); glide(p, .5f, .5f, 12); glide(p, -.45f, .5f, 18); frames(4); glide(p, .5f, -.4f, 14); glide(p, 1.3f, .2f, 12)
+        at(222); fingerUp(0, p, "sphere"); frame()
+        at(230); tap("rec", hold = 3)
+        circle(p, 240)
+        glide(p, 1.45f, .5f, 10); glide(p, .5f, .5f, 6); glide(p, -.45f, .5f, 10); glide(p, 1.3f, .1f, 8)
+        at(297); fingerUp(0, p, "sphere"); frame()
+        println("DEMO x6 moves=${state.project.pat().notes(state.project.kit[5]).size} notes")
+        at(480)
+    }
+
+    /** Exhibit 7, It Breaks On Command: stutter, echo throw and tape stop on the whole mix. */
+    @Test fun x7() = shoot("x7") {
+        mess { fullBeat() }
+        state.tab = Tab.Perform
+        roll()
+        at(60); press("fx-stutter", 30)
+        at(105); press("fx-echo", 30)
+        at(172); press("fx-tape", 66)
+        at(300)
+    }
+
+    /** Exhibit 8's sound: the loop, untouched, under the inventory close-ups. */
+    @Test fun x8() = shoot("x8") {
+        mess { fullBeat() }
+        roll()
+        at(420)
+    }
+
+    /** Exhibit 9 and the close: six layers recorded in six bars, then banks, skins, a tape stop and one last hit. */
+    @Test fun x9() = shoot("x9") {
+        mess { }
+        state.newSynth(5, analog("Warm pad")); state.setXy(5, XySetup.PRESETS[2])
+        state.newSynth(8, analog("Soft keys"))
+        state.pickChordMode("set:Haunted")
+        state.openPadiano(8)
+        state.selectPad(0, false)
+        roll()
+        at(45); tap("rec", hold = 3)
+        for (b in 0..3) { at(120 + b * 15); tap("pad-0", hold = 2) }
+        for (b in listOf(1, 3)) { at(180 + b * 15); tap("pad-3", hold = 2) }
+        for (i in 0..7) { at(240 + (i * 7.5).toInt()); tap("pad-2", hold = 2) }
+        for (s in listOf(0, 3, 6, 10)) { at(300 + (s * 3.75).toInt()); tap("pad-4", hold = 2) }
+        at(360); slot(8, 0, 22); at(390); slot(8, 5, 22)
+        circle("pad-5", 420)
+        glide("pad-5", 1.45f, .5f, 10); glide("pad-5", .5f, .5f, 6); glide("pad-5", -.45f, .5f, 10); glide("pad-5", 1.3f, .1f, 8)
+        at(476); fingerUp(0, "pad-5", "sphere"); frame()
+        at(480)
+        val pr = state.project
+        println("DEMO x9 layers " + listOf(0, 3, 2, 4, 8, 5).joinToString(" ") { "${it}:${pr.pat().notes(pr.kit[it]).size}" })
+        at(495); tap("rec", hold = 3)
+        for ((i, b) in listOf(1, 2, 3, 0).withIndex()) { at(525 + i * 15); tap("bank-$b", hold = 2) }
+        at(600); tap("tab-Synth", hold = 2); at(645); tap("tab-Pads", hold = 2)
+        for ((i, s) in listOf("classic", "stage", "felt", "rust", "specimen").withIndex()) { at(675 + i * 15); state.pickSkin(s) }
+        at(900); state.fxPress("tape", true, 1f)
+        at(958); state.stop(); state.fxPress("tape", false)
+        at(990); tap("pad-7", hold = 3)
+        at(1080)
+    }
+
+    /** Not part of the video's motion: still close-ups of the inventory screens for exhibit 8. */
+    @Test fun p1() = shoot("p1") {
+        mess { fullBeat(); pat().setChance(kit[2], 6, 50) }
+        state.newSynth(8, analog("Warm pad"))
+        settle(); action(); frames(3)
+        step("hold") { state.openSettingsFor("hold-toggle"); frames(6); snap("inv-hold"); state.tray = null; frames(3) }
+        step("levels") { state.selectPad(4, false); tap("open-padmenu"); frames(6); snap("inv-padmenu"); state.tray = null; state.padMenu = -1; frames(3) }
+        step("levels2") { state.switchLevels(4); frames(6); snap("inv-levels"); state.switchLevels(4); frames(3) }
+        step("chance") { state.tab = Tab.Steps; frames(6); snap("inv-steps"); state.stepSheet = Pair(state.project.kit[2], 6); frames(6); snap("inv-stepsheet"); state.stepSheet = null; frames(3); state.tab = Tab.Pads; frames(3) }
+        step("lfo") { state.pickEditTab("mod"); state.openTray("edit:5"); frames(6); snap("inv-lfo"); state.tray = null; frames(3) }
+        step("song") { state.loopStripOpen = true; frames(6); snap("inv-loops"); if (has("loop-song")) { tap("loop-song"); frames(6); snap("inv-song") }; state.loopStripOpen = false; frames(3) }
+        step("stems") { state.overlay = Overlay.Files; frames(6); snap("inv-files"); if (has("stems-loop")) { show("stems-loop"); frames(3); snap("inv-stems") }; state.overlay = null; frames(3) }
+        step("midi") { state.switchMidiMap(true); frames(6); snap("inv-midi"); state.switchMidiMap(false); frames(3) }
+        step("mouth") { state.overlay = Overlay.Mouth; frames(6); snap("inv-mouth"); state.overlay = null; frames(3) }
+        step("skins") { for (s in listOf("classic", "stage", "felt", "rust", "specimen")) { state.pickSkin(s); frames(4); snap("skin-$s") } }
+    }
+
     /** Not part of the video: looks at today's screens and lists their controls, so the shots can find them. */
     @Test fun p0() = shoot("p0") {
         beat(); settle(); action()
