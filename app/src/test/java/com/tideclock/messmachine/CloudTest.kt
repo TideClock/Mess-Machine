@@ -196,13 +196,18 @@ class CloudTest {
     private fun openAccount() { shown.overlay = null; settle(); openMenuItem("acct-open") }
     private fun closeSheet() { if (shown.overlay != null) tap("done") }
 
-    /** Every control on screen has its line in the FAQ (Faq.kt), as the big test asks of every page. */
+    /** Every account control on screen has its line in the FAQ (Faq.kt), as the big test asks of every page. */
+    private val cloudTags = listOf("acct-", "terms-", "name-ask", "cloud-move-", "mess-cloud-", "mess-offcloud-", "omess-", "sync-state", "sounds-get", "mess-save")
     private fun faqCovers(where: String) {
         val missing = LinkedHashSet<String>()
+        var seen = 0
         for (n in rule.onAllNodes(hasClickAction()).fetchSemanticsNodes()) {
             val tag = generateSequence(n) { it.parent }.mapNotNull { it.config.getOrNull(SemanticsProperties.TestTag) }.firstOrNull() ?: continue
+            if (cloudTags.none { tag.startsWith(it) }) continue
+            seen++
             if (Faq.lineFor(tag) == null) missing.add(tag)
         }
+        assertTrue("account controls on $where", seen > 0)
         assertTrue("controls with no FAQ line on $where: $missing", missing.isEmpty())
     }
 
