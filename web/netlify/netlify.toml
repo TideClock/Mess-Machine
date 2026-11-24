@@ -1,0 +1,18 @@
+# The Netlify copy of the web Mess Machine: the same page as the claude.ai artifact, plus the microphone, MIDI and
+# sound packs (which a claude.ai page cannot use). Netlify builds it from this folder on every push to web-engine.
+[build]
+  base = "web/netlify"
+  command = "bash ../app/build.sh && rm -rf dist && cp -r ../app/dist dist"
+  publish = "dist"
+
+[functions]
+  directory = "netlify/functions"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Permissions-Policy = "microphone=(self), midi=(self)"
+[[headers]]
+  for = "/snd/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"

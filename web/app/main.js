@@ -32,6 +32,7 @@ async function startAudio() {
   for (const [k, v] of S.fxSend) { const [p, t] = k.split(':').map(Number); call('home', p, t, v); }
   await loadKit();
   wakeLock();
+  import('./midi.js').then((m) => m.startMidi()).catch(() => {});
 }
 let wl = null;
 async function wakeLock() {
@@ -276,7 +277,8 @@ function renderSounds(tab) {
   search.addEventListener('input', () => { S.search = search.value; renderSoundList(list, target); });
   const types = h('div', { class: 'chips' }, TYPES.map(([v, n]) => h('button', { class: (S.stype || '') === v ? 'on' : '', onclick: () => { S.stype = v; renderSounds(tab); } }, n)),
     h('button', { class: S.stars ? 'on' : '', onclick: () => { S.stars = !S.stars; renderSounds(tab); } }, '★ Starred'));
-  fill(tab, h('div', { class: 'h2' }, S.pickFor >= 0 ? `A sound for pad ${S.pickFor + 1}` : 'Sounds'), search, types, list);
+  fill(tab, h('div', { class: 'row' }, h('div', { class: 'h2', style: 'flex:1' }, S.pickFor >= 0 ? `A sound for pad ${S.pickFor + 1}` : 'Sounds'),
+    h('button', { class: 'btn', 'data-faq': 'packs-open', onclick: () => import('./packs.js').then((m) => m.openPacks()) }, 'Packs')), search, types, list);
   renderSoundList(list, target);
 }
 function renderSoundList(list, target) {
@@ -431,6 +433,7 @@ async function boot() {
   for (const s of lib.sounds) LIBS.LIB[s.k] = s;
   LIBS.ALIAS = lib.aliases || {}; LIBS.CABS = lib.cabs; LIBS.FAQ = faq;
   await loadOwn();
+  (await import('./packs.js')).registerPacks();
   const saved = store.get('current', null);
   const json = saved && T().normalize(saved) ? saved : T().demoMess();
   T().setMess(json); T().ensureScratch(); reread(); restFx();
