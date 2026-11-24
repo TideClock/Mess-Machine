@@ -40,6 +40,7 @@ open class FakeCloudB(clock: Clock) : FakeCloud(clock) {
         @JvmField val seats: MutableMap<String, Long> = LinkedHashMap()        // user id to seen_at
         @JvmField val sendTimes: MutableMap<String, MutableList<Long>> = LinkedHashMap()
         @JvmField val labelTimes: MutableMap<String, MutableList<Long>> = LinkedHashMap()
+        @JvmField var hadOps = false                         // an apply_ops batch was ever stored (rename_mess then goes by op)
     }
 
     protected val mb: MutableMap<String, MB> = LinkedHashMap()
@@ -180,6 +181,7 @@ open class FakeCloudB(clock: Clock) : FakeCloud(clock) {
         // 10
         times.add(ts)
         dayBytes[dk] = today + bytes
+        b.hadOps = true
         val rev = store(m, u.id, batch, v, opsJson, bytes, ts)
         return Applied(rev, iso(ts))
     }
@@ -260,6 +262,9 @@ open class FakeCloudB(clock: Clock) : FakeCloud(clock) {
     }
 
     protected open fun srvRedeemInvite(u: FakeUser, token: String): Joined {
+        // the real server: a current member who sends a used or expired link again gets the answer (a retry after a lost answer)
+        val h = Sha256.hex(token.encodeToByteArray())
+        for (x in invites.values) if (x.tokenHash == h) { val mm = messes[x.mess]; if (mm != null && mm.members.containsKey(u.id)) return Joined(mm.id, mm.members[u.id] ?: "editor") }
         val i = liveInvite(token) ?: fail("invite_invalid")
         val m = messes[i.mess] ?: fail("invite_invalid")
         if (u.blocks.contains(m.owner)) fail("invite_invalid")
@@ -347,10 +352,12 @@ open class FakeCloudB(clock: Clock) : FakeCloud(clock) {
         return s
     }
 
-    /** From Slice B rename_mess appends the batch [{"t":"mess.set","f":"name","v":name}] through apply_ops's code. */
+    /** From Slice B rename_mess appends the batch [{"t":"mess.set","f":"name","v":name}] through apply_ops's code, as the real
+     *  server does only once the mess has had an apply_ops batch; a mess only ever saved whole keeps its rev (Slice A). */
     override fun srvRenameMess(u: FakeUser, messId: String, name: String): Rev {
         val m = memberOf(u, messId)
         if (m.owner != u.id) fail("forbidden")
+        if (!bOf(m).hadOps) return super.srvRenameMess(u, messId, name)
         val clean = cleanName(name, 48)
         m.name = clean
         val json = Json.write(listOf<Any?>(mapOf<String, Any?>("t" to "mess.set", "f" to "name", "v" to clean)))

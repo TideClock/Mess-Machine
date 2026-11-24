@@ -2,7 +2,7 @@
 # Checks the Slice B sync core (Ops, SyncSession, FakeCloudB) with no Gradle and no Android.
 #
 #   tools/sync-check.sh              compile core/src/commonMain (engine + cloud) for the JVM, run tools/SyncTest.java
-#   tools/sync-check.sh 200          the same with 200 fuzz seeds (default 60)
+#   tools/sync-check.sh 200          the same with 200 fuzz seeds (default 150)
 #   tools/sync-check.sh js           compile the engine and the whole cloud folder for JavaScript (proves it is common Kotlin)
 #
 # Prints FAIL lines and ends with SYNC GOOD or "N FAILED"; exits non-zero on a failure.
@@ -36,7 +36,7 @@ javac -nowarn -cp "$CP" -d "$out/j" "${SYNCTEST:-$root/tools/SyncTest.java}" 2>&
 [ -f "$out/j/SyncTest.class" ] || { echo "JAVA COMPILE FAILED"; exit 1; }
 echo "== SyncTest"
 set +e
-java -Xss8m -cp "$out/j:$CP" SyncTest "$root/app/src/main/assets/sounds/" "${1:-60}" 2>&1 | grep -v "JAVA_TOOL\|_JAVA_OPTIONS"
+java -Xss8m -cp "$out/j:$CP" SyncTest "$root/app/src/main/assets/sounds/" "${1:-150}" 2>&1 | grep -v "JAVA_TOOL\|_JAVA_OPTIONS"
 rc=${PIPESTATUS[0]}
 set -e
 echo "(build output in $out)"

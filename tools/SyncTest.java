@@ -1,5 +1,8 @@
 /* Slice B sync tests: Ops, SyncSession and FakeCloudB, with plain javac/java (tools/sync-check.sh).
- * Args: <sounds dir> [fuzz seeds]. Prints FAIL lines and a final SYNC GOOD or "N FAILED"; exits 1 on a failure. */
+ * Args: <sounds dir> [fuzz seeds]. Prints FAIL lines and a final SYNC GOOD or "N FAILED"; exits 1 on a failure.
+ * Debugging a failed seed: ONLY=<seed> runs that one fuzz seed (above 1000: the plain-Project oracle run);
+ * STRICT=1 checks the oracle after every edit and every delivered call; INV=1 (with INVDIR=<dir>) checks the
+ * session's screen rule (screen = shadow = base + mine + pending, and squash keeps it) after every step. */
 import com.tideclock.messmachine.engine.*;
 import com.tideclock.messmachine.cloud.*;
 import java.lang.reflect.*;
@@ -49,12 +52,16 @@ public class SyncTest {
     final World w; final String email, name; final CloudApi raw; String me;
     Mem cache = new Mem(); Proc proc; SyncSession s; Project p; String file;
     final List<int[]> notices = new ArrayList<>(); final List<Integer> kept = new ArrayList<>();
-    int helds, replaces, patches; boolean playing; long armed = -1; int state = -1;
+    int helds, replaces, patches; boolean playing; long armed = -1; int state = -1; long dirtyAt = -1;
     Phone(World w, String email, String name, CloudApi raw, Project start) { this.w = w; this.email = email; this.name = name; this.raw = raw; p = start; file = p.toJson(); }
     void start() { proc = new Proc(this); s = new SyncSession(proc.api, cache, w.clk, this, w.mess, me); s.open(); if (playing) s.setPlaying(true); }
     public Project project() { return p; }
-    public void replace(Project np) { p = np; replaces++; file = p.toJson(); }
-    public void patched() { patches++; file = p.toJson(); }
+    public void replace(Project np) { p = np; replaces++; dirty(); }
+    public void patched() { patches++; dirty(); }
+    /** AppState.scheduleSave: the mess file is written 700 ms after the last change. */
+    void dirty() { dirtyAt = w.clk.t; }
+    void saveIfDue() { if (dirtyAt >= 0 && w.clk.t - dirtyAt >= 700) saveNow(); }
+    void saveNow() { file = p.toJson(); dirtyAt = -1; }
     public void onState(int st) { state = st; }
     public void onNotice(int kind, int n, String who) { notices.add(new int[]{kind, n}); }
     public void onSound(Sound snd) {}
@@ -62,13 +69,16 @@ public class SyncTest {
     public void keepCopy(int why) { kept.add(why); }
     public void onPeers(List<Peer> peers) {}
     /** The app's changed(): the mess file is written, then the session hears of it, then arm(). */
-    void changed(boolean commit) { file = p.toJson(); s.localChanged(commit); arm(); }
+    void changed(boolean commit) { dirty(); s.localChanged(commit); arm(); }
     void arm() { if (s == null) return; Project q = s.preview(); if (q != null) armed = s.previewRev; }
     void wrap() { if (s != null && armed >= 0) { long r = armed; armed = -1; s.loopTop(r); } }
     void play(boolean on) { playing = on; armed = -1; if (s != null) s.setPlaying(on); }
     boolean alive() { return s != null; }
-    void kill() { if (proc != null) { proc.dead = true; proc.fifo.clear(); } s = null; armed = -1; }
-    void reopen() { p = Project.fromJson(file, null).project; start(); }
+    void kill() { if (proc != null) { proc.dead = true; proc.fifo.clear(); } s = null; armed = -1; dirtyAt = -1; }
+    /** The app going away politely: the session closes and the mess file is written. */
+    void close() { s.close(); saveNow(); kill(); }
+    void reopen() { p = Project.fromJson(file, null).project; start();
+      if (INV) try { Field f = SyncSession.class.getDeclaredField("openDiffed"); f.setAccessible(true); w.trace(name + " reopened, diffed " + f.getInt(s)); } catch (ReflectiveOperationException e) { throw new RuntimeException(e); } }
     boolean noticed(int kind) { for (int[] n : notices) if (n[0] == kind) return true; return false; }
     int applyCalls() { int n = 0; for (String c : w.fake.calls(raw)) if (c.equals("applyOps")) n++; return n; }
     int snapCalls() { int n = 0; for (String c : w.fake.calls(raw)) if (c.equals("saveSnapshot")) n++; return n; }
@@ -77,6 +87,7 @@ public class SyncTest {
   static class World {
     final Clk clk = new Clk(); FakeCloudB fake; final Random r; String mess; final List<Phone> phones = new ArrayList<>();
     final ArrayDeque<String> tr = new ArrayDeque<>();
+    Runnable afterStep;
     World(long seed) { this(seed, null); }
     World(long seed, Function<Clock, FakeCloudB> make) { r = new Random(seed); fake = make == null ? new FakeCloudB(clk) : make.apply(clk); }
     void trace(String s) { tr.add(s); if (tr.size() > 60) tr.poll(); }
@@ -111,11 +122,12 @@ public class SyncTest {
       if (ph.proc == null || ph.proc.fifo.isEmpty()) return false;
       ph.proc.fifo.poll().run.run();
       fake.deliver();
+      if (afterStep != null) afterStep.run();
       return true;
     }
     void pumpAll() { int n = 0; while (step(null)) if (++n > 200000) throw new IllegalStateException("pump never ends"); }
     void pumpSome(int max) { for (int i = 0; i < max; i++) if (!step(null)) break; }
-    void tick(long ms) { for (Phone x : phones) if (x.alive()) x.s.tick(); clk.t += ms; }
+    void tick(long ms) { for (Phone x : phones) if (x.alive()) { x.s.tick(); x.saveIfDue(); } clk.t += ms; }
     void tickPump() { tick(100); pumpAll(); }
     boolean quiet() {
       long rev = fake.messRev(mess);
@@ -249,7 +261,7 @@ public class SyncTest {
         mut = q -> { List<Project.Note> nl = q.pats[fl].notes(fk); if (add) nl.add(new Project.Note(s, pi, Math.min(ln, q.pats[fl].len - s))); else if (!nl.isEmpty()) nl.remove(0); }; what = "note"; break; }
       case 9: { int g = r.nextInt(24), j = r.nextInt(P.len); float v = r.nextInt(3) == 0 ? Float.NaN : r.nextFloat(); mut = q -> q.pats[fl].setLock(fk, g, j, v); what = "lock"; break; }
       case 10: { int g = r.nextInt(24), j = r.nextInt(P.len); float v = r.nextFloat(); mut = q -> q.pats[fl].setMotion(fpad, g, j, v); what = "lane"; break; }
-      case 11: { int g = r.nextInt(24), sh = r.nextInt(7), span = 1 + r.nextInt(16); float a = r.nextFloat(), b = r.nextFloat(), st = r.nextFloat();
+      case 11: { int g = r.nextInt(24), sh = own == null ? r.nextInt(7) : 1 + r.nextInt(6), span = 1 + r.nextInt(16); float a = r.nextFloat(), b = r.nextFloat(), st = own == null ? r.nextFloat() : 1f;
         mut = q -> q.pats[fl].laneStamp(fpad + ":" + g, sh, span, a, b, st); what = "stamp"; break; }
       case 12: { int t = r.nextInt(5), n = 1 + r.nextInt(6);
         mut = q -> { Project.Pattern X = q.pats[fl]; if (t == 0) X.rowEvery(fk, n); else if (t == 1) X.rowNudge(fk, n - 3); else if (t == 2) X.rowSpread(fk, n); else if (t == 3) X.rowRepeat(fk, n); else X.rowClear(fk); };
@@ -275,12 +287,14 @@ public class SyncTest {
       case 26: { if (r.nextInt(3) != 0) return "noop"; if (ref != null) ref.pats[l].clear(); clearSlotAt(ph, l); return "clear " + l; }
       case 27: { int b = lo + r.nextInt(hi - lo); if (b == pad) return "noop"; if (ref != null) ref.swapPads(pad, b); swapPads(ph, pad, b); return "swap " + pad + " " + b; }
       case 28: { String key = own == null ? keys.get(r.nextInt(keys.size())) : free.get(own[3] + r.nextInt(8)); int to = lo + r.nextInt(hi - lo);
+        // a sound coming back keeps no settings from before (a save and load forgets them too), so the plain Project can follow
+        if (ref != null && p.padOf(key) < 0) { p.edits.remove(key); ref.edits.remove(key); }
         if (ref != null) ref.assign(to, key); putOnPad(ph, to, key); return "put " + to + " " + key; }
       case 29: { if (r.nextInt(3) != 0) return "noop"; if (ref != null) ref.clearPad(pad); clearPad(ph, pad); return "clearpad " + pad; }
       case 30: { Synth.Kind kd = Synth.KINDS[r.nextInt(Synth.KINDS.length)]; newSynth(ph, pad, kd.presets.get(r.nextInt(kd.presets.size()))); return "synth " + pad; }
       case 31: { scratchToPad(ph, pad); return "scratch>" + pad; }
       case 32: { int f = r.nextInt(4); if (f == 0) { if (!p.mutes.remove(k)) p.mutes.add(k); } else if (f == 1) p.cur = r.nextInt(8); else if (f == 2) p.sel = pad; else p.songMode = !p.songMode;
-        ph.file = p.toJson(); ph.s.localChanged(false); return "local " + f; }
+        ph.dirty(); ph.s.localChanged(false); return "local " + f; }
       default: { if (ph.name.equals("P0")) { String nm = "Jam " + r.nextInt(50); p.name = nm; ph.changed(true); return "name"; } return "noop"; }
     }
     if (mut == null) return "noop";
@@ -479,7 +493,8 @@ public class SyncTest {
       check(Ops.squash(Arrays.asList(f1, sw)).size() == 2, "squash keeps a fader move before a swap (S6)");
       check(Ops.squash(Arrays.asList(s1, op("{\"t\":\"loop.clear\",\"l\":0}"))).size() == 1, "squash drops a cell before a loop.clear of its loop");
       check(Ops.squash(Arrays.asList(s1, op("{\"t\":\"loop.copy\",\"from\":0,\"to\":1}"))).size() == 2, "squash keeps a cell a later loop.copy reads");
-      check(Ops.squash(Arrays.asList(f1, op("{\"t\":\"pad.put\",\"p\":0,\"k\":\"" + kk + "\",\"key\":\"\"}"))).size() == 1, "squash drops a field op before a pad.put that replaces its pad");
+      check(Ops.squash(Arrays.asList(f1, op("{\"t\":\"pad.put\",\"p\":0,\"k\":\"" + kk + "\",\"key\":\"\"}"), f2)).size() == 3, "squash never drops across a pad.put (where a sound is can change there)");
+      check(Ops.squash(Arrays.asList(f1, f2, op("{\"t\":\"song.set\",\"b\":1,\"v\":1}"), op("{\"t\":\"song.set\",\"b\":1,\"v\":2}"))).size() == 2, "a fader drag and a song bar fold to their last values");
     }
     // fit: 400 ops and 48 KB; a big op alone
     {
@@ -572,7 +587,7 @@ public class SyncTest {
       Phone a = w.phones.get(0);
       swapPads(a, 0, 1); w.settle();
       int sends = a.applyCalls();
-      a.s.close(); a.kill(); a.reopen(); w.settle();
+      a.close(); a.reopen(); w.settle();
       check(a.applyCalls() == sends && k0.equals(a.p.kit[1]) && k1.equals(a.p.kit[0]), "M1 run 1 (close): swap then reopen sends nothing and stays swapped");
       swapPads(a, 2, 3); w.settle(); sends = a.applyCalls(); String k2 = a.p.kit[3];
       a.kill(); a.reopen(); w.settle();
@@ -624,7 +639,7 @@ public class SyncTest {
       Phone a = w.phones.get(0), b = w.phones.get(1);
       a.p.bpm = 130; a.changed(true); w.settle();
       int sends = a.applyCalls();
-      a.s.close(); a.kill();
+      a.close();
       b.p.swing = 40; b.changed(true); w.settle();
       a.reopen(); w.settle();
       check(a.applyCalls() == sends && a.p.swing == 40 && w.same(), "changed nothing between close and open: zero ops sent");
@@ -831,14 +846,14 @@ public class SyncTest {
     {
       World w = world(38, Ops.clone(start), "solo@t");
       Phone a = w.phones.get(0);
-      a.p.mutes.add(k0); a.p.songMode = true; a.file = a.p.toJson(); a.s.localChanged(false);
+      a.p.mutes.add(k0); a.p.songMode = true; a.dirty(); a.s.localChanged(false);
       for (int i = 0; i < 80; i++) w.tickPump();
       a.p.bpm = 88; a.changed(true); w.settle(); a.s.saveVersion("Saved"); w.settle();
       String doc = w.fake.messDoc(w.mess);
       check(doc.contains("\"mutes\":[\"" + k0 + "\"]") && doc.contains("\"mode\":\"song\""), "solo mess: mutes and song mode reach the cloud");
       World w2 = world(39, Ops.clone(start), "a@t", "b@t");
       Phone c = w2.phones.get(0);
-      c.p.mutes.add(k0); c.file = c.p.toJson(); c.s.localChanged(false);
+      c.p.mutes.add(k0); c.dirty(); c.s.localChanged(false);
       c.p.bpm = 89; c.changed(true); w2.settle(); c.s.saveVersion("Saved"); w2.settle();
       String d2 = w2.fake.messDoc(w2.mess);
       check(d2.contains("\"bpm\":89") && d2.contains("\"mutes\":[]"), "shared mess: the snapshot blanks mutes");
@@ -935,7 +950,11 @@ public class SyncTest {
       else if (roll < 62) {
         int n = 1 + r.nextInt(3);
         int[] own = oracle ? new int[]{16 * w.phones.indexOf(ph), 16 * w.phones.indexOf(ph) + 16, 2 * w.phones.indexOf(ph), 8 * w.phones.indexOf(ph)} : null;
-        for (int e = 0; e < n; e++) { String what = randomEdit(ph, r, own, ref); w.trace(ph.name + " " + what); opsRun++; }
+        for (int e = 0; e < n; e++) { String what = randomEdit(ph, r, own, ref); w.trace(ph.name + " " + what); opsRun++;
+          if (INV) { String v = invariants(w); if (v != null) return "seed " + seed + " step " + t + " INVARIANT " + v + " trace: " + w.lastTrace(); } }
+        if (oracle && STRICT && !keptAny(w)) { String a = ownCanon(ph.p, w.phones.indexOf(ph)), b = ownCanon(ref, w.phones.indexOf(ph));
+          if (!a.equals(b)) { int i = 0; while (i < a.length() && i < b.length() && a.charAt(i) == b.charAt(i)) i++;
+            return "seed " + seed + " step " + t + " STRICT " + ph.name + " at " + i + ": " + a.substring(Math.max(0, i - 150), Math.min(a.length(), i + 80)) + " <> " + b.substring(Math.max(0, i - 150), Math.min(b.length(), i + 80)) + " trace: " + w.lastTrace(); } }
       }
       else if (roll < 66 && !oracle) { w.trace(ph.name + " undo"); ph.s.undo(); }
       else if (roll < 70) { boolean on = !ph.playing; w.trace(ph.name + " play " + on); ph.play(on); }
@@ -947,16 +966,32 @@ public class SyncTest {
         else if (how == 1) { Call x = ph.proc.fifo.poll(); x.run.run(); ph.kill(); w.fake.deliver(); }
         else { ph.cache.frozen = true; w.step(ph); ph.kill(); ph.cache.frozen = false; }
       }
-      else if (roll < 85) { w.trace(ph.name + " close"); ph.s.close(); ph.kill(); }
+      else if (roll < 85) { w.trace(ph.name + " close"); ph.close(); }
       else if (roll < 86) { w.trace(ph.name + " version"); ph.s.saveVersion("v"); }
       else if (roll < 87) { w.trace(ph.name + " drop answer"); w.fake.dropNextAnswer(ph.raw); }
       w.tick(50 + r.nextInt(400));
-      w.pumpSome(r.nextInt(8));
+      if (oracle && STRICT) {
+        int m = r.nextInt(8);
+        for (int q = 0; q < m; q++) {
+          if (!w.step(null)) break;
+          if (!keptAny(w)) for (int i = 0; i < 4; i++) { Phone x = w.phones.get(i); if (!x.alive()) continue; String a = ownCanon(x.p, i), b = ownCanon(ref, i);
+            if (!a.equals(b)) { int c = 0; while (c < a.length() && c < b.length() && a.charAt(c) == b.charAt(c)) c++;
+              return "seed " + seed + " step " + t + " STRICT-PUMP " + x.name + " at " + c + ": " + a.substring(Math.max(0, c - 150), Math.min(a.length(), c + 80)) + " <> " + b.substring(Math.max(0, c - 150), Math.min(b.length(), c + 80)) + " trace: " + w.lastTrace(); } }
+        }
+      } else w.pumpSome(r.nextInt(8));
     }
-    for (Phone ph : w.phones) { w.fake.setOnline(ph.raw, true); if (!ph.alive()) ph.reopen(); }
+    if (INV) w.afterStep = () -> { String v = invariants(w); if (v != null) throw new RuntimeException("INVARIANT " + v + " trace: " + w.lastTrace()); };
+    if (oracle && STRICT) { final Project fr = ref; w.afterStep = () -> {
+      if (keptAny(w)) return;
+      for (int i = 0; i < 4; i++) { Phone x = w.phones.get(i); if (!x.alive()) continue; String a = ownCanon(x.p, i), b = ownCanon(fr, i);
+        if (!a.equals(b)) { int c = 0; while (c < a.length() && c < b.length() && a.charAt(c) == b.charAt(c)) c++;
+          throw new RuntimeException("SETTLE " + x.name + " at " + c + ": " + a.substring(Math.max(0, c - 150), Math.min(a.length(), c + 80)) + " <> " + b.substring(Math.max(0, c - 150), Math.min(b.length(), c + 80)) + " trace: " + w.lastTrace()); } } }; }
+    for (Phone ph : w.phones) { w.fake.setOnline(ph.raw, true); if (!ph.alive()) { w.trace(ph.name + " reopen*"); ph.reopen(); } }
     if (!w.settle()) return "seed " + seed + (oracle ? " (oracle)" : "") + ": never settled; trace: " + w.lastTrace();
     if (!w.same()) return "seed " + seed + (oracle ? " (oracle)" : "") + ": phones differ: " + w.diffs() + " trace: " + w.lastTrace();
-    if (oracle && !Ops.canon(w.phones.get(0).p).equals(Ops.canon(ref))) {
+    if (oracle && keptAny(w)) oracleSkipped++;
+    else if (oracle) oracleCompared++;
+    if (oracle && !keptAny(w) && !Ops.canon(w.phones.get(0).p).equals(Ops.canon(ref))) {
       String a = Ops.canon(w.phones.get(0).p), b = Ops.canon(ref); int i = 0; while (i < a.length() && i < b.length() && a.charAt(i) == b.charAt(i)) i++;
       return "seed " + seed + " (oracle): phones differ from the plain Project at " + i + ": " + a.substring(Math.max(0, i - 80), Math.min(a.length(), i + 80)) + " <> " + b.substring(Math.max(0, i - 80), Math.min(b.length(), i + 80)) + " trace: " + w.lastTrace();
     }
@@ -974,7 +1009,53 @@ public class SyncTest {
     }
     return null;
   }
-  static int bounced = 0;
+  static int bounced = 0, oracleCompared = 0, oracleSkipped = 0;
+  /** A phone dropped its unsent work as a phone copy (the long-gap rule, a reset): the plain Project cannot follow that. */
+  static boolean keptAny(World w) { for (Phone x : w.phones) if (!x.kept.isEmpty()) return true; return false; }
+  static boolean STRICT = System.getenv("STRICT") != null, INV = System.getenv("INV") != null;
+  /** Debug only (INV=1): the session's screen rule, read through reflection. */
+  static String invariants(World w) {
+    try {
+      for (Phone x : w.phones) {
+        if (!x.alive()) continue;
+        Field rf = SyncSession.class.getDeclaredField("ready"); rf.setAccessible(true);
+        if (!rf.getBoolean(x.s)) continue;
+        Field sf = SyncSession.class.getDeclaredField("shadow"); sf.setAccessible(true);
+        Method sc = SyncSession.class.getDeclaredMethod("screen", boolean.class); sc.setAccessible(true);
+        String a = Ops.canon(x.p), b = Ops.canon((Project) sf.get(x.s)), c = Ops.canon((Project) sc.invoke(x.s, false));
+        if (!a.equals(b)) return x.name + " screen != shadow " + at(a, b);
+        if (!b.equals(c)) return x.name + " shadow != base+mine+pending " + at(b, c);
+        Field wf = SyncSession.class.getDeclaredField("waiting"); wf.setAccessible(true);
+        @SuppressWarnings("unchecked") List<Op> wt = (List<Op>) wf.get(x.s);
+        if (wt.size() > 1) {
+          List<Op> keep = new ArrayList<>(wt);
+          Project q1 = (Project) sc.invoke(x.s, false);
+          wt.clear(); wt.addAll(Ops.squash(keep));
+          Project q2 = (Project) sc.invoke(x.s, false);
+          wt.clear(); wt.addAll(keep);
+          if (!Ops.canon(q1).equals(Ops.canon(q2))) {
+            List<Op> cur = new ArrayList<>(keep);
+            System.out.println("SQUASH BREAKS " + x.name + " " + at(Ops.canon(q1), Ops.canon(q2)));
+            try { java.nio.file.Files.write(java.nio.file.Paths.get(System.getenv("INVDIR") + "/waiting.json"), Ops.toJson(keep).getBytes());
+                  java.nio.file.Files.write(java.nio.file.Paths.get(System.getenv("INVDIR") + "/squashed.json"), Ops.toJson(Ops.squash(keep)).getBytes());
+                  wt.clear(); Project q0 = (Project) sc.invoke(x.s, false); wt.addAll(keep);
+                  java.nio.file.Files.write(java.nio.file.Paths.get(System.getenv("INVDIR") + "/start.json"), q0.toJson().getBytes()); } catch (Exception e) {}
+            return x.name + " squash breaks the waiting list";
+          }
+        }
+      }
+    } catch (ReflectiveOperationException e) { throw new RuntimeException(e); }
+    return null;
+  }
+  static String at(String a, String b) { int i = 0; while (i < a.length() && i < b.length() && a.charAt(i) == b.charAt(i)) i++;
+    return "at " + i + ": " + a.substring(Math.max(0, i - 120), Math.min(a.length(), i + 80)) + " <> " + b.substring(Math.max(0, i - 120), Math.min(b.length(), i + 80)); }
+  /** The part of the mess phone i owns in the oracle run: its 16 pads and its 2 loops. */
+  static String ownCanon(Project p, int i) {
+    Project q = Ops.clone(p);
+    for (int pad = 0; pad < 64; pad++) if (pad < 16 * i || pad >= 16 * i + 16) q.kit[pad] = "";
+    for (int l = 0; l < 8; l++) if (l / 2 != i) { q.pats[l].clear(); q.pats[l].len = 16; }
+    return Ops.canon(q);
+  }
 
   /* ================= how fast Ops.change is ================= */
 
@@ -1022,8 +1103,9 @@ public class SyncTest {
     lib = new Library(p -> java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(p)), args[0]);
     for (Library.Sound s : lib.sounds) if (s.key.startsWith("samples/")) keys.add(s.key);
     for (Library.Sound s : lib.sounds) if (!s.key.startsWith("samples/") && keys.size() < 120) keys.add(s.key);
-    int seeds = args.length > 1 ? Integer.parseInt(args[1]) : 60;
+    int seeds = args.length > 1 ? Integer.parseInt(args[1]) : 150;
     long T = System.currentTimeMillis();
+    if (System.getenv("ONLY") != null) { long sd = Long.parseLong(System.getenv("ONLY")); System.out.println(fuzz(sd, sd > 1000, sd > 1000 ? 300 : 400)); return; }
     opsTests();
     sessionTests();
     timing();
@@ -1042,7 +1124,8 @@ public class SyncTest {
       if (f != null) { orFails++; check(false, "oracle " + f); if (orFails > 3) break; }
     }
     check(bounced > 0, "the bounce oracle ran");
-    System.out.println("FUZZ " + ran + " seeds (4 phones each), " + opsRun + " edits and ops run, " + bounced + " bounce checks, " + (System.currentTimeMillis() - T) / 1000 + " s");
+    check(oracleCompared >= oracleSkipped, "the plain-Project oracle compared most of its seeds: " + oracleCompared + " compared, " + oracleSkipped + " kept a copy");
+    System.out.println("FUZZ " + ran + " seeds (4 phones each), " + opsRun + " edits and ops run, " + bounced + " bounce checks, plain-Project oracle on " + oracleCompared + " seeds (" + oracleSkipped + " skipped after a kept copy), " + (System.currentTimeMillis() - T) / 1000 + " s");
     System.out.println(checks + " checks");
     if (failures == 0) System.out.println("SYNC GOOD"); else System.out.println(failures + " FAILED");
     System.exit(failures == 0 ? 0 : 1);

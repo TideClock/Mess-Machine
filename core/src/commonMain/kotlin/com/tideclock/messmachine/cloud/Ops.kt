@@ -592,14 +592,18 @@ object Ops {
         p.edits.remove(k); p.synths.remove(k); p.mutes.remove(k); p.solos.remove(k)
     }
 
-    /** A pad with nothing on it and nothing left behind: its sound's rows, settings and patch go, and the pad's lanes and options. */
+    /**
+     * What Project.clearPad leaves: the pad empty, its lanes and options gone, its sound's rows gone. The sound's
+     * doctor settings and synth patch stay behind unseen, as they do in the app (canon leaves them out, and a pad.put
+     * always says what its sound's settings are), so a mess built by ops keeps the same leftovers as the app's own.
+     */
     private fun emptyPad(p: Project, t: Int) {
         p.opts[t] = null
         for (P in p.pats) forgetLanes(P, t)
         val w = p.kit[t]
         if (w.isEmpty()) return
         p.kit[t] = ""
-        purgeKey(p, w)
+        for (P in p.pats) forgetRows(P, w)
     }
 
     private fun renameKey(p: Project, old: String, nk: String) {
@@ -708,7 +712,8 @@ object Ops {
         val sm = m["synth"]
         if (Project.isSynth(key) && sm !is Map<*, *>) return   // a synth with no patch is nothing
         val k = putKey(p, m, t)
-        if (k == key) { val q = p.padOf(k); if (q >= 0 && q != t) emptyPad(p, q) }   // a sound lives on one pad: this is a move
+        // a sound lives on one pad: this is a move. As Project.assign does, the pad it leaves keeps its lanes and options
+        if (k == key) { val q = p.padOf(k); if (q >= 0 && q != t) p.kit[q] = "" }
         if (p.kit[SCRATCH] == k) moveScratch(p)
         emptyPad(p, t)
         purgeKey(p, k)
@@ -1267,9 +1272,15 @@ object Ops {
     /* ================= squash ================= */
 
     /**
-     * Drops a field op when a later op in the list sets the same field of the same sound, or replaces a scope it lies
-     * in (loop.clear, loop.put, loop.copy's `to`, pad.put). Order is kept. An op is never dropped across a later op
-     * that reads what it wrote: loop.copy reads its `from`, loop.len reads its loop.
+     * Drops a field op when a later op in the list sets the same field (same pad number, same sound, same cell or
+     * setting), or when a later loop.clear, loop.put or loop.copy (its `to`) replaces the loop a cell lies in. Order is
+     * kept.
+     *
+     * Only drops that hold in every mess are made, because the phone replays its unsent ops on top of other people's
+     * newer ones, and an op finds its pad by its sound (contract s3, S4): where that sound is can change at any pad.put
+     * or pad.swap. So nothing is dropped across a pad.put or a pad.swap (a fader drag has none inside it), and a pad.put
+     * never makes an earlier op dead. An op is never dropped across a later op that reads what it wrote: loop.copy reads
+     * its `from`, loop.len reads its loop.
      */
     @JvmStatic fun squash(ops: List<Op>): MutableList<Op> {
         val n = ops.size
@@ -1278,8 +1289,8 @@ object Ops {
         val keep = BooleanArray(n)
         val deadCell = arrayOfNulls<HashSet<String>>(NL)
         val deadLoop = BooleanArray(NL)
-        val deadField = HashSet<String>()
-        val deadSound = HashSet<String>()
+        val deadPad = HashSet<String>()        // pad settings: edit, opt, synth
+        val deadTop = HashSet<String>()        // song and mess settings
         for (i in n - 1 downTo 0) {
             val op = ops[i]
             keep[i] = true
@@ -1287,15 +1298,13 @@ object Ops {
                 K_CELL -> {
                     val l = int(op.m, "l", -1)
                     if (l < 0 || l >= NL) continue
-                    val id = ident(op)
+                    val id = ident(op) + "#" + int(op.m, "p", -1)
                     var set = deadCell[l]
-                    if (deadLoop[l] || deadSound.contains(sound(op)) || (set != null && set.contains(id))) keep[i] = false
+                    if (deadLoop[l] || (set != null && set.contains(id))) keep[i] = false
                     else { if (set == null) { set = HashSet(); deadCell[l] = set }; set.add(id) }
                 }
-                K_PAD, K_GLOBAL -> {
-                    val id = ident(op)
-                    if ((kind(op.t) == K_PAD && deadSound.contains(sound(op))) || deadField.contains(id)) keep[i] = false else deadField.add(id)
-                }
+                K_PAD -> { val id = ident(op) + "#" + int(op.m, "p", -1); if (!deadPad.add(id)) keep[i] = false }
+                K_GLOBAL -> if (!deadTop.add(ident(op))) keep[i] = false
                 K_STRUCT -> when (op.t) {
                     "loop.clear", "loop.put" -> { val l = int(op.m, "l", -1); if (l >= 0 && l < NL) deadLoop[l] = true }
                     "loop.copy" -> {
@@ -1304,14 +1313,11 @@ object Ops {
                         if (f >= 0 && f < NL) { deadLoop[f] = false; deadCell[f] = null }
                     }
                     "loop.len" -> { val l = int(op.m, "l", -1); if (l >= 0 && l < NL) { deadLoop[l] = false; deadCell[l] = null } }
-                    "pad.put" -> {
-                        if (!str(op.m, "k").isEmpty()) deadSound.add(sound(op))
-                        val key = str(op.m, "key"); if (!key.isEmpty()) deadSound.add("K:$key")
-                    }
-                    "row.put", "pad.swap" -> {}
-                    else -> { for (l in 0 until NL) { deadLoop[l] = false; deadCell[l] = null }; deadField.clear(); deadSound.clear() }
+                    "row.put" -> {}
+                    "pad.put", "pad.swap" -> { for (l in 0 until NL) deadCell[l] = null; deadPad.clear() }
+                    else -> { for (l in 0 until NL) { deadLoop[l] = false; deadCell[l] = null }; deadPad.clear(); deadTop.clear() }
                 }
-                else -> { for (l in 0 until NL) { deadLoop[l] = false; deadCell[l] = null }; deadField.clear(); deadSound.clear() }
+                else -> { for (l in 0 until NL) { deadLoop[l] = false; deadCell[l] = null }; deadPad.clear(); deadTop.clear() }
             }
         }
         for (i in 0 until n) if (keep[i]) out.add(ops[i])

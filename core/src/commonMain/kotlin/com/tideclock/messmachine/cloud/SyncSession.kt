@@ -114,6 +114,16 @@ class SyncSession(private val api: CloudApi, private val cache: CloudCache, priv
     private var resetWanted = false
     private var newTheirs = false
     private var queueDirty = false
+    /**
+     * Fingerprints (canon hashes) of the screen at the cache writes that followed a quiet moment, newest last. The app
+     * writes its mess file 700 ms after the last change, so the file on disk is always one of these screens unless it
+     * holds edits this session never saw. On reopen only such a file is diffed: a file that lags the cache would
+     * otherwise send old values back as new work (and undo other people's edits).
+     */
+    private val marks = ArrayList<String>()
+    private var lastChangeAt = 0L
+    private var unmarked = false
+    private var openDiffed = 0
 
     private val undoStack = ArrayList<Change>()
     private var openChange: Change? = null
@@ -149,13 +159,18 @@ class SyncSession(private val api: CloudApi, private val cache: CloudCache, priv
             if (f != null) Ops.apply(shadow, f.ops)
             Ops.apply(shadow, waiting)
             limbo.addAll(sent)
-            // what the mess holds beyond that was made after the last cache write (or offline): it is new work
+            // what the mess holds beyond that was made where this session never saw it: it is new work. A file that is
+            // one of the screens the cache already holds (it lags the cache) adds nothing.
             val p = host.project()
-            val c = Ops.change(shadow, p, emptyList(), false)
-            if (role != "owner") stripName(c)
-            if (!c.ops.isEmpty()) { waiting.addAll(c.ops); firstWaitAt = now }
-            localMark = Ops.localMark(p)
+            openDiffed = 0
+            if (!marks.contains(fingerprint(p))) {
+                val c = Ops.change(shadow, p, emptyList(), false)
+                if (role != "owner") stripName(c)
+                if (!c.ops.isEmpty()) { waiting.addAll(c.ops); firstWaitAt = now; openDiffed = c.ops.size }
+            }
             ready = true
+            rebuild()
+            writeQueue(true)
             host.onState(state)
             poll()
         } else {
@@ -172,7 +187,7 @@ class SyncSession(private val api: CloudApi, private val cache: CloudCache, priv
             trySend(clock.nowMs(), true)
             if (opened && !snapBusy && !sawNewer && !noSnap && !offline && serverRev > docRev && (memberCount <= 1 || seat)) snapshot("")
             api.leaveLive(messId, Done { _, _ -> })
-            writeQueue(); writeBase()
+            writeQueue(true); writeBase()
         }
         closed = true
         gen++
@@ -183,7 +198,7 @@ class SyncSession(private val api: CloudApi, private val cache: CloudCache, priv
         if (closed || gone || !ready) return
         absorb()
         trySend(clock.nowMs(), true)
-        writeQueue(); writeBase()
+        writeQueue(true); writeBase()
     }
 
     private fun num(o: Any?): Long = Json.num(o, 0.0).toLong()
@@ -216,6 +231,7 @@ class SyncSession(private val api: CloudApi, private val cache: CloudCache, priv
                     if (!known) flight = f
                 }
                 waiting.addAll(Ops.fromList(Json.list(qm["waiting"])))
+                for (o in Json.list(qm["marks"])) if (o is String) marks.add(o)
             }
             return true
         } catch (e: RuntimeException) {
@@ -224,8 +240,22 @@ class SyncSession(private val api: CloudApi, private val cache: CloudCache, priv
         }
     }
 
-    private fun writeQueue() {
+    /** 64-bit FNV-1a of the canon, as hex. */
+    private fun fingerprint(p: Project): String {
+        val c = Ops.canon(p)
+        var h = -3750763034362895579L
+        for (ch in c) { h = h xor ch.code.toLong(); h *= 1099511628211L }
+        return h.toULong().toString(16)
+    }
+
+    /** mark: also record the screen's fingerprint (at quiet moments, releases, open, close). */
+    private fun writeQueue(mark: Boolean = false) {
         queueDirty = false
+        if (mark) {
+            unmarked = false
+            val fp = fingerprint(host.project())
+            if (marks.isEmpty() || marks[marks.size - 1] != fp) { marks.remove(fp); marks.add(fp); if (marks.size > 32) marks.removeAt(0) }
+        }
         val m: MutableMap<String, Any?> = LinkedHashMap()
         m["v"] = 1.0
         m["at"] = clock.nowMs().toDouble()
@@ -240,6 +270,8 @@ class SyncSession(private val api: CloudApi, private val cache: CloudCache, priv
         if (f == null) m["flight"] = null
         else { val fm: MutableMap<String, Any?> = LinkedHashMap(); fm["id"] = f.id; fm["ops"] = maps(f.ops); m["flight"] = fm }
         m["waiting"] = maps(waiting)
+        val ml = ArrayList<Any?>(marks.size); for (x in marks) ml.add(x)
+        m["marks"] = ml
         cache.save("$messId.queue.json", Json.write(m))
     }
 
@@ -294,7 +326,8 @@ class SyncSession(private val api: CloudApi, private val cache: CloudCache, priv
         val had = resetHad
         resetting = false; resetHad = 0
         host.replace(next)
-        writeQueue(); writeBase()
+        marks.clear()
+        writeQueue(true); writeBase()
         for (s in o.sounds) host.onSound(s)
         if (had > 0) host.onNotice(N_KEPT_COPY, had, "")
         joinLive()
@@ -374,6 +407,7 @@ class SyncSession(private val api: CloudApi, private val cache: CloudCache, priv
         if (closed || gone) return
         val now = clock.nowMs()
         if (!ready) { if (!openBusy && now >= openRetryAt) fetchOpen(); return }
+        if (unmarked && now - lastChangeAt >= 200L) writeQueue(true)
         if (!pollBusy && (pollSoon || now - lastPollAt >= pollEvery())) poll()
         trySend(now, false)
         trySnapshot(now)
@@ -409,6 +443,8 @@ class SyncSession(private val api: CloudApi, private val cache: CloudCache, priv
                 if (o == null) { o = Change(ArrayList(), ArrayList(), shownRev); openChange = o }
                 o.ops.addAll(c.ops)
                 o.undo.addAll(0, c.undo)
+                lastChangeAt = clock.nowMs(); unmarked = true
+                writeQueue()                           // the cache holds every change before the mess file can
             }
         }
         if (memberCount <= 1) { val mk = Ops.localMark(p); if (mk != localMark) { localMark = mk; localDirty = true } }
@@ -510,6 +546,8 @@ class SyncSession(private val api: CloudApi, private val cache: CloudCache, priv
             Ops.apply(shadow, run)
             if (waiting.isEmpty()) firstWaitAt = clock.nowMs()
             waiting.addAll(run)
+            lastChangeAt = clock.nowMs(); unmarked = true
+            writeQueue()
             host.patched()
         }
         if (skipped > 0) host.onNotice(N_UNDO_SKIPPED, skipped, who)
@@ -586,7 +624,7 @@ class SyncSession(private val api: CloudApi, private val cache: CloudCache, priv
                 host.keepCopy(W_REFUSED)
                 flight = null
                 rebuild()
-                writeQueue()
+                writeQueue(true)
                 host.onNotice(N_KEPT_COPY, f.ops.size, "")
             }
             "not_found", "blocked" -> goGone()
@@ -773,7 +811,7 @@ class SyncSession(private val api: CloudApi, private val cache: CloudCache, priv
         while (!log.isEmpty() && log[0].rev <= upTo) { val e = log.removeAt(0); applyEntry(base, e); shownRev = e.rev }
         foldMine()
         rebuild()
-        writeQueue(); writeBase()
+        writeQueue(true); writeBase()
     }
 
     /* ================= snapshots ================= */
