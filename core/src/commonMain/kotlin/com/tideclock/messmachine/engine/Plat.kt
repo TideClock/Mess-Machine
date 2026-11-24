@@ -3,6 +3,8 @@
 package com.tideclock.messmachine.engine
 
 import kotlin.concurrent.atomics.AtomicReference
+import kotlin.math.roundToInt
+import kotlin.math.roundToLong
 import kotlin.time.TimeSource
 
 /*
@@ -254,3 +256,9 @@ fun fixed(v: Double, decimals: Int): String {
 
 /** Java's Integer.toHexString: the int's bits as unsigned hex, lowercase. */
 fun hexOf(v: Int): String = v.toUInt().toString(16)
+
+/** Java's Math.round(double): nearest, ties up, NaN gives 0 (Kotlin's roundToLong throws on NaN). */
+fun jround(x: Double): Long = if (x.isNaN()) 0L else x.roundToLong()
+
+/** Java's Math.round(float): nearest, ties up, NaN gives 0 (Kotlin's roundToInt throws on NaN). */
+fun jround(x: Float): Int = if (x.isNaN()) 0 else x.roundToInt()

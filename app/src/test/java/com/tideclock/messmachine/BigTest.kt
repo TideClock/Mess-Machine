@@ -1484,7 +1484,7 @@ class BigTest {
             java.util.zip.ZipOutputStream(f.outputStream()).use { z -> for ((n, b) in entries) { z.putNextEntry(java.util.zip.ZipEntry(n)); z.write(b); z.closeEntry() } }
             return f
         }
-        val wav = java.io.ByteArrayOutputStream().also { o -> com.tideclock.messmachine.engine.Wav.writeStereo16(o, FloatArray(8820) { i -> (.4 * Math.sin(i * .05)).toFloat() }, 44100) }.toByteArray()
+        val wav = com.tideclock.messmachine.engine.Wav.writeStereo16(FloatArray(8820) { i -> (.4 * Math.sin(i * .05)).toFloat() }, 44100)
         val json = """{"id":"test-pack","name":"Test Pack","version":1,"clips":[{"id":"beep","file":"clips/beep.wav","title":"Beep","type":"perc"}]}"""
         state.packs.installZip(zipOf("pack.json" to json.toByteArray(), "clips/beep.wav" to wav), "test-pack")
         assertTrue("the pack's sound is in the library", state.lib.has("pack:test-pack:beep") && state.lib.load("pack:test-pack:beep") != null)
@@ -2735,7 +2735,7 @@ class BigTest {
         rule.onNodeWithTag("search").performTextInput("d minor")
         settle()
         rule.onNodeWithTag("row-loop:give-me-throne-1").assertExists()
-        assertEquals("D minor", state.lib.sound("loop:give-me-throne-1").mkey)
+        assertEquals("D minor", state.lib.sound("loop:give-me-throne-1")!!.mkey)
         rule.onNodeWithTag("search").performTextClearance()
         rule.onNodeWithTag("search").performTextInput("f major")
         settle()
@@ -2776,8 +2776,8 @@ class BigTest {
         assertEquals(state.project.pat().len / 4, rs.beats)
         assertTrue("its key was measured", rs.mkey != null)
         val rsKey = state.bench.keyOf(rs)
-        assertEquals(rs.bpm, state.lib.sound(rsKey).bpm, 0.0)
-        assertEquals("the sample itself carries the tempo", rs.bpm, state.lib.load(rsKey).bpm, 0.0)
+        assertEquals(rs.bpm, state.lib.sound(rsKey)!!.bpm, 0.0)
+        assertEquals("the sample itself carries the tempo", rs.bpm, state.lib.load(rsKey)!!.bpm, 0.0)
         shot("12-workbench-with-resample")
     }
 

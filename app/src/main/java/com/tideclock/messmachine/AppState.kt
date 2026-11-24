@@ -147,7 +147,7 @@ data class MessFile(
  * rebuilds what the engine plays, records an undo step and autosaves.
  */
 class AppState(private val app: Context) {
-    val lib = Library({ path -> app.assets.open(path) }, "sounds/")
+    val lib = Library({ path -> if (path.startsWith("/")) java.io.File(path).readBytes() else app.assets.open(path).use { it.readBytes() } }, "sounds/")
     private val am = app.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     val rate: Int = am.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)?.toIntOrNull() ?: 48000
     private val burst: Int = am.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER)?.toIntOrNull() ?: 256
@@ -2041,7 +2041,7 @@ class AppState(private val app: Context) {
                 for (k in p.kit) if (k.isNotEmpty()) try { lib.load(k) } catch (_: Exception) {}
                 val w = Engine.bounce(p, lib, 44100, song, loops)
                 val f = File(sharedDir(), slug(name) + (if (song) "-song" else "-loop-" + Project.LETTERS[p.cur].lowercase()) + ".wav")
-                FileOutputStream(f).buffered().use { Wav.writeStereo16(it, w, 44100) }
+                f.writeBytes(Wav.writeStereo16(w, 44100))
                 main.post { busy = null; share(f, "audio/wav", "Share the bounce") }
             } catch (e: Exception) {
                 main.post { busy = null; say("The bounce failed: ${e.message}") }
@@ -2070,7 +2070,7 @@ class AppState(private val app: Context) {
                         var n = String.format(java.util.Locale.US, "%02d", pad + 1) + "-" + slug(lib.titleOf(k).ifEmpty { "sound" })
                         while (!used.add(n)) n += "-2"
                         z.putNextEntry(java.util.zip.ZipEntry("$n.wav"))
-                        Wav.writeStereo16(z, w, 44100)
+                        z.write(Wav.writeStereo16(w, 44100))
                         z.closeEntry()
                     }
                 }
@@ -2090,7 +2090,7 @@ class AppState(private val app: Context) {
         try {
             val f = File(sharedDir(), slug(name) + (if (song) "-song" else "-loop-" + Project.LETTERS[project.cur].lowercase()) + ".mid")
             val names = project.kit.filter { it.isNotEmpty() }.associateWith { lib.titleOf(it) }
-            FileOutputStream(f).buffered().use { com.tideclock.messmachine.engine.MidiOut.write(project, song, 1, names, it) }
+            f.writeBytes(com.tideclock.messmachine.engine.MidiOut.write(project, song, 1, names))
             share(f, "audio/midi", "Share the MIDI file")
         } catch (e: Exception) { say("The MIDI file failed: ${e.message}") }
     }
@@ -3692,7 +3692,7 @@ class AppState(private val app: Context) {
         worker.execute {
             val r = Engine.renderOne("take", s, e)
             val f = File(File(app.cacheDir, "shared").also { it.mkdirs() }, lib.titleOf(key).lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-').ifEmpty { "sound" } + ".wav")
-            f.outputStream().buffered().use { Wav.writeMono16(it, r.data, r.rate) }
+            f.writeBytes(Wav.writeMono16(r.data, r.rate))
             main.post { shareFile(f, "audio/wav", "Share the sound") }
         }
     }

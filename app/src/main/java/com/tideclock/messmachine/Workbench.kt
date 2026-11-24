@@ -60,7 +60,7 @@ class Workbench(app: Context, private val lib: Library) {
         Thread {
             for (b in todo) {
                 val mk = try {
-                    File(dir, b.id + ".wav").inputStream().use { Wav.read(keyOf(b), it) }.let { KeyFinder.find(it.data, it.rate) }
+                    Wav.read(keyOf(b), File(dir, b.id + ".wav").readBytes()).let { KeyFinder.find(it.data, it.rate) }
                 } catch (_: Throwable) { "" }
                 synchronized(items) {
                     val i = items.indexOfFirst { it.id == b.id }
@@ -107,7 +107,7 @@ class Workbench(app: Context, private val lib: Library) {
     fun addSample(kind: String, title: String, s: Sample, bpm: Double = 0.0, beats: Int = 0): String {
         val mk = try { KeyFinder.find(s.data, s.rate) } catch (_: Throwable) { "" }
         val b = BenchItem(newId(), kind, title.take(40), System.currentTimeMillis(), bpm = bpm, beats = beats, mkey = mk)
-        File(dir, b.id + ".wav").outputStream().buffered().use { Wav.writeMono16(it, s.data, s.rate) }
+        File(dir, b.id + ".wav").writeBytes(Wav.writeMono16(s.data, s.rate))
         synchronized(items) { items.add(b); register(b); save() }
         lib.putSample(keyOf(b), Sample(keyOf(b), s.data, s.rate).also { if (bpm > 0 && beats > 0) { it.bpm = bpm; it.beats = beats } })
         return keyOf(b)
@@ -139,7 +139,7 @@ class Workbench(app: Context, private val lib: Library) {
         val got = ctx.contentResolver.openInputStream(uri)?.use { it.read(head) } ?: throw IllegalStateException("Could not open the file")
         if (got < 12) throw IllegalStateException("That file is empty")
         if (String(head, 0, 4) == "RIFF" && String(head, 8, 4) == "WAVE") {
-            ctx.contentResolver.openInputStream(uri)!!.use { return Wav.read("imp", it) }
+            return Wav.read("imp", ctx.contentResolver.openInputStream(uri)!!.use { it.readBytes() })
         }
         val ex = MediaExtractor()
         ex.setDataSource(ctx, uri, null)
