@@ -30,7 +30,8 @@ export function openMenu() {
       h('button', { class: 'btn', 'data-faq': 'settings', onclick: openSettings }, 'Settings'),
       h('button', { class: 'btn', 'data-faq': 'notes-open', onclick: openNotes }, 'Notes for Claude'),
       h('button', { class: 'btn', disabled: !U.redo.length, onclick: () => { doRedo(); closeSheet(); } }, 'Redo'),
-      h('button', { class: 'btn', onclick: openAbout }, 'About this web build')));
+      h('button', { class: 'btn', onclick: openAbout }, 'About this web build'),
+      window.parent !== window ? h('button', { class: 'btn y', onclick: () => { closeSheet(); window.parent.postMessage({ t: 'mm-close' }, '*'); } }, 'Back to the lab') : null));
 }
 
 /* ----- messes ----- */
@@ -66,7 +67,9 @@ export function openMesses() {
 
 /* ----- files: the app's bounce, stems and MIDI writers ----- */
 
-async function downloads() { try { return window.claude ? await window.claude.use('downloads') : null; } catch { return null; } }
+/** The claude.ai page runtime: this page's own, or the site's when the machine runs inside it (same origin). */
+export function claudeRT() { try { return window.claude || (window.parent !== window && window.parent.claude) || null; } catch { return null; } }
+async function downloads() { try { const c = claudeRT(); return c ? await c.use('downloads') : null; } catch { return null; } }
 export async function saveFile(filename, bytes, type) {
   const dl = await downloads();
   if (dl) { try { await dl.save({ filename, data: bytes }); toast('Saved ' + filename + '.'); return; } catch (e) { toast('Not saved: ' + (e && e.message || e)); return; } }
@@ -125,7 +128,7 @@ export function openSettings() {
 
 /* ----- notes for Claude ----- */
 
-async function dbNs() { try { return window.claude ? await window.claude.use('db') : null; } catch { return null; } }
+async function dbNs() { try { const c = claudeRT(); return c ? await c.use('db') : null; } catch { return null; } }
 export function openNotes() {
   const box = h('textarea', { placeholder: 'What happened, what you expected, what you want. Claude reads these.' });
   const st = h('p', { class: 'note' });

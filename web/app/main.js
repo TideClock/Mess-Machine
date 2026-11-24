@@ -1,7 +1,7 @@
 // Mess Machine (web): the shell. Top bar, loop strip, bottom dock, tab slot, Perform and Sounds tabs, tempo, key and
 // repeat sheets, the playhead, recording and boot. The other screens live in play.js, seq.js, synth.js, sample.js, files.js.
 import { S, M, U, A, LIBS, UI, h, fill, $, key, pick, flick, sheet, closeSheet, field, chooser, toast, sayUndo, edit, live, call, post, wake, ensure, loadKit,
-  loadOwn, ownKeys, forgetOwn, kitKey, titleOf, padCol, store, trail, faqTap, LETTERS, LC, NN, pat, usedLoop, songArr, songLen, doUndo, closeTake, reread, send,
+  loadOwn, ownKeys, forgetOwn, entryOf, kitKey, titleOf, padCol, store, trail, faqTap, LETTERS, LC, NN, pat, usedLoop, songArr, songLen, doUndo, closeTake, reread, send,
   sendLive, autosave, pct, SCRATCH } from './core.js';
 import { T as _T } from './core.js';
 import { renderPads, restFx, switchHold, releaseHolds, switchChords, chordModeLabel, togglePack, openPackPicker, wireDrop, openHoldTray, melodicDown } from './play.js';
@@ -303,6 +303,17 @@ function renderSoundList(list, target) {
     return jar;
   }).filter(Boolean));
 }
+/** Sounds sent from the site's lab (a jar put on a pad) land on free pads here. */
+function drainInbox() {
+  let q = []; try { q = JSON.parse(localStorage.getItem('mmweb.inbox') || '[]'); localStorage.removeItem('mmweb.inbox'); } catch {}
+  for (const k of q) {
+    if (M.kit.includes(k)) continue;
+    if (!entryOf(k)) { toast('That sound only lives on the site, so it cannot go on the machine.'); continue; }
+    const free = M.kit.slice(0, 64).findIndex((x) => !x);
+    if (free < 0) { toast('All 64 pads are full. Clear one first.'); break; }
+    putOnPad(k, free);
+  }
+}
 async function putOnPad(k, pad) {
   if (pad < 0 || pad >= 64) pad = 0;
   await ensure(k);
@@ -443,5 +454,8 @@ async function boot() {
     try { await startAudio(); } catch (e) { toast('Sound could not start here: ' + e.message); console.error(e); }
   }, { once: true });
   window.__mm = { S, get M() { return M; }, T: T(), U };
+  drainInbox();
+  addEventListener('message', (e) => { if (e.data && e.data.t === 'mm-inbox') drainInbox(); });
+  addEventListener('storage', (e) => { if (e.key === 'mmweb.inbox' && e.newValue) drainInbox(); });
 }
 boot();
