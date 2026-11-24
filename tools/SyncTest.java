@@ -294,7 +294,7 @@ public class SyncTest {
 
   static Project rich() {
     Project p = Project.demo();
-    for (int i = 8; i < 14; i++) p.kit[i] = keys.get(10 + i);
+    for (int i = 8, j = 10; i < 14; j++) if (p.padOf(keys.get(j)) < 0) p.kit[i++] = keys.get(j);
     p.kit[20] = "synth:1"; p.synths.put("synth:1", Synth.ANALOG.presets.get(0).copy());
     p.kit[21] = "synth:2"; p.synths.put("synth:2", Synth.FM.presets.get(0).copy());
     Project.Pattern a = p.pats[0], b = p.pats[1];
@@ -960,7 +960,7 @@ public class SyncTest {
       String a = Ops.canon(w.phones.get(0).p), b = Ops.canon(ref); int i = 0; while (i < a.length() && i < b.length() && a.charAt(i) == b.charAt(i)) i++;
       return "seed " + seed + " (oracle): phones differ from the plain Project at " + i + ": " + a.substring(Math.max(0, i - 80), Math.min(a.length(), i + 80)) + " <> " + b.substring(Math.max(0, i - 80), Math.min(b.length(), i + 80)) + " trace: " + w.lastTrace();
     }
-    if (seed % 10 == 0) {
+    if (seed % 10 == 1) {
       float[] first = null;
       for (Phone ph : w.phones) {
         Project q = Project.fromJson(Ops.uploadDoc(ph.p, true), null).project;
@@ -981,7 +981,7 @@ public class SyncTest {
   static void timing() {
     Project p = rich();
     Random r = new Random(3);
-    for (int i = 14; i < 48; i++) if (p.kit[i].isEmpty()) p.kit[i] = keys.get(50 + i);
+    for (int i = 14, j = 30; i < 48; j++) if (p.kit[i].isEmpty()) { if (p.padOf(keys.get(j)) < 0) p.kit[i++] = keys.get(j); } else i++;
     for (int l = 0; l < 8; l++) {
       Project.Pattern P = p.pats[l]; P.len = 128;
       for (int pad = 0; pad < 48; pad++) {
