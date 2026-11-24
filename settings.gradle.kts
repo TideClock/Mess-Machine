@@ -13,6 +13,7 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "MessMachine"
-include(":app")
+// -Pmm.coreOnly builds just the engine (the iOS app's Mac, with no Android tools)
+if (!providers.gradleProperty("mm.coreOnly").isPresent) include(":app")
 // the engine in common Kotlin, shared with iOS and the web (docs/KOTLIN-ENGINE.md)
 include(":core")

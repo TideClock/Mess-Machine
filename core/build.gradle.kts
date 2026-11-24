@@ -17,7 +17,7 @@ kotlin {
     }
     if (wantIos) {
         listOf(iosArm64(), iosSimulatorArm64()).forEach {
-            it.binaries.framework { baseName = "MessCore"; isStatic = true }
+            it.binaries.framework { baseName = "MessEngine"; isStatic = true }
         }
     }
     if (wantJs) {

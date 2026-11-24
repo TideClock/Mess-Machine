@@ -24,7 +24,10 @@ on the App Store and Google Play. He sends notes from the app's bug button; read
 (16 files, Kotlin Multiplatform, no expect/actual, no platform code). It passes the full Android engine test and the
 shared mess round trip on the JVM, its bounces are byte-identical to the old Java engine's, and it compiles for
 JavaScript. CI also builds it for `iosArm64` and `iosSimulatorArm64` on a Mac (job `core-other-platforms`). Build the
-framework with `./gradlew :core:linkReleaseFrameworkIosArm64 -Pmm.ios` (static, `MessCore`) on a Mac. Sound files reach
+static framework `MessEngine` with `./gradlew :core:linkReleaseFrameworkIosArm64 -Pmm.coreOnly` on a Mac
+(`-Pmm.coreOnly` leaves the Android app out, so no Android tools are needed). `Engine.renderInto(out, frames)`
+(iosMain) renders interleaved stereo straight into a C float buffer with nothing created per block. Timing is
+`kotlin.time.TimeSource.Monotonic` in common code, so there is no iOS clock code. Sound files reach
 it through `SoundFiles` (`read(path): ByteArray?`, a path starting with "/" is a full device path); implement that over
 the app bundle's `sounds/` folder. How it got here:
 
