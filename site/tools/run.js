@@ -2,7 +2,7 @@ const { chromium } = require('playwright');
 const fs = require('fs');
 const VIEWS = ['home','shop','emporium','noise','brotherwife','internship','specimens','channel','arcade','ramblings','bio','attic','crawlspace'];
 const SIZES = { phone: { width: 390, height: 844, isMobile: true, hasTouch: true }, desktop: { width: 1280, height: 900 } };
-const URL = 'file://' + (process.env.NSD_PAGE || '/home/claude/site/live.html') + '';
+const URL = process.env.NSD_URL || ('file://' + (process.env.NSD_PAGE || '/home/claude/site/live.html'));
 (async () => {
   const b = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] });
   const out = {};

@@ -1,9 +1,13 @@
 <meta charset="utf-8">
 <title>Neat Shit and Dye</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Bungee&family=Bungee+Shade&family=IBM+Plex+Mono:wght@500&family=Special+Elite&display=swap">
+<link rel="preload" href="fonts/bungee.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/archivo.woff2" as="font" type="font/woff2" crossorigin>
 <style>
+/* Fonts live with the site (NSD-33): a slow or blocked font host can no longer hold the page blank. */
+@font-face{font-family:"Bungee";src:url(fonts/bungee.woff2) format("woff2");font-display:swap}
+@font-face{font-family:"Archivo";src:url(fonts/archivo.woff2) format("woff2");font-weight:100 900;font-stretch:62% 125%;font-display:swap}
+@font-face{font-family:"Special Elite";src:url(fonts/special-elite.woff2) format("woff2");font-display:swap}
 /* Layout: sticky header with a scrolling nav strip; one view at a time, each with its own set piece (drawer, patent sheet, notebook, tape deck, jar shelf, TV, arcade, phone, case file). Tokens from the Neat Shit and Dye design system. */
 :root{
   --paper:#fff4e2; --paper-raised:#ffffff; --ink:#18161a; --ink-muted:#5b5360; --rule:#18161a; --band-rule:#18161a;
@@ -12,9 +16,9 @@
   --on-teal:#18161a; --on-pink:#18161a; --on-yellow:#18161a; --on-riot:#18161a;
   --shadow-hard:6px 6px 0 #18161a; --shadow-hard-s:3px 3px 0 #18161a;
   --font-display:"Bungee","Arial Black",Impact,sans-serif;
-  --font-shade:"Bungee Shade","Bungee","Arial Black",Impact,sans-serif;
+  --font-shade:"Bungee","Arial Black",Impact,sans-serif;
   --font-sans:"Archivo","Helvetica Neue",Arial,sans-serif;
-  --font-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --font-mono:"Special Elite","Courier New",Courier,monospace;
   --font-type:"Special Elite","Courier New",Courier,monospace;
   --stroke:3px; --stroke-hair:2px; --stroke-heavy:12px;
   color-scheme:light;
@@ -241,6 +245,8 @@ dl.specs dd{margin:0}
 @keyframes jcaus{0%{background-position:0% 0%;opacity:.32}50%{opacity:.62}100%{background-position:100% 70%;opacity:.4}}
 @keyframes jbeam{from{transform:translateX(-14%) skewX(-7deg)}to{transform:translateX(14%) skewX(7deg)}}
 @media (prefers-reduced-motion:reduce){.bigjar img,.bigjar .bub,.bigjar .caus,.bigjar .caus::after{animation:none}}
+/* jars out of sight hold still (NSD-35) */
+.bigjar.still img,.bigjar.still .bub,.bigjar.still .caus,.bigjar.still .caus::after{animation-play-state:paused}
 .cab-l{all:unset;cursor:pointer;display:grid;gap:0;background:var(--steel);border:3px solid #18161a;box-shadow:6px 6px 0 #18161a;padding:10px 10px 0;transition:transform .15s;min-width:0}
 .cab-l:hover,.cab-l:focus-visible{transform:translateY(-4px) rotate(-.4deg)}
 .cab-l:focus-visible{outline:3px solid var(--focus);outline-offset:4px}
@@ -587,9 +593,9 @@ dl.specs dd{margin:0}
 @media (max-width:760px){.appsplit{grid-template-columns:1fr}}
 
 /* BIO: case file */
-.folder{position:relative;background:var(--manila);color:#18161a;border:var(--stroke) solid #18161a;padding:34px 30px 40px;box-shadow:10px 10px 0 #18161a;max-width:1000px;margin-top:22px}
+.folder{--ink:#18161a;--ink-muted:#5b5360;position:relative;background:var(--manila);color:#18161a;border:var(--stroke) solid #18161a;padding:34px 30px 40px;box-shadow:10px 10px 0 #18161a;max-width:1000px;margin-top:22px}
 .folder .tab{position:absolute;top:-34px;left:36px;background:var(--manila);border:var(--stroke) solid #18161a;border-bottom:0;padding:6px 18px;font-family:var(--font-type);font-size:16px}
-.stamp{position:absolute;top:26px;right:26px;font-family:var(--font-display);font-size:clamp(18px,3vw,30px);color:var(--riot);border:5px solid var(--riot);padding:6px 14px;transform:rotate(9deg);opacity:.88;mix-blend-mode:multiply}
+.stamp{position:absolute;top:26px;right:26px;font-family:var(--font-display);font-size:clamp(18px,3vw,30px);color:#b3122e;border:5px solid #b3122e;padding:6px 14px;transform:rotate(9deg);opacity:.88;mix-blend-mode:multiply}
 .casegrid{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:34px}
 .mug{background:repeating-linear-gradient(#18161a 0 2px,transparent 2px 28px),#f6f1e6;border:var(--stroke) solid #18161a;aspect-ratio:3/4;position:relative;display:grid;place-items:center;overflow:hidden}
 .mug img{width:88%;height:auto;filter:grayscale(1) contrast(1.15)}
@@ -656,11 +662,11 @@ dl.specs dd{margin:0}
 .sign input{width:10ch}
 
 /* BROTHERWIFE (purple + orange) */
-#v-brotherwife,#v-internship{--bw-p:#5b21b6;--bw-pd:#1c0a33;--bw-pm:#2e1157;--bw-l:#c4a1ff;--bw-o:#ff7a1a;--bw-oy:#ffb547;color:#fff1e0;background:var(--bw-pd)}
-#v-brotherwife{background:radial-gradient(circle at 12% 0,#5b21b6aa 0,transparent 40%),radial-gradient(circle at 100% 30%,#ff7a1a33 0,transparent 35%),var(--bw-pd)}
+#v-brotherwife,#v-internship{--bw-p:var(--teal);--bw-pd:color-mix(in srgb,var(--bw-p) 30%,#000);--bw-pm:color-mix(in srgb,var(--bw-p) 50%,#000);--bw-l:var(--riot);--bw-o:var(--pink);--bw-oy:var(--yellow);color:#fff1e0;background:var(--bw-pd)}
+#v-brotherwife{background:radial-gradient(circle at 12% 0,color-mix(in srgb,var(--bw-p) 66%,transparent) 0,transparent 40%),radial-gradient(circle at 100% 30%,color-mix(in srgb,var(--bw-o) 20%,transparent) 0,transparent 35%),var(--bw-pd)}
 #v-brotherwife .muted,#v-brotherwife .spec,#v-internship .spec{color:#cdb8f5}
-#v-brotherwife a,#v-internship a{color:#fff1e0;text-decoration-color:var(--bw-o)}
-#v-brotherwife a:hover,#v-internship a:hover{background:var(--bw-o);color:#1c0a33}
+#v-brotherwife a:not(.btn):not(.coin),#v-internship a:not(.btn):not(.coin){color:#fff1e0;text-decoration-color:var(--bw-o)}
+#v-brotherwife a:not(.btn):not(.coin):hover,#v-internship a:not(.btn):not(.coin):hover{background:var(--bw-o);color:#1c0a33}
 .bwhero{padding-block:56px 40px;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:36px;align-items:center}
 .bwhero h1{font-family:var(--font-shade);font-weight:400;font-size:clamp(42px,7.6vw,98px);line-height:.88;color:var(--bw-o);text-shadow:6px 6px 0 var(--bw-p);letter-spacing:-.01em;overflow-wrap:anywhere}
 .bwhero .tag{font-weight:900;font-stretch:72%;text-transform:uppercase;font-size:clamp(22px,3.4vw,34px);line-height:1.05;margin:18px 0 10px}
@@ -1503,10 +1509,11 @@ body.in-crawl .dockbar,body.in-crawl .dockmel,body.in-crawl .dpop{display:none!i
 .attract span{display:block}
 .attract .a1,.attract .a3{font-size:clamp(26px,4vw,38px);color:#ffb547;text-shadow:3px 3px 0 #5b21b6}
 .attract .a2{font-size:clamp(34px,5.4vw,52px);color:#ff7a1a;text-shadow:3px 3px 0 #5b21b6;animation:bwbob 1.6s ease-in-out infinite}
-.attract .slice{position:absolute;font-size:28px;left:-10%;top:18%;animation:bwfly 4.2s linear infinite}
+.attract{container-type:size}
+.attract .slice{position:absolute;font-size:28px;left:0;top:18%;animation:bwfly 4.2s linear infinite}
 .attract .ins{margin-top:10px;font:800 12px var(--font-sans);letter-spacing:.14em;color:#fff1e0;text-transform:uppercase;animation:blink 1.1s steps(2) infinite}
 @keyframes bwbob{50%{transform:translateY(-4px) rotate(-2deg)}}
-@keyframes bwfly{to{left:110%;transform:rotate(720deg)}}
+@keyframes bwfly{from{transform:translateX(-10cqw)}to{transform:translateX(110cqw) rotate(720deg)}}
 @media (prefers-reduced-motion:reduce){.attract .a2,.attract .slice,.attract .ins{animation:none}.attract .slice{display:none}}
 @media (max-width:700px){.bwcab{grid-template-columns:1fr}}
 .bwclips{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:22px}
@@ -1519,6 +1526,20 @@ html.bws #v-shop{--bw-p:#5b21b6;background:#1c0a33;color:#fff1e0}
 html.bws #v-shop .pagehead h1{color:#ff7a1a;text-shadow:4px 4px 0 #5b21b6}
 html.bws #v-shop .drawer{background:#2e1157;border-color:#c4a1ff}
 html.bws #v-shop [data-filter="plaque"]{display:none}
+
+/* Nov 24: the Mess Machine is the Android app's own machine (mm/), in a room of its own. The old machine stays out. */
+#seq{display:none!important}
+body.has-dock .mdock > :not(#jarbar){display:none!important}
+.mmopenbtn{background:var(--pink,#ff4fa3);color:#18161a;font-weight:800}
+#mmroom{position:fixed;inset:0;z-index:200;background:#141215}
+#mmroom[hidden]{display:none}
+#mmframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
+/* back to the lab: the machine's own Menu (or Back) */
+.mmclose{display:none;position:absolute;right:max(10px,env(safe-area-inset-right,0px));bottom:calc(150px + env(safe-area-inset-bottom,0px));width:40px;height:40px;border-radius:50%;
+  background:radial-gradient(circle at 40% 35%,#C9C0B2,#8E877D 50%,#4E4943);box-shadow:0 2px 0 #000,0 0 0 2px #000;border:0;cursor:pointer;z-index:2}
+.mmclose::before,.mmclose::after{content:"";position:absolute;left:9px;top:18px;width:22px;height:4px;background:#1A1613;border-radius:2px;transform:rotate(45deg)}
+.mmclose::after{transform:rotate(-45deg)}
+body.mmopen{overflow:hidden}
 </style>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
@@ -1830,6 +1851,7 @@ html.bws #v-shop [data-filter="plaque"]{display:none}
   <div class="wrap section">
     <div id="pane-jars" role="tabpanel" aria-label="Sounds">
     <div class="labbar">
+      <button class="btn small mmopenbtn" id="mmopen">Open the Mess Machine</button>
       <div class="labtabs" role="group" aria-label="Lab view">
         <button class="btn ghost small" id="tab-lab" aria-pressed="true">The lab</button>
         <button class="btn ghost small" id="tab-fav" aria-pressed="false">Favorites <span id="favcount">0</span></button>
@@ -1856,7 +1878,7 @@ html.bws #v-shop [data-filter="plaque"]{display:none}
           <li>Record from the mic straight onto a pad</li>
           <li>Works with no signal</li>
         </ul>
-        <a class="btn" href="https://github.com/hubbub0/Mess-Machine/releases/latest" target="_blank" rel="noopener">Get the app (Android)</a>
+        <a class="btn" href="https://github.com/hubbub0/Mess-Machine/releases/tag/latest" target="_blank" rel="noopener">Get the app (Android)</a>
         <p class="spec" style="margin:10px 0 0">Free. Installs from GitHub, so your phone will ask to allow it.</p>
       </div>
     </aside>
@@ -2106,6 +2128,9 @@ html.bws #v-shop [data-filter="plaque"]{display:none}
   <div class="cardwrap" id="cardwrap"></div>
 </div>
 
+<div id="mmroom" hidden role="dialog" aria-label="The Mess Machine">
+  <iframe id="mmframe" title="The Mess Machine" allow="autoplay; microphone; midi; screen-wake-lock"></iframe>
+</div>
 <!-- CHANNEL -->
 <section class="view" id="v-channel">
   <div class="wrap pagehead"><p class="label muted">Video</p><h1 class="display">Channel Nowhere</h1>
@@ -2287,7 +2312,7 @@ html.bws #v-shop [data-filter="plaque"]{display:none}
     </div>
   </div>
 </div>
-<div class="toast" id="toast" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
@@ -2451,12 +2476,12 @@ addEventListener('keydown', e => { if (e.key==='Escape' && !$('#modal').hidden) 
 /* ---------- emporium ---------- */
 const S = 'fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"';
 const FIGS = {
-  ham:`<svg viewBox="0 0 320 150"><rect x="20" y="50" width="280" height="80" ${S}/>${Array.from({length:13},(_,i)=>`<line x1="${40+i*20}" y1="50" x2="${40+i*20}" y2="130" ${S} stroke-width="2"/>`).join('')}${[0,1,2,3].map(i=>`<circle cx="${50+i*30}" cy="32" r="10" ${S}/>`).join('')}<circle cx="190" cy="105" r="6" fill="var(--pink)"/><circle cx="230" cy="105" r="6" fill="var(--pink)"/><circle cx="270" cy="105" r="6" fill="var(--pink)"/><path d="M300 90 h16 M316 82 v16" ${S}/><text x="250" y="30" font-family="IBM Plex Mono,monospace" font-size="12" fill="currentColor">CHAIN &gt;</text></svg>`,
-  mallet:`<svg viewBox="0 0 320 150"><line x1="160" y1="140" x2="160" y2="66" ${S}/><line x1="70" y1="66" x2="250" y2="66" ${S}/>${[90,160,230].map(x=>`<line x1="${x}" y1="66" x2="${x}" y2="40" ${S}/><circle cx="${x}" cy="28" r="14" ${S}/><circle cx="${x}" cy="28" r="5" fill="var(--yellow)"/>`).join('')}<path d="M100 82 l-14 0 m28 0 l14 0" ${S} stroke-width="2"/><text x="182" y="96" font-family="IBM Plex Mono,monospace" font-size="12" fill="currentColor">SLIDE TO SET CHORD</text></svg>`,
-  hands:`<svg viewBox="0 0 320 150"><rect x="130" y="40" width="60" height="80" rx="8" ${S}/>${[[130,55,60,20],[130,80,50,70],[130,105,62,128],[190,55,262,22],[190,80,270,72],[190,105,258,130]].map(([x1,y1,x2,y2])=>`<path d="M${x1} ${y1} L${(x1+x2)/2} ${y1-10} L${x2} ${y2}" ${S}/><circle cx="${x2}" cy="${y2}" r="8" fill="var(--teal)" stroke="currentColor" stroke-width="3"/>`).join('')}<text x="128" y="146" font-family="IBM Plex Mono,monospace" font-size="12" fill="currentColor">STRAP</text></svg>`,
-  glasses:`<svg viewBox="0 0 320 150">${[[40,60],[110,48],[180,36],[250,24]].map(([x,y],i)=>`<path d="M${x} ${y} L${x+10} 136 H${x+44} L${x+54} ${y} Z" ${S}/><line x1="${x+6}" y1="${y+30+i*6}" x2="${x+48}" y2="${y+30+i*6}" stroke="var(--pink)" stroke-width="3"/>`).join('')}<path d="M290 30 L270 90" ${S}/><circle cx="292" cy="24" r="8" ${S}/><text x="40" y="20" font-family="IBM Plex Mono,monospace" font-size="12" fill="currentColor">FILL TO LINE</text></svg>`,
+  ham:`<svg viewBox="0 0 320 150"><rect x="20" y="50" width="280" height="80" ${S}/>${Array.from({length:13},(_,i)=>`<line x1="${40+i*20}" y1="50" x2="${40+i*20}" y2="130" ${S} stroke-width="2"/>`).join('')}${[0,1,2,3].map(i=>`<circle cx="${50+i*30}" cy="32" r="10" ${S}/>`).join('')}<circle cx="190" cy="105" r="6" fill="var(--pink)"/><circle cx="230" cy="105" r="6" fill="var(--pink)"/><circle cx="270" cy="105" r="6" fill="var(--pink)"/><path d="M300 90 h16 M316 82 v16" ${S}/><text x="250" y="30" font-family="Special Elite,monospace" font-size="12" fill="currentColor">CHAIN &gt;</text></svg>`,
+  mallet:`<svg viewBox="0 0 320 150"><line x1="160" y1="140" x2="160" y2="66" ${S}/><line x1="70" y1="66" x2="250" y2="66" ${S}/>${[90,160,230].map(x=>`<line x1="${x}" y1="66" x2="${x}" y2="40" ${S}/><circle cx="${x}" cy="28" r="14" ${S}/><circle cx="${x}" cy="28" r="5" fill="var(--yellow)"/>`).join('')}<path d="M100 82 l-14 0 m28 0 l14 0" ${S} stroke-width="2"/><text x="182" y="96" font-family="Special Elite,monospace" font-size="12" fill="currentColor">SLIDE TO SET CHORD</text></svg>`,
+  hands:`<svg viewBox="0 0 320 150"><rect x="130" y="40" width="60" height="80" rx="8" ${S}/>${[[130,55,60,20],[130,80,50,70],[130,105,62,128],[190,55,262,22],[190,80,270,72],[190,105,258,130]].map(([x1,y1,x2,y2])=>`<path d="M${x1} ${y1} L${(x1+x2)/2} ${y1-10} L${x2} ${y2}" ${S}/><circle cx="${x2}" cy="${y2}" r="8" fill="var(--teal)" stroke="currentColor" stroke-width="3"/>`).join('')}<text x="128" y="146" font-family="Special Elite,monospace" font-size="12" fill="currentColor">STRAP</text></svg>`,
+  glasses:`<svg viewBox="0 0 320 150">${[[40,60],[110,48],[180,36],[250,24]].map(([x,y],i)=>`<path d="M${x} ${y} L${x+10} 136 H${x+44} L${x+54} ${y} Z" ${S}/><line x1="${x+6}" y1="${y+30+i*6}" x2="${x+48}" y2="${y+30+i*6}" stroke="var(--pink)" stroke-width="3"/>`).join('')}<path d="M290 30 L270 90" ${S}/><circle cx="292" cy="24" r="8" ${S}/><text x="40" y="20" font-family="Special Elite,monospace" font-size="12" fill="currentColor">FILL TO LINE</text></svg>`,
   tubes:`<svg viewBox="0 0 320 150">${[0,1,2,3,4,5].map(i=>`<rect x="${40+i*34}" y="${20+i*14}" width="22" height="${118-i*14}" ${S}/>`).join('')}<path d="M270 40 l30 -16 M268 44 l-10 30" ${S}/><rect x="258" y="70" width="30" height="16" rx="4" transform="rotate(-30 273 78)" fill="var(--yellow)" stroke="currentColor" stroke-width="3"/><line x1="30" y1="140" x2="250" y2="140" ${S}/></svg>`,
-  bells:`<svg viewBox="0 0 320 150"><rect x="30" y="96" width="260" height="22" ${S}/><line x1="50" y1="118" x2="50" y2="142" ${S}/><line x1="270" y1="118" x2="270" y2="142" ${S}/>${[0,1,2,3,4].map(i=>`<path d="M${44+i*50} 96 Q${66+i*50} ${50} ${88+i*50} 96" ${S}/><path d="M${52+i*50} ${86-i*4} H${80+i*50}" stroke="var(--teal)" stroke-width="3"/>`).join('')}<text x="40" y="30" font-family="IBM Plex Mono,monospace" font-size="12" fill="currentColor">ADD WATER TO TUNE DOWN</text></svg>`,
+  bells:`<svg viewBox="0 0 320 150"><rect x="30" y="96" width="260" height="22" ${S}/><line x1="50" y1="118" x2="50" y2="142" ${S}/><line x1="270" y1="118" x2="270" y2="142" ${S}/>${[0,1,2,3,4].map(i=>`<path d="M${44+i*50} 96 Q${66+i*50} ${50} ${88+i*50} 96" ${S}/><path d="M${52+i*50} ${86-i*4} H${80+i*50}" stroke="var(--teal)" stroke-width="3"/>`).join('')}<text x="40" y="30" font-family="Special Elite,monospace" font-size="12" fill="currentColor">ADD WATER TO TUNE DOWN</text></svg>`,
 };
 const EMP = [
   {fig:'ham', name:'HamJam', alt:'also answers to JamOne', status:'Concept', pitch:'A keyboard for people who swear they cannot play.',
@@ -2549,7 +2574,7 @@ $('#k-stop').onclick = () => { audio.pause(); audio.currentTime = 0; };
 $('#k-next').onclick = () => pick(nextTrack(1), true); $('#k-prev').onclick = () => pick(nextTrack(-1), true);
 $('#k-shuf').onclick = () => { shuffle = !shuffle; $('#k-shuf').setAttribute('aria-pressed', String(shuffle)); };
 renderShelf();
-audio.onplay = () => { $('#deck').classList.add('playing'); $('#k-play').setAttribute('aria-pressed','true'); $('#k-play').textContent='Pause'; };
+audio.onplay = () => { drawScope(); $('#deck').classList.add('playing'); $('#k-play').setAttribute('aria-pressed','true'); $('#k-play').textContent='Pause'; };
 audio.onpause = () => { $('#deck').classList.remove('playing'); $('#k-play').setAttribute('aria-pressed','false'); $('#k-play').textContent='Play'; };
 audio.onended = () => pick(nextTrack(1), true);
 audio.ontimeupdate = () => { $('#cur').textContent=fmt(audio.currentTime); if (audio.duration) $('#seek').value = audio.currentTime/audio.duration*1000; };
@@ -2559,8 +2584,9 @@ const cv = $('#scope'), cx = cv.getContext('2d');
 function sizeScope(){ cv.width = Math.max(1,cv.clientWidth)*Math.min(devicePixelRatio,2); cv.height = Math.max(1,cv.clientHeight)*Math.min(devicePixelRatio,2); idle(); }
 function idle(){ cx.fillStyle='#000'; cx.fillRect(0,0,cv.width,cv.height); cx.strokeStyle='#ff4fa3'; cx.lineWidth=3; cx.beginPath(); for(let x=0;x<cv.width;x+=6){ const y=cv.height/2+Math.sin(x/18)*cv.height*.08; x?cx.lineTo(x,y):cx.moveTo(x,y);} cx.stroke(); }
 new ResizeObserver(sizeScope).observe(cv);
-function drawScope(){ if (reduce) return; const buf = new Uint8Array(analyser.fftSize); const cols=['#ff4fa3','#00beb4','#ffd23f'];
-  const loop = () => { analyser.getByteTimeDomainData(buf); cx.fillStyle='#000'; cx.fillRect(0,0,cv.width,cv.height);
+let scopeOn = false;
+function drawScope(){ if (reduce || scopeOn || !analyser) return; scopeOn = true; const buf = new Uint8Array(analyser.fftSize); const cols=['#ff4fa3','#00beb4','#ffd23f'];
+  const loop = () => { if (audio.paused || curView !== 'noise'){ scopeOn = false; idle(); return; } analyser.getByteTimeDomainData(buf); cx.fillStyle='#000'; cx.fillRect(0,0,cv.width,cv.height);
     cols.forEach((c,k) => { cx.strokeStyle=c; cx.lineWidth=3; cx.beginPath(); for (let i=0;i<buf.length;i+=4){ const x=i/buf.length*cv.width, y=(buf[(i+k*24)%buf.length]/255)*cv.height+(k-1)*4; i?cx.lineTo(x,y):cx.moveTo(x,y);} cx.stroke(); });
     requestAnimationFrame(loop); }; loop(); }
 pick(0,false);
@@ -3865,14 +3891,14 @@ function renderJarBar(){
   bar.innerHTML = `<span class="jb-sw" style="--c:${colOf(s)}" aria-hidden="true"></span><span class="jb-nm"><b>${esc(s.title)}</b><small>${esc((CABBY[s.cat] || CABBY.donated).name)}${ed ? ' · doctored' : ''}</small></span>
     <span class="jb-acts"><button class="dk sm" data-jb="play" aria-label="Hear ${esc(s.title)}">&#9654; Hear</button>
     <button class="dk sm${fav ? ' on' : ''}" data-jb="fav" aria-pressed="${fav}">&#9733; ${fav ? 'Starred' : 'Star'}</button>
-    <button class="dk sm${pad >= 0 ? ' on' : ''}" data-jb="pad" aria-pressed="${pad >= 0}">${pad >= 0 ? 'On pad ' + (pad + 1) : '+ Put on a pad'}</button>
+    <button class="dk sm" data-jb="pad">+ Put on a pad</button>
     <button class="dk sm" data-jb="doc">&#9986; Doctor</button>
     <button class="dk sm" data-jb="card">&#9638; Card</button>
     <button class="dk sm" data-jb="x" aria-label="Put the jar back">&times;</button></span>`;
   const q = x => bar.querySelector(`[data-jb="${x}"]`);
   q('play').onclick = () => playSpec(s);
   q('fav').onclick = () => { toggleFav(s); if (curView === 'crawlspace') renderCrawl(); renderJarBar(); };
-  q('pad').onclick = () => { toggleKit(k); renderJarBar(); navUI(); if (kit.includes(k)) toast(`${s.title} is on pad ${kit.indexOf(k) + 1}.`); };
+  q('pad').onclick = () => sendToMachine(s);
   q('doc').onclick = () => openDoctor(s);
   q('card').onclick = () => openCard(s);
   q('x').onclick = () => pickJar(null);
@@ -5766,7 +5792,7 @@ function wDrawObj(c, o, t, near){
     case 'poster': { const img = wImgOf(o.img); c.fillStyle = '#fff4e2'; c.fillRect(X + 6, Y + 4, W - 12, H - 6); if (img.complete && img.naturalWidth){ const sc = Math.min((W - 18) / img.naturalWidth, (H - 14) / img.naturalHeight); c.drawImage(img, X + (W - img.naturalWidth * sc) / 2, Y + 8, img.naturalWidth * sc, img.naturalHeight * sc); } break; }
     case 'stub': { const b = Math.sin(t / 260) * 3; c.translate(X + W / 2, Y + H / 2 + b); c.rotate(.25); c.fillStyle = '#fff4e2'; c.fillRect(-12, -16, 24, 32); c.lineWidth = 3; c.strokeStyle = '#18161a'; c.strokeRect(-12, -16, 24, 32); c.fillStyle = '#ff4fa3'; c.fillRect(-8, -12, 16, 10); break; }
     case 'tool': { const img = wImgOf('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(TOOLS[o.tool].svg.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" '))); const b = Math.sin(t / 300) * 2; if (img.complete) c.drawImage(img, X - 4, Y - 4 + b, W + 8, H + 8); break; }
-    case 'crate': { wBox(c, X, Y, W, H, '#c9a24b', 3); c.fillStyle = '#a87b4f'; c.fillRect(X + W / 2 - 3, Y, 6, H); c.strokeStyle = '#5a3a1e'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(X + 4, Y + 4); c.lineTo(X + W - 4, Y + H - 4); c.stroke(); c.fillStyle = '#18161a'; c.font = '700 8px IBM Plex Mono, monospace'; c.textAlign = 'center'; c.fillText('FRAGILE', X + W / 2, Y + H * .62); break; }
+    case 'crate': { wBox(c, X, Y, W, H, '#c9a24b', 3); c.fillStyle = '#a87b4f'; c.fillRect(X + W / 2 - 3, Y, 6, H); c.strokeStyle = '#5a3a1e'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(X + 4, Y + 4); c.lineTo(X + W - 4, Y + H - 4); c.stroke(); c.fillStyle = '#18161a'; c.font = '400 9px Special Elite, monospace'; c.textAlign = 'center'; c.fillText('FRAGILE', X + W / 2, Y + H * .62); break; }
     case 'bottle': { c.fillStyle = '#00000040'; c.beginPath(); c.ellipse(X + W / 2 + 3, Y + H, W * .5, 4, 0, 0, 7); c.fill(); c.fillStyle = '#5dd6c9cc'; c.beginPath(); c.roundRect(X + 2, Y + H * .3, W - 4, H * .7, 5); c.fill(); c.lineWidth = 2.5; c.strokeStyle = '#18161a'; c.stroke();
       c.fillRect(X + W / 2 - 3, Y, 6, H * .34); c.strokeRect(X + W / 2 - 3, Y, 6, H * .34); c.fillStyle = '#ffffff88'; c.fillRect(X + 5, Y + H * .4, 3, H * .4); c.fillStyle = '#ff4fa3'; c.fillRect(X + 3, Y + H * .55, W - 6, 5); break; }
     case 'pot': { c.fillStyle = '#00000040'; c.beginPath(); c.ellipse(X + W / 2 + 3, Y + H, W * .5, 5, 0, 0, 7); c.fill(); c.fillStyle = '#3f7a2a'; for (let i = 0; i < 5; i++){ c.beginPath(); c.ellipse(X + W / 2 + Math.cos(i * 1.3) * 8, Y + 4 + Math.sin(i * 1.3) * 5, 7, 4, i, 0, 7); c.fill(); }
@@ -6436,5 +6462,96 @@ placeNotes(); renderFooterMap(); placeStubs(); placeTools(); renderLab(); applyN
 $('#pocketcount').textContent = pockets.count();
 
 show();
-if (!BWS && lsGet('nsd.mode', 'page') === 'walk') setTimeout(walkOn_, 300);
+lsSet('nsd.mode', 'page');
+
+/* ===== Nov 24: the new Mess Machine (the app's own engine and screens, in mm/) ===== */
+const MM_ORIGIN = location.origin === 'null' ? '*' : location.origin;
+function mmFrame(){ const f = $('#mmframe'); if (!f.getAttribute('src')) f.setAttribute('src', 'mm/index.html'); return f; }
+function mmPost(msg){ const f = $('#mmframe'); if (f.getAttribute('src') && f.contentWindow) f.contentWindow.postMessage(msg, MM_ORIGIN); }
+const MM_BEHIND = () => [document.querySelector('header.site'), document.querySelector('main'), document.querySelector('footer')].filter(Boolean);
+function openMachine(){
+  mmFrame(); $('#mmroom').hidden = false; document.body.classList.add('mmopen');
+  MM_BEHIND().forEach(el => el.inert = true); setTimeout(() => $('#mmframe').focus(), 60);
+  if (!(history.state && history.state.mm)) history.pushState({mm:1}, '');
+}
+function closeMachine(fromBack){
+  if ($('#mmroom').hidden) return;
+  mmPost({t:'mm-hush'});
+  $('#mmroom').hidden = true; document.body.classList.remove('mmopen');
+  MM_BEHIND().forEach(el => el.inert = false); $('#mmopen')?.focus({preventScroll:true});
+  if (fromBack !== true && history.state && history.state.mm) history.back();
+}
+addEventListener('popstate', () => { if (!(history.state && history.state.mm)) closeMachine(true); });
+$('#mmopen').onclick = openMachine;
+addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#mmroom').hidden){ e.stopPropagation(); closeMachine(); } }, true);
+addEventListener('message', e => {
+  if (e.source !== $('#mmframe').contentWindow || !e.data) return;
+  if (e.data.t === 'mm-close') closeMachine();
+  if (e.data.t === 'mm-playing') audioBus.claim('mm');
+});
+audioBus.owners.mm = () => mmPost({t:'mm-hush'});
+setPane = function(p){ if (p === 'machine'){ openMachine(); p = 'jars'; }
+  pane = 'jars'; lsSet('nsd.pane', pane); $('#pane-jars').hidden = false; $('#seq').hidden = true; mmHelpUI(); navUI(); };
+if (lsGet('nsd.pane', 'jars') === 'machine') lsSet('nsd.pane', 'jars');
+
+/* A jar sent to the machine: its sound as the site plays it (doctored, sliced, imported) goes into the
+   machine's own sound store (IndexedDB mmweb/snd), then its key into the inbox. The machine uses its own
+   library copy when it has one and the jar is not doctored. */
+const mmIdb = () => new Promise((res, rej) => { try { const r = indexedDB.open('mmweb', 1); r.onupgradeneeded = () => r.result.createObjectStore('snd'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); } catch(e){ rej(e); } });
+function wavMono16(ab){
+  const n = ab.length, ch = ab.numberOfChannels, b = new ArrayBuffer(44 + n * 2), v = new DataView(b);
+  const w = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
+  w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, ab.sampleRate, true); v.setUint32(28, ab.sampleRate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+  const d = []; for (let c = 0; c < ch; c++) d.push(ab.getChannelData(c));
+  for (let i = 0; i < n; i++){ let x = 0; for (let c = 0; c < ch; c++) x += d[c][i]; x = Math.max(-1, Math.min(1, x / ch)); v.setInt16(44 + i * 2, x < 0 ? x * 0x8000 : x * 0x7fff, true); }
+  return new Uint8Array(b);
+}
+async function sendToMachine(s, quiet){
+  if (!s) return false;
+  const k = keyOf(s), edited = isEdited(k) || !!s.base || !!s.idb || !!s.sp;
+  const item = {k, t:s.title, edited};
+  try {
+    const wav = wavMono16(await renderEdited(s)), own = 'site:' + k + (isEdited(k) ? ':' + JSON.stringify(EDITS[k]).length + '.' + Date.now().toString(36) : '');
+    const db = await mmIdb();
+    await new Promise((res, rej) => { const t = db.transaction('snd', 'readwrite'); t.objectStore('snd').put(wav, own); t.oncomplete = res; t.onerror = () => rej(t.error); });
+    item.own = own;
+  } catch(e){ if (edited){ if (!quiet) toast('That jar would not pour. Try again.'); return false; } }
+  try { const q = JSON.parse(localStorage.getItem('mmweb.inbox') || '[]'); q.push(item); localStorage.setItem('mmweb.inbox', JSON.stringify(q)); } catch(e){ if (!quiet) toast('This browser will not pass sounds along. Try another browser.'); return false; }
+  mmPost({t:'mm-inbox'});
+  if (!quiet) toast(`${s.title} waits on a pad in the Mess Machine.`);
+  return true;
+}
+putOnPad = function(k, quiet){ return sendToMachine(byKey(k), quiet); };
+
+/* Back closes what is open before it changes the room (NSD-31) */
+const OVERLAYS = [['#hwatmodal', () => closeHwat()], ['#modal', () => closeModal()], ['#cardmodal', () => closeCard()],
+  ['#docmodal', () => closeDoctor()], ['#drawer', () => closeDrawer()], ['#ring', () => closeRing()], ['#jam', () => closeJam()],
+  ['#wshelf', () => { $('#wshelf').hidden = true; }]].filter(([q]) => $(q));
+const ovOpen = [];
+let ovPopping = false;
+const ovMO = new MutationObserver(() => {
+  for (const [q] of OVERLAYS){
+    const open = !$(q).hidden, at = ovOpen.indexOf(q);
+    if (open && at < 0){ ovOpen.push(q); history.pushState({ov:q}, ''); }
+    if (!open && at >= 0){ ovOpen.splice(at, 1); if (!ovPopping && history.state && history.state.ov === q) history.back(); }
+  }
+});
+OVERLAYS.forEach(([q]) => ovMO.observe($(q), {attributes:true, attributeFilter:['hidden']}));
+addEventListener('popstate', e => {
+  const top = ovOpen[ovOpen.length - 1];
+  if (top && !(e.state && e.state.ov === top)){ ovPopping = true; OVERLAYS.find(([q]) => q === top)[1](); ovMO.takeRecords(); ovOpen.pop(); ovPopping = false; }
+  if (walkOn && !(e.state && e.state.walk)) walkOff();
+});
+/* walking takes one history step too, so Back leaves the walk first */
+const _walkOn = walkOn_;
+walkOn_ = function(){ _walkOn(); if (!(history.state && history.state.walk)) history.pushState({walk:1}, ''); };
+const _walkOff = walkOff;
+walkOff = function(toPage){ const was = walkOn; _walkOff(toPage); if (was && !toPage && history.state && history.state.walk) history.back(); };
+
+/* battery (NSD-35): the scope draws only in Terrible Noise while a track plays; jars out of sight hold still */
+addEventListener('hashchange', () => setTimeout(() => { if (curView === 'noise' && !audio.paused) drawScope(); }, 0));
+const jarIO = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => e.target.classList.toggle('still', !e.isIntersecting))) : null;
+function watchJars(){ if (jarIO) document.querySelectorAll('.bigjar:not([data-io])').forEach(j => { j.dataset.io = '1'; j.classList.add('still'); jarIO.observe(j); }); }
+watchJars(); new MutationObserver(watchJars).observe($('#v-specimens'), {childList:true, subtree:true});
 </script>
