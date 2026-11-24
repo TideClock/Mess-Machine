@@ -1,0 +1,3 @@
+{"name": "Oldest kind", "bpm": 120, "kit": ["samples/basement-kick.wav", "samples/wet-clap.wav"],
+ "steps": {"samples/basement-kick.wav": "1000100010001000", "samples/wet-clap.wav": "0000100000001000"},
+ "swing": 10}

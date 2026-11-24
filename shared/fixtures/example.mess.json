@@ -1,0 +1,213 @@
+{
+  "name": "Shared example",
+  "bpm": 96,
+  "v": 3,
+  "kit": ["samples/basement-kick.wav", "samples/wet-clap.wav", "synth:1", "loop:ametrine-1", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+  "sel": 0,
+  "steps": {
+    "samples/basement-kick.wav": "1000001010010000",
+    "samples/wet-clap.wav": "0000100000001000",
+    "synth:1": "0000000000000000",
+    "loop:ametrine-1": "1000000000000000"
+  },
+  "pats": [
+    {
+      "len": 16,
+      "steps": {
+        "samples/basement-kick.wav": "1000001010010000",
+        "samples/wet-clap.wav": "0000100000001000",
+        "synth:1": "0000000000000000",
+        "loop:ametrine-1": "1000000000000000"
+      },
+      "notes": {
+        "synth:1": "0.0.4,8.-5.4"
+      },
+      "motion": {
+        "1:1": "0.2,,,,0.4,,,,0.6,,,,0.8,,,"
+      },
+      "offs": {
+        "samples/wet-clap.wav": "92,284"
+      },
+      "acc": {
+        "samples/basement-kick.wav": "a.....g........."
+      },
+      "chance": {
+        "samples/wet-clap.wav": ",,,,,,,,,,,,50,,,"
+      },
+      "locks": {
+        "samples/basement-kick.wav@1": "0.7,,,,,,,,0.3,,,,,,,"
+      }
+    },
+    {
+      "len": 32,
+      "steps": {
+        "samples/basement-kick.wav": "10001000100010001000100010001000",
+        "samples/wet-clap.wav": "00001000000010000000100000001000",
+        "synth:1": "00000000000000000000000000000000",
+        "loop:ametrine-1": "10000000000000001000000000000000"
+      },
+      "notes": {}
+    },
+    {
+      "len": 16,
+      "steps": {
+        "samples/basement-kick.wav": "0000000000000000",
+        "samples/wet-clap.wav": "0000000000000000",
+        "synth:1": "0000000000000000",
+        "loop:ametrine-1": "0000000000000000"
+      },
+      "notes": {}
+    },
+    {
+      "len": 16,
+      "steps": {
+        "samples/basement-kick.wav": "0000000000000000",
+        "samples/wet-clap.wav": "0000000000000000",
+        "synth:1": "0000000000000000",
+        "loop:ametrine-1": "0000000000000000"
+      },
+      "notes": {}
+    },
+    {
+      "len": 16,
+      "steps": {
+        "samples/basement-kick.wav": "0000000000000000",
+        "samples/wet-clap.wav": "0000000000000000",
+        "synth:1": "0000000000000000",
+        "loop:ametrine-1": "0000000000000000"
+      },
+      "notes": {}
+    },
+    {
+      "len": 16,
+      "steps": {
+        "samples/basement-kick.wav": "0000000000000000",
+        "samples/wet-clap.wav": "0000000000000000",
+        "synth:1": "0000000000000000",
+        "loop:ametrine-1": "0000000000000000"
+      },
+      "notes": {}
+    },
+    {
+      "len": 16,
+      "steps": {
+        "samples/basement-kick.wav": "0000000000000000",
+        "samples/wet-clap.wav": "0000000000000000",
+        "synth:1": "0000000000000000",
+        "loop:ametrine-1": "0000000000000000"
+      },
+      "notes": {}
+    },
+    {
+      "len": 16,
+      "steps": {
+        "samples/basement-kick.wav": "0000000000000000",
+        "samples/wet-clap.wav": "0000000000000000",
+        "synth:1": "0000000000000000",
+        "loop:ametrine-1": "0000000000000000"
+      },
+      "notes": {}
+    }
+  ],
+  "song": "AB-B------------",
+  "swing": 20,
+  "squash": 0.6,
+  "mutes": [],
+  "solos": [],
+  "scale": "Minor",
+  "root": 9,
+  "fold": false,
+  "edits": {
+    "samples/wet-clap.wav": {
+      "st": 0,
+      "en": 1,
+      "att": 0,
+      "rel": 0.08,
+      "rev": false,
+      "loop": false,
+      "mode": "gate",
+      "tune": -2,
+      "fine": 0,
+      "vol": 0.7,
+      "pan": 0,
+      "tone": 0,
+      "norm": false,
+      "choke": 0
+    },
+    "loop:ametrine-1": {
+      "st": 0.25,
+      "en": 0.75,
+      "att": 0,
+      "rel": 0,
+      "rev": false,
+      "loop": true,
+      "mode": "one",
+      "tune": 0,
+      "fine": 0,
+      "vol": 0.9,
+      "pan": -0.2,
+      "tone": 0,
+      "norm": false,
+      "choke": 1,
+      "held": "beat",
+      "beatN": 2,
+      "pitch": "stretch",
+      "fx": {
+        "rvb": 0.3,
+        "rvbSize": 0.5,
+        "echo": 0,
+        "echoT": 1,
+        "dirt": 0,
+        "crush": 0,
+        "chorus": 0,
+        "wob": 0,
+        "wobRate": 0.3
+      }
+    }
+  },
+  "synths": {
+    "synth:1": {
+      "kind": "pluck",
+      "name": "Nylon",
+      "v": {
+        "mode": 0,
+        "decay": 2.5,
+        "bright": 0.55,
+        "damp": 0.45,
+        "pick": 0.25,
+        "body": 0.45,
+        "mute": 0.6,
+        "drive": 0,
+        "lrate": 5,
+        "lpitch": 0,
+        "glide": 0.001,
+        "oct": 0,
+        "level": 0.8
+      }
+    }
+  },
+  "padOpts": {
+    "1": {
+      "glide": false,
+      "glideT": 0.12,
+      "legato": false,
+      "route": 1,
+      "xy": "Sweep|2|s|q|1|t|1:1.0,2:1.0,-1:0.0,-1:0.0",
+      "fx": "8=0.25",
+      "ftype": 1
+    },
+    "2": {
+      "glide": true,
+      "glideT": 0.08,
+      "legato": true,
+      "route": 0,
+      "pack": "keys,lfo",
+      "ftype": 2,
+      "lfo": "1,0,4.0,1,0.5,0,0.55,0.25,0"
+    }
+  },
+  "at": "2026-11-23T20:00:00Z",
+  "app": "android",
+  "mode": "song",
+  "cur": 0
+}

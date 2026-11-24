@@ -1,0 +1,4 @@
+{"name": "Before build 106", "bpm": 100, "v": 3, "kit": ["samples/basement-kick.wav"],
+ "pats": [{"len": 16, "steps": {"samples/basement-kick.wav": "1000100010001000"}}],
+ "padOpts": {"0": {"glide": false, "glideT": 0.12, "legato": false, "route": 0, "lfo": "1,0,4.0,1,0.5,2,0.3,0.4,0"}},
+ "app": "android"}

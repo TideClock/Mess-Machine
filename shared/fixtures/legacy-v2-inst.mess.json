@@ -1,0 +1,5 @@
+{"name": "One roll per loop", "bpm": 100, "v": 2,
+ "kit": ["samples/basement-kick.wav", "qb:stwretch-hit"],
+ "pats": [{"len": 32, "steps": {"samples/basement-kick.wav": "10001000100010001000100010001000"},
+           "inst": "qb:stwretch-hit", "notes": "0.0.2,16.-3.2"}],
+ "song": "AA"}

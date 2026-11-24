@@ -1,0 +1,8 @@
+{"name": "From the site", "bpm": 118, "v": 3,
+ "kit": ["samples/basement-kick.wav", "a:uploaded1", "bn:lkj3x9512", "samples/wet-clap.wav"], "sel": 1,
+ "steps": {"samples/basement-kick.wav": "1000100010001000"},
+ "pats": [{"len": 16, "steps": {"samples/basement-kick.wav": "1000100010001000", "a:uploaded1": "0010001000100010", "samples/wet-clap.wav": "0000100000001000"},
+           "notes": {"a:uploaded1": "0.0.2"}}],
+ "song": "A---------------", "swing": 0, "mutes": ["a:uploaded1"], "solos": [], "scale": "Dorian", "root": 2, "fold": true,
+ "edits": {"samples/wet-clap.wav": {"st": 0, "en": 1, "att": 0, "rel": 0.2, "rev": true, "loop": false, "mode": "one", "tune": 3, "fine": 0, "vol": 1, "pan": 0, "tone": 0, "norm": false, "choke": 0}},
+ "at": "2026-11-20T18:00:00.000Z"}
