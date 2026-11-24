@@ -10,9 +10,10 @@ Follow the bug-testing skill's design rules.
 
 Rewritten at the end of every session and at each step of a long job. Read this first.
 
-- **Live:** the Nov 10 publish (second NSD session): chunks 1 to 5 of the proposal doc's work order, the web
-  Mess Machine rebuilt to follow the Android app, and the walk mode overhaul. `python3 site/build.py` rebuilds it.
-- **Proposal doc:** https://claude.ai/artifact/L2m9XThxcL5SvrZeQnJd9s, items NSD-1 to NSD-29. Its Outcome section
+- **Live (Nov 24):** the full-site review builds 1 to 4 (NSD-30 to 44) on both sites. Review and proposal doc:
+  https://claude.ai/artifact/R5WS6FZMoKc86LYuHYDcV2 (its Outcome section says what shipped and what changed from the plan).
+  `python3 site/build.py` rebuilds; `NSD_SNAPSHOT=1` also refreshes `house.snapshot.html` (the ready-made house).
+- **Earlier proposal doc:** https://claude.ai/artifact/L2m9XThxcL5SvrZeQnJd9s, items NSD-1 to NSD-29.
   says what shipped.
 - **Not done:** NSD-27 (an alpha copy with the BUG button). It needs its own session: the alpha is a second artifact
   that needs a copy of the live assets (about 180 MB) and the recorder's database rules. NSD-29's bugtest.json waits
@@ -26,7 +27,10 @@ Rewritten at the end of every session and at each step of a long job. Read this 
   because claude.ai blocks YouTube inside a page. The Brotherwife site has a Merch room: the Junk Drawer engine
   with `BW_DESIGNS` (empty until Tyler sends the band's shirt designs; each needs `img/<key>_shirt.jpg` and
   `img/<key>_mug.jpg` mockups, made with the print-art pipeline from the first NSD chat).
-- **Waiting on Tyler:** share the Brotherwife site and the Ergot Pizza Party game with the band on claude.ai (both are
+- **Waiting on Tyler:** an email address for the shop's "Ask for it" link (`ASK_EMAIL`, empty hides the link);
+  the original Qbldy shelf sounds (shelves.wav is 6.8 MB and above the 4 MB artifact read limit, so it is not encoded yet);
+  share Ergot Pizza Party, Thar' Be (Robot)Monsters! and Doodle Quest (their cabinets stay hidden until their ids leave
+  `PRIVATE_GAMES`); share the Brotherwife site and the Ergot Pizza Party game with the band on claude.ai (both are
   owner only); send the Brotherwife shirt designs (not in Drive under any shirt or merch name).
 
 ## Two tracks, one repo
@@ -62,6 +66,12 @@ Rewritten at the end of every session and at each step of a long job. Read this 
 - 2026-11-10 The machine is darker and grittier than the rest of the site (Tyler said it could be).
 - 2026-11-10 Walk mode aims for The Swords of Ditto: Mormo's Curse (Tyler): quick to full speed, quick stops,
   dense rooms with things to break and kick.
+
+- 2026-11-24 "Proceed with all changes proposed" (Tyler) for the full-site review. Taken as recommended: Channel Nowhere
+  is the TV on the band page, not a room (reverses decision 7); private games are hidden until shared; shop asks go by
+  email once Tyler gives an address. Changed from the plan, with reasons in the doc: the band rooms keep their own
+  stage colours (following the house paint broke contrast in most paints); the doctor's Fit keeps its own BPM box.
+  The hand-drawn house (LOOK-8) was a question, not a change: still open.
 
 ## How the house is laid out (NSD-17)
 
