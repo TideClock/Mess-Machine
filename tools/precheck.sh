@@ -16,7 +16,7 @@ bad = 0
 TOK = re.compile(r'"""[\s\S]*?"""|"(?:\\.|[^"\\\n])*"|\'(?:\\.|[^\'\\\n])+\'|//[^\n]*|/\*[\s\S]*?\*/')
 def strip(s):
     return TOK.sub(lambda m: '' if m.group(0).startswith('/') else '""', s)
-src = glob.glob('app/src/**/*.kt', recursive=True) + glob.glob('app/src/**/*.java', recursive=True) + glob.glob('tools/*.java')
+src = glob.glob('app/src/**/*.kt', recursive=True) + glob.glob('core/src/**/*.kt', recursive=True) + glob.glob('app/src/**/*.java', recursive=True) + glob.glob('tools/*.java')
 for f in src:
     s = strip(open(f, encoding='utf-8').read())
     for o, c in ('{}', '()', '[]'):
