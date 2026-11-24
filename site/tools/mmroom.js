@@ -32,6 +32,11 @@ const KEY = 'samples/wet-clap.wav', TITLE = /wet clap/i;
       check(sz, 'the lab behind the room is inert', await p.evaluate(() => document.querySelector('main').inert));
       check(sz, 'the jar is on a pad in the machine', !!fr && await fr.evaluate(t => new RegExp(t, 'i').test(document.body.innerText), TITLE.source));
       check(sz, 'the inbox is drained', await p.evaluate(() => { const v = localStorage.getItem('mmweb.inbox'); return !v || v === '[]'; }));
+      // a real tap on Start, through the page (an inert room would swallow it: the Nov 24 bug Tyler hit)
+      let started = false; try { await p.frameLocator('#mmframe').locator('#start .go').click({ timeout: 4000 }); await p.waitForTimeout(800); started = !!fr && await fr.evaluate(() => !document.getElementById('start')); } catch (e) {}
+      check(sz, 'Start takes a real tap', started);
+      let padOk = false; try { await p.frameLocator('#mmframe').locator('.pad').first().click({ timeout: 3000 }); padOk = true; } catch (e) {}
+      check(sz, 'a pad takes a real tap', padOk);
       // Escape closes it (pressed inside the machine)
       await fr.evaluate(() => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))); await p.waitForTimeout(600);
       check(sz, 'Escape closes the room', await p.evaluate(() => document.getElementById('mmroom').hidden && !document.querySelector('main').inert));
