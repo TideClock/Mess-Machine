@@ -1,0 +1,13 @@
+{
+  "name": "mess-machine-server-tests",
+  "private": true,
+  "type": "module",
+  "description": "Tests for the Mess Machine accounts server: the real migrations on plain Postgres, behind a stand-in for Supabase.",
+  "scripts": {
+    "test": "node run.mjs",
+    "live": "node live.mjs"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  }
+}

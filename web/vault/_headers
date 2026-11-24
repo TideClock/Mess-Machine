@@ -1,0 +1,15 @@
+# Netlify headers for the Vault desk (its own site, apart from the account pages).
+# ONE BLANK: put your Supabase address in place of https://YOUR-PROJECT.supabase.co (web/README.md, step 4).
+# media-src blob: lets the desk play the bytes it downloaded. Nothing else is allowed in.
+
+/*
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; media-src blob:; connect-src 'self' https://YOUR-PROJECT.supabase.co; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()
+  Strict-Transport-Security: max-age=63072000; includeSubDomains
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-origin
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-cache

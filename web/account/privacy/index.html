@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy · Mess Machine</title>
+<meta name="description" content="What Mess Machine keeps about you, and how to delete it.">
+<link rel="stylesheet" href="/mm.css">
+<script src="/config.js" defer></script>
+<script src="/mm.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to the page</a>
+<header class="rail"><a class="brand" href="/">Mess Machine</a><span class="rail-sub">Privacy</span></header>
+<main id="main" class="read legal">
+  <aside class="draft" aria-labelledby="draft-h">
+    <h2 id="draft-h">Draft. Not live yet.</h2>
+    <p>For the owner to read before this goes out. Take this box away when it is right.</p>
+    <ul>
+      <li>Fill the yellow blanks: the developer name and support email (both in config.js), and where the server is.</li>
+      <li>Check the line about bug notes. Keep it only if the notes button is in the store build.</li>
+      <li>This was written by an assistant, not a lawyer.</li>
+    </ul>
+  </aside>
+
+  <h1>Privacy</h1>
+  <p class="version">Last changed November 24, 2026</p>
+  <p class="lcd setup-note" data-mm-needs-server hidden>Accounts are not set up yet</p>
+
+  <p class="lead">Mess Machine is made by <span data-mm-developer></span>. This page says what the app keeps about you. The short of it: with no account, nothing. With an account, only what you choose to save online.</p>
+
+  <h2 id="guest">If you have no account</h2>
+  <p>We collect nothing. Your messes, sounds and recordings stay on your phone. The microphone is used only when you record, and that sound stays on your phone.</p>
+  <p>A few things do reach out to other services, with or without an account:</p>
+  <ul>
+    <li><strong>Sound packs and updates</strong> are downloaded from GitHub. GitHub sees your internet address, as any website does. See <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement" rel="noopener">GitHub's privacy statement</a>.</li>
+    <li><strong>Speaking a note.</strong> If you dictate a note, your phone's own speech service turns it into words. On many phones that is a Google service and the sound may go to its servers. We never get the sound.</li>
+    <li><strong>Bug notes.</strong> A note you send with the bug button goes to GitHub with your phone model, the app build and the last things you pressed. It is not tied to an account. Leave personal details out of notes.</li>
+  </ul>
+  <p>There are no ads, no trackers and no analytics in the app or on these pages.</p>
+
+  <h2 id="account">If you make an account</h2>
+  <p>An account is optional. With one, we keep:</p>
+  <ul>
+    <li><strong>Your email address</strong>, to mail you sign-in codes. There is no password.</li>
+    <li><strong>A display name</strong> you pick, and an account number made by the server.</li>
+    <li><strong>The messes you save online</strong> and their history.</li>
+    <li><strong>The sounds you save online</strong>, including recordings you made with the microphone, if you put them in an online mess.</li>
+    <li><strong>Who you share with</strong>: the people in your messes, invites and share links you make, and people you block.</li>
+    <li><strong>Reports</strong> you send about a mess or a person.</li>
+    <li><strong>Which version of the terms</strong> you agreed to, and when.</li>
+    <li><strong>The Vault</strong>: sounds you offer, your credit name, and the version of the Vault grant you agreed to.</li>
+  </ul>
+  <p>Messes and sounds you keep off the cloud never leave your phone.</p>
+
+  <h2 id="who">Who can see it</h2>
+  <ul>
+    <li>Only you, until you share.</li>
+    <li>People you invite into a mess see your display name, that mess and the sounds in it.</li>
+    <li>Anyone with a share link you made sees that mess, its sounds and your display name. You can turn a link off.</li>
+    <li>The Vault keeper (the developer) can listen to a sound only when you offered it to the Vault, or when it is in a mess someone reported.</li>
+    <li>A sound the Vault accepts is public, with your credit name.</li>
+  </ul>
+  <p>We do not sell your data or give it to advertisers.</p>
+
+  <h2 id="where">Where it is kept</h2>
+  <p>Accounts, messes and sounds are kept by Supabase, our server provider, in <span class="blank">[where the server is, for example the United States]</span>. Sign-in codes are sent through a mail service. These pages are hosted by Netlify. They work for us and may not use your data for anything else. Like any server, they keep short logs that include internet addresses. Everything travels encrypted.</p>
+
+  <h2 id="long">How long</h2>
+  <p>Until you delete it. When you delete a mess, a sound or your account, it goes right away. Our backups keep deleted data for up to 7 days, then it is gone from those too.</p>
+
+  <h2 id="delete">Deleting your account</h2>
+  <p>In the app: Messes, your name, Delete account. Or on the web at <a href="/delete/">Delete your account</a>, with no app needed.</p>
+  <p>Deleting removes your online messes, your online sounds (also from other people's messes), your share links, your name and your email. Two things stay: a sound the Vault already accepted, with your credit name, and the words of reports. The messes and sounds on your phone are not touched.</p>
+
+  <h2 id="vault">The Vault</h2>
+  <p>The Vault is a shelf of sounds everyone can use. Offering a sound is your choice, each time. If it is accepted it stays there for good, even if you delete your account. The exact words you agree to are in the <a href="/terms/#vault">Vault grant</a>.</p>
+
+  <h2 id="kids">Children</h2>
+  <p>Accounts are for people 13 or older. We do not knowingly keep data about anyone younger. If you think a child made an account, write to us and we will delete it.</p>
+
+  <h2 id="rights">Your choices</h2>
+  <p>You can change your display name in the app, take messes and sounds offline, and delete your account. Write to us if you want a copy of what we hold or want something corrected.</p>
+
+  <h2 id="changes">Changes</h2>
+  <p>If this page changes in a way that matters, the app will tell you before it applies.</p>
+
+  <h2 id="contact">Contact</h2>
+  <p><span data-mm-developer></span>, <span data-mm-support></span></p>
+</main>
+<footer><div class="in">
+  <nav aria-label="Pages"><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="/delete/">Delete your account</a></nav>
+  <p>Mess Machine by <span data-mm-developer></span>. Help: <span data-mm-support></span></p>
+</div></footer>
+</body>
+</html>

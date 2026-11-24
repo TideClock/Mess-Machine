@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Vault desk · Mess Machine</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="stylesheet" href="/mm.css">
+<script src="/config.js" defer></script>
+<script src="/mm.js" defer></script>
+<script src="/vault.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to the page</a>
+<header class="rail"><span class="brand">Mess Machine</span><span class="rail-sub">Vault desk</span></header>
+<main id="main" class="wide">
+  <h1>The Vault desk</h1>
+
+  <section class="tray" data-mm-needs-server hidden>
+    <p class="lcd">Not set up yet</p>
+    <p>This page is waiting for its server. Fill in config.js (web/README.md, step 3) and it wakes up.</p>
+    <p class="msg bad" data-mm-problem hidden></p>
+  </section>
+
+  <div data-mm-flow hidden>
+    <section class="tray" id="gate" aria-labelledby="gate-h" hidden>
+      <h2 id="gate-h">Sign in</h2>
+      <p>This desk is for the Vault keeper.</p>
+      <div id="signin"></div>
+    </section>
+
+    <section class="tray" id="notadmin" hidden>
+      <p class="lcd">Keeper only</p>
+      <p class="lead" id="notadmin-words" tabindex="-1">This page is only for the Vault keeper.</p>
+      <div class="keys"><button class="key" type="button" id="out2">Sign out</button></div>
+    </section>
+
+    <section id="desk" hidden>
+      <div class="deskbar">
+        <p class="lcd plain" id="who"></p>
+        <button class="key small" type="button" id="again">Look again</button>
+        <button class="key small" type="button" id="out">Sign out</button>
+      </div>
+      <p class="msg" id="desk-msg" role="status" aria-live="polite"></p>
+      <div class="tabs" role="tablist" aria-label="What to look at">
+        <button class="key" type="button" role="tab" id="tab-queue" aria-controls="panel-queue" aria-selected="true">Sounds<span class="count" id="n-queue">0</span></button>
+        <button class="key" type="button" role="tab" id="tab-reports" aria-controls="panel-reports" aria-selected="false" tabindex="-1">Reports<span class="count" id="n-reports">0</span></button>
+      </div>
+      <div role="tabpanel" id="panel-queue" aria-labelledby="tab-queue" tabindex="0">
+        <p class="quiet">Sounds people offered to the Vault, oldest first. Listen, then decide. What you hear is exactly what gets approved.</p>
+        <div id="queue"></div>
+      </div>
+      <div role="tabpanel" id="panel-reports" aria-labelledby="tab-reports" tabindex="0" hidden>
+        <p class="quiet">Open reports, oldest first. The terms promise an answer within 24 hours.</p>
+        <div id="reports"></div>
+      </div>
+    </section>
+  </div>
+  <noscript><p class="msg bad">This page needs JavaScript.</p></noscript>
+</main>
+<footer><div class="in">
+  <p>Mess Machine Vault desk. Private. Help: <span data-mm-support></span></p>
+</div></footer>
+</body>
+</html>

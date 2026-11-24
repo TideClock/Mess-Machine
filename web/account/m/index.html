@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A shared mess · Mess Machine</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="/mm.css">
+<script src="/config.js" defer></script>
+<script src="/mm.js" defer></script>
+<script src="/share.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to the page</a>
+<header class="rail"><a class="brand" href="/">Mess Machine</a><span class="rail-sub">Shared mess</span></header>
+<main id="main">
+  <h1>Someone shared a mess</h1>
+
+  <section class="tray" data-mm-needs-server hidden>
+    <p class="lcd">Not set up yet</p>
+    <p>Sharing is not switched on yet, so this link has nothing to show. Nothing is wrong on your side.</p>
+    <p class="msg bad" data-mm-problem hidden></p>
+  </section>
+
+  <div data-mm-flow hidden>
+    <p class="lcd" id="state" role="status" aria-live="polite">Looking for the mess</p>
+
+    <section id="gone" class="tray" hidden>
+      <p class="lead" id="gone-words">This link does not open a mess.</p>
+      <p class="quiet">The person who made it may have turned the link off. Ask them for a new one.</p>
+    </section>
+
+    <section id="found" hidden>
+      <div class="nameplate">
+        <span class="name" id="mess-name"></span>
+        <span class="by">made by <span id="owner-name"></span></span>
+      </div>
+      <ul class="facts" id="facts"></ul>
+      <div class="tray">
+        <div class="keys stack">
+          <a class="key go wide" id="open" href="/">Open in Mess Machine</a>
+        </div>
+        <p class="quiet small">Nothing happened? The app has to be on this phone first.</p>
+        <div data-mm-play></div>
+      </div>
+
+      <section aria-labelledby="rep-h">
+        <h2 id="rep-h">Something wrong with it?</h2>
+        <div class="keys"><button class="key small" type="button" id="rep-open" aria-expanded="false" aria-controls="rep">Report this mess</button></div>
+        <form id="rep" class="tray" hidden novalidate>
+          <fieldset class="choices">
+            <legend>What is wrong?</legend>
+            <label class="choice"><input type="radio" name="reason" value="sexual"><span>Sexual content</span></label>
+            <label class="choice"><input type="radio" name="reason" value="hate"><span>Hate</span></label>
+            <label class="choice"><input type="radio" name="reason" value="harassment"><span>Harassment or bullying</span></label>
+            <label class="choice"><input type="radio" name="reason" value="copyright"><span>It uses my work without asking</span></label>
+            <label class="choice"><input type="radio" name="reason" value="spam"><span>Spam or a scam</span></label>
+            <label class="choice"><input type="radio" name="reason" value="other"><span>Something else</span></label>
+          </fieldset>
+          <div class="field">
+            <label for="rep-details">Anything to add? (you can leave this empty)</label>
+            <textarea id="rep-details" maxlength="500" aria-describedby="rep-hint"></textarea>
+            <span class="hint" id="rep-hint">Up to 500 characters. We do not need your name.</span>
+          </div>
+          <div class="keys"><button class="key go wide" type="submit" id="rep-send">Send the report</button></div>
+          <p class="msg" id="rep-msg" role="status" aria-live="polite"></p>
+        </form>
+        <p class="msg ok" id="rep-done" tabindex="-1" hidden>Thanks. We look at every report within 24 hours.</p>
+      </section>
+    </section>
+  </div>
+  <noscript><p class="msg bad">This page needs JavaScript to show the mess.</p></noscript>
+</main>
+<footer><div class="in">
+  <nav aria-label="Pages"><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="/delete/">Delete your account</a></nav>
+  <p>Mess Machine by <span data-mm-developer></span>. Help: <span data-mm-support></span></p>
+</div></footer>
+</body>
+</html>
