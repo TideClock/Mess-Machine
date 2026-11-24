@@ -994,6 +994,7 @@ public class EngineTest {
     double z = hat.snapZero(.3);
     int zi = (int) Math.round(z * hat.data.length);
     check(zi > 0 && (hat.data[zi - 1] <= 0) != (hat.data[zi] <= 0), "snap lands on a zero crossing");
+    wrapTests(rate, p, lib);
     System.out.println(failures == 0 ? "ALL GOOD" : failures + " FAILED");
     repeatPatternTests(rate);
     mouthTests();
@@ -1163,6 +1164,150 @@ public class EngineTest {
       int rh0 = he2.triggers;
       for (int i = 0; i < (int) (12 * spbR / 256) - 1; i++) he2.render(rb, 256);
       check(Math.abs((he2.triggers - rh0) - 8) <= 1, "Repeat pattern with Hold: a held pad goes hit, hit, skip after the finger lifts (" + (he2.triggers - rh0) + " of 12, 8 wanted)");
+    }
+  }
+
+  /** One engine rendered in blocks of one size: the left channel of everything it has played, and how often swapToken changed. */
+  static class WrapRun {
+    final Engine e; final int block; final float[] buf; float[] out = new float[1 << 16]; int n = 0, changes = 0, last;
+    WrapRun(int rate, int block, Engine.Snapshot s) { e = new Engine(rate); this.block = block; buf = new float[block * 2]; e.setSnapshot(s); last = e.swapToken; }
+    /** Render whole blocks until at least this many frames have been played. */
+    WrapRun to(long frame) {
+      while (n < frame) {
+        e.render(buf, block);
+        if (n + block > out.length) out = Arrays.copyOf(out, Math.max(out.length * 2, n + block));
+        for (int i = 0; i < block; i++) out[n + i] = buf[i * 2];
+        n += block;
+        if (e.swapToken != last) { changes++; last = e.swapToken; }
+      }
+      return this;
+    }
+    /** The first frame that is not exactly silent, or -1. */
+    int first() { for (int i = 0; i < n; i++) if (out[i] != 0f) return i; return -1; }
+    /** Where each hit starts, in frames. */
+    List<Integer> onsets() { List<Integer> o = new ArrayList<>(); for (int i = 0; i < n; i++) if (Math.abs(out[i]) > .01f && (i == 0 || Math.abs(out[i - 1]) <= .01f)) o.add(i); return o; }
+  }
+
+  /** Accounts, Review B M2 and S10 (5): a snapshot armed with setSnapshotAtWrap is heard from the exact frame the loop comes round. */
+  static void wrapTests(int rate, Project demo, Engine.SampleSource lib) {
+    float[] imp = new float[400]; imp[0] = 1f; imp[1] = 1f;
+    Sample is = new Sample("imp", imp, rate);
+    Engine.SampleSource src = k -> k.equals("imp") ? is : null;
+    // 120 BPM at 48 kHz: a step is 6000 frames, a 16 step pass 96000. "quiet" has the pad and no hits; "hit0" adds step 0.
+    Project quiet = new Project(); quiet.kit[0] = "imp"; quiet.bpm = 120;
+    Project hit0 = quiet.copy(); hit0.pats[0].setStep("imp", 0, true);
+    int step = (int) Math.round(rate * 60.0 / quiet.bpm / 4), pass = 16 * step;
+    java.util.function.BiFunction<Project, Integer, Engine.Snapshot> snapOf = (pr, seq) -> { Engine.Snapshot sn = Engine.Snapshot.build(pr, src, new Engine.Live()); sn.seq = seq; return sn; };
+    // the yardstick: a phone that had the hit all along. Its first frame of sound is F0 (Play's 4 ms lead and nothing else).
+    WrapRun ref = new WrapRun(rate, 480, snapOf.apply(hit0, 0)); ref.e.play(); ref.to(2 * pass);
+    int F0 = ref.first();
+    check(F0 == (int) Math.ceil(.004 * rate) && ref.onsets().equals(Arrays.asList(F0, F0 + pass)), "wrap swap yardstick: step 0 of each pass starts on frame " + F0 + " + a pass: " + ref.onsets());
+    // 1. blocks of 64, 480 and 8192 frames: silent to the last frame of the pass, the hit on the first frame of the next
+    for (int block : new int[]{64, 480, 8192}) {
+      WrapRun r = new WrapRun(rate, block, snapOf.apply(quiet, 0)); r.e.play(); r.to(10000);
+      r.e.setSnapshotAtWrap(snapOf.apply(hit0, 0), 7);
+      r.to(pass / 2); int tokBefore = r.e.swapToken;
+      r.to(3 * pass - step);
+      boolean same = true;  // from the wrap on it is sample for sample what the yardstick played from its own start
+      if (pass % block == 0) for (int i = 0; i < pass && same; i++) same = r.out[F0 + pass + i] == ref.out[F0 + i];
+      check(r.first() == F0 + pass && r.onsets().equals(Arrays.asList(F0 + pass, F0 + 2 * pass)) && same,
+          "wrap swap, blocks of " + block + ": silent until the loop comes round, then heard from frame " + r.first() + " (wanted " + (F0 + pass) + ")" + (pass % block == 0 ? ", sample for sample" : ""));
+      check(tokBefore == 0 && r.e.swapToken == 7 && r.changes == 1, "wrap swap, blocks of " + block + ": swapToken changes once, at the swap (" + tokBefore + " then " + r.e.swapToken + ", " + r.changes + " change)");
+    }
+    // 2. nothing armed, or armed and taken back: not one sample differs from an engine without the hook in use
+    {
+      Engine.Snapshot ds = Engine.Snapshot.build(demo, lib, new Engine.Live());
+      WrapRun plain = new WrapRun(rate, 480, ds); plain.e.play(); plain.to(3 * 16 * (int) (rate * 60.0 / demo.bpm / 4));
+      WrapRun off = new WrapRun(rate, 480, ds); off.e.play(); off.to(10000);
+      off.e.setSnapshotAtWrap(snapOf.apply(hit0, 0), 3); off.to(20000); off.e.setSnapshotAtWrap(null, 4); off.to(plain.n);
+      check(Arrays.equals(Arrays.copyOf(plain.out, plain.n), Arrays.copyOf(off.out, off.n)) && off.e.swapToken == 0 && off.changes == 0, "wrap swap: armed then taken back (null) changes nothing, token " + off.e.swapToken);
+      // and a snapshot equal to the one playing goes in without a click: ringing voices carry on over the swap
+      WrapRun eq = new WrapRun(rate, 480, ds); eq.e.play(); eq.to(10000);
+      eq.e.setSnapshotAtWrap(Engine.Snapshot.build(demo, lib, new Engine.Live()), 9); eq.to(plain.n);
+      check(Arrays.equals(Arrays.copyOf(plain.out, plain.n), Arrays.copyOf(eq.out, eq.n)) && eq.e.swapToken == 9 && eq.changes == 1, "wrap swap: an equal snapshot going in is not heard at all (demo loop, 3 passes, sample for sample)");
+    }
+    // 3. song mode: armed in slot 1 of A B, it goes in where the song changes loop, and the song carries on by the new song
+    {
+      Project sq = quiet.copy(); sq.song[0] = 0; sq.song[1] = 1; sq.songMode = true;
+      Project sn = sq.copy(); sn.song[2] = 1; sn.pats[1].setStep("imp", 0, true); sn.pats[0].setStep("imp", 4, true);
+      WrapRun r = new WrapRun(rate, 480, snapOf.apply(sq, 0)); r.e.play(); r.to(10000);
+      r.e.setSnapshotAtWrap(snapOf.apply(sn, 0), 1); r.to(4 * pass);
+      // A (old, silent) | B step 0 | B step 0 (the new third slot) | A step 4
+      check(r.onsets().equals(Arrays.asList(F0 + pass, F0 + 2 * pass, F0 + 3 * pass + 4 * step)) && r.e.swapToken == 1 && r.changes == 1,
+          "wrap swap in song mode: heard from the first frame of the next song slot, and the song runs A B B A by the new song: " + r.onsets());
+      // armed in the old song's last slot: the song goes on into the slot the new song added, it does not start again
+      WrapRun t = new WrapRun(rate, 480, snapOf.apply(sq, 0)); t.e.play(); t.to(pass + pass / 2);
+      t.e.setSnapshotAtWrap(snapOf.apply(sn, 0), 2); t.to(4 * pass);
+      check(t.onsets().equals(Arrays.asList(F0 + 2 * pass, F0 + 3 * pass + 4 * step)) && t.e.swapToken == 2 && t.changes == 1,
+          "wrap swap in song mode: armed in the last slot of A B, the song plays on into the new third slot (A B | B A): " + t.onsets());
+    }
+    // 4. a shorter loop arriving: 32 steps playing, 16 armed. It waits for the end of the 32, then comes round every 16.
+    {
+      Project lq = quiet.copy(); lq.pats[0].len = 32;
+      Project sh = hit0.copy(); sh.pats[0].setStep("imp", 8, true);
+      WrapRun r = new WrapRun(rate, 480, snapOf.apply(lq, 0)); r.e.play(); r.to(10000);
+      r.e.setSnapshotAtWrap(snapOf.apply(sh, 0), 1); r.to(4 * pass - step);
+      check(r.onsets().equals(Arrays.asList(F0 + 2 * pass, F0 + 2 * pass + 8 * step, F0 + 3 * pass, F0 + 3 * pass + 8 * step)) && r.changes == 1,
+          "wrap swap, a shorter loop arriving: the 32 steps play out, then the 16 step loop from its exact top: " + r.onsets());
+      // the reset path: the player's own loop gets shorter under the playhead (step 20 of 32, now 16 long), which
+      // sends it to the top at once; the snapshot armed with it goes in there and that very step plays from it
+      WrapRun q = new WrapRun(rate, 480, snapOf.apply(lq, 0)); q.e.play(); q.to(F0 + 19 * step + 2000);
+      q.e.setSnapshot(snapOf.apply(quiet, 1)); q.e.setSnapshotAtWrap(snapOf.apply(hit0, 1), 2); q.to(F0 + 20 * step + pass + step);
+      check(q.onsets().equals(Arrays.asList(F0 + 20 * step, F0 + 20 * step + pass)) && q.e.swapToken == 2 && q.changes == 1,
+          "wrap swap, the reset path: a loop cut short under the playhead goes to its top and the armed snapshot is heard on that step: " + q.onsets());
+    }
+    // 5. a phone nobody touches: Play once, then nothing but two snapshots armed a pass apart. Each lands on the next top.
+    {
+      Project two = hit0.copy(); two.pats[0].setStep("imp", 2, true);
+      WrapRun r = new WrapRun(rate, 480, snapOf.apply(quiet, 0)); r.e.play(); r.to(pass / 2);
+      r.e.setSnapshotAtWrap(snapOf.apply(hit0, 0), 1); r.to(pass + pass / 2); int tok1 = r.e.swapToken, ch1 = r.changes;
+      r.e.setSnapshotAtWrap(snapOf.apply(two, 0), 2); r.to(3 * pass - step);
+      check(r.onsets().equals(Arrays.asList(F0 + pass, F0 + 2 * pass, F0 + 2 * pass + 2 * step)) && tok1 == 1 && ch1 == 1 && r.e.swapToken == 2 && r.changes == 2,
+          "wrap swap on a phone nobody touches: two armed snapshots land on the next two tops, tokens 1 then 2: " + r.onsets());
+    }
+    // 6. Stop then Play, and Pause then Play: a snapshot armed before must not turn up later
+    for (boolean pause : new boolean[]{false, true}) {
+      WrapRun r = new WrapRun(rate, 480, snapOf.apply(quiet, 0)); r.e.play(); r.to(10000);
+      r.e.setSnapshotAtWrap(snapOf.apply(hit0, 0), 5); r.to(20000);
+      if (pause) r.e.pause(); else r.e.stop();
+      r.to(30000); r.e.play(); r.to(30000 + 3 * pass);
+      check(r.first() == -1 && r.e.swapToken == 0 && r.changes == 0, "wrap swap: armed, then " + (pause ? "Pause" : "Stop") + ", then Play for 3 passes: the old armed snapshot never plays (first sound at " + r.first() + ", token " + r.e.swapToken + ")");
+    }
+    // 7. the seq rule: the player changes something (seq 1, a hit on step 4) while a snapshot built before it (seq 0)
+    // is armed. That one must not go in: the pass after plays the player's hit. The one armed next (seq 1) does.
+    {
+      Project mine = quiet.copy(); mine.pats[0].setStep("imp", 4, true);
+      Project both = mine.copy(); both.pats[0].setStep("imp", 0, true);
+      WrapRun r = new WrapRun(rate, 480, snapOf.apply(quiet, 0)); r.e.play(); r.to(10000);
+      r.e.setSnapshotAtWrap(snapOf.apply(hit0, 0), 1); r.to(8 * step);
+      r.e.setSnapshot(snapOf.apply(mine, 1)); r.to(pass + 8 * step); int tokMid = r.e.swapToken;
+      List<Integer> mid = r.onsets();
+      r.e.setSnapshotAtWrap(snapOf.apply(both, 1), 2); r.to(3 * pass - step);
+      check(mid.equals(Arrays.asList(F0 + pass + 4 * step)) && tokMid == 0, "wrap swap, seq rule: a snapshot built before the player's last change stays out, and the player's own hit plays: " + mid + ", token " + tokMid);
+      check(r.onsets().equals(Arrays.asList(F0 + pass + 4 * step, F0 + 2 * pass, F0 + 2 * pass + 4 * step)) && r.e.swapToken == 2 && r.changes == 1, "wrap swap, seq rule: the one armed after it (same seq) goes in at the next top with both hits: " + r.onsets());
+      // waiting is not dropping: armed one count ahead of the snapshot playing, it sits out a top, and goes in at
+      // the first top after the playing snapshot's seq catches up, with nothing armed again
+      WrapRun w = new WrapRun(rate, 480, snapOf.apply(quiet, 0)); w.e.play(); w.to(10000);
+      w.e.setSnapshotAtWrap(snapOf.apply(both, 1), 6); w.to(pass + 8 * step); int tokW = w.e.swapToken; int firstW = w.first();
+      w.e.setSnapshot(snapOf.apply(quiet, 1)); w.to(3 * pass - step);
+      check(firstW == -1 && tokW == 0 && w.onsets().equals(Arrays.asList(F0 + 2 * pass, F0 + 2 * pass + 4 * step)) && w.e.swapToken == 6 && w.changes == 1,
+          "wrap swap, seq rule: a mismatch waits a pass with the snapshot still armed, then goes in once the seqs match: " + w.onsets());
+    }
+    // 8. armed twice before the wrap: the latest wins and the first one's token is never seen; after the swap nothing
+    // is armed, so a plain setSnapshot later is not undone at the next top
+    {
+      Project late = quiet.copy(); late.pats[0].setStep("imp", 2, true);
+      WrapRun r = new WrapRun(rate, 480, snapOf.apply(quiet, 0)); r.e.play(); r.to(10000);
+      r.e.setSnapshotAtWrap(snapOf.apply(hit0, 0), 1); r.to(20000); r.e.setSnapshotAtWrap(snapOf.apply(late, 0), 2);
+      r.to(2 * pass - step);
+      List<Integer> on = r.onsets(); int ch = r.changes, tok = r.e.swapToken;
+      r.e.setSnapshot(snapOf.apply(quiet, 0)); r.to(4 * pass);
+      check(on.equals(Arrays.asList(F0 + pass + 2 * step)) && tok == 2 && ch == 1, "wrap swap: armed twice before the wrap, the latest is the one heard (step 2, not step 0), token " + tok + " in " + ch + " change");
+      check(r.onsets().equals(on) && r.e.swapToken == 2 && r.changes == 1, "wrap swap: after a swap nothing is armed, so later tops change nothing: " + r.onsets());
+      // the swap is made as the last step of a pass fires, so one armed inside that last step waits for the top after
+      WrapRun l = new WrapRun(rate, 480, snapOf.apply(quiet, 0)); l.e.play(); l.to(F0 + 15 * step + step / 2);
+      l.e.setSnapshotAtWrap(snapOf.apply(hit0, 0), 1); l.to(3 * pass - step);
+      check(l.onsets().equals(Arrays.asList(F0 + 2 * pass)) && l.changes == 1, "wrap swap: armed inside the last step of a pass, it lands on the top after that one, never part way through a loop: " + l.onsets());
     }
   }
 

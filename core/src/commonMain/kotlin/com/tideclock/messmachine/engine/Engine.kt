@@ -1,6 +1,7 @@
 package com.tideclock.messmachine.engine
 
 import kotlin.concurrent.Volatile
+import kotlin.concurrent.atomics.AtomicReference
 import kotlin.jvm.JvmField
 import kotlin.jvm.JvmStatic
 import kotlin.math.PI
@@ -93,6 +94,11 @@ class Engine(private val rate: Int) {
         /** the master bus: how hard the mix is squashed (0 to 1) and its level after */
         @JvmField internal var squash = .5f
         @JvmField internal var level = 1f
+        /**
+         * Accounts (Nov 24): the host's count of local rebuilds when this snapshot was built, 0 where nobody counts.
+         * A snapshot armed with setSnapshotAtWrap goes in only while its seq equals the playing snapshot's seq.
+         */
+        @JvmField var seq = 0
 
         companion object {
             @JvmStatic
@@ -231,8 +237,17 @@ class Engine(private val rate: Int) {
     }
 
     private val pool: Array<Voice> = Array(96) { Voice() }
-    @Volatile private var snap: Snapshot? = null
+    // Accounts (Nov 24): an AtomicReference where this was a @Volatile field, so the audio thread can swap an armed
+    // snapshot in with compareAndSet and never write over one the main thread set in the same instant.
+    private val snap = AtomicReference<Snapshot?>(null)
     private val cmds = ConcurrentQueue<Array<Any?>>()
+    // the next-loop hook, audio thread only: the snapshot waiting for the top of the loop, and its token. It gets here
+    // through cmds like play and stop, so the main thread can never arm a newer one while this thread clears the old.
+    private var armed: Snapshot? = null
+    private var armedToken = 0
+    private var swapped = false
+    /** The token of the armed snapshot that last went in at the top of a loop (setSnapshotAtWrap). Read from any thread. */
+    @Volatile @JvmField var swapToken = 0
     private val recs = ConcurrentQueue<RecEvent>()
     private val clickHi: Sample
     private val clickLo: Sample
@@ -340,7 +355,16 @@ class Engine(private val rate: Int) {
 
     /* ================= talking to the engine (any thread) ================= */
 
-    fun setSnapshot(s: Snapshot?) { snap = s }
+    fun setSnapshot(s: Snapshot?) { snap.store(s) }
+    /**
+     * Accounts (Nov 24), the next-loop hook: s is held until the playing loop's step counter next comes back to 0 (a
+     * loop pass ends, a song slot ends, or a shorter loop sends the playhead back to the top), then it goes in on the
+     * audio thread and step 0 of that pass plays from it. It goes in only while its seq equals the playing snapshot's
+     * seq, so a snapshot built before the player's own last change is never heard; otherwise it stays armed and tries
+     * again at the next top. When it goes in, swapToken becomes token and nothing is armed any more. A later call
+     * replaces the one waiting, null cancels, and Stop and Pause cancel it too.
+     */
+    fun setSnapshotAtWrap(s: Snapshot?, token: Int) { cmds.add(arrayOf<Any?>("arm", s, token)) }
     fun setLatencyFrames(f: Int) { latencyFrames = f }
 
     fun play() { cmds.add(arrayOf<Any?>("play")) }
@@ -402,7 +426,7 @@ class Engine(private val rate: Int) {
     /** Fill out with frames of interleaved stereo. */
     fun render(out: FloatArray, frames: Int) {
         val nanos = nanoTime()
-        val S = snap
+        val S = snap.load()
         // the step length first: notes started by this block's commands fit loops to the tempo (SE-4)
         if (S != null) spbNow = spb(S)
         while (true) { val c = cmds.poll() ?: break; command(S, c, nanos) }
@@ -417,18 +441,26 @@ class Engine(private val rate: Int) {
         filterBlock(S)
         padFilters(frames)
         padBlock(S!!, frames)
+        // Accounts (Nov 24): the steps fire from N, which starts as this block's snapshot and becomes the armed one the
+        // moment it goes in at the top of a loop
+        var N: Snapshot = S
         var done = 0
         while (done < frames) {
             var chunk = frames - done
             if (playing) {
                 val until = ceil(nextStepAt).toLong() - frame
-                if (until <= 0) { fireStep(S); continue }
+                if (until <= 0) {
+                    fireStep(N)
+                    // an armed snapshot went in at the top of the loop: the rest of this block, step 0 first, plays from it
+                    if (swapped) { swapped = false; N = snap.load() ?: N }
+                    continue
+                }
                 chunk = minOf(chunk.toLong(), until).toInt()
             } else if (freeOn || beatOn) {
                 val uf = if (freeOn) ceil(freeNextAt).toLong() - frame else Long.MAX_VALUE
                 val ub = if (beatOn) ceil(beatNextAt).toLong() - frame else Long.MAX_VALUE
-                if (uf <= 0) { fireFree(S); continue }
-                if (ub <= 0) { fireBeat(S); continue }
+                if (uf <= 0) { fireFree(N); continue }
+                if (ub <= 0) { fireBeat(N); continue }
                 chunk = minOf(chunk.toLong(), minOf(uf, ub)).toInt()
             }
             mix(out, done, chunk)
@@ -436,7 +468,7 @@ class Engine(private val rate: Int) {
             frame += chunk
         }
         soundBuses(out, frames)
-        effects(S, out, frames)
+        effects(N, out, frames)
         for (k in 0 until frames * 2) out[k] += dryBuf[k]
         if (!bypassMaster) master(out, frames)
         uiFrame = frame - frames
@@ -538,6 +570,7 @@ class Engine(private val rate: Int) {
                 nextStepAt = frame + .004 * rate
             }
             "pause" -> {
+                armed = null
                 if (!playing) return
                 countUi = 0
                 val heard = floor(nowStep(S!!, renderNanos, renderNanos)).toInt()
@@ -546,6 +579,7 @@ class Engine(private val rate: Int) {
                 playing = false; paused = true
             }
             "stop" -> {
+                armed = null
                 countLeft = 0; countUi = 0
                 if (!playing && !paused) releaseAll(.03f)
                 fxStut = false; fxTape = false
@@ -553,6 +587,7 @@ class Engine(private val rate: Int) {
                 hHead = -1
                 dropLocks()
             }
+            "arm" -> { armed = c[1] as Snapshot?; armedToken = c[2] as Int }
             "panic" -> {
                 for (v in pool) v.active = false
                 for (m in pMod) m.fill(0f)
@@ -838,7 +873,24 @@ class Engine(private val rate: Int) {
     /** Beats of count-in still to come (4, 3, 2, 1), 0 when the loop is running. Read by the screen. */
     @Volatile @JvmField var countUi = 0
 
-    private fun fireStep(S: Snapshot) {
+    /**
+     * The top of the loop: the armed snapshot goes in, if it was built on the snapshot playing now (the same seq).
+     * compareAndSet, so one the main thread set since the check is never written over; then it waits another pass.
+     * Returns the snapshot that went in, or null. No locks, nothing allocated.
+     */
+    private fun wrapSwap(): Snapshot? {
+        val a = armed ?: return null
+        val cur = snap.load()
+        if (cur == null || a.seq != cur.seq) return null
+        if (!snap.compareAndSet(cur, a)) return null
+        armed = null
+        swapped = true
+        swapToken = armedToken
+        return a
+    }
+
+    private fun fireStep(S0: Snapshot) {
+        var S = S0
         if (countLeft > 0) {
             // the count-in: a click on every beat, the first one high, and the loop waits at its top
             val k = countTotal - countLeft
@@ -860,10 +912,16 @@ class Engine(private val rate: Int) {
             nextStepAt += spb(S)
             return
         }
-        val pi = playingPat(S)
-        val P = if (pi >= 0) S.pats[pi] else null
-        val len = if (P != null) P.len else 16
-        if (step >= len) step = 0
+        var pi = playingPat(S)
+        var P = if (pi >= 0) S.pats[pi] else null
+        var len = if (P != null) P.len else 16
+        if (step >= len) {
+            step = 0
+            // the loop got shorter under the playhead: that is a top of the loop too, so an armed snapshot goes in
+            // here and this very step plays from it
+            val a = wrapSwap()
+            if (a != null) { S = a; pi = playingPat(S); P = if (pi >= 0) S.pats[pi] else null; len = if (P != null) P.len else 16 }
+        }
         if (stopAfter >= 0 && fired >= stopAfter) { playing = false; return }
         var spb = spb(S); var rateMul = oct()
         var mute = false
@@ -947,7 +1005,12 @@ class Engine(private val rate: Int) {
         if (step >= len) {
             step = 0
             loops++
-            if (S.songMode) songPos = (songPos + 1) % maxOf(1, S.songLen)
+            // an armed snapshot goes in here, before step 0 of the new pass is fired; a song moves on to its next
+            // slot by the length of the song now playing
+            val song = S.songMode
+            val a = wrapSwap()
+            if (a != null) S = a
+            if (song) songPos = (songPos + 1) % maxOf(1, S.songLen)
         }
     }
 
@@ -1221,7 +1284,7 @@ class Engine(private val rate: Int) {
     private fun mix(out: FloatArray, off: Int, n: Int) {
         val chokeK = exp(-1.0 / (.006 * rate)).toFloat()
         val gateDiv = maxOf(1.0, spbNow * gateSteps)
-        val SN = snap
+        val SN = snap.load()
         for (v in pool) {
             if (!v.active) continue
             if (v.syn && SN != null && v.pad >= 0 && v.pad < SN.pads.size) {
@@ -1769,7 +1832,7 @@ class Engine(private val rate: Int) {
     /** A gentle compressor (about where the site's sits) and a soft clip, so stacked pads do not crack. */
     private fun master(out: FloatArray, frames: Int) {
         // squash .5 is where the bus always sat: -10 dB, 4 to 1, 1.25 makeup. 0 is no squash, 1 is -20 dB, 7 to 1
-        val S0 = snap
+        val S0 = snap.load()
         val sq = if (S0 == null) .5f else maxOf(0f, minOf(1f, S0.squash)); val lvl = if (S0 == null) 1f else S0.level
         val thr = 10.0.pow((-sq).toDouble()).toFloat(); val ratio = 1 + 6 * sq; val makeup = (1 + .5f * sq) * lvl
         for (k in 0 until frames) {
@@ -1808,7 +1871,7 @@ class Engine(private val rate: Int) {
         sEchoL = FloatArray((2.2 * rate).toInt())
         sEchoR = FloatArray((2.2 * rate).toInt())
         pfQ.fill(.7); pfQT.fill(.7)
-        snap = Snapshot.build(Project(), SampleSource { null }, null)
+        snap.store(Snapshot.build(Project(), SampleSource { null }, null))
     }
 
     companion object {
@@ -1951,7 +2014,7 @@ class Engine(private val rate: Int) {
             q.songMode = song && q.songLen() > 0
             val S = Snapshot.build(q, src, Live())
             val e = Engine(rate)
-            e.snap = S
+            e.snap.store(S)
             e.restHomes(S)
             var total = 0L
             if (q.songMode) for (k in 0 until q.songLen()) total += if (q.song[k] >= 0) q.pats[q.song[k]].len else 16
