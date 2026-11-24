@@ -9,7 +9,12 @@ cp index.html mm.css *.js faq.json dist/
 cp ../engine/out/engine.js dist/
 # every icon the app has
 cp $R/app/src/main/res/drawable-nodpi/ic_*.png dist/icons/
-cp $R/app/src/main/res/font/*.ttf dist/fonts/
+# Latin-only WOFF2 copies of the app's fonts (Rubik Distressed alone goes from 892 KB to about 200 KB)
+command -v pyftsubset >/dev/null || pip install -q fonttools brotli
+for f in $R/app/src/main/res/font/*.ttf; do
+  pyftsubset "$f" --flavor=woff2 --layout-features='*' --output-file="dist/fonts/$(basename "${f%.ttf}").woff2" \
+    --unicodes='U+0000-00FF,U+0131,U+0152-0153,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2190-21FF,U+2212,U+2215,U+25A0-25FF,U+2600-26FF,U+2713-2717'
+done
 cp $R/app/src/main/assets/sounds/library.json dist/
 python3 - "$R/app/src/main/assets/sounds" dist/snd <<'PY'
 # Sounds travel in chunks (one JSON of base64 FLAC per jar, hits and loops split by size) so a publish stays under

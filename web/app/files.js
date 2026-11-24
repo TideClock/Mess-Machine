@@ -28,10 +28,10 @@ export function openMenu() {
       h('button', { class: 'btn', 'data-faq': 'files', onclick: openFiles }, 'Pour it out (WAV, stems, MIDI)'),
       h('button', { class: 'btn', 'data-faq': 'learn', onclick: openLearn }, 'Learn'),
       h('button', { class: 'btn', 'data-faq': 'settings', onclick: openSettings }, 'Settings'),
-      h('button', { class: 'btn', 'data-faq': 'notes-open', onclick: openNotes }, 'Notes for Claude'),
+      window.parent !== window ? null : h('button', { class: 'btn', 'data-faq': 'notes-open', onclick: openNotes }, 'Notes for Claude'),
       h('button', { class: 'btn', disabled: !U.redo.length, onclick: () => { doRedo(); closeSheet(); } }, 'Redo'),
       h('button', { class: 'btn', onclick: openAbout }, 'About this web build'),
-      window.parent !== window ? h('button', { class: 'btn y', onclick: () => { closeSheet(); window.parent.postMessage({ t: 'mm-close' }, '*'); } }, 'Back to the lab') : null));
+));
 }
 
 /* ----- messes ----- */

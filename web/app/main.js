@@ -1,7 +1,7 @@
 // Mess Machine (web): the shell. Top bar, loop strip, bottom dock, tab slot, Perform and Sounds tabs, tempo, key and
 // repeat sheets, the playhead, recording and boot. The other screens live in play.js, seq.js, synth.js, sample.js, files.js.
 import { S, M, U, A, LIBS, UI, h, fill, $, key, pick, flick, sheet, closeSheet, field, chooser, toast, sayUndo, edit, live, call, post, wake, ensure, loadKit,
-  loadOwn, ownKeys, forgetOwn, entryOf, kitKey, titleOf, padCol, store, trail, faqTap, LETTERS, LC, NN, pat, usedLoop, songArr, songLen, doUndo, closeTake, reread, send,
+  loadOwn, ownKeys, forgetOwn, adoptOwn, entryOf, kitKey, titleOf, padCol, store, trail, faqTap, LETTERS, LC, NN, pat, usedLoop, songArr, songLen, doUndo, closeTake, reread, send,
   sendLive, autosave, pct, SCRATCH } from './core.js';
 import { T as _T } from './core.js';
 import { renderPads, restFx, switchHold, releaseHolds, switchChords, chordModeLabel, togglePack, openPackPicker, wireDrop, openHoldTray, melodicDown } from './play.js';
@@ -62,6 +62,21 @@ function fromEngine(m) {
 }
 const T = () => _T;
 
+/* ================= the site around us ================= */
+
+/** True when the machine runs inside the site's room (an iframe), not on its own. */
+const EMBED = window.parent !== window;
+const SITE_ORIGIN = location.origin === 'null' ? '*' : location.origin;
+function toSite(msg) { if (EMBED) window.parent.postMessage(msg, SITE_ORIGIN); }
+if (EMBED) {
+  addEventListener('message', (e) => {
+    if (e.source !== window.parent || !e.data) return;
+    if (e.data.t === 'mm-hush') { if (S.playing) stop(); try { A.ctx && A.ctx.suspend(); } catch {} }
+  });
+  addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#sheet').classList.contains('on')) toSite({ t: 'mm-close' }); });
+}
+addEventListener('pointerdown', () => wake(), true);
+
 /* ================= top bar ================= */
 
 function renderTop() {
@@ -80,6 +95,7 @@ function renderTop() {
     h('span', { class: 'gap' }),
     key('help-toggle', 'FAQ', { icon: 'what_the_faq', tile: 'var(--t-other)', on: S.faq, onclick: () => { S.faq = !S.faq; document.body.classList.toggle('faq', S.faq); toast(S.faq ? 'Tap anything to learn what it is. Tap FAQ again to play.' : 'Back to playing.'); renderTop(); } }),
     key('menu', 'Menu', { icon: 'settings', tile: 'var(--t-other)', onclick: openMenu, sw: false }),
+    EMBED ? key('close', 'Lab', { icon: 'close', tile: 'var(--t-other)', onclick: () => toSite({ t: 'mm-close' }), sw: false }) : null,
   );
 }
 UI.top = renderTop;
@@ -98,7 +114,7 @@ function loopLcd(text) {
 function togglePlay() {
   wake();
   if (S.playing) { call('pause'); S.playing = false; trail('pause'); }
-  else { if (M.mode === 'song' && !songLen()) edit(() => T().setSongMode(false)); S.follow = true; call('play', S.rec ? S.countBars * 16 : 0); S.playing = true; trail('play'); }
+  else { if (M.mode === 'song' && !songLen()) edit(() => T().setSongMode(false)); S.follow = true; call('play', S.rec ? S.countBars * 16 : 0); S.playing = true; trail('play'); toSite({ t: 'mm-playing' }); }
   closeTake(); paint();
 }
 function stop() {
@@ -303,12 +319,16 @@ function renderSoundList(list, target) {
     return jar;
   }).filter(Boolean));
 }
-/** Sounds sent from the site's lab (a jar put on a pad) land on free pads here. */
-function drainInbox() {
+/** Sounds sent from the site's lab land on free pads here. An item carries the jar's key and, under `own`, the sound
+ *  as the site plays it (doctored, sliced or imported), already in this machine's sound store. */
+async function drainInbox() {
   let q = []; try { q = JSON.parse(localStorage.getItem('mmweb.inbox') || '[]'); localStorage.removeItem('mmweb.inbox'); } catch {}
-  for (const k of q) {
+  for (const it of q) {
+    const o = typeof it === 'string' ? { k: it } : it;
+    let k = o.k;
+    if (o.own && (o.edited || !entryOf(k)) && await adoptOwn(o.own, o.t || 'From the lab')) k = o.own;
     if (M.kit.includes(k)) continue;
-    if (!entryOf(k)) { toast('That sound only lives on the site, so it cannot go on the machine.'); continue; }
+    if (!entryOf(k)) { toast('That jar did not make it over. Put it on a pad again.'); continue; }
     const free = M.kit.slice(0, 64).findIndex((x) => !x);
     if (free < 0) { toast('All 64 pads are full. Clear one first.'); break; }
     putOnPad(k, free);
@@ -381,7 +401,7 @@ function openRepeat() {
 const TABS = [['play', 'Play', 'play_tab'], ['synth', 'Synth', 'synth'], ['seq', 'Seq', 'steps'], ['perform', 'Perform', 'fx'], ['sounds', 'Sounds', 'sounds']];
 function renderTabs() {
   fill($('#tabs'),
-    key('notes', 'Note', { icon: 'notes_bug', tile: 'var(--t-place)', onclick: openNotes, sw: false }),
+    EMBED ? null : key('notes', 'Note', { icon: 'notes_bug', tile: 'var(--t-place)', onclick: openNotes, sw: false }),
     h('div', { id: 'tabslot' }, TABS.map(([id, word, icon]) => key('tab-' + word, word, { icon, tile: 'var(--t-place)', on: S.tab === id,
       onclick: () => { if (id !== 'sounds') S.pickFor = -1; S.tab = id; S.mode = null; trail('tab ' + word); paint(); $('#page').scrollTop = 0; } }))));
 }

@@ -140,6 +140,18 @@ function idb() {
   if (!idbP) idbP = new Promise((res, rej) => { const q = indexedDB.open('mmweb', 1); q.onupgradeneeded = () => q.result.createObjectStore('snd'); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); });
   return idbP;
 }
+/** Take a sound the site put in the store (IndexedDB mmweb/snd) under `key`. */
+export async function adoptOwn(key, title) {
+  if (own.has(key) && LIBS.LIB[key]) return true;
+  try {
+    const db = await idb();
+    const v = await new Promise((res) => { const t = db.transaction('snd', 'readonly'); const q = t.objectStore('snd').get(key); q.onsuccess = () => res(q.result); q.onerror = () => res(null); });
+    if (!v) return false;
+    own.set(key, new Uint8Array(v)); store.set('own.' + key, title);
+    LIBS.LIB[key] = { k: key, t: title, c: 'mine', f: '', ty: 'mine', q: [] };
+    return true;
+  } catch { return false; }
+}
 export async function loadOwn() {
   try {
     const db = await idb();

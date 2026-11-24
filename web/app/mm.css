@@ -1,13 +1,13 @@
 /* Mess Machine (web): the Android app's panel Look, Classic skin. Numbers from shared/tokens.json at build 170. */
-@font-face{font-family:Worn;src:url(fonts/rubik_distressed.ttf)}
-@font-face{font-family:Stencil;src:url(fonts/black_ops_one.ttf)}
-@font-face{font-family:Lcd;src:url(fonts/share_tech_mono.ttf)}
-@font-face{font-family:Archivo;src:url(fonts/archivo_extrabold.ttf);font-weight:800}
-@font-face{font-family:Archivo;src:url(fonts/archivo_black.ttf);font-weight:900}
-@font-face{font-family:Archivo;src:url(fonts/archivo_medium.ttf);font-weight:500}
-@font-face{font-family:Bungee;src:url(fonts/bungee.ttf)}
-@font-face{font-family:Mono;src:url(fonts/plexmono_400.ttf)}
-@font-face{font-family:Mono;src:url(fonts/plexmono_700.ttf);font-weight:700}
+@font-face{font-family:Worn;src:url(fonts/rubik_distressed.woff2) format('woff2');font-display:swap}
+@font-face{font-family:Stencil;src:url(fonts/black_ops_one.woff2) format('woff2');font-display:swap}
+@font-face{font-family:Lcd;src:url(fonts/share_tech_mono.woff2) format('woff2');font-display:swap}
+@font-face{font-family:Archivo;src:url(fonts/archivo_extrabold.woff2) format('woff2');font-weight:800;font-display:swap}
+@font-face{font-family:Archivo;src:url(fonts/archivo_black.woff2) format('woff2');font-weight:900;font-display:swap}
+@font-face{font-family:Archivo;src:url(fonts/archivo_medium.woff2) format('woff2');font-weight:500;font-display:swap}
+@font-face{font-family:Bungee;src:url(fonts/bungee.woff2) format('woff2');font-display:swap}
+@font-face{font-family:Mono;src:url(fonts/plexmono_400.woff2) format('woff2');font-display:swap}
+@font-face{font-family:Mono;src:url(fonts/plexmono_700.woff2) format('woff2');font-weight:700;font-display:swap}
 
 :root{
   color-scheme:dark;
