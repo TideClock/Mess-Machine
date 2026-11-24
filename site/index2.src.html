@@ -108,6 +108,7 @@ main section.view.on{display:block}
 .drawer-top{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:24px}
 .drawer-top .spacer{flex:1}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:30px 26px}
+@media (max-width:520px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 14px}.drawer{padding:16px}.card h3{font-size:16px}.card .body{padding:10px}}
 .card{border:var(--stroke) solid var(--rule);background:var(--paper);display:grid;grid-template-rows:auto 1fr;position:relative;min-width:0;cursor:pointer;text-align:left;padding:0;font:inherit;color:inherit;transform:none;transition:transform .18s,box-shadow .18s}
 .card:hover,.card:focus-visible{transform:translate(-4px,-4px);box-shadow:8px 8px 0 var(--ink)}
 .card .tape{display:none;position:absolute;top:-12px;left:50%;width:84px;height:24px;transform:translateX(-50%) rotate(var(--tr,-4deg));background:color-mix(in srgb,var(--yellow) 80%,transparent);border:1px solid #00000022;z-index:1}
@@ -160,6 +161,12 @@ dl.specs dd{margin:0}
 .lamp{display:flex;align-items:center;gap:12px}
 .posts{display:grid;grid-template-columns:minmax(0,280px) minmax(0,1fr);gap:40px;align-items:start}
 .postlist{display:grid;border-top:var(--stroke) solid currentColor}
+#post,#tvset{scroll-margin-top:90px}
+/* the heap: piles fold shut, tap a song to open it (ROOM-17) */
+details.pile > summary{list-style:none;cursor:pointer}
+details.pile > summary::-webkit-details-marker{display:none}
+details.pile > summary small::after{content:' \00b7 tap to open'}
+details.pile[open] > summary small::after{content:''}
 .postlist button{all:unset;cursor:pointer;display:grid;gap:2px;padding:14px 6px;border-bottom:var(--stroke-hair) solid currentColor}
 .postlist button:hover,.postlist button[aria-current="true"]{background:var(--yellow);color:#18161a}
 .postlist button:hover .spec,.postlist button[aria-current="true"] .spec{color:#18161a}
@@ -920,7 +927,7 @@ body.menu-open .guide-dragon,body.dragon-off .guide-dragon{display:none}
 .room.desk .tg{background:var(--ink);color:var(--paper)}
 .room.desk .doodle{display:none}
 .room.desk .live{max-width:100%}
-.garage-wrap{grid-area:garage;position:relative;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1.15fr 1fr}
+.garage-wrap{grid-area:garage;position:relative;display:grid;grid-template-columns:1fr;grid-template-rows:1.15fr 1fr}
 .garage-wrap .room.garage{grid-column:1 / -1}
 .room.garage b,.room.garage .live{max-width:58%}
 .room.bay{padding:10px 12px}.room.bay b{font-size:clamp(14px,1.4vw,18px)}.room.bay .doodle{display:none}.room.bay .live{font-size:10px}
@@ -944,11 +951,33 @@ body.night .band.ink,:root[data-theme="dark"] .band.ink{--bg:#000}
 .band.ink .bart img{filter:drop-shadow(10px 10px 0 var(--pink))}
 @media (max-width:860px){.homehero{grid-template-columns:1fr;padding-bottom:10px}.homehero h1{margin-top:6px}.homehero .mf.squig{display:none}.hh-art{display:none}.band .wrap{grid-template-columns:1fr}.band.flip .bart{order:0}.band .bart{width:min(76%,300px)}}
 @media (max-width:760px){
-  .house{grid-template-columns:1fr 1fr;grid-template-rows:110px auto auto 300px 22px auto auto;grid-template-areas:"roof roof" "bed study" "kit work" "garage garage" "grnd grnd" "lab lab" "desk arc"}
+  .house{grid-template-columns:1fr 1fr;grid-template-rows:110px auto auto auto 22px auto auto;grid-template-areas:"roof roof" "bed study" "kit work" "garage garage" "grnd grnd" "lab lab" "desk arc"}
+  .garage-wrap{grid-template-columns:1fr 1fr;grid-template-rows:auto}
   .groof{display:none}
   .room{min-height:150px;padding:12px}
   .room .doodle{width:38%}
   .ground{margin-inline:-16px}
+}
+
+/* NSD-44: on a phone the whole house fits under the header, so every room is one tap with no scrolling */
+@media (max-width:520px){
+  .homehero{padding-top:10px;padding-bottom:6px;gap:6px}.homehero .hh-text{gap:6px}.homehero h1{font-size:34px;margin-top:2px;text-shadow:3px 3px 0 var(--pink)}
+  .homehero .kick{font-size:16px}.homehero .hh-text > p.spec{display:none}
+  .housewrap{padding:8px 0 4px}.house{grid-template-rows:58px auto auto auto 12px auto auto;padding-bottom:10px;margin-top:0}
+  .hatch{width:96px;height:34px;bottom:8px;left:calc(50% - 48px)}
+  .room{min-height:84px;padding:8px 10px;gap:2px}.room .live,.room .doodle{display:none}.room b{font-size:15px}.room .tg{margin-top:3px;font-size:10px;padding:2px 6px}
+  .room.desk{position:relative;right:auto;bottom:auto;width:auto;height:auto;margin:-1.5px;padding:8px 10px;border-color:var(--ink)}
+  .room.bay{padding:8px 10px}.room.garage b,.room.garage .live{max-width:none}
+  .walkinlink{margin:4px 0 0}.houselegend{padding-bottom:16px}
+  .garage-wrap .room.garage{grid-column:auto}
+}
+.hw{display:none}
+@media (max-width:620px){
+  .hbar .caret{display:none}
+  .hbar .hbtn,.hbar .rbtn{flex-direction:column;justify-content:center;gap:1px;min-height:46px;min-width:46px}
+  .hbar .hw,.hbar #walkbtn .wlab,.hbar #pocketbtn .pklabel{display:block;font:800 12px/1 var(--font-sans);letter-spacing:.02em;text-transform:none}
+  .hbar .pk{position:relative}.hbar .pk b{position:absolute;top:-8px;right:-8px;min-width:20px;height:20px;font-size:11px}
+  .hbar .radio{border:0;background:none;padding:0}.hbar #rplay{width:auto;height:auto;padding:6px 8px;border-radius:0;background:var(--yellow);color:#18161a;border:var(--stroke) solid var(--rule);box-shadow:var(--shadow-hard-s);gap:3px}
 }
 
 /* night: the house goes neon */
@@ -1550,11 +1579,11 @@ body.mmopen{overflow:hidden}
   <div class="wrap hbar">
     <a class="wordmark" href="#home" aria-label="Neat Shit and Dye, back to the house"><span class="wm-t">Neat Shit and Dye</span><img class="wm-i" src="img/dragon_mark.webp" alt="" width="38" height="44"></a>
     <div class="housenav">
-      <button class="hbtn" id="housebtn" aria-expanded="false" aria-controls="housemenu" aria-label="House menu: pick a room"><span class="hicon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M3 11 L12 3 L21 11 M5 10 V21 H19 V10" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><rect x="10" y="14" width="4" height="7" fill="currentColor"/></svg></span><span id="hereroom">The House</span><span aria-hidden="true" class="caret">&#9662;</span></button>
+      <button class="hbtn" id="housebtn" aria-expanded="false" aria-controls="housemenu" aria-label="House menu: pick a room"><span class="hicon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M3 11 L12 3 L21 11 M5 10 V21 H19 V10" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><rect x="10" y="14" width="4" height="7" fill="currentColor"/></svg></span><span id="hereroom">The House</span><span class="hw">House</span><span aria-hidden="true" class="caret">&#9662;</span></button>
       <div class="housemenu" id="housemenu" hidden></div>
     </div>
     <div class="radio" id="radio">
-      <button class="rbtn" id="rplay" aria-label="Play the house radio" aria-pressed="false"><span class="rglyph"></span></button>
+      <button class="rbtn" id="rplay" aria-label="Play the house radio" aria-pressed="false"><span class="rglyph"></span><span class="hw">Radio</span></button>
       <div class="rtext"><span class="rlabel" id="rlabel">House radio</span><span class="rnow" id="rnow">Off</span></div>
       <button class="rbtn small" id="rnext" aria-label="Next song">&#9654;&#9654;</button>
       <audio id="audio" preload="none"></audio>
@@ -1601,11 +1630,6 @@ body.mmopen{overflow:hidden}
       <p class="houselegend spec">Every room hides one card. Find all ten and something upstairs opens.</p>
     </div>
   </div>
-  <div class="bands">
-    <section class="band teal" aria-label="New in the house"><div class="wrap">
-      <div><p class="label">New in the house &middot; Basement Lab</p><h2>The Mess Machine got dirtier</h2><p>The sampler in the Specimen Lab was rebuilt to match the phone app: one Play tab for pads and keys, one row per sound in Steps, help behind the question mark, and a darker bench to work on. Walking the house got faster too.</p><a class="btn" href="#specimens">Go down to the lab</a></div>
-      <div class="bart"><img data-src="img/dotlady_art.webp" alt="" loading="lazy"></div></div></section>
-  </div>
 </section>
 
 <!-- SHOP -->
@@ -1614,16 +1638,6 @@ body.mmopen{overflow:hidden}
     <p>Everything got tossed in here. Dig around. Prices land when the store opens.</p></div>
   <div class="wrap section">
     <div class="drawer">
-      <div class="drawer-top">
-        <div class="chips" role="group" aria-label="Filter products" style="display:flex;gap:10px;flex-wrap:wrap">
-          <button class="btn ghost small" data-filter="all" aria-pressed="true">All</button>
-          <button class="btn ghost small" data-filter="shirt" aria-pressed="false">Tees</button>
-          <button class="btn ghost small" data-filter="mug" aria-pressed="false">Mugs</button>
-          <button class="btn ghost small" data-filter="plaque" aria-pressed="false">Wall junk</button>
-        </div>
-        <span class="spacer"></span>
-        <button class="btn small" id="shake">Shake the drawer</button>
-      </div>
       <div class="grid" id="grid"></div>
     </div>
   </div>
@@ -1682,7 +1696,7 @@ body.mmopen{overflow:hidden}
       <h1>Brother<br>wife</h1>
       <p class="tag">A band that's <em>also</em> a game show that <em>happens</em> to have a podcast.</p>
       <p>Out of the Pacific Northwest. Songs about leeches and octopus arms, live shows where somebody ends up eating an onion, and a podcast that is mostly arguing. Start with the hype reel. It is 99 seconds, because we value your time.</p>
-      <div class="bwstk"><span class="sticker">PNW</span><span class="sticker">Band</span><span class="sticker">Game show</span><span class="sticker">Podcast</span><span class="sticker">371 videos</span></div>
+      <div class="bwstk"><span class="sticker">PNW</span><span class="sticker">Band</span><span class="sticker">Game show</span><span class="sticker">Podcast</span></div>
       <div style="display:flex;flex-wrap:wrap;gap:16px"><a class="btn bw" href="#internship">Do our work for us</a><a class="btn bw alt" href="#bw-live">Every live episode</a></div>
     </div>
     <div class="bwtv">
@@ -1756,12 +1770,37 @@ body.mmopen{overflow:hidden}
     </div>
   </div>
 
+<div class="wrap section tvset" id="tvset">
+    <p class="label muted">Video</p><h2 class="display">Channel Nowhere</h2>
+    <p>Broadcasting from the back of the garage. Turn the knob to change the channel.</p>
+    <div class="tv">
+      <div class="screen" id="screen">
+        <canvas id="static"></canvas>
+        <video id="tvvideo" playsinline controls hidden></video>
+        <div class="osd" id="osd">CH 0</div>
+        <div class="nosig" id="nosig">No signal<small id="nosigsub">Nothing is on yet. Check back after dark.</small></div>
+      </div>
+      <div class="panel">
+        <button class="knob" id="knob" aria-label="Next channel"></button>
+        <span class="spec">CHANNEL</span>
+        <div class="grille" aria-hidden="true"></div>
+      </div>
+    </div>
+    <div class="tvguide" id="tvguide" aria-live="polite"></div>
+    <div class="guide" id="guide"></div>
+    <div class="drop" id="vdrop" hidden>
+      <p class="label">Put something on</p>
+      <p style="margin:0">Upload an MP4 or WebM (up to 20 MB). It becomes the next channel.</p>
+      <div class="field"><label class="label" for="vname">Show name</label><input id="vname" type="text" placeholder="Late Night Tape Abuse"></div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center"><input id="vfile" type="file" accept="video/mp4,video/webm"><button class="btn small" id="vup">Broadcast it</button><span class="spec" id="vstat"></span></div>
+    </div>
+  </div>
+
   <div class="wrap bwsec flyerwall">
     <img loading="lazy" src="img/bw_flyer.webp" alt="Hand-drawn flyer: Surrender the Crown, Saturday June 29, 21 and over, Brotherwife EP release with Isthmusia at Golden Day Lodge, 8 PM, 2711 6th St, Bremerton">
     <div>
       <h2>Flyer <span>wall</span></h2>
       <p class="lede">Hand-drawn, cut out with scissors, taped to a pole in Bremerton. The EP release show at Golden Day Lodge, with Isthmusia.</p>
-      <p class="spec">More flyers get pinned up here as they turn up in the sketchbooks.</p>
     </div>
   </div>
 
@@ -2064,7 +2103,7 @@ body.mmopen{overflow:hidden}
 </div>
 <div class="walk" id="walk" hidden>
   <canvas id="wcv" tabindex="0" aria-label="The house, seen from above. Arrow keys or WASD walk, E or Space looks at the thing in front of you, Escape goes back to the page."></canvas>
-  <div class="wtop"><div class="wroom" id="wroom"></div><span class="wsp"></span><button class="wbtn" id="wpockets">Pockets</button><button class="wbtn" id="wexit"><span class="wlong">Back to the </span>page</button></div>
+  <div class="wtop"><div class="wroom" id="wroom"></div><span class="wsp"></span><button class="wbtn" id="wpockets">Pockets</button><button class="wbtn" id="wexit">Stop walking</button></div>
   <div class="wsay" id="wsay" hidden role="status"></div>
   <div class="wprompt" id="wprompt" hidden aria-live="polite"></div>
   <button class="wroll" id="wroll" aria-label="Roll">Roll</button>
@@ -2132,33 +2171,6 @@ body.mmopen{overflow:hidden}
   <iframe id="mmframe" title="The Mess Machine" allow="autoplay; microphone; midi; screen-wake-lock"></iframe>
 </div>
 <!-- CHANNEL -->
-<section class="view" id="v-channel">
-  <div class="wrap pagehead"><p class="label muted">Video</p><h1 class="display">Channel Nowhere</h1>
-    <p>Broadcasting from the back of the garage. Turn the knob to change the channel.</p></div>
-  <div class="wrap section">
-    <div class="tv">
-      <div class="screen" id="screen">
-        <canvas id="static"></canvas>
-        <video id="tvvideo" playsinline controls hidden></video>
-        <div class="osd" id="osd">CH 0</div>
-        <div class="nosig" id="nosig">No signal<small id="nosigsub">Nothing is on yet. Check back after dark.</small></div>
-      </div>
-      <div class="panel">
-        <button class="knob" id="knob" aria-label="Next channel"></button>
-        <span class="spec">CHANNEL</span>
-        <div class="grille" aria-hidden="true"></div>
-      </div>
-    </div>
-    <div class="tvguide" id="tvguide" aria-live="polite"></div>
-    <div class="guide" id="guide"></div>
-    <div class="drop" id="vdrop" hidden>
-      <p class="label">Put something on</p>
-      <p style="margin:0">Upload an MP4 or WebM (up to 20 MB). It becomes the next channel.</p>
-      <div class="field"><label class="label" for="vname">Show name</label><input id="vname" type="text" placeholder="Late Night Tape Abuse"></div>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center"><input id="vfile" type="file" accept="video/mp4,video/webm"><button class="btn small" id="vup">Broadcast it</button><span class="spec" id="vstat"></span></div>
-    </div>
-  </div>
-</section>
 
 <!-- ARCADE -->
 <section class="view" id="v-arcade">
@@ -2199,26 +2211,6 @@ body.mmopen{overflow:hidden}
         </div>
       </div>
     </div>
-    <div class="hiscore">
-      <h2>Hall of Shame</h2>
-      <div class="boards">
-        <div class="board"><h3>City of Rags</h3><ol id="hs-rags"></ol></div>
-        <div class="board"><h3>Thar' Be (Robot)Monsters!</h3><ol id="hs-tharbe"></ol></div>
-        <div class="board"><h3>Ergot Pizza Party</h3><ol id="hs-bw"></ol></div>
-        <div class="board"><h3>Doodle Quest</h3><ol id="hs-dq"></ol></div>
-      </div>
-      <form class="sign" id="hsform">
-        <div class="initials" role="group" aria-label="Your three initials">
-          <div class="ltr"><button type="button" data-l="0" data-d="1" aria-label="Next letter, first initial">&#9650;</button><output id="hs-l0">A</output><button type="button" data-l="0" data-d="-1" aria-label="Previous letter, first initial">&#9660;</button></div>
-          <div class="ltr"><button type="button" data-l="1" data-d="1" aria-label="Next letter, second initial">&#9650;</button><output id="hs-l1">A</output><button type="button" data-l="1" data-d="-1" aria-label="Previous letter, second initial">&#9660;</button></div>
-          <div class="ltr"><button type="button" data-l="2" data-d="1" aria-label="Next letter, third initial">&#9650;</button><output id="hs-l2">A</output><button type="button" data-l="2" data-d="-1" aria-label="Previous letter, third initial">&#9660;</button></div>
-        </div>
-        <label>Game<select id="hs-game"><option value="rags">City of Rags</option><option value="tharbe">Thar' Be (Robot)Monsters!</option><option value="bw">Ergot Pizza Party</option><option value="dq">Doodle Quest</option></select></label>
-        <label>Score<input id="hs-score" type="number" min="0" max="99999999" inputmode="numeric" placeholder="0"></label>
-        <button class="coin" type="submit" style="animation:none">Sign the board</button>
-        <span class="spec" id="hs-stat" style="flex-basis:100%">Honor system. One line per player per game. Your best one stays up.</span>
-      </form>
-    </div>
   </div>
 </section>
 
@@ -2228,7 +2220,7 @@ body.mmopen{overflow:hidden}
     <p>Late-night notes on truth, faith, choice and why the phone feels like the inside of your own head. Kept exactly as written, typos and all.</p>
     <div class="lamp"><button class="btn ghost small" id="lamp" aria-pressed="false">Turn the lamp off</button><span class="spec">Best read at 3 a.m.</span></div></div>
   <div class="wrap section posts">
-    <div class="postlist" id="postlist" role="list"></div>
+    <div class="postlist" id="postlist"></div>
     <article class="notebook" id="post" aria-live="polite"></article>
   </div>
 </section>
@@ -2308,19 +2300,17 @@ body.mmopen{overflow:hidden}
       <div class="thumbs" id="m-thumbs" role="group" aria-label="Product versions"></div>
       <dl class="specs" id="m-specs"></dl>
       <div><button class="btn keepbtn" id="m-add" aria-pressed="false">&#9734; Keep in Pockets</button></div>
-      <p class="spec" style="margin:0">Buying opens when the store does. Kept things wait in your Pockets.</p>
+      <p class="spec" style="margin:0" id="m-ask">Kept things wait in your Pockets.</p>
     </div>
   </div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-<script type="importmap">
-{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
-</script>
 <script type="module">
 const $ = s => document.querySelector(s);
 /* the same source also builds the Brotherwife site: the band page, the lab, Channel Nowhere and the intern desk, without the store */
-const BWS = window.NSD_SITE === 'bw', BW_VIEWS = ['brotherwife', 'shop', 'specimens', 'crawlspace', 'channel', 'internship'];
+const BWS = window.NSD_SITE === 'bw', BW_VIEWS = ['brotherwife', 'shop', 'specimens', 'crawlspace', 'internship'];
+/* the band's Merch room stays shut until it has designs (NSD-39); see the check after DESIGNS */
 if (BWS) document.documentElement.classList.add('bws');
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -2331,12 +2321,18 @@ let actx;
 function ac(){ if(!actx) actx = new (window.AudioContext||window.webkitAudioContext)(); if(actx.state==='suspended') actx.resume(); return actx; }
 
 /* ---------- routing ---------- */
-const VIEWS = ['home','shop','emporium','noise','brotherwife','internship','specimens','channel','arcade','ramblings','bio','attic','crawlspace'];
+/* Games still private on claude.ai: their cabinets stay dark until Tyler shares them. Take an id out once it is shared. */
+const PRIVATE_GAMES = ['5MuQpjkQWHLBtDNEshbXHm', 'LwVWvSKjJFwW34svttcnGf', '8rq3wcsXxT7wUbkThCfaXm'];
+const gamePrivate = u => PRIVATE_GAMES.some(id => String(u).includes(id));
+document.querySelectorAll('a.coin[data-coin]').forEach(a => { if (!gamePrivate(a.href)) return; const cab = a.closest('.cab');
+  if (cab.id === 'cab-bwband') cab.closest('.bwsec').hidden = true; else cab.hidden = true; });
+const VIEWS = ['home','shop','emporium','noise','brotherwife','internship','specimens','arcade','ramblings','bio','attic','crawlspace'];
 const NAVOF = {internship:'brotherwife'};
 const onShow = {}, onHide = {};
 let curView = null;
 function show(){
   let h = (location.hash||'#home').slice(1);
+  if (h === 'channel') h = 'tvset'; /* Channel Nowhere lives on the band page now (NSD-37) */
   if (BWS && (h === 'home' || h === '' || (VIEWS.includes(h) && !BW_VIEWS.includes(h)))) h = 'brotherwife';
   if (!VIEWS.includes(h) && document.getElementById(h)) { const sec = document.getElementById(h).closest('section.view'); if (sec && sec.classList.contains('on')) return; }
   const v = VIEWS.includes(h) ? h : (document.getElementById(h)?.closest('section.view')?.id.slice(2) || 'home');
@@ -2348,7 +2344,7 @@ function show(){
   if (typeof mpSet === 'function') mpSet({view:v});
   if (BWS) document.querySelectorAll('.bwnav a').forEach(a => a.setAttribute('aria-current', a.getAttribute('href') === '#' + (v === 'crawlspace' ? 'specimens' : v) ? 'page' : 'false'));
   onShow[v] && onShow[v]();
-  if (v !== 'channel') stopStatic();
+  if (v !== 'brotherwife') stopStatic();
   if (!VIEWS.includes(h) && document.getElementById(h)) setTimeout(() => document.getElementById(h).scrollIntoView(), 30);
 }
 addEventListener('hashchange', () => { const h = location.hash.slice(1); show(); if (VIEWS.includes(h) || !h) scrollTo(0,0); });
@@ -2380,52 +2376,31 @@ const PRODUCTS = [];
 for (const [k,d] of Object.entries(DESIGNS)) for (const kind of d.kinds)
   PRODUCTS.push({id:`${k}-${kind}`, design:k, kind, name: d.title + (kind==='plaque' ? ' Plaque' : kind==='shirt' ? ' Tee' : ' Mug'), img:`img/${k}_${kind}.jpg`, sticker: kind==='shirt' ? d.sticker : null});
 const byId = Object.fromEntries(PRODUCTS.map(p => [p.id,p]));
-let filter = 'all', cart = 0;
+if (BWS && !PRODUCTS.length) BW_VIEWS.splice(BW_VIEWS.indexOf('shop'), 1);
+let cart = 0;
 function tilt(){ return (Math.random()*8-4).toFixed(1)+'deg'; }
 function renderGrid(){
   const g = $('#grid'); g.innerHTML = '';
-  document.querySelector('#v-shop .drawer-top').hidden = !PRODUCTS.length;
   if (!PRODUCTS.length){ g.innerHTML = `<div class="merchempty" style="grid-column:1 / -1"><h2>The merch table is being set up</h2><p class="spec" style="margin:0;color:#c4a1ff">New Brotherwife shirts and mugs land here. Prices land when the store opens.</p></div>`; return; }
-  PRODUCTS.filter(p => filter==='all' || p.kind===filter).forEach(p => {
+  /* one card per design; the popup switches tee, mug and plaque */
+  Object.entries(DESIGNS).forEach(([k, d]) => {
+    const p = byId[`${k}-shirt`] || byId[`${k}-${d.kinds[0]}`];
     const b = document.createElement('button'); b.className='card'; b.type='button';
     b.style.setProperty('--r', tilt()); b.style.setProperty('--tr', (Math.random()*10-5).toFixed(1)+'deg');
-    b.setAttribute('aria-label', `${p.name}, ${KINDS[p.kind]}`);
+    const kinds = d.kinds.map(x => ({plaque:'plaque', shirt:'tee', mug:'mug'})[x]).join(', ');
+    b.setAttribute('aria-label', `${d.title}: ${kinds}`);
     b.innerHTML = `<span class="tape" aria-hidden="true"></span><div class="media"><img src="${p.img}" alt="" loading="lazy"></div>
       ${p.sticker?`<span class="sticker ${p.sticker==='New'?'':'pink'} stk">${p.sticker}</span>`:''}
-      <div class="body"><span class="label muted">${KINDS[p.kind]}</span><h3>${esc(p.name)}</h3><span class="price">Price TBD</span></div>`;
+      <div class="body"><span class="label muted">${esc(kinds)}</span><h3>${esc(d.title)}</h3><span class="price">Price TBD</span></div>`;
     b.onclick = () => openProduct(p.id); g.appendChild(b);
   });
 }
 onShow.shop = renderGrid;
-$('#shake').onclick = () => { document.querySelectorAll('#grid .card').forEach(c => c.style.setProperty('--r', (Math.random()*14-7).toFixed(1)+'deg')); };
-document.querySelectorAll('[data-filter]').forEach(b => b.onclick = () => { filter=b.dataset.filter; document.querySelectorAll('[data-filter]').forEach(x => x.setAttribute('aria-pressed', String(x===b))); renderGrid(); });
 document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => openProduct(b.dataset.open));
 document.querySelectorAll('[data-wipeopen]').forEach(b => b.onclick = () => { openProduct(b.dataset.wipeopen+'-shirt'); showWipe(b.dataset.wipeopen); });
 
-let THREE, GLTFLoader, OrbitControls, renderer, raf, current;
-async function load3D(){ if (THREE) return; THREE = await import('three'); ({GLTFLoader} = await import('three/addons/loaders/GLTFLoader.js')); ({OrbitControls} = await import('three/addons/controls/OrbitControls.js')); }
-function stop3D(){ if (raf) cancelAnimationFrame(raf); raf=null; if (renderer){ renderer.dispose(); renderer=null; } }
-async function show3D(design){
-  const box = $('#m-viewer'); stop3D(); box.innerHTML = '<div class="status spec">Loading the 3D model...</div>';
-  try {
-    await load3D();
-    const b64 = await (await fetch(`models/${design}.txt`)).text();
-    const bin = Uint8Array.from(atob(b64.trim()), c => c.charCodeAt(0)).buffer;
-    const gltf = await new Promise((res, rej) => new GLTFLoader().parse(bin, '', res, rej));
-    if (current !== design+'-plaque') return;
-    box.innerHTML = ''; const canvas = document.createElement('canvas'); box.appendChild(canvas);
-    renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true}); renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.outputColorSpace = THREE.SRGBColorSpace;
-    const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(32,1,1,3000), controls = new OrbitControls(camera, canvas); controls.enableDamping = true;
-    scene.add(new THREE.HemisphereLight(0xffffff,0x6a5f70,1.1)); const key = new THREE.DirectionalLight(0xffffff,2.2); key.position.set(-120,160,220); scene.add(key);
-    const grp = new THREE.Group(); grp.add(gltf.scene); scene.add(grp);
-    const bb = new THREE.Box3().setFromObject(grp), c = bb.getCenter(new THREE.Vector3()), sz = bb.getSize(new THREE.Vector3()); gltf.scene.position.sub(c);
-    const dist = Math.max(sz.x,sz.y,sz.z)*2.1; camera.position.set(0,-dist*.15,dist); controls.update();
-    const size = () => { const r = box.getBoundingClientRect(); renderer && renderer.setSize(r.width, r.height, false); camera.aspect = r.width/r.height; camera.updateProjectionMatrix(); };
-    size(); new ResizeObserver(size).observe(box);
-    let t=0, spin=!reduce; canvas.addEventListener('pointerdown', () => spin=false);
-    const loop = () => { if (!renderer) return; if (spin){ t+=.012; grp.rotation.y=Math.sin(t)*.55; } controls.update(); renderer.render(scene,camera); raf=requestAnimationFrame(loop); }; loop();
-  } catch(e) { box.innerHTML = `<img loading="lazy" src="img/${design}_plaque.jpg" alt="">`; }
-}
+let current;
+const ASK_EMAIL = ''; /* the shop's "Ask for it" link shows once this has an address */
 function setView(p){
   current = p.id;
   document.querySelectorAll('#m-thumbs button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.id===p.id)));
@@ -2438,7 +2413,8 @@ function setView(p){
   const setKeep = () => { const k = pockets.has('product', p.id); $('#m-add').innerHTML = k ? '&#9733; In your Pockets' : '&#9734; Keep in Pockets'; $('#m-add').setAttribute('aria-pressed', String(k)); };
   $('#m-add').onclick = () => { pockets.toggle({type:'product', key:p.id, title:p.name, img:p.img, sub:KINDS[p.kind] + '. Price when the store opens.'}); setKeep(); };
   setKeep();
-  if (p.kind==='plaque') show3D(p.design); else { stop3D(); $('#m-viewer').innerHTML = `<img loading="lazy" src="${p.img}" alt="${esc(p.name)} mockup">`; }
+  $('#m-ask').innerHTML = ASK_EMAIL ? `<a href="mailto:${ASK_EMAIL}?subject=${encodeURIComponent('Neat Shit and Dye: ' + p.name)}">Want this one? Ask for it.</a>` : 'Kept things wait in your Pockets.';
+  $('#m-viewer').innerHTML = `<img loading="lazy" src="${p.kind === 'plaque' ? `img/${p.design}_plaque.webp` : p.img}" alt="${esc(p.name)} mockup">`;
 }
 let lastFocus;
 function openProduct(id){
@@ -2452,7 +2428,7 @@ function openProduct(id){
   $('#modal').hidden = false; setView(p); $('#m-close').focus();
 }
 function showWipe(design){
-  const d = DESIGNS[design]; stop3D(); current = design+'-wipe';
+  const d = DESIGNS[design]; current = design+'-wipe';
   document.querySelectorAll('#m-thumbs button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.wipe===design)));
   $('#m-kind').textContent = 'Drawn vs printed'; $('#m-title').textContent = d.title;
   $('#m-specs').innerHTML = '';
@@ -2468,7 +2444,7 @@ function showWipe(design){
   w.addEventListener('pointermove', move); w.addEventListener('pointerup', () => drag = false); w.addEventListener('pointercancel', () => drag = false);
   if (!reduce) { let t = 0; const intro = () => { if (drag || current !== design+'-wipe' || t > 1) return; t += .02; set(50 + Math.sin(t*Math.PI*2)*30); requestAnimationFrame(intro); }; setTimeout(intro, 350); }
 }
-function closeModal(){ $('#modal').hidden = true; stop3D(); current=null; lastFocus && lastFocus.focus(); }
+function closeModal(){ $('#modal').hidden = true; current=null; lastFocus && lastFocus.focus(); }
 $('#m-close').onclick = closeModal;
 $('#modal').addEventListener('click', e => { if (e.target.id==='modal') closeModal(); });
 addEventListener('keydown', e => { if (e.key==='Escape' && !$('#modal').hidden) closeModal(); });
@@ -2503,7 +2479,7 @@ const EMP = [
    body:'A cut template and foam that become a stand for a row of water bells, so the bowls sit at the right height and spacing to play. Add water to tune each one down.',
    claim:'What is claimed: soup bowls with ambition.'},
 ];
-$('#emp').innerHTML = `<div class="notice" style="grid-column:1/-1"><strong class="label">From the invention notebook.</strong> These are ideas and prototypes, not products yet. Nothing here ships until it works.</div>` +
+$('#emp').innerHTML = `` +
   EMP.map((e,i) => `<article class="patent"><div class="sheethead"><span>Sheet ${i+1} of ${EMP.length}</span><span>${e.status}</span></div>
   <div class="fig">${FIGS[e.fig]}<p class="cap">Fig. ${i+1}</p></div>
   <div class="txt"><h3 class="headline">${e.name}</h3>${e.alt?`<span class="spec">${e.alt}</span>`:''}
@@ -2519,8 +2495,10 @@ function openPost(i){
   $('#post').innerHTML = `<p class="spec" style="margin:0">${p.year} &middot; ${p.words} words</p><h2>${esc(p.title)}</h2>
     ${PULLS[p.slug] ? `<div class="pull">${esc(PULLS[p.slug])}</div>` : ''}${p.body.split(/\n\s*\n/).map(x => `<p>${linkify(x)}</p>`).join('')}`;
 }
-$('#postlist').innerHTML = POSTS.map((p,i) => `<button type="button" role="listitem" data-i="${i}"><span class="spec">${p.year}</span><strong>${esc(p.title)}</strong></button>`).join('');
-$('#postlist').querySelectorAll('button').forEach(b => b.onclick = () => openPost(+b.dataset.i));
+$('#postlist').innerHTML = POSTS.map((p,i) => `<button type="button" data-i="${i}"><span class="spec">${p.year}</span><strong>${esc(p.title)}</strong></button>`).join('');
+$('#postlist').querySelectorAll('button').forEach(b => b.onclick = () => { openPost(+b.dataset.i);
+  /* on a phone the post sits under the list: go to it (ROOM-6 in the review) */
+  if (matchMedia('(max-width:760px)').matches) $('#post').scrollIntoView({behavior: reduce ? 'auto' : 'smooth', block:'start'}); });
 openPost(0);
 $('#lamp').onclick = () => { const off = $('#v-ramblings').classList.toggle('lampoff'); $('#lamp').setAttribute('aria-pressed', String(off)); $('#lamp').textContent = off ? 'Turn the lamp on' : 'Turn the lamp off'; };
 
@@ -2563,7 +2541,7 @@ function nextTrack(dir){
 const fmt = s => isFinite(s) ? `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}` : '0:00';
 function pick(i, play){ ti=(i+TRACKS.length)%TRACKS.length; const t=TRACKS[ti]; audio.src=t.src; $('#now').textContent=t.title; $('#nowmeta').textContent=t.note;
   const lab = t.title.toUpperCase().slice(0, 34); $('#tapelabel').textContent = lab; $('#tapelabel').setAttribute('font-size', String(Math.max(11, Math.min(24, Math.floor(600/Math.max(lab.length, 10))))));
-  document.querySelectorAll('#tracks button[data-i]').forEach((b,j) => b.setAttribute('aria-current', String(ti===j))); if (play) start(); }
+  document.querySelectorAll('#tracks button[data-i]').forEach(b => b.setAttribute('aria-current', String(ti === +b.dataset.i))); if (play) start(); }
 function start(){
   try { const c = ac(); if (!analyser){ analyser=c.createAnalyser(); analyser.fftSize=1024; srcNode=c.createMediaElementSource(audio); srcNode.connect(analyser); analyser.connect(c.destination); drawScope(); } } catch(e){}
   audio.play().catch(() => toast('Tap play again to start the audio.'));
@@ -4125,7 +4103,8 @@ function runStatic(){
   loop();
 }
 function stopStatic(){ if (staticRaf) cancelAnimationFrame(staticRaf); staticRaf=null; const v=$('#tvvideo'); if (!v.paused) v.pause(); }
-onShow.channel = () => { if (ch < 0 || !channels[ch]) runStatic(); };
+onShow.channel = () => { if ((ch < 0 || !channels[ch]) && tvSeen) runStatic(); };
+let tvSeen = false;
 function tune(i){
   const v = $('#tvvideo'); knobA += 45; $('#knob').style.setProperty('--a', knobA+'deg');
   if (!channels.length){ ch=-1; $('#osd').textContent='CH 0'; v.hidden=true; $('#nosig').hidden=false; runStatic(); return; }
@@ -4144,7 +4123,7 @@ function renderClips(){
 }
 function renderGuide(){
   $('#guide').innerHTML = channels.length ? channels.map((c,i) => `<div><span class="display" style="font-size:22px">${i+1}</span><span class="headline" style="font-size:20px">${esc(c.title)}</span>${canEdit?`<button class="btn ghost small" data-vdel="${i}">Cancel show</button>`:`<button class="btn ghost small" data-vgo="${i}">Watch</button>`}</div>`).join('')
-    : `<div><span class="display" style="font-size:22px">0</span><span class="headline" style="font-size:20px">Test pattern</span><span class="spec">All day</span></div>`;
+    : '';
   document.querySelectorAll('[data-vgo]').forEach(b => b.onclick = () => tune(+b.dataset.vgo));
   document.querySelectorAll('[data-vdel]').forEach(b => b.onclick = async () => { if (b.dataset.sure!=='1'){ b.dataset.sure='1'; b.textContent='Really cancel?'; return; }
     const c = channels[+b.dataset.vdel]; try { await db.doc('videos/'+c.id).delete(); if (assets) await assets.delete(c.asset).catch(()=>{}); } catch(e){ toast('Could not cancel that show.'); } });
@@ -4173,7 +4152,7 @@ function renderTVGuide(){
   /* NSD-26: off the air is not empty. One daytime rerun, picked by the day, so the room is never just snow */
   const rr = !live ? BW_LIVE[Math.floor(now.getTime()/864e5) % BW_LIVE.length] : null;
   const rerun = rr ? `<div class="slot now"><span class="tm">NOW</span><span><span class="show">Daytime rerun</span><span class="what">${esc(rr[1])}</span></span><a class="btn small" href="https://youtu.be/${rr[0]}" target="_blank" rel="noopener">Watch</a></div>` : '';
-  if (rr && !channels.length) $('#nosigsub').textContent = 'A rerun is on below. The real lineup starts at 8 PM.';
+  if (!channels.length) $('#nosigsub').textContent = rr ? 'A rerun is on below. The real lineup starts at 8 PM.' : 'On the air: tune in from the guide below.';
   $('#tvguide').innerHTML = `<div class="gh"><b>Tonight on Channel Nowhere</b><span>${head}</span></div>` + rerun + slots.map(s => {
     const p = slotPick(s), isNow = s === live, done = now >= s.end;
     const act = isNow ? (p.kind==='tape' ? `<button class="btn small" data-tunein="${p.k}" data-off="${Math.floor((now - s.start)/1000)}">Tune in</button>`
@@ -4218,37 +4197,6 @@ let credits = 0;
 function coinSound(){ try { const c = ac(), o = c.createOscillator(), g = c.createGain(); o.type='square'; o.frequency.setValueAtTime(988,c.currentTime); o.frequency.setValueAtTime(1319,c.currentTime+.08);
   g.gain.setValueAtTime(.12,c.currentTime); g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.35); o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime+.36); } catch(e){} }
 document.querySelectorAll('[data-coin]').forEach(a => a.addEventListener('click', () => { coinSound(); credits++; $('#credits').textContent = 'CREDITS '+credits; }));
-/* hall of shame: one doc per player (scores/{their id}), best score per game */
-const ABC = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!?*';
-let ini = [0,0,0], scoresRows = [], myId = null;
-function drawIni(){ ini.forEach((n,i) => $('#hs-l'+i).textContent = ABC[n]); }
-document.querySelectorAll('.ltr button').forEach(b => b.onclick = () => { const l = +b.dataset.l; ini[l] = (ini[l] + +b.dataset.d + ABC.length) % ABC.length; drawIni(); coinSound(); });
-function renderBoards(){
-  for (const g of ['rags','tharbe','bw','dq']){
-    const rows = scoresRows.filter(r => Number.isFinite(r[g]?.score)).sort((a,b) => b[g].score - a[g].score).slice(0,10);
-    $('#hs-'+g).innerHTML = rows.length ? rows.map(r => `<li class="${r.id===myId?'me':''}"><b>${esc(String(r[g].ini||'???').slice(0,3))}</b><span>${r[g].score.toLocaleString()}</span></li>`).join('')
-      : '<li class="empty" style="display:block">Nobody yet. Be the first name up here.</li>';
-  }
-}
-renderBoards();
-async function wireScores(){
-  await capsReady;
-  if (!db){ $('#hs-stat').textContent = 'The board goes live on the store. Keep practicing.'; $('#hsform').querySelector('[type=submit]').disabled = true; return; }
-  try { myId = user ? await user.id() : null; } catch(e){}
-  try { db.collection('scores').onSnapshot(snap => { scoresRows = snap.docs.map(d => ({id:d.id, ...d.data()})); renderBoards(); }, () => {}); } catch(e){}
-  $('#hsform').onsubmit = async e => {
-    e.preventDefault();
-    const g = $('#hs-game').value, score = Math.floor(+$('#hs-score').value), initials = ini.map(n => ABC[n]).join('');
-    if (!Number.isFinite(score) || score <= 0){ $('#hs-stat').textContent = 'Type a score above zero. Honor system.'; return; }
-    if (!myId){ $('#hs-stat').textContent = 'Sign in to put your name on the wall.'; return; }
-    const mine = scoresRows.find(r => r.id === myId), prev = mine?.[g]?.score;
-    if (Number.isFinite(prev) && prev >= score){ $('#hs-stat').textContent = `Your ${prev.toLocaleString()} is still better. The board keeps your best.`; return; }
-    try { await db.doc('scores/'+myId).set({...(mine ? Object.fromEntries(Object.entries(mine).filter(([k]) => k!=='id')) : {}), [g]:{ini:initials, score}, at:new Date().toISOString()});
-      coinSound(); $('#hs-stat').textContent = `${initials} is on the wall. Shame achieved.`; $('#hs-score').value = ''; }
-    catch(err){ $('#hs-stat').textContent = 'You can look but not sign: this copy of the board is read-only for you.'; }
-  };
-}
-wireScores();
 
 /* ---------- bio evidence ---------- */
 const EVID = [['img/dragon_art.webp','Exhibit A: the dragon','shop'],['img/grandma_art.webp','Exhibit B: grandma','shop'],['img/dotlady_art.webp','Exhibit C: the lady','shop'],['img/glass_art.webp','Exhibit D: the window','shop'],['img/manyeyes_art.webp','Exhibit D2: too many eyes','shop']];
@@ -4287,7 +4235,7 @@ const BW_LIVE = [
 const BW_TNF = [['3KCtS_OOFQw','Episode 2',316],['c1rWf8kKnrw','Episode 0.04',261],['Sd_r8x9etZI','Episode 0.02',249],['PM05Pm8rw2g','Episode 1',224],['tkXRHZONYZ0','Episode 6',215],['WAUb8PxN0RU','Episode 0.05',208]];
 const BW_BREW = [['4fiyzB1KMXg','The Brew, Episode 65',null]];
 const BWCOL = ['#ff7a1a','#c4a1ff','#ffb547','#a78bfa'];
-const views = n => n == null ? '' : `${n.toLocaleString()} views`;
+const views = () => ''; /* view counts were typed in and went stale; the order still follows them (NSD-38) */
 const ytA = (id, title, cls, inner) => `<a class="${cls}" href="${ytUrl(id)}" target="_blank" rel="noopener" data-yt="${id}" data-t="${esc(title)}">${inner}</a>`;
 $('#bwhits').innerHTML = BW_HITS.map(([id,t,v,b],i) => ytA(id, t, 'vhs', `<span class="shell" style="--c:${BWCOL[i%4]}"><span class="lab"><b>${esc(t)}</b><small>${views(v)}</small></span><span class="win"><i></i><i></i></span><span class="rank">#${i+1}</span></span><p>${esc(b)}</p>`).replace('class="vhs"', `class="vhs" style="--r:${(((i*37)%9)-4)*.5}deg"`)).join('');
 const liveTop = [...BW_LIVE].sort((a,b) => b[2]-a[2]).slice(0,3).map(x => x[0]);
@@ -4552,19 +4500,19 @@ const ROOMS = [
   {id:'noise', room:'Studio', page:'Terrible Noise', tag:'Music', floor:'Garage', c:'#ff4fa3',
    how:['Put a tape in. It keeps playing on the house radio while you wander.','Star a song to keep it in your Pockets.']},
   {id:'shop', room:'Kitchen', page:'The Junk Drawer', tag:'Shop', floor:'Main floor', area:'kit', c:'#ffd23f',
-   how:['Tap a thing to see it up close.','Drag the bar to see the drawing behind the print, or recolor it.','Star it to keep it. Buying opens when the store does.']},
+   how:['Tap a design to see it up close.','Drag the bar to see the drawing behind the print, or recolor it.','Keep it in your Pockets.']},
   {id:'emporium', room:'Workshop', page:'Mr Dr Wethands Emporium', tag:'Inventions', floor:'Main floor', area:'work', c:'#c4a1ff',
    how:['Instruments that should not exist yet.','Read the claims. Nothing here ships until it works.']},
   {id:'brotherwife', room:'Garage', page:'Brotherwife', tag:'The band', floor:'Garage', c:'#ff7a1a',
-   how:['Tap a tape to watch it.','Hit the buzzer for a random one.']},
-  {id:'channel', room:'TV Corner', page:'Channel Nowhere', tag:'Video', floor:'Garage', c:'#7fd1ff',
+   how:['Tap a tape to watch it.','Hit the buzzer for a random one.','Channel Nowhere is the TV further down: shows air from 8 PM, a rerun plays in the daytime.']},
+  {id:'channel', room:'The band TV', page:'Channel Nowhere', tag:'Video', floor:'Garage', c:'#7fd1ff', hidden:true, merged:'brotherwife',
    how:['Shows air from 8 PM to 4 AM, your time. A rerun plays in the daytime.','Check the guide, then tune in.']},
   {id:'internship', room:'Intern Desk', page:'The Unpaid Internship', tag:'Make a song', floor:'Basement', area:'desk', c:'#ffb547',
    how:['Tap loops on and off to jam.','Light up squares in the song builder.','Bounce it to a WAV, then turn it in.']},
   {id:'specimens', room:'Basement Lab', page:'The Specimen Lab', tag:'Samples', floor:'Basement', area:'lab', c:'#00beb4',
    how:['Pick a big jar off the wall, then tap a specimen to hear it.','The dock at the bottom stars it, puts it on a pad, doctors it or flips it to its creature card.','Play, Steps, Roll and Song in the dock open the Mess Machine. Hold a pad for its menu, and the ? in the dock explains whichever part you are on.']},
   {id:'arcade', room:'Basement Arcade', page:'Coin-Op Purgatory', tag:'Games', floor:'Basement', area:'arc', c:'#ff4a2e',
-   how:['Insert a coin to play.','Post your score on the Hall of Shame.']},
+   how:['Insert a coin to play.']},
   {id:'attic', room:'Attic', page:'The Attic', tag:'Hidden', floor:'Attic', c:'#a87b4f', hidden:true},
   {id:'crawlspace', room:'Behind the Wall', page:'The Heap', tag:'Hidden', floor:'Basement', c:'#b39b5a', hidden:true},
 ];
@@ -4572,7 +4520,7 @@ const roomOpen = r => !r.hidden || (r.id === 'attic' ? ME.data.attic : r.id === 
 const ROOM_ACC = {ramblings:'teal', noise:'pink', shop:'yellow', channel:'riot', emporium:'teal', bio:'yellow', brotherwife:'pink', internship:'yellow', specimens:'teal', arcade:'pink'};
 ROOMS.forEach(r => { const a = ROOM_ACC[r.id]; if (a){ r.c = `var(--${a})`; r.on = `var(--on-${a})`; } else r.on = '#18161a'; });
 const ROOMBY = Object.fromEntries(ROOMS.map(r => [r.id, r]));
-const CARD_ROOMS = ROOMS.filter(r => !r.hidden).map(r => r.id);
+const CARD_ROOMS = ROOMS.filter(r => !r.hidden || r.merged).map(r => r.id);
 const FLOORS = ['Attic','Upstairs','Main floor','Garage','Basement'];
 /* NSD-17: floors sorted by what people come for */
 const FLOOR_WHAT = {Upstairs:'Words', 'Main floor':'Things', Garage:'Sound', Basement:'Make and play'};
@@ -4628,7 +4576,7 @@ function bumpPocket(){ const b = $('#pocketbtn'); b.animate && !reduce && b.anim
 function liveLine(id){
   try {
     switch(id){
-      case 'shop': return `${PRODUCTS.length} things in the drawer`;
+      case 'shop': return `${Object.keys(DESIGNS).length} designs in the drawer`;
       case 'channel': { const now = new Date(), sl = tonight(now), live = sl.find(s => now >= s.start && now < s.end); return live ? `On air: ${live.show}` : 'Off the air until 8 PM'; }
       case 'emporium': return `${EMP.length} inventions, 0 for sale`;
       case 'bio': return 'Case NSD-0001. Still at large.';
@@ -4636,7 +4584,7 @@ function liveLine(id){
       case 'noise': return audio && !audio.paused ? `Playing: ${TRACKS[ti].title}` : `${TRACKS.length} tapes on the shelf`;
       case 'specimens': return `${specimens.filter(s => s.cat !== 'heap').length} specimens in jars`;
       case 'arcade': { const all = scoresRows.flatMap(r => ['rags','tharbe','bw','dq'].map(g => r[g]).filter(Boolean)); const top = all.sort((a,b) => b.score - a.score)[0]; return top ? `Top score: ${top.ini} ${top.score.toLocaleString()}` : '4 cabinets, 0 quarters'; }
-      case 'brotherwife': return '371 videos and one game show';
+      case 'brotherwife': return 'A band, a game show and a podcast';
       case 'internship': return `${loops.length} loops, ${songs.length} song${songs.length===1?'':'s'} turned in`;
     }
   } catch(e){}
@@ -4659,7 +4607,7 @@ function renderHouse(){
     <a class="room porch" href="#bio" style="grid-area:study;--c:var(--yellow);--on:var(--on-yellow)" aria-label="Study: The Perpetrator, About"><span class="wallline" aria-hidden="true"></span><span class="tape" aria-hidden="true">POLICE LINE DO NOT CROSS</span>${DOODLE.bio}<span class="rm">Study</span><b>The Perpetrator</b><span class="tg">About</span>${ME.data.cards.includes('bio') ? '<span class="found">Card found</span>' : ''}</a>
     <div class="groof" aria-hidden="true"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><polygon class="rf" points="-1,25 100,100 -1,100" vector-effect="non-scaling-stroke"/></svg></div>
     ${roomLink(R('shop'))}${roomLink(R('emporium'))}
-    <div class="garage-wrap">${roomLink(R('brotherwife'), 'garage')}${roomLink(R('noise'), 'bay')}${roomLink(R('channel'), 'bay')}</div>
+    <div class="garage-wrap">${roomLink(R('brotherwife'), 'garage')}${roomLink(R('noise'), 'bay')}</div>
     <div class="ground" aria-hidden="true"></div>
     ${roomLink(R('specimens'), 'basement')}${roomLink(R('internship'), 'basement')}${roomLink(R('arcade'), 'basement')}`;
   wireHatch();
@@ -4816,14 +4764,16 @@ const GUIDE = {
   brotherwife:{day:['Hit the buzzer. It picks for you.'], night:['Band practice is louder at night. The neighbors agree.']},
   internship:{day:['Start with the drum loop, then add bass. Then ignore my advice.'], night:['Night interns get extra exposure. Still no pay.']},
   specimens:{day:['Flip a jar to its card, then start a fight.','Turn off Play on click if you are building a beat live.','There is a draft coming from somewhere behind the cabinets.'], night:['The lab lights flicker at night. They are fine. Probably.']},
-  arcade:{day:['Post a score. The board is on the honor system.'], night:['High scores posted after midnight count double. They do not.']},
+  arcade:{day:['Drop a coin. The game opens in its own tab.'], night:['The cabinets hum louder after midnight. They do not.']},
   attic:{day:['You made it. Mind the boxes.'], night:['You made it up here in the dark. Respect.']},
   crawlspace:{day:['Nobody sorted any of this. Nobody is going to.','Reach into the heap if you cannot decide.'], night:['It is colder back here. The jars hum a little.']},
 };
 let guideHidden = lsGet('nsd.guideSeen', false), guideIdx = 0;
 if (!guideHidden) lsSet('nsd.guideSeen', true);
 if (guideHidden){ $('#gbubble').hidden = true; $('#gdbtn').setAttribute('aria-expanded','false'); }
-let dragonTimer = null;
+let dragonTimer = null, dragonSaid = false;
+/* on a phone he leaves once his bubble closes, so he never sits on the house labels or room text */
+new MutationObserver(() => { if ($('#gbubble').hidden && matchMedia('(max-width:620px)').matches) document.body.classList.add('dragon-off'); }).observe($('#gbubble'), {attributes:true, attributeFilter:['hidden']});
 function guideSay(v, next){
   clearTimeout(dragonTimer); if (!guideHidden){ $('#gbubble').hidden = false; dragonTimer = setTimeout(() => { $('#gbubble').hidden = true; $('#gdbtn').setAttribute('aria-expanded','false'); }, 9000); }
   const g = GUIDE[v] || GUIDE.home, lines = isNight() ? [...(g.night||[]), ...(g.day||[])] : (g.day || g.night);
@@ -4868,10 +4818,11 @@ const ROOMCARDS = {
   arcade:{title:'City of Rags', kind:'fixed', art:'text:CITY OF RAGS', el:'mud', POW:81, GUT:63, SPD:28, WRD:72, note:'D'},
   attic:{title:'The Thing in the Attic', kind:'art', src:'img/notquiteright_art.webp', cursed:true},
 };
-const STUBSPOT = {shop:{right:'4%', top:'150px', r:'14deg'}, channel:{left:'2%', top:'64%', r:'-10deg'}, emporium:{right:'3%', top:'120px', r:'8deg'},
-  bio:{right:'6%', top:'190px', r:'-16deg'}, ramblings:{left:'2%', top:'92%', r:'12deg'}, noise:{right:'3%', top:'40px', r:'-8deg'},
-  brotherwife:{left:'48%', top:'97%', r:'18deg'}, internship:{right:'2%', top:'56%', r:'-12deg'}, specimens:{left:'1%', top:'420px', r:'10deg'},
-  arcade:{right:'3%', top:'40px', r:'-14deg'}};
+/* card corners sit in the empty strip under each room's set piece, never on words (NSD-38) */
+const STUBSPOT = {shop:{right:'6%', bottom:'26px', r:'14deg'}, channel:{sel:'#tvset', right:'2%', bottom:'14px', r:'-10deg'}, emporium:{right:'3%', bottom:'26px', r:'8deg'},
+  bio:{left:'4%', bottom:'26px', r:'-16deg'}, ramblings:{left:'3%', bottom:'26px', r:'12deg'}, noise:{right:'5%', bottom:'26px', r:'-8deg'},
+  brotherwife:{left:'48%', bottom:'14px', r:'18deg'}, internship:{right:'3%', bottom:'26px', r:'-12deg'}, specimens:{right:'4%', bottom:'120px', r:'10deg'},
+  arcade:{right:'3%', bottom:'26px', r:'-14deg'}};
 const hashN = s => { let h = 2166136261; for (const ch of s) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return Math.abs(h); };
 const ABIL = {POW:['Smash','Its first hit lands twice as hard.'], GUT:['Hangs Around','The first knockout leaves it standing with 1 GUT.'], SPD:['First Strike','Always swings first.'], WRD:['Mutate','On its first turn its element slides one step around the wheel.']};
 function finishCard(C, cursed){
@@ -4959,10 +4910,10 @@ async function showRoomCard(id, justFound){
 }
 function placeStubs(){
   Object.entries(STUBSPOT).forEach(([id, p]) => {
-    const sec = $('#v-'+id); if (!sec) return; sec.style.position = 'relative';
+    const sec = $(p.sel || '#v-'+id); if (!sec) return; sec.style.position = 'relative';
     let b = sec.querySelector(':scope > .stub');
     if (!b){ b = document.createElement('button'); b.className = 'stub'; sec.appendChild(b); b.onclick = () => collectCard(id); }
-    Object.assign(b.style, {left:p.left||'', right:p.right||'', top:p.top}); b.style.setProperty('--r', p.r);
+    Object.assign(b.style, {left:p.left||'', right:p.right||'', top:p.top||'', bottom:p.bottom||''}); b.style.setProperty('--r', p.r);
     const got = ME.data.cards.includes(id); b.classList.toggle('got', got);
     b.setAttribute('aria-label', got ? `${ROOMBY[id].room} card, already found. Look at it again.` : `Something is sticking out here`);
   });
@@ -5026,7 +4977,7 @@ const TOOLS = {
     label:'Something red is rolling around here', found:'Dynamite. In the junk drawer. Sure.', keep:'Do not drop that. Seriously.',
     svg:'<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="14" y="14" width="20" height="30" rx="3" fill="#e2352b" stroke="#18161a" stroke-width="3"/><path d="M14 22 H34 M14 36 H34" stroke="#18161a" stroke-width="2"/><path d="M24 14 Q24 6 32 4" fill="none" stroke="#18161a" stroke-width="2.5"/><circle class="spark" cx="33" cy="4" r="3.5" fill="#ffd23f"/></svg>'},
 };
-if (BWS){ TOOLS.hammer.room = 'brotherwife'; TOOLS.dynamite.room = 'channel'; }
+if (BWS){ TOOLS.hammer.room = 'brotherwife'; TOOLS.dynamite.room = 'internship'; }
 const wait = ms => new Promise(r => setTimeout(r, ms));
 function say(line){ if (BWS || curView === 'specimens' || curView === 'crawlspace'){ if (typeof wSay === 'function' && walkOn) wSay(line); else toast(line); return; } if (typeof wSay === 'function' && walkOn) wSay(line); document.body.classList.remove('dragon-off'); clearTimeout(dragonTimer); $('#gbubble').hidden = false; guideHidden = false; $('#gline').textContent = line;
   dragonTimer = setTimeout(() => { $('#gbubble').hidden = true; $('#gdbtn').setAttribute('aria-expanded','false'); }, 9000); }
@@ -5107,12 +5058,12 @@ function renderCrawl(){
     <p>Every Qbldy one-shot that never made it onto a shelf. ${heap.length} jars from ${piles.length} songs, piled where they fell. Nobody sorted these. Nobody is going to.</p>
     <div class="crawlbar"><button class="btn" id="reach">Reach into the heap</button><a class="btn ghost" href="#specimens">Back through the hole</a></div></div>
     <div class="piles">${piles.map((song, i) => { const xs = heap.filter(s => s.song === song);
-      return `<section class="pile" style="--r:${((i*37)%7)-3}deg" aria-label="${esc(song)}"><div class="tape"><b>${esc(song)}</b><small>${esc(HEAP_ALBUM[xs[0].album] || xs[0].album)} &middot; ${xs.length} jars</small></div><div class="jarrow">${xs.map(s => jarHTML(s)).join('')}</div></section>`; }).join('')}</div>`;
+      return `<details class="pile" style="--r:${((i*37)%7)-3}deg"><summary class="tape"><b>${esc(song)}</b><small>${esc(HEAP_ALBUM[xs[0].album] || xs[0].album)} &middot; ${xs.length} jars</small></summary><div class="jarrow">${xs.map(s => jarHTML(s)).join('')}</div></details>`; }).join('')}</div>`;
   wireJars(B);
   $('#reach').onclick = () => {
     const s = heap[Math.floor(Math.random()*heap.length)]; playSpec(s);
     const el = B.querySelector(`.jar2[data-k="${CSS.escape(keyOf(s))}"]`);
-    if (el){ el.scrollIntoView({block:'center', behavior: reduce ? 'auto' : 'smooth'}); el.classList.add('picked'); setTimeout(() => el.classList.remove('picked'), 1800); }
+    if (el){ const pile = el.closest('details'); if (pile) pile.open = true; el.scrollIntoView({block:'center', behavior: reduce ? 'auto' : 'smooth'}); el.classList.add('picked'); setTimeout(() => el.classList.remove('picked'), 1800); }
   };
 }
 
@@ -5157,7 +5108,7 @@ const ACCRGB = {teal:[0,190,180], pink:[255,79,163], yellow:[255,210,63], riot:[
 const hex2 = h => [1,3,5].map(i => parseInt(h.slice(i,i+2),16));
 const rc = {design:null, pal:0, tee:0, src:null};
 async function showRecolor(design){
-  const d = DESIGNS[design]; stop3D(); current = design+'-recolor'; rc.design = design;
+  const d = DESIGNS[design]; current = design+'-recolor'; rc.design = design;
   document.querySelectorAll('#m-thumbs button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.recolor === design)));
   $('#m-kind').textContent = 'Recolor it'; $('#m-title').textContent = d.title;
   $('#m-desc').textContent = 'Pick a palette and a shirt. Keep the version you like and it waits in your Pockets for when the store opens.';
@@ -5200,8 +5151,8 @@ function houseOnShow(v){
   document.body.classList.toggle('in-crawl', v === 'crawlspace');
   document.body.classList.toggle('has-dock', v === 'specimens' || v === 'crawlspace'); if (typeof dockGoUI === 'function') dockGoUI();
   toggleMenu(false);
-  /* NSD-6: the dragon hosts the house and a first visit to a room, then goes quiet; never over the lab */
-  const host = v === 'home' || (firstVisit && v !== 'specimens' && v !== 'crawlspace');
+  /* NSD-38: the dragon hosts the house once per visit, then goes quiet everywhere */
+  const host = v === 'home' && !dragonSaid; if (host) dragonSaid = true;
   document.body.classList.toggle('dragon-off', !host);
   if (!host){ clearTimeout(dragonTimer); return; }
   if (!guideHidden) $('#gbubble').hidden = false;
@@ -5307,7 +5258,7 @@ function wObjects(f){
     deco('stain', 23, 3.4, 2.6, 1.6);
     add({kind:'tapes', x:20.8, y:1, w:3.2, h:1, label:'The tape shelf: Brotherwife', ...page('brotherwife')});
     add({kind:'drums', x:24.6, y:1.5, w:2.2, h:2, label:'The drum kit', look: () => { const k = byKey('samples/basement-kick.wav') || specimens[0]; if (k) playSpec(k); wShakeT = .12; wSay('Boom. Nobody clapped.'); }});
-    add({kind:'cab', game:'bw', x:27.3, y:1.2, w:1.4, h:1.8, label:'Brotherwife: Ergot Pizza Party', look: () => wPlayGame('https://claude.ai/artifact/5MuQpjkQWHLBtDNEshbXHm', 'Ergot Pizza Party')});
+    if (!gamePrivate('5MuQpjkQWHLBtDNEshbXHm')) add({kind:'cab', game:'bw', x:27.3, y:1.2, w:1.4, h:1.8, label:'Brotherwife: Ergot Pizza Party', look: () => wPlayGame('https://claude.ai/artifact/5MuQpjkQWHLBtDNEshbXHm', 'Ergot Pizza Party')});
     add({kind:'amp', x:20.8, y:4.4, w:1.6, h:1.3, label:'The amp: start a jam session', look: () => openJam()});
     poster('brotherwife', 21.4, 0); stub('brotherwife', 23.4, 5.6); brk('crate', 27.6, 5.1); brk('crate', 26.6, 5.4);
     add({kind:'deck', x:21.1, y:8, w:2.7, h:1, label:'The tape deck: Terrible Noise', ...page('noise')});
@@ -5354,9 +5305,8 @@ function wObjects(f){
     deco('boxes', 16.3, 10.6, 1.6, 1.4); poster('internship', 17.4, 4); stub('internship', 19.6, 11.8); brk('crate', 19.8, 9.4); brk('crate', 16.4, 8.4);
     /* the arcade */
     [['rags', 'City of Rags', 'https://claude.ai/artifact/NYtnv8p2z5MrD5a7mswWAy'], ['tharbe', 'Thar\' Be (Robot)Monsters!', 'https://claude.ai/artifact/LwVWvSKjJFwW34svttcnGf'],
-     ['bw', 'Ergot Pizza Party', 'https://claude.ai/artifact/5MuQpjkQWHLBtDNEshbXHm'], ['dq', 'Doodle Quest', 'https://claude.ai/artifact/8rq3wcsXxT7wUbkThCfaXm']].forEach(([g, t, u], i) =>
+     ['bw', 'Ergot Pizza Party', 'https://claude.ai/artifact/5MuQpjkQWHLBtDNEshbXHm'], ['dq', 'Doodle Quest', 'https://claude.ai/artifact/8rq3wcsXxT7wUbkThCfaXm']].filter(([g, t, u]) => !gamePrivate(u)).forEach(([g, t, u], i) =>
       add({kind:'cab', game:g, x:22.15 + i * 1.2, y:5.1, w:1.1, h:1.8, label:t, look: () => wPlayGame(u, t)}));
-    add({kind:'board', x:25.7, y:9.2, w:1.1, h:2.4, label:'The Hall of Shame', ...page('arcade')});
     poster('arcade', 22.6, 13); stub('arcade', 22.3, 11.8); can(23.6, 10.6, '#ff4fa3');
     /* the bottom of the stairs */
     add({kind:'stairs', dir:'up', x:24.8, y:14, w:2, h:2, label:'Stairs up', look: () => wGoFloor('main', 14.6, 10.4)});
@@ -6455,7 +6405,7 @@ if (BWS){
   Object.assign(ROOMBY.shop, {page:'Merch', room:'Merch table', tag:'Shirts and mugs', how:['Tap a shirt or mug to see it up close.','Prices land when the store opens.']});
   const mh = document.querySelector('#v-shop .pagehead'); if (mh) mh.innerHTML = '<p class="label" style="color:#c4a1ff">Brotherwife</p><h1 class="display">Merch</h1><p>Shirts and mugs from the band. Prices land when the store opens.</p>';
   const wm = document.querySelector('header.site .wordmark'); if (wm){ wm.textContent = 'BROTHERWIFE'; wm.setAttribute('href', '#brotherwife'); wm.setAttribute('aria-label', 'Brotherwife, the band page'); }
-  wm?.insertAdjacentHTML('afterend', `<nav class="bwnav" aria-label="Brotherwife"><a href="#brotherwife">The band</a><a href="#shop">Merch</a><a href="#specimens">Specimen Lab</a><a href="#channel">Channel Nowhere</a><a href="#internship">Intern desk</a></nav>`);
+  wm?.insertAdjacentHTML('afterend', `<nav class="bwnav" aria-label="Brotherwife"><a href="#brotherwife">The band</a>${PRODUCTS.length ? '<a href="#shop">Merch</a>' : ''}<a href="#specimens">Specimen Lab</a><a href="#internship">Intern desk</a></nav>`);
   document.querySelectorAll('a[href^="#"]').forEach(a => { const v = a.getAttribute('href').slice(1); if (v === 'home') a.setAttribute('href', '#brotherwife'); else if (VIEWS.includes(v) && !BW_VIEWS.includes(v)) a.classList.add('nsd-only'); });
 }
 placeNotes(); renderFooterMap(); placeStubs(); placeTools(); renderLab(); applyNight(); radioUI(); wireMe(); renderRack();
@@ -6554,4 +6504,16 @@ addEventListener('hashchange', () => setTimeout(() => { if (curView === 'noise' 
 const jarIO = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => e.target.classList.toggle('still', !e.isIntersecting))) : null;
 function watchJars(){ if (jarIO) document.querySelectorAll('.bigjar:not([data-io])').forEach(j => { j.dataset.io = '1'; j.classList.add('still'); jarIO.observe(j); }); }
 watchJars(); new MutationObserver(watchJars).observe($('#v-specimens'), {childList:true, subtree:true});
+
+/* Channel Nowhere is a set piece on the band page now (NSD-37): its static runs only while the TV is in sight */
+{ const _bwS = onShow.brotherwife, _bwH = onHide.brotherwife;
+  onShow.brotherwife = () => { _bwS && _bwS(); onShow.channel(); };
+  onHide.brotherwife = () => { _bwH && _bwH(); onHide.channel && onHide.channel(); };
+  if ('IntersectionObserver' in window) new IntersectionObserver(es => es.forEach(e => {
+    tvSeen = e.isIntersecting;
+    if (tvSeen && curView === 'brotherwife') onShow.channel();
+    else if (!tvSeen && staticRaf){ cancelAnimationFrame(staticRaf); staticRaf = null; }
+  })).observe($('#tvset'));
+  else tvSeen = true;
+  if (curView === 'brotherwife') onShow.brotherwife(); }
 </script>
