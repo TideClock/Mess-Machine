@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Accounts: the signed-in session (prefs "cloud") and the cloud files stay on this phone (Android 12 and up). -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="cloud.xml" />
+        <exclude domain="file" path="cloud" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="cloud.xml" />
+        <exclude domain="file" path="cloud" />
+    </device-transfer>
+</data-extraction-rules>

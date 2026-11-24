@@ -16,6 +16,13 @@ android {
         versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
         versionName = "0.1." + (System.getenv("GITHUB_RUN_NUMBER") ?: "0")
         buildConfigField("String", "GIT_SHA", "\"" + (System.getenv("GITHUB_SHA") ?: "local").take(7) + "\"")
+        // accounts (docs/ACCOUNTS-API.md s5): empty by default, and then the app shows no account feature at all
+        fun cloudSetting(env: String, prop: String): String =
+            (System.getenv(env)?.takeIf { it.isNotBlank() } ?: (project.findProperty(prop) as String?) ?: "").trim()
+        buildConfigField("String", "CLOUD_URL", "\"" + cloudSetting("MM_CLOUD_URL", "mm.cloudUrl") + "\"")
+        buildConfigField("String", "CLOUD_KEY", "\"" + cloudSetting("MM_CLOUD_KEY", "mm.cloudKey") + "\"")
+        buildConfigField("String", "SITE_HOST", "\"" + cloudSetting("MM_SITE_HOST", "mm.siteHost") + "\"")
+        manifestPlaceholders["siteHost"] = cloudSetting("MM_SITE_HOST", "mm.siteHost").ifEmpty { "unset.invalid" }
         // Nov 21 (L4): the AAudio output is a small C library; phones (arm) and the phone test's emulator (x86_64)
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
     }

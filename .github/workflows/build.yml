@@ -44,7 +44,8 @@ jobs:
       - name: The big test (every screen, with screenshots)
         id: bigtest
         continue-on-error: true
-        run: ./gradlew testDebugUnitTest --stacktrace
+        # the output is also kept in gradle.log, which an accounts run that fails publishes (last step of this job)
+        run: set -o pipefail; ./gradlew testDebugUnitTest --stacktrace 2>&1 | tee -a gradle.log
 
       - name: Publish the test screenshots
         if: always()
@@ -64,7 +65,7 @@ jobs:
         run: exit 1
 
       - name: Build the APK
-        run: ./gradlew assembleRelease --stacktrace
+        run: set -o pipefail; ./gradlew assembleRelease --stacktrace 2>&1 | tee -a gradle.log
 
       - name: Keep the APK and its symbol map with this run
         uses: actions/upload-artifact@v4
@@ -73,6 +74,20 @@ jobs:
           path: |
             app/build/outputs/apk/release/app-release.apk
             app/build/outputs/mapping/release/mapping.txt
+
+      # Accounts (Nov 24): the accounts builders cannot read run logs, so a failed accounts run puts its Gradle output
+      # and test reports on the accounts-log release. latest and the phone download are never touched from here.
+      - name: Publish the build log (accounts branch, failed runs)
+        if: failure() && github.ref == 'refs/heads/accounts'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p alog
+          echo "run ${GITHUB_RUN_NUMBER} ${GITHUB_SHA::7} build failed" > alog/run.txt
+          cp gradle.log alog/gradle.log 2>/dev/null || echo "no gradle output (failed before Gradle ran)" > alog/gradle.log
+          bash tools/precheck.sh > alog/precheck.txt 2>&1 || true
+          (cd app/build && zip -q -r ../../alog/test-reports.zip test-results reports/tests) 2>/dev/null || true
+          bash tools/release.sh accounts-log "Accounts branch log" "Run ${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7}) failed." alog/* || true
 
   core-other-platforms:
     # Nov 23: the shared engine must also build for iOS (on a Mac) and the web. It does not hold up the phone build.
@@ -136,6 +151,16 @@ jobs:
           if [ -f phone-screens.zip ]; then
             bash tools/release.sh phone-screens "Phone test" "Emulator run for build ${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7})." phone-screens.zip || true
           fi
+
+      - name: Say how the run ended (accounts branch)
+        if: always() && github.ref == 'refs/heads/accounts'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p alog
+          echo "run ${GITHUB_RUN_NUMBER} ${GITHUB_SHA::7} phone test ${{ steps.phone.outcome }}" > alog/run.txt
+          tail -200 phone-out/logcat.txt > alog/logcat-tail.txt 2>/dev/null || true
+          bash tools/release.sh accounts-log "Accounts branch log" "Run ${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7}): phone test ${{ steps.phone.outcome }}." alog/* || true
 
   publish:
     needs: [apk, phone]

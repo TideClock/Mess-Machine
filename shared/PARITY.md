@@ -291,6 +291,28 @@ Stale FAQ lines (pattern in Faq.kt, no control in the code at build 170): `synth
 | Missing sounds and foreign keys | A pad whose sound this device lacks keeps its key, reads Missing, is silent and keeps its steps, notes and edits; saving writes it all back. Unknown top-level and per-loop keys are carried unchanged. A file with `v` above 3 loads with a "newer version" line. See MESS-FORMAT.md 4.2 and 10. | none (pad label "MISSING") | engine/Project.kt `fromJson` `toJson` `extra`, engine/Library.kt `titleOf` | todo | todo |
 | Autosave | Every edit autosaves; crash-safe (.new then rename, .bak kept). | none | AppState.kt | todo | todo |
 
+## Accounts, Slice A (only on a build with a server)
+
+Nothing below exists unless the build has a server (`mm.cloudUrl` and `mm.cloudKey`, docs/ACCOUNTS-API.md s5). The
+client logic is the shared `CloudStore` in core/; these rows are the screens. Nothing is added to the play screen.
+
+| Feature | What it does | Tags | Android file | iOS | Web |
+|---|---|---|---|---|---|
+| Account entry | ☰ menu item and the row at the top of the Messes sheet: "Sign in to save online", or your name. Opens the Account sheet. | `acct-open` | ui/App.kt `TopMenu`, ui/CloudScreens.kt `AccountRow` | todo | todo |
+| Sign in with an email code | Email, Send me a code, the 6 to 10 digit code, Sign in. Send a new code wakes 60 s after the last. Plain errors: wrong or old code, too many tries, no connection. | `acct-email`, `acct-send`, `acct-code`, `acct-verify`, `acct-resend` | ui/CloudScreens.kt `SignIn` | todo | todo |
+| Terms | Short terms in a scroll box, Read the full terms (site), I agree, Not now (signs out). Nothing goes online before I agree. | `terms-text`, `terms-agree`, `terms-decline`, `acct-terms` | ui/CloudScreens.kt `Terms` | todo | todo |
+| Name, asked once | After the first sign-in while `me.name_set` is false: "What should others call you?". Closing the sheet counts as asked (pref `cloudNameAsked`). | `name-ask`, `name-ask-ok` | ui/CloudScreens.kt `NameCard` | todo | todo |
+| Put your messes online? | Once, when this phone has messes not online yet: All, Pick (opens Messes), Not now (pref `cloudMoveAsked`). | `cloud-move-all`, `cloud-move-pick`, `cloud-move-later` | ui/CloudScreens.kt `MoveAsk` | todo | todo |
+| Account page | Who you are, your name (Save name), "Use mobile data for sounds" (off: Wi-Fi only), Terms and Privacy pages, Sign out ("Your messes on this phone stay"). No usage bar (cut by the rulings). | `acct-name`, `name-ask-ok`, `acct-data`, `acct-terms`, `acct-privacy`, `acct-signout` | ui/CloudScreens.kt `AccountPage` | todo | todo |
+| Save goes online | Every mess saved while signed in goes online 5 s later (30 s at most while it keeps changing), and at once when the app leaves the screen. | `mess-save` | AppState.kt `saveMess`, `cloudBackground` | todo | todo |
+| Cloud mark | Under each mess on this phone: Online, Waiting to go online, Going online, Offline (tries again), Taken down online, Not saved online, On this phone only. | `mess-cloud-<id>` | ui/CloudScreens.kt `CloudMark` | todo | todo |
+| Online lamp | On the open mess's row: green online, amber "N changes waiting", grey offline. | `sync-state` | ui/CloudScreens.kt `CloudMark` | todo | todo |
+| Keep off the cloud | Row button: Keep off the cloud (asks once more; deletes the online copy, the phone file stays) or Put online. | `mess-offcloud-<id>` | ui/CloudScreens.kt `CloudRowButton` | todo | todo |
+| Online, not on this phone | Online messes with no file here (or tossed here). Tap brings it here and opens it; Duplicate (a copy, yours); Delete online (owner, asks once more). `<cid>` is the first 8 characters of the cloud id. | `omess-<cid>`, `omess-dup-<cid>`, `omess-del-<cid>` | ui/CloudScreens.kt `OnlineOnly` | todo | todo |
+| Get sounds now | On the open mess's row when some of its sounds have not come (mobile data, sounds off): "Get N sounds now". | `sounds-get` | ui/CloudScreens.kt `CloudMark` | todo | todo |
+| Sounds that arrive | Your own sounds made on another phone go into Your Workbench under the same `bn:` key; other people's (Slice B) into a "From shared messes" jar. A sound whose maker left reads Missing. | | AppState.kt `cloudSoundArrived`, Workbench.kt `adoptCloud` | todo | todo |
+| Clash: keep both | Two phones changed one mess: the server's goes into the mess, mine becomes "<name> (this phone)" and the screen follows it; a notice says so. A newer version arriving while the screen has unsaved changes leaves them on screen as a new mess. | | AppState.kt `cloudKeepBoth`, `cloudTakeServer` | todo | todo |
+
 ## Android-only pieces and what they map to
 
 | Android piece | Where | iOS | Web |

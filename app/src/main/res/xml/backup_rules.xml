@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Accounts: the signed-in session (prefs "cloud") and the cloud files stay on this phone, out of backups. -->
+<full-backup-content>
+    <exclude domain="sharedpref" path="cloud.xml" />
+    <exclude domain="file" path="cloud" />
+</full-backup-content>

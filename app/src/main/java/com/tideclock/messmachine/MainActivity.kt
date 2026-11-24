@@ -12,7 +12,8 @@ import com.tideclock.messmachine.ui.MessMachineApp
 
 /** Holds the one AppState so it outlives the screen. */
 class MessApp : Application() {
-    val state: AppState by lazy { AppState(this) }
+    // accounts: SupabaseApi.orNull is null when this build has no server, and then the app is exactly as before
+    val state: AppState by lazy { AppState(this, SupabaseApi.orNull(this)) }
 
     override fun onCreate() {
         super.onCreate()
@@ -61,6 +62,8 @@ class MainActivity : ComponentActivity() {
         super.onStop()
         try { midi.stop() } catch (_: Exception) {}
         state.saveNow()
+        // accounts: a mess saved in the last few seconds goes online now, not when the app comes back
+        state.cloudBackground()
         state.onScreen = false
         // keep looping in the background only if the music is playing and Settings allows it (MM-10)
         if (state.playing && !state.bgPlay) state.togglePlay()

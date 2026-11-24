@@ -4,6 +4,14 @@
 
 Rewritten at the end of every session and at each step of a long job (BT-2). Read this first.
 
+- **Accounts, Slice A on Android (2026-11-24, branch `accounts`, not on main):** sign in with an email code, terms,
+  the name asked once, the Account page (no usage bar, cut), and on the Messes sheet the account row, a cloud mark per
+  mess, the lamp on the open one, Keep off the cloud, online messes not on this phone, Get N sounds now. Files:
+  SupabaseApi.kt, CloudPlat.kt, CloudHost.kt, ui/CloudScreens.kt, the accounts section at the end of AppState.kt.
+  With no server in the build (`mm.cloudUrl`, `mm.cloudKey` empty, the default) none of it exists. Tests:
+  app/src/test/.../CloudTest.kt (two phones on FakeCloud). A failed accounts run puts its log on the `accounts-log`
+  release.
+
 - **In progress (2026-11-21): the overhaul**, Tyler's go on Nov 21 for all builds with rollback built in. Plan and
   review: https://claude.ai/artifact/PjAnmWrBStAqX9wNEc6ZHf ; skin mockups: https://claude.ai/artifact/WBbiA2MqRCDftPaEuayoVV .
   Rollback: build 104's code is commit f704a4c (also release build-104); every green build from 105 on keeps its own

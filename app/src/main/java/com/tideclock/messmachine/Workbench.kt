@@ -113,6 +113,21 @@ class Workbench(app: Context, private val lib: Library) {
         return keyOf(b)
     }
 
+    /**
+     * Accounts Slice A: one of your own sounds came down from your account (made on your other phone). It goes into
+     * the Workbench under the same key it has there, so the pads that use it play and it can go up again from here.
+     * Call off the main thread. false: it is here already, or the file could not be copied.
+     */
+    fun adoptCloud(id: String, kind: String, title: String, from: File, bpm: Double, beats: Int, mkey: String): Boolean {
+        if (id.isEmpty() || item("bn:$id") != null) return false
+        val f = File(dir, "$id.wav")
+        from.copyTo(f, overwrite = true)
+        val k = if (kind == "imp" || kind == "mic" || kind == "rs" || kind == "take") kind else "imp"
+        val b = BenchItem(id, k, title.ifEmpty { "Sound" }.take(40), System.currentTimeMillis(), bpm = bpm, beats = beats, mkey = mkey)
+        synchronized(items) { items.add(b); register(b); save() }
+        return true
+    }
+
     fun addChop(base: String, title: String, st: Double, en: Double): String {
         val b = BenchItem(newId(), "chop", title.take(40), System.currentTimeMillis(), base, st, en)
         synchronized(items) { items.add(b); register(b); save() }

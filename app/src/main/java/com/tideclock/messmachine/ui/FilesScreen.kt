@@ -39,8 +39,11 @@ fun FilesScreen(state: AppState) {
     var name by remember { mutableStateOf(P.name) }
     var sureNew by remember { mutableStateOf(false) }
     var sureDel by remember { mutableStateOf<String?>(null) }
+    var sureOff by remember { mutableStateOf<String?>(null) }
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) state.importUri(uri) }
     ScrollPane(hPad = 14.dp, vPad = 0.dp) {
+        // accounts: only on a build with a server (state.store is null otherwise, and the sheet is as it was)
+        if (state.store != null) AccountRow(state)
         Card(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 14.dp)) {
             Column {
                 T("THIS MESS", size = 12.sp, color = C.Yellow, spacing = .1.em)
@@ -52,7 +55,7 @@ fun FilesScreen(state: AppState) {
                     modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
                 )
                 Wrap(Modifier) {
-                    Btn(if (state.fileId == null) "Save" else "Save changes", { state.saveMess(name, false) }, color = C.Teal, small = true)
+                    Btn(if (state.fileId == null) "Save" else "Save changes", { state.saveMess(name, false) }, color = C.Teal, small = true, tag = "mess-save")
                     if (state.fileId != null) Btn("Save as new", { state.saveMess(name, true) }, small = true)
                     Btn(if (sureNew) "Really? Tap again" else "New mess", {
                         if (sureNew) { sureNew = false; state.newMess() } else { sureNew = true }
@@ -104,15 +107,22 @@ fun FilesScreen(state: AppState) {
                             (if (f.at.length >= 10) " · ${f.at.substring(0, 10)}" else ""),
                         size = 12.sp, color = C.Dim, weight = FontWeight.Medium,
                     )
-                    Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (state.store != null) CloudMark(state, f)
+                    val rowButtons: @Composable () -> Unit = {
                         Btn("Open", { state.openMess(f.id) }, small = true, color = C.Teal)
                         Btn(if (sureDel == f.id) "Really toss it?" else "Toss", {
                             if (sureDel == f.id) { sureDel = null; state.deleteMess(f.id) } else { sureDel = f.id }
                         }, small = true, color = if (sureDel == f.id) C.Riot else C.Card2)
                     }
+                    if (state.store == null) Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) { rowButtons() }
+                    else Wrap(Modifier.padding(top = 8.dp)) {
+                        rowButtons()
+                        CloudRowButton(state, f, sureOff == f.id) { sureOff = if (it) f.id else null }
+                    }
                 }
             }
         }
+        if (state.store != null) OnlineOnly(state)
         T(" ", size = 30.sp)
     }
 }

@@ -201,6 +201,7 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
                     Overlay.Packs -> Sheet(state, "Packs") { PacksScreen(state) }
                     Overlay.Learn -> Sheet(state, "Learn") { LearnScreen(state) }
                     Overlay.Mouth -> Sheet(state, "Mouth control") { MouthScreen(state) }
+                    Overlay.Account -> Sheet(state, "Account") { AccountScreen(state) }
                     null -> Box(Modifier) {}
                 }
             }
@@ -366,8 +367,11 @@ fun TopMenu(state: AppState, modifier: Modifier = Modifier) {
     Box(modifier) {
         BarBtn(state, "☰", "Settings", { open = true }, enabled = free, color = if (state.crash != null) C.Riot else C.Ink, tag = "menu", tier = if (state.crash != null) Tier.Normal else Tier.Quiet, word = "Menu", modifier = Modifier.fillMaxWidth())
         androidx.compose.material3.DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.background(C.Ink).border(3.dp, C.Cream).tagged("topmenu")) {
-            for ((label, tag, act) in listOf(
-                Triple("☰  Messes", "messes") { state.refreshFiles(); state.overlay = Overlay.Files },
+            // accounts: the Account entry is there only on a build with a server (state.store is null otherwise)
+            val store = state.store
+            for ((label, tag, act) in listOfNotNull(
+                Triple("☰  Messes", "messes") { state.refreshFiles(); state.cloudRefresh(); state.overlay = Overlay.Files },
+                if (store == null) null else Triple(if (store.state == com.tideclock.messmachine.cloud.CloudStore.OUT) "👤  Sign in to save online" else "👤  Account", "acct-open") { state.overlay = Overlay.Account },
                 Triple("⚙  Settings", "settings") { state.overlay = Overlay.Settings },
                 Triple("🐞  Notes for Claude" + state.waitingNotes.size.let { if (it > 0) " ($it waiting)" else "" }, "notes-open") { state.overlay = Overlay.Notes },
                 Triple("🎓  Learn: lessons for every feature", "learn") { state.overlay = Overlay.Learn },

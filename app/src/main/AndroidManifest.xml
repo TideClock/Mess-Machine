@@ -6,6 +6,8 @@
     <uses-feature android:name="android.software.midi" android:required="false" />
     <!-- only to read Claude's replies to your notes from GitHub -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- accounts: sounds go up and down on Wi-Fi unless "Use mobile data" is on, so the app asks which network it is on -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- only when you tap Record from mic -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- keep playing after you leave the app, with a notification that has Stop (MM-10) -->
@@ -29,6 +31,8 @@
     <application
         android:name=".MessApp"
         android:allowBackup="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"

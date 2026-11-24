@@ -134,6 +134,8 @@ sealed class Overlay {
     data object Learn : Overlay()
     data object Mouth : Overlay()
     data class Xy(val pad: Int) : Overlay()
+    /** Accounts: sign in, the terms, and your account. Only ever opened when a server is configured. */
+    data object Account : Overlay()
 }
 
 /** A saved mess in the list. colors and grid draw its little picture: bank 1's pads, and its first loop with something in it. */
@@ -146,7 +148,13 @@ data class MessFile(
  * Everything the screens read and every change they make. Edits go through edit { }, which
  * rebuilds what the engine plays, records an undo step and autosaves.
  */
-class AppState(private val app: Context) {
+class AppState(
+    private val app: Context,
+    /** Accounts (docs/ACCOUNTS-API.md s5): the server, or null for a build without one. Tests pass a FakeCloud phone. */
+    cloudApi: com.tideclock.messmachine.cloud.CloudApi? = null,
+    /** The store's clock; tests pass FakeCloud's, so the phone and the pretend server move together. */
+    cloudClock: com.tideclock.messmachine.cloud.Clock? = null,
+) {
     val lib = Library({ path -> if (path.startsWith("/")) java.io.File(path).readBytes() else app.assets.open(path).use { it.readBytes() } }, "sounds/")
     private val am = app.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     val rate: Int = am.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)?.toIntOrNull() ?: 48000
@@ -1958,7 +1966,8 @@ class AppState(private val app: Context) {
         scheduleSave()
         worker.execute {
             try { writeSafe(File(messDir, "$id.json"), json) } catch (_: Exception) {}
-            main.post { refreshFiles(); say("Saved \"$nm\".") }
+            // accounts: signed in and not kept off the cloud, the saved file goes online a few seconds later
+            main.post { refreshFiles(); say("Saved \"$nm\"."); store?.saved(id, nm) }
         }
     }
 
@@ -2114,6 +2123,7 @@ class AppState(private val app: Context) {
         Overlay.Mouth -> "mouth control"
         Overlay.AudioCheck -> "latency"
         Overlay.Start -> "start card"
+        Overlay.Account -> "account"
     }
 
     // ---- Audio check (MM-1): where the time goes between a tap and the sound ----
@@ -3746,4 +3756,274 @@ class AppState(private val app: Context) {
         val send = Intent(Intent.ACTION_SEND).apply { type = mime; putExtra(Intent.EXTRA_STREAM, uri); addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION) }
         app.startActivity(Intent.createChooser(send, title).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION))
     }
+
+    /* ---------------- accounts, Slice A (docs/ACCOUNTS-API.md s4.4 and s5) ---------------- */
+    // Everything below is a no-op when cloud is null (a build without a server): nothing account-related is composed,
+    // no network call is made, and the app behaves as it always did.
+
+    /** The server, when this build has one. */
+    @JvmField val cloud: com.tideclock.messmachine.cloud.CloudApi? = cloudApi?.takeIf { it.configured() }
+    /** My messes online: account, list and whole-mess sync. Built only when cloud is not null. */
+    val store: com.tideclock.messmachine.cloud.CloudStore? = cloud?.let {
+        com.tideclock.messmachine.cloud.CloudStore(it, AndroidTokens(app), AndroidCache(app), cloudClock ?: com.tideclock.messmachine.cloud.Clock { System.currentTimeMillis() }, CloudHost(this))
+    }
+    /** Bumped whenever the account, the online list or a cloud mark changes, so the sheets redraw. */
+    var cloudV by mutableIntStateOf(0)
+        private set
+    /** The last thing the store had to say (kept both, sound space full, ...), shown in the Messes sheet. */
+    var cloudNotice by mutableStateOf("")
+    /** acct-data: "Use mobile data for sounds". Off out of the box: sounds go up and down on Wi-Fi only. */
+    var cloudData by mutableStateOf(prefs.getBoolean("cloudData", false))
+        private set
+    /** Tests: whether the phone is on Wi-Fi (null: ask Android). */
+    var wifiOverride: Boolean? = null
+    /** The site that holds the terms and privacy pages, "" when this build has none. */
+    val siteHost: String get() = BuildConfig.SITE_HOST
+    /** Asked once on this phone: the name others see, and "Put your messes online?". */
+    var nameAsked by mutableStateOf(prefs.getBoolean("cloudNameAsked", false))
+        private set
+    var moveAsked by mutableStateOf(prefs.getBoolean("cloudMoveAsked", false))
+        private set
+
+    internal fun cloudRedraw() { cloudV++ }
+    internal fun cloudSay(text: String) { cloudNotice = text; say(text) }
+
+    private val cloudTimer = object : Runnable {
+        override fun run() { cloudTick(); main.postDelayed(this, 1000) }
+    }
+
+    init {
+        if (store != null) {
+            store.start()
+            main.postDelayed(cloudTimer, 1000)
+        }
+    }
+
+    /** Once a second (and from tests): Wi-Fi or not, whether the Messes sheet is open, then the store's own clock. */
+    fun cloudTick() {
+        val s = store ?: return
+        s.dataOk = cloudData || onWifi()
+        s.listOpen = overlay == Overlay.Files
+        s.tick()
+    }
+
+    /** The app left the screen: whatever waits goes up now. */
+    fun cloudBackground() {
+        val s = store ?: return
+        s.dataOk = cloudData || onWifi()
+        s.background()
+    }
+
+    private fun onWifi(): Boolean {
+        wifiOverride?.let { return it }
+        return try {
+            val cm = app.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
+            caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) || caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET) ||
+                caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+        } catch (_: Exception) { false }
+    }
+
+    fun switchCloudData(v: Boolean) {
+        cloudData = v; prefs.edit().putBoolean("cloudData", v).apply()
+        notes.trail("cloud mobile data ${if (v) "on" else "off"}")
+        cloudTick()
+    }
+
+    fun markNameAsked() { if (!nameAsked) { nameAsked = true; prefs.edit().putBoolean("cloudNameAsked", true).apply() } }
+    fun markMoveAsked() { if (!moveAsked) { moveAsked = true; prefs.edit().putBoolean("cloudMoveAsked", true).apply() } }
+
+    /** The Messes sheet opened: ask for the online list again. */
+    fun cloudRefresh() { store?.let { if (it.state == com.tideclock.messmachine.cloud.CloudStore.IN) it.refresh() } }
+
+    /** Plain words for a cloud error. */
+    fun cloudErrText(e: com.tideclock.messmachine.cloud.CloudErr?): String = when (e?.code ?: "") {
+        "net" -> "No connection. Try again when you are online."
+        "code_wrong" -> "That code is wrong or too old. Check it, or send a new code."
+        "code_wait" -> "Too many tries. Wait a minute, then try again."
+        "rate_limited" -> "Too many saves in a minute. It goes up shortly by itself."
+        "not_found" -> "That mess is not online any more."
+        "forbidden" -> "Only the person who made it can do that."
+        "client_too_old" -> "Update Mess Machine to open this mess."
+        "bad_input", "bad_name" -> "That name cannot be used. Try another."
+        "auth" -> "You were signed out. Sign in again."
+        else -> "Something went wrong (${e?.code ?: "unknown"}). Try again."
+    }
+
+    /** The online messes that are not on this phone (or whose file was tossed here). */
+    fun cloudOnlyRows(): List<com.tideclock.messmachine.cloud.MessRow> {
+        val s = store ?: return emptyList()
+        return s.rows.filter { r -> val lid = s.localId(r.id); lid.isEmpty() || !messFile(lid).exists() }
+    }
+
+    /** omess-<cid>: bring an online mess onto this phone and open it. */
+    fun openCloudMess(cloudId: String) {
+        val s = store ?: return
+        notes.trail("open online mess")
+        say("Opening…")
+        s.open(cloudId) { local, err -> if (local != null) openMess(local) else say(cloudErrText(err)) }
+    }
+
+    /** omess-dup-<cid>: a copy of an online mess, yours, on this phone and online. */
+    fun dupCloudMess(cloudId: String) {
+        val s = store ?: return
+        notes.trail("duplicate online mess")
+        s.open(cloudId) { local, err ->
+            val doc = if (local != null) localMessDoc(local) else null
+            if (doc == null) { say(cloudErrText(err)); return@open }
+            val name = ((try { Json.str(Json.map(Json.parse(doc))["name"], "") } catch (_: Exception) { "" }).ifEmpty { "Untitled mess" }.take(43)) + " copy"
+            val id = newMessId()
+            try { writeSafe(messFile(id), withMessName(doc, name)) } catch (_: Exception) {}
+            refreshFiles()
+            s.saved(id, name)
+            say("Copied as \"$name\".")
+        }
+    }
+
+    /** omess-del-<cid>: delete an online mess (yours). Copies on phones stay. */
+    fun deleteCloudMess(cloudId: String) {
+        val s = store ?: return
+        notes.trail("delete online mess")
+        s.deleteCloud(cloudId) { ok, err -> say(if (ok != null) "Deleted online. Copies on your phones stay." else cloudErrText(err)) }
+    }
+
+    /** mess-offcloud-<id>: keep a mess off the cloud (deletes its online copy), or put it online again. */
+    fun keepOffCloud(id: String, off: Boolean) {
+        val s = store ?: return
+        notes.trail(if (off) "keep off the cloud" else "put online")
+        if (off) { s.keepOff(id, true); say("Kept on this phone only.") }
+        else {
+            s.keepOff(id, false)
+            if (s.mark(id) == com.tideclock.messmachine.cloud.CloudStore.M_PHONE) s.saved(id, files.firstOrNull { it.id == id }?.name ?: "")
+            say("Going online.")
+        }
+    }
+
+    /** cloud-move-all: every mess on this phone goes online (except those kept off). */
+    fun cloudMoveAll() {
+        val s = store ?: return
+        notes.trail("put all messes online")
+        for (f in files) s.saved(f.id, f.name)
+        markMoveAsked()
+        say(if (files.size == 1) "Your mess is going online." else "Your ${files.size} messes are going online.")
+    }
+
+    /** sounds-get: fetch the open mess's missing sounds now, Wi-Fi or not. */
+    fun cloudGetSounds() { val id = fileId ?: return; notes.trail("get sounds now"); store?.getSounds(id) }
+
+    /* the StoreHost side (CloudHost.kt): the store never touches the mess files itself */
+
+    internal fun messFile(id: String) = File(messDir, "$id.json")
+    internal fun localMessDoc(id: String): String? = try { messFile(id).takeIf { it.isFile }?.readText() } catch (_: Exception) { null }
+
+    internal fun newMessId(): String {
+        var t = System.currentTimeMillis()
+        while (messFile(t.toString(36)).exists()) t++
+        return t.toString(36)
+    }
+
+    /** The doc with its name set to name (as it is when the name already matches). */
+    internal fun withMessName(doc: String, name: String): String {
+        if (name.isEmpty()) return doc
+        return try {
+            val m = Json.map(Json.parse(doc))
+            if (Json.str(m["name"], "") == name) doc else { m["name"] = name; Json.write(m) }
+        } catch (_: Exception) { doc }
+    }
+
+    /** The bn: keys a saved mess plays: pads, granular sources, and the sounds its chops cut from. */
+    internal fun cloudNeeds(id: String): List<String> {
+        val doc = localMessDoc(id) ?: return emptyList()
+        val p = try { Project.fromJson(doc, lib::has).project } catch (_: Exception) { return emptyList() }
+        val out = LinkedHashSet<String>()
+        for (k in p.kit.toList() + p.synths.values.map { it.src }) {
+            if (k.startsWith("bn:")) out.add(k)
+            else lib.chopOf(k)?.let { b -> if (b.startsWith("bn:")) out.add(b) }
+        }
+        return out.toList()
+    }
+
+    internal fun cloudAdopt(name: String, doc: String): String {
+        val id = newMessId()
+        try { writeSafe(messFile(id), withMessName(doc, name)) } catch (_: Exception) {}
+        refreshFiles()
+        return id
+    }
+
+    /** The server's doc replaces the file, and the screen when this mess is open. Unsaved work on screen is never lost. */
+    internal fun cloudTakeServer(id: String, name: String, doc: String) {
+        val f = messFile(id)
+        val text = withMessName(doc, name)
+        val before = localMessDoc(id)
+        try { writeSafe(f, text) } catch (_: Exception) {}
+        refreshFiles()
+        if (fileId != id || tut != null) return
+        val nm = name.ifEmpty { "This mess" }
+        val screen = project.toJson(false)
+        val unsaved = before != null && (try { Project.fromJson(before, lib::has).project.toJson(false) } catch (_: Exception) { "" }) != screen
+        if (unsaved) {
+            // the other phone saved a newer one, and this screen has changes not saved yet: they stay, as a new mess
+            fileId = null; prefs.edit().putString("fileId", null).apply(); version++
+            cloudSay("$nm changed on your other phone. What is on screen stays as a new mess: Save keeps it.")
+            return
+        }
+        val np = try { Project.fromJson(text, lib::has).project } catch (_: Exception) { return }
+        val newName = np.name
+        np.name = project.name
+        if (np.toJson(false) == screen) { project.name = newName; version++; scheduleSave(); return }   // only the name changed
+        np.name = newName
+        replaceProject(np, id)
+        say("$nm was updated from your other phone.")
+    }
+
+    /** A clash: my file goes to a new mess named copyName (the screen follows it), the server's doc goes into id. */
+    internal fun cloudKeepBoth(id: String, copyName: String, serverName: String, serverDoc: String): String {
+        val mine = localMessDoc(id) ?: project.toJson()
+        val copy = newMessId()
+        try { writeSafe(messFile(copy), withMessName(mine, copyName)) } catch (_: Exception) {}
+        try { writeSafe(messFile(id), withMessName(serverDoc, serverName)) } catch (_: Exception) {}
+        if (fileId == id) {
+            fileId = copy; prefs.edit().putString("fileId", copy).apply()
+            project.name = copyName
+            version++
+            scheduleSave()
+        }
+        refreshFiles()
+        return copy
+    }
+
+    internal fun cloudSoundArrived(s: com.tideclock.messmachine.cloud.Sound, path: String) {
+        val have = lib.sound(s.key)
+        if (have != null && have.cab != "shared") { cloudSoundsChanged(); return }   // on this phone already
+        val mine = s.owner.isNotEmpty() && s.owner == store?.userId()
+        if (mine && s.key.startsWith("bn:")) {
+            // one of your own, made on your other phone: into the Workbench, under the same key
+            worker.execute {
+                try { bench.adoptCloud(s.key.substring(3), s.kind, s.title, File(path), s.bpm, s.beats, s.mkey) } catch (_: Exception) {}
+                main.post { cloudSoundsChanged() }
+            }
+            return
+        }
+        if (have != null) { cloudSoundsChanged(); return }
+        lib.addCab("shared", "From shared messes", 0xFF7FB2E0.toInt())
+        val snd = Library.Sound(s.key, s.title.ifEmpty { "Shared sound" }, "shared", path, 0.0, 0.0, "From shared messes", "")
+        if (s.bpm > 0 && s.beats > 0) { snd.bpm = s.bpm; snd.beats = s.beats }
+        snd.mkey = s.mkey
+        lib.addUser(snd, null)
+        cloudSoundsChanged()
+    }
+
+    internal fun cloudSoundGone(s: com.tideclock.messmachine.cloud.Sound) {
+        if (lib.sound(s.key)?.cab != "shared") return
+        lib.removeUser(s.key)
+        rebuild(); version++
+    }
+
+    internal fun cloudSoundInfo(key: String): com.tideclock.messmachine.cloud.Sound? {
+        val b = bench.item(key) ?: return null
+        return com.tideclock.messmachine.cloud.Sound(key, "", "user", "", "wav", 0L, 0.0, 0, b.kind, b.title, b.bpm, b.beats, b.mkey ?: "", "ready")
+    }
+
+    /** A sound arrived or went: the pads that use it load (or read Missing). */
+    private fun cloudSoundsChanged() { loadKit(); rebuild(); version++ }
 }
