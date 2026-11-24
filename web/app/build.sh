@@ -5,12 +5,10 @@ set -euo pipefail
 cd "$(dirname "$0")"
 R=../..
 rm -rf dist && mkdir -p dist/icons dist/fonts dist/snd
-cp index.html mm.css main.js worklet.js shim.js faq.json dist/
+cp index.html mm.css *.js faq.json dist/
 cp ../engine/out/engine.js dist/
-# only the icons the page names (icon: 'x' or ic_x)
-for n in $(grep -oE "icon: '[a-z_]+'|icon: S\.[^?]*\? '[a-z_]+' : '[a-z_]+'|, '[a-z_]+'\]" main.js | grep -oE "'[a-z_]+'" | tr -d "'" | sort -u); do
-  [ -f $R/app/src/main/res/drawable-nodpi/ic_$n.png ] && cp $R/app/src/main/res/drawable-nodpi/ic_$n.png dist/icons/ || true
-done
+# every icon the app has
+cp $R/app/src/main/res/drawable-nodpi/ic_*.png dist/icons/
 cp $R/app/src/main/res/font/*.ttf dist/fonts/
 cp $R/app/src/main/assets/sounds/library.json dist/
 python3 - "$R/app/src/main/assets/sounds" dist/snd <<'PY'
