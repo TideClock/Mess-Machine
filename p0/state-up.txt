@@ -1,0 +1,1 @@
+tray=edit:5 sel=5

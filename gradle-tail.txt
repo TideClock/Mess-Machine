@@ -1,0 +1,67 @@
+Starting a Gradle Daemon (subsequent builds will be faster)
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:jvmProcessResources NO-SOURCE
+> Task :core:processJvmMainResources SKIPPED
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugBuildConfig
+> Task :app:generateDebugResValues
+> Task :app:checkDebugAarMetadata
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:mergeDebugResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:parseDebugLocalResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:processDebugManifestForPackage
+> Task :app:javaPreCompileDebug
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest
+> Task :app:mergeDebugShaders
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets
+> Task :app:processDebugResources
+> Task :app:packageDebugUnitTestForUnitTest
+> Task :app:generateDebugUnitTestConfig
+
+> Task :core:compileKotlinJvm
+w: file:///home/runner/work/Mess-Machine/Mess-Machine/core/src/commonMain/kotlin/com/tideclock/messmachine/engine/Engine.kt:1930:21 Condition is always 'false'.
+w: file:///home/runner/work/Mess-Machine/Mess-Machine/core/src/commonMain/kotlin/com/tideclock/messmachine/engine/MidiOut.kt:38:21 Condition is always 'false'.
+w: file:///home/runner/work/Mess-Machine/Mess-Machine/core/src/commonMain/kotlin/com/tideclock/messmachine/engine/MidiOut.kt:75:28 Condition is always 'false'.
+
+> Task :core:compileJvmMainJava NO-SOURCE
+> Task :core:jvmMainClasses
+> Task :core:jvmJar
+> Task :app:compileDebugKotlin
+> Task :app:compileDebugJavaWithJavac
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:processDebugJavaRes
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:compileDebugUnitTestKotlin
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes
+> Task :app:testDebugUnitTest
+
+TapeRender > p0 STANDARD_OUT
+    DEMO stepfail down java.lang.AssertionError: Failed: assertExists.
+    Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'piano-keys-5')
+
+    DEMO stepfail left-Trim java.lang.AssertionError: nothing on screen says "Trim"
+    DEMO stepfail left-Shape java.lang.AssertionError: nothing on screen says "Shape"
+    DEMO stepfail left-Tools java.lang.AssertionError: nothing on screen says "Tools"
+    DEMO stepfail left-Play java.lang.AssertionError: nothing on screen says "Play"
+    DEMO stepfail throws java.lang.AssertionError: Failed: assertExists.
+    Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'dock-throws')
+
+    DEMO done p0 frames=335 audio=536000 samples
+
+TapeRender > p0 PASSED
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1795514080110.json
+
+BUILD SUCCESSFUL in 2m 3s
+30 actionable tasks: 30 executed

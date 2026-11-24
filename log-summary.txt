@@ -1,0 +1,8 @@
+51:    DEMO stepfail down java.lang.AssertionError: Failed: assertExists.
+54:    DEMO stepfail left-Trim java.lang.AssertionError: nothing on screen says "Trim"
+55:    DEMO stepfail left-Shape java.lang.AssertionError: nothing on screen says "Shape"
+56:    DEMO stepfail left-Tools java.lang.AssertionError: nothing on screen says "Tools"
+57:    DEMO stepfail left-Play java.lang.AssertionError: nothing on screen says "Play"
+58:    DEMO stepfail throws java.lang.AssertionError: Failed: assertExists.
+61:    DEMO done p0 frames=335 audio=536000 samples
+66:BUILD SUCCESSFUL in 2m 3s

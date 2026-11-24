@@ -1,0 +1,127 @@
+pulse		0,0,1233,2673
+topbar		24,18,1209,217
+play		24,18,142,217
+-	PLAY	48,177,117,208
+stop		157,18,275,217
+-	STOP	181,177,251,208
+rec		290,18,407,217
+-	REC	321,177,376,208
+undo		422,18,539,217
+-	UNDO	442,177,519,208
+bpm		554,64,730,172
+-	120	608,79,677,126
+lag	BPM	620,126,665,157
+loop-open		745,64,945,172
+position	LOOP A	788,98,902,139
+help-toggle		960,18,1077,217
+-	FAQ	992,177,1045,208
+menu		1092,18,1209,217
+-	MENU	1111,177,1190,208
+screen-Sounds		0,244,1233,2354
+mode-type		36,274,274,418
+-	BY TYPE	72,313,238,356
+mode-jar		292,274,507,418
+-	BY JAR	328,313,471,356
+mode-fav		525,274,782,418
+-	STARRED	561,313,746,356
+open-packs		800,274,1004,418
+-	PACKS	836,313,968,356
+type-chips		0,448,1233,616
+type-all		36,448,204,592
+-	ALL	81,487,159,530
+type-kick		222,448,451,592
+-	KICKS 4	258,487,415,530
+type-snare		469,448,908,592
+-	SNARES + CLAPS 4	505,487,872,530
+type-hat		926,448,1233,592
+-	HATS + CYMBALS 3	962,487,1233,530
+type-perc		0,0,0,0
+-	PERCUSSION 8	0,0,0,0
+type-bass		0,0,0,0
+-	BASS 1	0,0,0,0
+type-keys		0,0,0,0
+-	KEYS + STABS 9	0,0,0,0
+type-lead		0,0,0,0
+-	LEADS 0	0,0,0,0
+type-pad		0,0,0,0
+-	PADS + DRONES 0	0,0,0,0
+type-voice		0,0,0,0
+-	VOICES + BODIES 9	0,0,0,0
+type-fx		0,0,0,0
+-	FX + NOISE 6	0,0,0,0
+type-chop		0,0,0,0
+-	CHOPS + PHRASES 270	0,0,0,0
+mood-chips		0,616,1233,790
+-	FEEL	36,670,139,706
+feel-punchy		157,616,396,760
+-	PUNCHY	193,655,360,698
+feel-long		414,616,596,760
+-	LONG	450,655,560,698
+feel-dark		614,616,797,760
+-	DARK	650,655,761,698
+feel-bright		815,616,1039,760
+-	BRIGHT	851,655,1003,698
+feel-tonal		1057,616,1233,760
+-	TONAL	1093,655,1228,698
+feel-gritty		0,0,0,0
+-	GRITTY	0,0,0,0
+feel-busy		0,0,0,0
+-	BUSY	0,0,0,0
+search		36,790,1197,958
+-	Search every jar	84,851,436,898
+sound-list		0,958,1191,2354
+-	KICKS	36,1000,175,1040
+row-samples/basement-kick.wav		36,1052,1155,1256
+-	Basement Kick	96,1087,439,1136
+-	on pad 1 · Thumps & Smacks · punchy dark tonal	96,1136,850,1221
+-	☆	850,1091,969,1217
+put-samples/basement-kick.wav		969,1082,1155,1226
+-	PAD 7	1005,1121,1119,1164
+row-samples/sub-drop.wav		36,1262,1155,1466
+-	Sub Drop	96,1318,301,1367
+-	Tones & Chords · long dark tonal	96,1367,736,1410
+-	☆	850,1301,969,1427
+put-samples/sub-drop.wav		969,1292,1155,1436
+-	PAD 7	1005,1331,1119,1374
+row-samples/bw-kick.wav		36,1472,1155,1676
+-	BW Kick	96,1528,286,1577
+-	Brotherwife Bits	96,1577,416,1620
+-	☆	850,1511,969,1637
+put-samples/bw-kick.wav		969,1502,1155,1646
+-	PAD 7	1005,1541,1119,1584
+row-samples/bw-kick-2.wav		36,1682,1155,1886
+-	BW Thud	96,1738,297,1787
+-	Brotherwife Bits	96,1787,416,1830
+-	☆	850,1721,969,1847
+put-samples/bw-kick-2.wav		969,1712,1155,1856
+-	PAD 7	1005,1751,1119,1794
+-	SNARES + CLAPS	36,1934,408,1974
+row-samples/wet-clap.wav		36,1986,1155,2190
+-	Wet Clap	96,2042,295,2091
+-	on pad 2 · Thumps & Smacks	96,2091,616,2134
+-	☆	850,2025,969,2151
+put-samples/wet-clap.wav		969,2016,1155,2160
+-	PAD 7	1005,2055,1119,2098
+row-samples/belly-slap.wav		36,2196,1155,2354
+-	Belly Slap	96,2252,319,2301
+-	Bodily Functions · punchy	96,2301,596,2344
+-	☆	850,2235,969,2354
+put-samples/belly-slap.wav		969,2226,1155,2354
+-	PAD 7	1005,2265,1119,2308
+scrollbar		1161,958,1233,2354
+performrow		0,2354,1233,2432
+perform-handle		0,2354,1233,2432
+-	▴ PERFORM ROW	479,2373,754,2414
+notes		12,2453,204,2652
+-	NOTE	71,2612,144,2643
+tab-slot		234,2462,1212,2625
+tab-Pads		234,2462,424,2625
+-	PLAY	294,2591,363,2622
+tab-Synth		430,2462,621,2625
+-	SYNTH	480,2591,570,2622
+tab-Steps		627,2462,818,2625
+-	SEQ	695,2591,749,2622
+tab-Perform		824,2462,1015,2625
+-	PERFORM	854,2591,984,2622
+tab-Sounds		1021,2462,1212,2625
+-	SOUNDS	1061,2591,1171,2622

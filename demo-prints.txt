@@ -1,0 +1,7 @@
+  <system-out><![CDATA[DEMO stepfail down java.lang.AssertionError: Failed: assertExists.
+DEMO stepfail left-Trim java.lang.AssertionError: nothing on screen says "Trim"
+DEMO stepfail left-Shape java.lang.AssertionError: nothing on screen says "Shape"
+DEMO stepfail left-Tools java.lang.AssertionError: nothing on screen says "Tools"
+DEMO stepfail left-Play java.lang.AssertionError: nothing on screen says "Play"
+DEMO stepfail throws java.lang.AssertionError: Failed: assertExists.
+DEMO done p0 frames=335 audio=536000 samples
