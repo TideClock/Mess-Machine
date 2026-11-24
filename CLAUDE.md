@@ -24,6 +24,14 @@ release; `mapping.txt` rides along in `latest` for turning Tyler's crash traces 
 Before each push that Tyler will install, rewrite `app/src/main/assets/guide.json`
 (`title`, `thisBuild`, `watch`, `limits`). The app shows it once per new build.
 
+## The other platforms (iOS, web)
+
+An iOS app (`hubbub0/Mess-Machine-iOS`, built in its own chat) and the web version on the Neat Shit and Dye site are
+being built to match this app. `shared/` is their contract (see `shared/README.md`): when you change a feature, update
+its row in `shared/PARITY.md` in the same commit; when you change the mess format, follow `shared/MESS-FORMAT.md`.
+Pull requests titled `[iOS]` or `[Web]` come from those chats: review them like any change. Handoffs are in
+`docs/handoff/`.
+
 ## Tyler's notes (the in-app bug button)
 
 Notes arrive as GitHub issues labeled `from-app` plus a category label. Read them with
