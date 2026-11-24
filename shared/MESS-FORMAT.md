@@ -113,7 +113,7 @@ For each `kit` entry, in order:
    A sound lives on one pad at a time, so a repeated key keeps only its first pad and the later pad loads empty.
 3. A `synth:` key with no entry in `synths`: the pad loads empty and the missing count goes up by one (a synth with
    no patch is nothing).
-4. Otherwise the sound is missing on this device. Since Nov 23 2026 (Android build 171) **the key stays on its pad**:
+4. Otherwise the sound is missing on this device. Since Nov 23 2026 (Android build 172) **the key stays on its pad**:
    the pad is silent, reads "Missing" and keeps its steps, notes, offs, acc, chance, locks and edits, and the next
    save writes it all back. The missing count goes up by one and the app says "N pads use sounds this phone does not
    have. They show as Missing and stay in the mess." If the sound arrives later (a pack installed, the account syncs
@@ -123,7 +123,7 @@ Then everything keyed by a sound that is not on a pad is dropped: steps and note
 locks and edits on the next save.
 
 Every platform must do the same: **never write `""` for a pad just because its sound is not on this device.** Before
-build 171 Android did, so a mess opened and saved there lost those pads for good.
+build 172 Android did, so a mess opened and saved there lost those pads for good.
 
 ### 4.3 Finding the audio for a key
 
@@ -600,7 +600,7 @@ Tolerated quietly:
 - Wrong types: a number given as a string, a boolean given as `0`/`1`, and so on, all count as missing.
 - Out-of-range numbers: clamped as listed. Fractions where whole numbers are expected: cut toward zero.
 - Unknown keys at the top level and inside a loop object (`pats[i]`): kept exactly as they were and written back on
-  every save (Android build 171 on). Android never reads or edits them; clearing a loop drops that loop's. Unknown keys
+  every save (Android build 172 on). Android never reads or edits them; clearing a loop drops that loop's. Unknown keys
   deeper down (inside `edits`, `synths`, `padOpts` entries, or a per-sound row) are still ignored and not written back,
   so a platform that needs a new per-sound field must add it here first.
 - A `v` above 3: the file loads as well as it can and the app says it was made by a newer version. It is saved back as
