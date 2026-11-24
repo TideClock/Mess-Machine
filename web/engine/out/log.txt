@@ -1,0 +1,30 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Task :compileJava
+warning: Supported source version 'RELEASE_11' from annotation processor 'org.gradle.api.internal.tasks.compile.processing.TimeTrackingProcessor' less than -source '17'
+Note: /home/runner/work/Mess-Machine/Mess-Machine/web/engine/src/main/java/com/tideclock/messmachine/engine/WebEngine.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+1 warning
+
+> Task :processResources NO-SOURCE
+> Task :classes
+> Task :compileTeavmJava NO-SOURCE
+> Task :processTeavmResources NO-SOURCE
+> Task :teavmClasses UP-TO-DATE
+> Task :generateJavaScript
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1795498089278.json
+[Incubating] Problems report is available at: file:///home/runner/work/Mess-Machine/Mess-Machine/web/engine/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 34s
+2 actionable tasks: 2 executed
+total 540
+drwxr-xr-x 2 runner runner   4096 Nov 24 05:28 .
+drwxr-xr-x 7 runner runner   4096 Nov 24 05:28 ..
+-rw-r--r-- 1 runner runner 533702 Nov 24 05:28 engine.js
+-rw-r--r-- 1 runner runner   1208 Nov 24 05:28 log.txt
+-rw-r--r-- 1 runner runner     41 Nov 24 05:28 source-commit.txt
+missing 0
+rms 0.19754 peak 0.9999 errors 0 
+heard 1,0,13,0 scales ["Chromatic","Major","Minor","Harmonic minor","Dorian","Phrygian","Mixolydian","
+roundtrip true

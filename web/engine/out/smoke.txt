@@ -1,0 +1,4 @@
+missing 0
+rms 0.19754 peak 0.9999 errors 0 
+heard 1,0,13,0 scales ["Chromatic","Major","Minor","Harmonic minor","Dorian","Phrygian","Mixolydian","
+roundtrip true
