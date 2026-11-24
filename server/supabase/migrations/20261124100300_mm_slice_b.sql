@@ -244,6 +244,13 @@ declare
   v_role text;
 begin
   perform mm_private.need_terms(v_me);
+  -- Already in the mess this link is for (say the first answer was lost and the phone sends it again):
+  -- answer as a join, even though the link is used up now. Only a member learns anything from this.
+  select mm.mess_id, mm.role into v_m.id, v_role from public.invites i
+    join public.mess_members mm on mm.mess_id = i.mess_id and mm.user_id = v_me
+    join public.messes x on x.id = i.mess_id and not x.blocked
+    where p_token is not null and i.token_hash = mm_private.sha_hex(p_token);
+  if found then return jsonb_build_object('mess_id', v_m.id, 'role', v_role); end if;
   v_inv := mm_private.live_invite(p_token);
   select * into v_m from public.messes m where m.id = v_inv.mess_id;
   if not found or exists (select 1 from public.user_blocks b

@@ -1154,7 +1154,7 @@ object Ops {
         }
 
         private fun mark(pad: Int, k: String) {
-            if (pad < 0 || pad >= NP || pr.kit[pad] != k || sh.kit[pad] != k) return
+            if (k.isEmpty() || pad < 0 || pad >= NP || pr.kit[pad] != k || sh.kit[pad] != k) return
             var d = dirty
             if (d == null) { d = BooleanArray(NP); dirty = d }
             d[pad] = true; anyDirty = true

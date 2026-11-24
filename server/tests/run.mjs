@@ -24,7 +24,7 @@ function urlFor(name) { const u = new URL(adminUrl); u.pathname = '/' + name; re
 async function main() {
   const admin = new pg.Client({ connectionString: adminUrl });
   await admin.connect();
-  await admin.query(`create database ${dbName}`);
+  await admin.query(`create database ${dbName} template template0`);   // template0: never touched, also on Supabase's own Postgres
   let T;
   let crashed = null;
   try {

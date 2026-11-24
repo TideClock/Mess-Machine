@@ -190,3 +190,71 @@ jobs:
           gh release create build-104 MessMachine-104.apk mapping-104.txt -R ${{ github.repository }} \
             --target f704a4caf3ba1d8ffd04a90292b9f5e0a0747794 --title "Build 104 (kept, before the overhaul)" \
             --notes "The last build before the overhaul (commit f704a4c)." --prerelease || true
+
+  accounts-server:
+    # Accounts (Nov 24): the server on a real local Supabase (Docker works on GitHub's runners): the SQL tests on its
+    # Postgres, then the live checklist (spec 8e) through its API with its mail catcher. It holds up nothing.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install the test tools
+        working-directory: server/tests
+        run: npm ci
+
+      - name: A sweep secret for the local functions
+        run: echo "MM_SWEEP_SECRET=ci-$(openssl rand -hex 16)" | tee supabase/functions/.env >> "$GITHUB_ENV"
+
+      - name: Start a local Supabase (the migrations apply as it starts)
+        run: npx --yes supabase@2 start -x studio,logflare,vector
+
+      - name: Apply the migrations again from nothing
+        run: npx --yes supabase@2 db reset
+
+      - name: Read the local URL and keys
+        run: |
+          npx --yes supabase@2 status -o env > "$RUNNER_TEMP/sb.env"
+          set -a; . "$RUNNER_TEMP/sb.env"; set +a
+          {
+            echo "SUPABASE_URL=${API_URL}"
+            echo "SUPABASE_KEY=${PUBLISHABLE_KEY:-$ANON_KEY}"
+            echo "SUPABASE_SERVICE_KEY=${SECRET_KEY:-$SERVICE_ROLE_KEY}"
+            echo "DB_URL=${DB_URL}"
+            echo "MAIL_URL=${MAILPIT_URL:-${INBUCKET_URL:-http://127.0.0.1:54324}}"
+          } >> "$GITHUB_ENV"
+
+      - name: Serve the Edge Functions
+        run: |
+          (npx --yes supabase@2 functions serve --env-file supabase/functions/.env > "$RUNNER_TEMP/functions.log" 2>&1 &)
+          for i in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -X OPTIONS "$SUPABASE_URL/functions/v1/sound-urls" || true)
+            if [ "$code" -ge 200 ] && [ "$code" -lt 300 ]; then echo "functions answer ($code)"; exit 0; fi
+            sleep 2
+          done
+          echo "the functions did not come up; the live run will skip them"; cat "$RUNNER_TEMP/functions.log" || true
+
+      - name: The server tests on the local stack's Postgres
+        working-directory: server/tests
+        env:
+          DATABASE_URL: postgresql://supabase_admin:postgres@127.0.0.1:54322/postgres
+        run: npm test
+
+      - name: The live checklist against the local stack
+        if: always()
+        working-directory: server/tests
+        run: node live.mjs
+
+      - name: What the containers said, when something failed
+        if: failure()
+        run: |
+          cat "$RUNNER_TEMP/functions.log" 2>/dev/null | tail -80 || true
+          for c in $(docker ps -a --format '{{.Names}}' | grep -i supabase); do echo "== $c"; docker logs --tail 60 "$c" 2>&1; done

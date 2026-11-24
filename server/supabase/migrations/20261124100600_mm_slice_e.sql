@@ -17,6 +17,8 @@ begin
      or char_length(v_details) > 500 then
     perform mm_private.fail('bad_input');
   end if;
+  -- the share page sends no mess id, only the token; with neither there is nothing to report
+  if p_mess is null and coalesce(p_token, '') = '' then perform mm_private.fail('bad_input'); end if;
   if v_me is not null and p_mess is not null then v_role := mm_private.role_of(v_me, p_mess); end if;
   if v_role is not null then
     select * into v_m from public.messes m where m.id = p_mess;

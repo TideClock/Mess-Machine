@@ -92,6 +92,15 @@ declare
 begin
   if p_user is null then perform mm_private.fail('auth'); end if;
   if p_amr is not null then
+    -- asked by the person: they need a profile, and a password session only works for the review account.
+    -- A banned person may still delete their account.
+    if not exists (select 1 from public.profiles p where p.id = p_user)
+       or not mm_private.valid_user(p_user, p_amr) and not exists (
+         select 1 from public.profiles p where p.id = p_user and p.banned
+           and not (jsonb_typeof(p_amr) = 'array' and exists (
+             select 1 from jsonb_array_elements(p_amr) e where e.value ->> 'method' = 'password'))) then
+      perform mm_private.fail('auth');
+    end if;
     if jsonb_typeof(p_amr) = 'array' then
       select max((e.value ->> 'timestamp')::bigint) into v_newest from jsonb_array_elements(p_amr) e
         where jsonb_typeof(e.value) = 'object' and (e.value ->> 'timestamp') ~ '^[0-9]+$';

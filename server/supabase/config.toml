@@ -1,0 +1,62 @@
+# Settings for the Supabase command line tool (local test stack and "supabase link" / "db push").
+# On the real project the same settings are made by hand in the dashboard: see server/README.md.
+
+project_id = "mess-machine"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 17
+
+[realtime]
+enabled = true
+
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:3000"
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+enable_confirmations = true
+otp_length = 6
+otp_expiry = 600
+max_frequency = "60s"
+
+# Both mails carry the code ({{ .Token }}), not a link: a new person gets "confirmation", a known one "magic_link".
+[auth.email.template.confirmation]
+subject = "Your Mess Machine code"
+content_path = "./supabase/templates/code.html"
+
+[auth.email.template.magic_link]
+subject = "Your Mess Machine code"
+content_path = "./supabase/templates/code.html"
+
+[inbucket]
+enabled = true
+port = 54324
+
+[edge_runtime]
+enabled = true
+
+# The functions check the caller themselves with auth.getUser (sound-urls also takes guests with a share link).
+[functions.sound-urls]
+verify_jwt = false
+
+[functions.delete-account]
+verify_jwt = false
+
+[functions.sweep]
+verify_jwt = false

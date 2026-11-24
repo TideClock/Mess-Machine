@@ -79,10 +79,11 @@ export class Harness {
     });
     return { text: `public.${fn}(${named})`, values };
   }
-  async rpc(u, fn, args = {}, { role } = {}) {
+  async rpc(u, fn, args = {}, { role, settings = {} } = {}) {
     const c = await this.pool.connect();
     try {
       await this.begin(c, u, role);
+      for (const [k, v] of Object.entries(settings)) await c.query(`select set_config($1, $2, true)`, [k, v]);
       const { text, values } = this.callText(fn, args);
       const r = await c.query(`select ${text} as r`, values);
       await c.query('commit');
