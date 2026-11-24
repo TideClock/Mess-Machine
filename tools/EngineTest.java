@@ -35,6 +35,29 @@ public class EngineTest {
     check(L.project.pats[0].notes("qb:fat-glide-pad").size() == 2 && L.project.pats[0].notes("qb:fat-glide-pad").get(1).p == -5, "roll notes decoded");
     check(L.project.songLen() == 3 && L.project.song[2] == 1, "song lane decoded");
     check(L.project.edit("qb:fat-glide-pad").tune == -12, "edits decoded");
+    // Nov 23 (shared format): a sound this phone does not have keeps its pad, its steps and its edits through a save,
+    // and keys from other platforms or newer versions come back out exactly as they went in
+    {
+      String other = "{\"name\":\"From iOS\",\"bpm\":100,\"v\":4,\"kit\":[\"ios:take-7\",\"samples/basement-kick.wav\",\"synth:9\"],"
+        + "\"pats\":[{\"len\":16,\"steps\":{\"ios:take-7\":\"1000100010001000\"},\"notes\":{},\"chance\":{\"ios:take-7\":\"50\"},\"iosLane\":{\"a\":[1,2,{\"b\":null}]}}],"
+        + "\"edits\":{\"ios:take-7\":{\"tune\":5}},\"cloud\":{\"owner\":\"u1\",\"rev\":12},\"webTheme\":\"dark\"}";
+      Project.Loaded lo = Project.fromJson(other, lib::has);
+      check(lo.missing == 2 && "ios:take-7".equals(lo.project.kit[0]) && lo.project.kit[2].isEmpty(),
+          "a sound this phone lacks stays on its pad (a synth with no patch does not): missing " + lo.missing);
+      check(lo.newer, "a file from a newer format version is flagged");
+      check("Missing".equals(lib.titleOf("ios:take-7")) && lib.titleOf("").isEmpty(), "a missing pad reads Missing, an empty one nothing");
+      Project.Loaded again = Project.fromJson(lo.project.toJson(), lib::has);
+      Project ag = again.project;
+      check("ios:take-7".equals(ag.kit[0]) && ag.pats[0].step("ios:take-7", 4) && ag.pats[0].chance("ios:take-7", 0) == 50 && ag.edit("ios:take-7").tune == 5,
+          "saving keeps a missing pad's sound, steps, chance and edits");
+      String saved = ag.toJson();
+      check(saved.contains("\"cloud\":{\"owner\":\"u1\",\"rev\":12}") && saved.contains("\"webTheme\":\"dark\"")
+          && saved.contains("\"iosLane\":{\"a\":[1,2,{\"b\":null}]}"), "unknown top-level and per-loop keys are written back");
+      check(saved.contains("\"v\":3,") && Project.fromJson(saved, lib::has).project.copy().toJson().replaceAll("\"at\":\"[^\"]*\"", "").equals(saved.replaceAll("\"at\":\"[^\"]*\"", "")),
+          "the carried keys survive copy and a second save unchanged");
+      Project cl = Project.fromJson(saved, lib::has).project; cl.pats[0].clear();
+      check(!cl.toJson().contains("iosLane"), "clearing a loop clears what it carried");
+    }
     // theory
     check(Theory.keyNote(12, "Major", 0) == 0 && Theory.keyNote(13, "Major", 0) == 2 && Theory.keyNote(8, "Major", 0) == 7, "keys mode note layout");
     check(Theory.chordLabel(0, 0, "triad", "Major", 0).equals("C") && Theory.chordLabel(2, 1, "triad", "Major", 0).equals("Dm"), "triad labels");

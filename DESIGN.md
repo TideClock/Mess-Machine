@@ -119,6 +119,9 @@ One line each, dated, with the reason and who decided (BT-2). Older decisions li
   sound takes a second tap. Look: only the milled tab slot with the raised current tab (Settings, Look, Tabs: keys
   goes back) and readouts that shrink to fit; help lines are off for everyone (Explain in Settings brings them back).
   Not built, per Tyler: the edit tray stopping above the dock, Song inside Seq, the rest of the look spec.
+- 2026-11-23 Saving keeps what it does not know (format review for iOS and web, told to Tyler): a pad whose sound
+  this phone lacks keeps its key, reads Missing and stays silent instead of being wiped on the next save; unknown
+  top-level and per-loop keys are written back unchanged; a newer `v` loads with a warning. shared/MESS-FORMAT.md 4.2.
 - 2026-11-23 Accounts (Tyler, on docs/ACCOUNTS-PLAN.md): email code sign-in first; when two people play at once each
   phone plays only its own sound and the other's new recordings arrive at the start of the next loop; sounds cap at
   100 s but recorded live parts may be song length; Supabase Pro the day accounts reach Play; deleting an account

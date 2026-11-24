@@ -288,6 +288,7 @@ Stale FAQ lines (pattern in Faq.kt, no control in the code at build 170): `synth
 | Feature | What it does | Tags | Android file | iOS | Web |
 |---|---|---|---|---|---|
 | Undo / Redo | 80 snapshots of the mess. Sliders add one step on release. Live settings (Repeat, Rec, Hold) are not undone. Redo in ☰. Clears show a toast with Undo. Lessons pause autosave and restore your mess. | `undo`, `redo`, `toast-undo` | AppState.kt `undo` `redo` `edit` | todo | todo |
+| Missing sounds and foreign keys | A pad whose sound this device lacks keeps its key, reads Missing, is silent and keeps its steps, notes and edits; saving writes it all back. Unknown top-level and per-loop keys are carried unchanged. A file with `v` above 3 loads with a "newer version" line. See MESS-FORMAT.md 4.2 and 10. | none (pad label "MISSING") | engine/Project.java `fromJson` `toJson` `extra`, engine/Library.java `titleOf` | todo | todo |
 | Autosave | Every edit autosaves; crash-safe (.new then rename, .bak kept). | none | AppState.kt | todo | todo |
 
 ## Android-only pieces and what they map to

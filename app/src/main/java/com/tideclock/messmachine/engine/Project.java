@@ -75,6 +75,12 @@ public final class Project {
          */
         public final Map<String, float[]> locks = new LinkedHashMap<>();
 
+        /**
+         * Nov 23 (shared format): keys in this loop's saved object that this version does not know (another platform's,
+         * or a newer version's). Kept exactly as they were and written back, never edited here.
+         */
+        public final Map<String, Object> extra = new LinkedHashMap<>();
+
         public float lock(String k, int t, int j) { float[] a = locks.get(k + "@" + t); return a == null || j < 0 || j >= a.length ? Float.NaN : a[j]; }
 
         public void setLock(String k, int t, int j, float v) {
@@ -317,16 +323,26 @@ public final class Project {
             for (Map.Entry<String, byte[]> e : acc.entrySet()) p.acc.put(e.getKey(), e.getValue().clone());
             for (Map.Entry<String, byte[]> e : chance.entrySet()) p.chance.put(e.getKey(), e.getValue().clone());
             for (Map.Entry<String, float[]> e : locks.entrySet()) p.locks.put(e.getKey(), e.getValue().clone());
+            p.extra.putAll(extra);
             return p;
         }
 
-        public void clear() { steps.clear(); notes.clear(); motion.clear(); offs.clear(); acc.clear(); chance.clear(); locks.clear(); }
+        public void clear() { steps.clear(); notes.clear(); motion.clear(); offs.clear(); acc.clear(); chance.clear(); locks.clear(); extra.clear(); }
 
         /** Pull a sound out of the loop entirely (when its pad is cleared). */
         public void forget(String k) { steps.remove(k); notes.remove(k); offs.remove(k); acc.remove(k); chance.remove(k); locks.keySet().removeIf(x -> x.startsWith(k + "@")); }
     }
 
     public String name = "";
+    /** Nov 23 (shared format): top-level keys this version does not know, kept as they were and written back. */
+    public final Map<String, Object> extra = new LinkedHashMap<>();
+    /** The format version this app writes; a file with a higher "v" loads with Loaded.newer set. */
+    static final int V = 3;
+    static final Set<String> TOP_KEYS = new LinkedHashSet<>(Arrays.asList(
+        "name", "bpm", "v", "kit", "sel", "steps", "pats", "song", "swing", "squash", "level", "mutes", "solos", "scale",
+        "root", "fold", "edits", "synths", "padOpts", "at", "app", "mode", "cur"));
+    static final Set<String> PAT_KEYS = new LinkedHashSet<>(Arrays.asList(
+        "len", "steps", "notes", "inst", "motion", "offs", "acc", "chance", "locks"));
     public final String[] kit = new String[SLOTS];
     /** Per-pad settings (glide, routing, XY); null = the defaults. */
     public final PadOpts[] opts = new PadOpts[SLOTS];
@@ -447,7 +463,7 @@ public final class Project {
         Map<String, Object> o = new LinkedHashMap<>();
         o.put("name", (name == null || name.isEmpty() ? "Untitled mess" : name.length() > 48 ? name.substring(0, 48) : name));
         o.put("bpm", (double) bpm);
-        o.put("v", 3.0);
+        o.put("v", (double) V);
         o.put("kit", new ArrayList<Object>(Arrays.asList((Object[]) kit)));
         o.put("sel", (double) sel);
         o.put("steps", encSteps(pats[0]));
@@ -517,6 +533,7 @@ public final class Project {
                 }
                 if (!lm.isEmpty()) x.put("locks", lm);
             }
+            for (Map.Entry<String, Object> e : p.extra.entrySet()) if (!x.containsKey(e.getKey())) x.put(e.getKey(), e.getValue());
             pl.add(x);
         }
         o.put("pats", pl);
@@ -545,6 +562,7 @@ public final class Project {
         o.put("app", "android");
         o.put("mode", songMode ? "song" : "loop");
         o.put("cur", (double) cur);
+        for (Map.Entry<String, Object> e : extra.entrySet()) if (!o.containsKey(e.getKey())) o.put(e.getKey(), e.getValue());
         return Json.write(o);
     }
 
@@ -563,11 +581,15 @@ public final class Project {
         try { return java.time.Instant.now().toString(); } catch (Throwable t) { return ""; }
     }
 
-    /** What loading a mess found. missing counts pads whose sound this app does not have. */
+    /**
+     * What loading a mess found. missing counts pads whose sound this app does not have: since Nov 23 they keep their
+     * key (silent, shown as missing) so saving does not wipe them. newer: the file says a later format than this app's.
+     */
     public static final class Loaded {
         public final Project project;
         public final int missing;
-        Loaded(Project p, int m) { project = p; missing = m; }
+        public final boolean newer;
+        Loaded(Project p, int m, boolean n) { project = p; missing = m; newer = n; }
     }
 
     public interface Known { boolean has(String key); }
@@ -576,6 +598,8 @@ public final class Project {
         Map<String, Object> q = Json.map(Json.parse(text));
         Project p = new Project();
         p.name = Json.str(q.get("name"), "");
+        for (Map.Entry<String, Object> e : q.entrySet()) if (!TOP_KEYS.contains(e.getKey())) p.extra.put(e.getKey(), e.getValue());
+        boolean newer = Json.num(q.get("v"), V) > V;
         for (Map.Entry<String, Object> e : Json.map(q.get("padOpts")).entrySet()) {
             try { int k = Integer.parseInt(e.getKey()); if (k >= 0 && k < SLOTS) p.opts[k] = PadOpts.fromMap(Json.map(e.getValue())); } catch (NumberFormatException ignored) {}
         }
@@ -586,9 +610,12 @@ public final class Project {
         for (int k = 0; k < kl.size() && k < SLOTS; k++) {
             String key = Json.str(kl.get(k), "");
             if (key.isEmpty()) continue;
-            if (known == null || known.has(key) || p.synths.containsKey(key)) {
-                if (p.padOf(key) < 0) p.kit[k] = key;
-            } else missing++;
+            // Nov 23: a sound this phone does not have stays on its pad (silent, shown as missing) instead of being
+            // dropped, so opening and saving a mess from another platform never loses pads
+            if (p.padOf(key) >= 0) continue;
+            if (isSynth(key) && !p.synths.containsKey(key)) { missing++; continue; }  // a synth with no patch is nothing
+            p.kit[k] = key;
+            if (known != null && !known.has(key) && !p.synths.containsKey(key)) missing++;
         }
         Map<String, Object> ed = Json.map(q.get("edits"));
         for (Map.Entry<String, Object> e : ed.entrySet()) {
@@ -601,6 +628,7 @@ public final class Project {
             for (int i = 0; i < NSLOTS && i < pl.size(); i++) {
                 Map<String, Object> x = Json.map(pl.get(i));
                 Pattern P = p.pats[i];
+                for (Map.Entry<String, Object> e : x.entrySet()) if (!PAT_KEYS.contains(e.getKey())) P.extra.put(e.getKey(), e.getValue());
                 // 1, 2, 4 or 8 bars (the site plays 1 or 2; longer loops are app only)
                 int ln = (int) Json.num(x.get("len"), 16);
                 P.len = ln >= 16 && ln <= 128 && ln % 16 == 0 ? ln : 16;  // Nov 22: any 1 to 8 bars (+ and - in the loop strip)
@@ -663,7 +691,7 @@ public final class Project {
         p.sel = sel;
         p.songMode = "song".equals(q.get("mode")) && p.songLen() > 0;
         p.cur = (int) SoundEdit.clamp(Json.num(q.get("cur"), 0), 0, NSLOTS - 1);
-        return new Loaded(p, missing);
+        return new Loaded(p, missing, newer);
     }
 
     private static void decSteps(Pattern P, Map<String, Object> m) {

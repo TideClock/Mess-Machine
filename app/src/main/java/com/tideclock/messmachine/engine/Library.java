@@ -105,7 +105,8 @@ public final class Library implements Engine.SampleSource {
     public Sound sound(String key) { return byKey.get(key); }
     public Cab cab(String id) { Cab c = cabById.get(id); return c != null ? c : cabs.isEmpty() ? new Cab("", "", 0xFF888888) : cabs.get(0); }
     public int colorOf(String key) { Sound s = byKey.get(key); return s == null ? 0xFF3A3440 : cab(s.cab).color; }
-    public String titleOf(String key) { Sound s = byKey.get(key); return s == null ? "" : s.title; }
+    /** Nov 23: a pad whose sound this phone does not have (a site or pack sound) keeps its key and reads "Missing". */
+    public String titleOf(String key) { Sound s = byKey.get(key); return s != null ? s.title : key == null || key.isEmpty() || key.startsWith("synth:") ? "" : "Missing"; }
 
     public List<Sound> inCab(String cab) {
         List<Sound> l = new ArrayList<>();

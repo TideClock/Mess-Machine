@@ -1993,7 +1993,8 @@ class AppState(private val app: Context) {
             replaceProject(l.project, null)
             overlay = null
             say("Imported \"${l.project.name.ifEmpty { "Untitled mess" }}\"." +
-                if (l.missing > 0) " ${l.missing} pad${if (l.missing > 1) "s" else ""} used sounds that only live on the site, so they are empty here." else "")
+                (if (l.missing > 0) " ${l.missing} pad${if (l.missing > 1) "s use sounds" else " uses a sound"} this phone does not have. They show as Missing and stay in the mess." else "") +
+                (if (l.newer) " It was made by a newer version, so a few parts may not show here." else ""))
         } catch (e: Exception) {
             say("That does not look like a Mess Machine file.")
         }

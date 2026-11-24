@@ -95,10 +95,22 @@ public class RoundTrip {
     Project.Loaded sL = Project.fromJson(read(dir.resolve("site-v3.mess.json")), known);
     Project st = sL.project;
     if (known != null) {
-      check(sL.missing == 2 && st.kit[1].isEmpty() && st.kit[2].isEmpty() && st.kit[3].equals(C), "site v3: the upload and the workbench sound are missing; their pads load empty");
-      check(st.pats[0].steps.size() == 2 && !st.toJson().contains("a:uploaded1\":"), "site v3: steps and notes of a missing sound are dropped, and gone from the next save");
-      check(st.sel == 0, "site v3: sel on an empty pad falls back to the first loaded pad");
+      // Nov 23: missing sounds keep their pads (silent, shown as Missing), so a save never wipes them
+      check(sL.missing == 2 && st.kit[1].equals("a:uploaded1") && st.kit[2].equals("bn:lkj3x9512") && st.kit[3].equals(C), "site v3: the upload and the workbench sound are missing but keep their pads");
+      String sv = st.toJson();
+      check(st.pats[0].step("a:uploaded1", 2) && st.pats[0].notes("a:uploaded1").size() == 1 && sv.contains("\"a:uploaded1\":\"0010001000100010\""), "site v3: steps and notes of a missing sound stay, and are in the next save");
+      check(st.sel == 1, "site v3: sel stays on the missing pad");
     }
+
+    // 3b. keys from other platforms and missing sounds survive a load and save (Nov 23)
+    Project.Loaded oL = Project.fromJson(read(dir.resolve("other-platform.mess.json")), known);
+    String os = oL.project.toJson();
+    Project ob = Project.fromJson(os, known).project;
+    check(ob.kit[1].equals("ios:take-7") && ob.kit[3].equals("web:mic-3") && ob.pats[0].step("ios:take-7", 2) && ob.pats[0].notes("web:mic-3").size() == 1 && ob.edit("ios:take-7").tune == 3,
+      "other platform: pads with sounds this phone lacks keep their sound, steps, notes and edits");
+    check(os.contains("\"cloud\":{\"owner\":\"user-1\",\"rev\":12,\"shared\":true}") && os.contains("\"iosLane\":{\"points\":[0,0.5,1],\"note\":\"kept as is\"}"),
+      "other platform: unknown top-level and per-loop keys are written back unchanged");
+    if (known != null) check(oL.missing == 2, "other platform: two missing sounds counted: " + oL.missing);
     check("Dorian".equals(st.scale) && st.root == 2 && st.fold && st.edit(C).rev, "site v3: scale, root, fold and edits");
     check(!st.songMode && st.songLen() == 1, "site v3: no mode key means loop mode");
 

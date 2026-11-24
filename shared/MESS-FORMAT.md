@@ -13,8 +13,8 @@ The Android code is the source of truth. Everything here was read from it:
 
 Statements with no tag are read straight from that code. [Likely] and [Guessing] mark the rest.
 
-The working copy of this check lives in `shared/fixtures/`: `example.mess.json` and four older files, plus
-`RoundTrip.java`, which loads them with the Android code and saves them again (see "Checking a reader" at the end).
+The working copy of this check lives in `shared/fixtures/`: `example.mess.json`, four older files and
+`other-platform.mess.json`, plus `RoundTrip.java`, which loads them with the Android code and saves them again (see "Checking a reader" at the end).
 
 ## 1. The file
 
@@ -111,16 +111,19 @@ For each `kit` entry, in order:
 2. The key is known (in the library, an alias, an installed pack, this device's Workbench) or it is a `synth:` key
    that has an entry in this file's `synths`: it goes on that pad, unless the same key is already on an earlier pad.
    A sound lives on one pad at a time, so a repeated key keeps only its first pad and the later pad loads empty.
-3. Otherwise the sound is missing: the pad loads empty and a missing count goes up by one. The app then says
-   "N pads used sounds that only live on the site, so they are empty here."
+3. A `synth:` key with no entry in `synths`: the pad loads empty and the missing count goes up by one (a synth with
+   no patch is nothing).
+4. Otherwise the sound is missing on this device. Since Nov 23 2026 (Android build 171) **the key stays on its pad**:
+   the pad is silent, reads "Missing" and keeps its steps, notes, offs, acc, chance, locks and edits, and the next
+   save writes it all back. The missing count goes up by one and the app says "N pads use sounds this phone does not
+   have. They show as Missing and stay in the mess." If the sound arrives later (a pack installed, the account syncs
+   it), the pad plays again with nothing else to do.
 
 Then everything keyed by a sound that is not on a pad is dropped: steps and notes on load, and offs, acc, chance,
 locks and edits on the next save.
 
-This matters: **opening a mess with missing sounds and saving it again loses those pads for good.** The kit slot is
-saved as `""`. A reader on another platform that wants to do better can keep unknown keys on their pads and play
-them as silence. [Guessing] That would be a format-compatible change, since a key that does not resolve already
-means silence on the other platforms, but it changes Android behaviour and is Tyler's call.
+Every platform must do the same: **never write `""` for a pad just because its sound is not on this device.** Before
+build 171 Android did, so a mess opened and saved there lost those pads for good.
 
 ### 4.3 Finding the audio for a key
 
@@ -596,8 +599,12 @@ Tolerated quietly:
 - Any missing key (defaults from sections 3, 5 and 8).
 - Wrong types: a number given as a string, a boolean given as `0`/`1`, and so on, all count as missing.
 - Out-of-range numbers: clamped as listed. Fractions where whole numbers are expected: cut toward zero.
-- Unknown keys anywhere: ignored and not written back. A platform that adds its own key will lose it the first time
-  Android saves the file.
+- Unknown keys at the top level and inside a loop object (`pats[i]`): kept exactly as they were and written back on
+  every save (Android build 171 on). Android never reads or edits them; clearing a loop drops that loop's. Unknown keys
+  deeper down (inside `edits`, `synths`, `padOpts` entries, or a per-sound row) are still ignored and not written back,
+  so a platform that needs a new per-sound field must add it here first.
+- A `v` above 3: the file loads as well as it can and the app says it was made by a newer version. It is saved back as
+  `v: 3`, with the unknown keys carried as above.
 - Unknown and repeated sound keys (4.2).
 - Per-step strings that are too long (extra entries ignored), too short (missing entries are empty), or have bad
   entries (skipped).
@@ -615,6 +622,7 @@ run the same inputs through their own engines and must produce the same record.
 shared/fixtures/
   example.mess.json            the format example (this page)
   legacy-*.mess.json, ...      older files that must keep loading
+  other-platform.mess.json     missing sounds and unknown keys that must survive a save
   RoundTrip.java               load and re-save check (exists)
   golden/
     README.md                  how to run and what "match" means
@@ -717,6 +725,8 @@ It checks:
   synth, pad options);
 - `legacy-v1.mess.json`, `legacy-v2-inst.mess.json`, `site-v3.mess.json` and `android-pre106.mess.json` upgrade as
   section 9 says;
+- `other-platform.mess.json` keeps its missing sounds on their pads with their steps, notes and edits, and writes its
+  unknown top-level and per-loop keys back unchanged (4.2, section 10);
 - `{}`, out-of-range values and broken JSON behave as section 10 says.
 
 The example is in the Android writer's exact form: all 65 kit entries, every loop with a `steps` row for every loaded
