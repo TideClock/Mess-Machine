@@ -69,7 +69,7 @@ class PadOpts {
             val v = SoundEdit.clamp(e.value, 0.0, 1.0)
             if (v <= 0) continue
             if (b.length > 0) b.append(';')
-            b.append(e.key).append('=').append((v * 1000).roundToLong() / 1000.0)
+            b.append(e.key).append('=').append(jround(v * 1000) / 1000.0)
         }
         fx = b.toString()
     }

@@ -20,7 +20,7 @@ public class LoopKeys {
   public static void main(String[] a) throws Exception {
     String base = a[0];
     boolean dry = a.length > 1 && a[1].equals("dry");
-    Library lib = new Library(p -> new FileInputStream(p), base);
+    Library lib = new Library(p -> java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(p)), base);
     Map<String, List<Library.Sound>> songs = new LinkedHashMap<>();
     Map<String, KeyFinder.Tone> tones = new HashMap<>();
     for (Library.Sound s : lib.sounds) {

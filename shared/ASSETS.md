@@ -48,7 +48,7 @@ All in `app/src/main/res/font/`, all OFL, from Google Fonts. Which UI uses which
 | One-shots | `app/src/main/assets/sounds/*.flac` | 43 files. Keys keep the site's names (`samples/basement-kick.wav`) even though the files are FLAC. |
 | Loops | `app/src/main/assets/sounds/loops/*.flac` | 90 one-bar loops, cut sample exact with a 5 ms crossfade; `mkey` in library.json when the key is known. |
 | Hits | `app/src/main/assets/sounds/hits/*.flac` | 180 hits, typed `chop`. |
-| Decoder and loader | `app/src/main/java/com/tideclock/messmachine/engine/Library.java`, `engine/Flac.java` | Sounds decode on first use. FLAC is used because it is sample exact (the engine test checks the kick). iOS and current browsers decode FLAC, but check each web target. |
+| Decoder and loader | `core/src/commonMain/kotlin/com/tideclock/messmachine/engine/Library.kt`, `engine/Flac.kt` | Sounds decode on first use. FLAC is used because it is sample exact (the engine test checks the kick). iOS and current browsers decode FLAC, but check each web target. |
 | Sound packs | GitHub release `packs` on `hubbub0/Mess-Machine` (`packs.json` plus `<id>.zip` with `pack.json` and `clips/*.flac`) | Made by `tools/make_pack.py`; installed by `app/src/main/java/com/tideclock/messmachine/Packs.kt` (refuses zip entries outside the pack folder). |
 
 ## Text

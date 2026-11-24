@@ -8,8 +8,9 @@ Never use em dashes in anything written for Tyler (docs, replies, release notes,
 The cloud workspace cannot reach Google's Android servers, so the APK builds on GitHub Actions
 (`.github/workflows/build.yml`). Push to `main`, then watch the run with
 `gh api repos/hubbub0/Mess-Machine/actions/runs`. A green run republishes the `latest` release,
-which is where Tyler installs from. The engine (`app/src/main/java/.../engine/`, plain Java) can be
-tested here: see README.md.
+which is where Tyler installs from. The engine is common Kotlin in `core/` (Kotlin Multiplatform, shared with iOS and the
+web; rules in `docs/KOTLIN-ENGINE.md`). Test it here without Gradle with `tools/kt-check.sh all` (needs the Kotlin
+compiler unpacked; see the script) and `tools/kt-check.sh js`. Keep it common Kotlin: no `java.*` in `core/`.
 
 Every build also runs the big test (`app/src/test/.../BigTest.kt`, Robolectric with real drawing):
 every screen driven by touch, checks on the mess and the engine, and screenshots published to the

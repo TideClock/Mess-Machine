@@ -1,15 +1,14 @@
 {
-  "title": "Saving no longer loses pads",
+  "title": "The sound engine was rebuilt to share with iPhone",
   "thisBuild": [
-    "A mess with sounds this phone does not have (from the site, a pack you have not got, or later the iPhone) keeps those pads. They read MISSING and stay quiet, and saving keeps them, their steps and their settings.",
-    "Anything the site or the iPhone app adds to a mess file now survives a save here.",
+    "The engine that makes every sound was rewritten in a language the iPhone and web versions can share. It should sound exactly the same: the old and new engines were checked against each other and give identical audio.",
     "Nothing else changed: same keys, sounds and layout as the last build."
   ],
   "watch": [
-    "Open a mess from the site that uses one of your uploaded sounds: does its pad say MISSING instead of going empty?",
-    "Save it, reopen it: is the pad still there?"
+    "Play a few loops, a synth and a chord: does anything sound different, late or crackly?",
+    "Bounce a loop, share a mess and import a sound from your files: do they all still work?"
   ],
   "limits": [
-    "A MISSING pad stays quiet until its sound is on this phone. To use a different sound there, put one on it from the Sounds tab as usual."
+    "If anything sounds or acts differently from the last build, send a bug note right away. That points straight at this change."
   ]
 }

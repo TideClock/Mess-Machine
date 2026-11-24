@@ -40,7 +40,7 @@ public class RoundTrip {
     Project.Known known = null;
     if (args.length > 1) {
       String base = args[1].endsWith("/") ? args[1] : args[1] + "/";
-      Library lib = new Library(p -> new FileInputStream(p), base);
+      Library lib = new Library(p -> java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(p)), base);
       known = lib::has;
       System.out.println("library: " + lib.sounds.size() + " sounds");
     }

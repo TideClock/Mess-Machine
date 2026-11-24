@@ -9,7 +9,7 @@ public class EngineTest {
   static String fmt(double[] x) { return String.format("%.2f s at %.0f Hz", x[0], x[1]); }
   public static void main(String[] a) throws Exception {
     String base = a[0];
-    Library lib = new Library(p -> new FileInputStream(p), base);
+    Library lib = new Library(p -> java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(p)), base);
     // piece 10: 43 named sounds, 90 loops and 180 hits (the 390 0.35 s chops are gone, their keys alias to hits)
     check(lib.sounds.size() == 313, "library has 313 sounds: " + lib.sounds.size());
     check(lib.sounds.stream().allMatch(x -> !x.type.isEmpty()), "every sound has an instrument type");
@@ -151,11 +151,11 @@ public class EngineTest {
     int first = -1; for (int i = 0; i < frames; i++) if (Math.abs(w[i*2]) > .02) { first = i; break; }
     check(first >= 0 && Math.abs(first - .004*rate) < .002*rate, "first hit lands on time: frame " + first);
     // swing: step 6 kick at 6*spb (even), step 11 kick should be late by swing
-    try (OutputStream o = new FileOutputStream(a[1] + "/demo_bounce.wav")) { Wav.writeStereo16(o, w, rate); }
+    try (OutputStream o = new FileOutputStream(a[1] + "/demo_bounce.wav")) { o.write(Wav.writeStereo16(w, rate)); }
     float[] w2 = Engine.bounce(L.project, lib, rate, true, 1);
     double spb2 = rate * 60.0 / 120 / 4;
     check(w2.length / 2 >= (32 + 32 + 16) * spb2, "song bounce covers A A B: " + w2.length / 2 + " vs " + (int)((32+32+16)*spb2));
-    try (OutputStream o = new FileOutputStream(a[1] + "/site_song_bounce.wav")) { Wav.writeStereo16(o, w2, rate); }
+    try (OutputStream o = new FileOutputStream(a[1] + "/site_song_bounce.wav")) { o.write(Wav.writeStereo16(w2, rate)); }
     // realtime: live pad with rec on while playing should produce a STEP event
     Engine e = new Engine(rate);
     Engine.Live live = new Engine.Live(); live.rec = true;
@@ -331,7 +331,7 @@ public class EngineTest {
       }
       // ---- SE-4, SE-9, SE-10: loops at the mess's tempo, hits, and old chop keys still playing
       {
-        Library ll = new Library(pth -> new FileInputStream(pth), a[0]);
+        Library ll = new Library(pth -> java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(pth)), a[0]);
         // loop keys (tools/LoopKeys.java): only the sure ones are written, each a note name plus major or minor, never on a hit
         java.util.List<String> noteNames = java.util.Arrays.asList(KeyFinder.NAMES);
         long keyed = ll.sounds.stream().filter(x -> x.cab.equals("loops") && !x.mkey.isEmpty()).count();
@@ -923,7 +923,7 @@ public class EngineTest {
       mq.setStep(mp.kit[0], 0, true); mq.setStep(mp.kit[0], 8, true); mq.setStrength(mp.kit[0], 8, 2);
       mq.setStep(mp.kit[1], 4, true);
       java.io.ByteArrayOutputStream mo = new java.io.ByteArrayOutputStream();
-      try { MidiOut.write(mp, false, 2, null, mo); } catch (java.io.IOException ex) { throw new RuntimeException(ex); }
+      mo.writeBytes(MidiOut.write(mp, false, 2, null));
       byte[] mb = mo.toByteArray();
       int tracks = ((mb[10] & 0xFF) << 8) | (mb[11] & 0xFF);
       int ons = 0, loud = 0;

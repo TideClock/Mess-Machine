@@ -119,6 +119,10 @@ One line each, dated, with the reason and who decided (BT-2). Older decisions li
   sound takes a second tap. Look: only the milled tab slot with the raised current tab (Settings, Look, Tabs: keys
   goes back) and readouts that shrink to fit; help lines are off for everyone (Explain in Settings brings them back).
   Not built, per Tyler: the edit tray stopping above the dock, Song inside Seq, the rest of the look spec.
+- 2026-11-23 The engine is common Kotlin (Tyler: "build it", for the iPhone chat): the 15 Java files became 16
+  Kotlin files in `core/` (Kotlin Multiplatform, Kotlin 2.1.20), same API and behaviour; the full engine test and the
+  shared round trip pass against it, bounces are byte-identical to the Java engine's, it compiles for the web, and CI
+  builds it for iOS on a Mac. Rules for keeping it common: docs/KOTLIN-ENGINE.md.
 - 2026-11-23 Saving keeps what it does not know (format review for iOS and web, told to Tyler): a pad whose sound
   this phone lacks keeps its key, reads Missing and stays silent instead of being wiped on the next save; unknown
   top-level and per-loop keys are written back unchanged; a newer `v` loads with a warning. shared/MESS-FORMAT.md 4.2.

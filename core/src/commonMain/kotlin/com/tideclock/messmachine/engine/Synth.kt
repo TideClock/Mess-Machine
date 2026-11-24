@@ -46,7 +46,7 @@ class Synth private constructor() {
             k = maxOf(0.0, minOf(1.0, k))
             return when (curve) {
                 LOG -> min * (max / min).pow(k)
-                INT, CHOICE -> (min + (max - min) * k).roundToLong().toDouble()
+                INT, CHOICE -> jround(min + (max - min) * k).toDouble()
                 else -> min + (max - min) * k
             }
         }
@@ -61,16 +61,16 @@ class Synth private constructor() {
         fun clamp(v: Double): Double {
             var v = v
             v = maxOf(minOf(min, max), minOf(maxOf(min, max), v))
-            return if (curve == INT || curve == CHOICE) v.roundToLong().toDouble() else v
+            return if (curve == INT || curve == CHOICE) jround(v).toDouble() else v
         }
 
         /** The value as words, for the knob's label. */
         fun show(v: Double): String {
-            if (curve == CHOICE) { val i = (v - min).roundToLong().toInt(); return if (i >= 0 && i < choices.size) choices[i] else "" }
-            if (curve == INT) return (if (v > 0 && min < 0) "+" else "") + v.roundToLong() + unit
-            if ("s" == unit) return if (v < 1) (v * 1000).roundToLong().toString() + " ms" else fixed(v, 1) + " s" // format-ok: number only
-            if ("Hz" == unit) return if (v < 1000) (if (v < 10) fixed(v, 1) + " Hz" else v.roundToLong().toString() + " Hz") else fixed(v / 1000, 1) + " kHz" // format-ok: number only
-            if ("%" == unit) return (v * 100).roundToLong().toString() + "%"
+            if (curve == CHOICE) { val i = jround(v - min).toInt(); return if (i >= 0 && i < choices.size) choices[i] else "" }
+            if (curve == INT) return (if (v > 0 && min < 0) "+" else "") + jround(v) + unit
+            if ("s" == unit) return if (v < 1) jround(v * 1000).toString() + " ms" else fixed(v, 1) + " s" // format-ok: number only
+            if ("Hz" == unit) return if (v < 1000) (if (v < 10) fixed(v, 1) + " Hz" else jround(v).toString() + " Hz") else fixed(v / 1000, 1) + " kHz" // format-ok: number only
+            if ("%" == unit) return jround(v * 100).toString() + "%"
             if ("w" == unit) {
                 // sine, triangle, saw and square, with how far it has morphed toward the next one (build 105: no more "200%")
                 val n = arrayOf("sine", "tri", "saw", "square")
@@ -78,10 +78,10 @@ class Synth private constructor() {
                 val f = v - a
                 if (a >= 3 || f < .05) return n[a]
                 if (f > .95) return n[a + 1]
-                return n[a] + " to " + n[a + 1] + " " + (f * 100).roundToLong() + "%"
+                return n[a] + " to " + n[a + 1] + " " + jround(f * 100) + "%"
             }
-            if ("c" == unit) return (if (v > 0) "+" else "") + v.roundToLong() + " cents"
-            return (if (v > 0 && min < 0) "+" else "") + (v * 100).roundToLong() + "%"
+            if ("c" == unit) return (if (v > 0) "+" else "") + jround(v) + " cents"
+            return (if (v > 0 && min < 0) "+" else "") + jround(v * 100) + "%"
         }
     }
 
@@ -905,7 +905,7 @@ class Synth private constructor() {
             val L = maxOf(2.0, minOf((ks.size - 2).toDouble(), rate / maxOf(12.0, f0))).toInt()
             ks.fill(0f)
             var lp = 0.0; val a = .05 + kbright * .95
-            val pk = (kpick * .5 * L).roundToLong().toInt()
+            val pk = jround(kpick * .5 * L).toInt()
             for (i in 0 until L) { lp += (nz() - lp) * a; ks[i] = lp.toFloat() }
             if (pk > 0) for (i in L - 1 downTo pk) ks[i] -= ks[i - pk]   // a pick away from the end loses the notes that have a node there
             // take out the burst's average and bring it to a steady level, so every pluck starts as loud
@@ -954,12 +954,12 @@ class Synth private constructor() {
             if (d == null || d.size < 64) { amp.next(); return 0f }
             val N = d.size
             if (--nextGrain <= 0) {
-                nextGrain = maxOf(1L, (rate / dens * (.7 + .6 * rnd01())).roundToLong())
+                nextGrain = maxOf(1L, jround(rate / dens * (.7 + .6 * rnd01())))
                 for (i in 0 until NG) if (!gOn[i]) {
                     var at = pos + head / N + (rnd01() - .5) * spray * .5 + (if (lpos > 0) lpos * lfoV * .25 else 0.0)
                     at -= floor(at)
                     var ratio = f / 261.6256 * srcRate / rate
-                    if (pspray > 0) ratio *= 2.0.pow(((rnd01() * 2 - 1) * pspray).roundToLong() / 12.0)
+                    if (pspray > 0) ratio *= 2.0.pow(jround((rnd01() * 2 - 1) * pspray) / 12.0)
                     val back = grev > 0 && rnd01() < grev
                     gPos[i] = at * N; gInc[i] = if (back) -ratio else ratio
                     gLen[i] = maxOf(32.0, gsize * rate).toInt(); gAge[i] = 0; gOn[i] = true

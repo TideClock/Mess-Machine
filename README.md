@@ -24,12 +24,15 @@ Open the folder in Android Studio and press Run, or:
 
 The APK lands in `app/build/outputs/apk/release/`.
 
-The sound engine is plain Java with no Android parts, so it has its own quick test you can run without a phone:
+The sound engine is common Kotlin with no Android parts (`core/`, shared with the iOS app and the web; see
+[docs/KOTLIN-ENGINE.md](docs/KOTLIN-ENGINE.md)), so it has its own quick test you can run without a phone:
 
 ```
-javac -d build/t $(find app/src/main/java -name "*.java") tools/EngineTest.java
-java -cp build/t EngineTest app/src/main/assets/sounds/ build/t
+./gradlew :core:engineTest :core:roundTrip
 ```
+
+Without Gradle (only the Kotlin compiler): `KOTLINC=<unpacked kotlin-compiler> tools/kt-check.sh all`, and
+`tools/kt-check.sh js` to prove it still builds for the web.
 
 It checks loading, the site's file format, scales and chords, and that every step and swing lands on the exact sample.
 

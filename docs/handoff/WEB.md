@@ -24,9 +24,10 @@ house and lab around the machine can stay.
 ## The one big decision: whose engine
 
 [Likely] Do not hand-write a third engine. Two engines already need to match (Android now, iOS soon); a TypeScript port
-would drift from both. The Android chat is converting the engine to Kotlin Multiplatform for iOS; that module can also
-compile to JavaScript for an AudioWorklet. Until it exists, TeaVM can compile today's plain Java engine
-(`app/src/main/java/.../engine/`, no Android imports) to JS as a stopgap. `WEB-GAP.md` section 3 has the detail and the
+would drift from both. Since Nov 23 2026 the engine is common Kotlin in `core/` of the Android repo, and it already
+compiles for JavaScript (`./gradlew :core:compileKotlinJs -Pmm.js`, or `tools/kt-check.sh js`), so the web uses that
+module in an AudioWorklet; no TeaVM, no third engine. [Likely] Kotlin/JS prints numbers differently from the JVM
+("1" for 1.0), so check saved messes against `shared/fixtures/` by loading them, not by comparing text. `WEB-GAP.md` section 3 has the detail and the
 risks. Probe first (build order step 0): what the artifact sandbox allows (AudioWorklet, SharedArrayBuffer, mic, Web
 MIDI, fetches) decides whether the machine can stay an artifact or needs Netlify. Bring Tyler that answer before
 building on it.

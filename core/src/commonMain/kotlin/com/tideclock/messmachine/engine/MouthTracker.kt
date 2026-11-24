@@ -48,7 +48,7 @@ class MouthTracker(@JvmField val rate: Int) {
         var nn = 256
         while (nn < rate * .032) nn *= 2
         n = nn
-        hop = maxOf(32, (rate * .008).roundToLong().toInt())
+        hop = maxOf(32, jround(rate * .008).toInt())
         ring = FloatArray(n)
         win = DoubleArray(n)
         for (i in 0 until n) win[i] = .5 - .5 * cos(2 * PI * i / (n - 1))

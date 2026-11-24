@@ -31,10 +31,11 @@ kotlin {
 
 // The engine test and the shared mess round trip (plain Java programs) run against the Kotlin engine on the JVM.
 val mainJvm = kotlin.jvm().compilations.getByName("main")
+val mainDeps = mainJvm.runtimeDependencyFiles ?: files()
 val testOut = layout.buildDirectory.dir("enginetest")
 val compileEngineTest by tasks.registering(JavaCompile::class) {
     source(rootProject.files("tools/EngineTest.java", "shared/fixtures/RoundTrip.java"))
-    classpath = files(mainJvm.output.allOutputs, mainJvm.runtimeDependencyFiles)
+    classpath = files(mainJvm.output.allOutputs, mainDeps)
     destinationDirectory.set(testOut)
     options.release.set(17)
     dependsOn(mainJvm.compileTaskProvider)
@@ -43,7 +44,7 @@ tasks.register<JavaExec>("engineTest") {
     group = "verification"
     description = "tools/EngineTest.java against the Kotlin engine"
     dependsOn(compileEngineTest)
-    classpath = files(testOut, mainJvm.output.allOutputs, mainJvm.runtimeDependencyFiles)
+    classpath = files(testOut, mainJvm.output.allOutputs, mainDeps)
     mainClass.set("EngineTest")
     args(rootProject.file("app/src/main/assets/sounds").path + "/", testOut.get().asFile.path)
 }
@@ -51,7 +52,7 @@ tasks.register<JavaExec>("roundTrip") {
     group = "verification"
     description = "shared/fixtures/RoundTrip.java against the Kotlin engine"
     dependsOn(compileEngineTest)
-    classpath = files(testOut, mainJvm.output.allOutputs, mainJvm.runtimeDependencyFiles)
+    classpath = files(testOut, mainJvm.output.allOutputs, mainDeps)
     mainClass.set("RoundTrip")
     args(rootProject.file("shared/fixtures").path, rootProject.file("app/src/main/assets/sounds").path + "/")
 }

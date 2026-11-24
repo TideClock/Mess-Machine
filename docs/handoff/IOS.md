@@ -20,8 +20,13 @@ on the App Store and Google Play. He sends notes from the app's bug button; read
 
 ## The plan: one shared core, not two apps
 
-[Certain] The engine is 5,746 lines of plain Java with no Android imports (`app/src/main/java/.../engine/`). Java
-cannot run on an iPhone. There are two ways to get it there:
+[Certain] Since Nov 23 2026 the engine is common Kotlin in `core/src/commonMain/kotlin/com/tideclock/messmachine/engine/`
+(16 files, Kotlin Multiplatform, no expect/actual, no platform code). It passes the full Android engine test and the
+shared mess round trip on the JVM, its bounces are byte-identical to the old Java engine's, and it compiles for
+JavaScript. CI also builds it for `iosArm64` and `iosSimulatorArm64` on a Mac (job `core-other-platforms`). Build the
+framework with `./gradlew :core:linkReleaseFrameworkIosArm64 -Pmm.ios` (static, `MessCore`) on a Mac. Sound files reach
+it through `SoundFiles` (`read(path): ByteArray?`, a path starting with "/" is a full device path); implement that over
+the app bundle's `sounds/` folder. How it got here:
 
 1. **Shared core (the plan).** The engine is converted to Kotlin in this repo as a Kotlin Multiplatform module, then the
    screens move to Compose Multiplatform. Android and iOS then run the same engine and the same screen code. A fix lands
@@ -52,7 +57,7 @@ calls into Kotlin.
 
 ## What you can do from day one
 
-The Kotlin engine does not exist yet. Do not wait for it:
+These still stand, and the engine is ready to link once they are:
 
 1. **Repo and CI.** A minimal SwiftUI app shell, the `core/` submodule, and a GitHub Actions workflow on a macOS
    runner that builds for the iOS Simulator, runs XCTest and XCUITest, takes screenshots and publishes them to a
@@ -67,8 +72,8 @@ The Kotlin engine does not exist yet. Do not wait for it:
 4. **Mess files.** Load and save `shared/fixtures/*.mess.json` in Swift as a check of the format, until the shared
    engine takes over loading.
 
-Once the Android chat lands the Kotlin engine module with `iosArm64` and `iosSimulatorArm64` targets, link it, feed
-the ring, and the app makes sound. Then the screens move to Compose Multiplatform and iOS shows the same UI through
+Link the `core` framework, construct `Library(files, "sounds/")` and `Engine`, call its render on your engine thread
+to fill the ring, and the app makes sound. Then the screens move to Compose Multiplatform and iOS shows the same UI through
 `ComposeUIViewController`.
 
 ## Things that differ on iOS (decide, do not guess)

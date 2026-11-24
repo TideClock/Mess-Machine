@@ -916,7 +916,7 @@ class AppState(private val app: Context) {
             }
             else {
                 val notes = P.notes(ev.key)
-                for (q in ev.pitches) {
+                for (q in ev.pitches!!) {
                     notes.removeAll { it.s == ev.step && it.p == q }
                     notes.add(Project.Note(ev.step, q, ev.len))
                 }

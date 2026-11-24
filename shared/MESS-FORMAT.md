@@ -3,13 +3,14 @@
 This is the contract for the file every Mess Machine saves and opens: the Android app, the iOS app and the web
 rebuild. If you write what this page says and read the way it says, the three can open each other's messes.
 
-The Android code is the source of truth. Everything here was read from it:
+The Android code is the source of truth. Everything here was read from it (since Nov 23 2026 the engine is common
+Kotlin in `core/src/commonMain/kotlin/com/tideclock/messmachine/engine/`, shared with iOS and the web):
 
-- `engine/Project.java`: `toJson` (the writer), `fromJson` (the reader), `encSteps`, `decSteps`, `decNotes`, and the
+- `engine/Project.kt`: `toJson` (the writer), `fromJson` (the reader), `encSteps`, `decSteps`, `decNotes`, and the
   `Pattern` class.
-- `engine/SoundEdit.java`, `engine/PadOpts.java`, `engine/Synth.java`: the per-sound, per-pad and synth parts.
-- `engine/Library.java`, `Packs.kt`, `Workbench.kt`: how a sound key names a sound.
-- `engine/Json.java`: the JSON reader and writer.
+- `engine/SoundEdit.kt`, `engine/PadOpts.kt`, `engine/Synth.kt`: the per-sound, per-pad and synth parts.
+- `engine/Library.kt`, `Packs.kt`, `Workbench.kt`: how a sound key names a sound.
+- `engine/Json.kt`: the JSON reader and writer.
 
 Statements with no tag are read straight from that code. [Likely] and [Guessing] mark the rest.
 
@@ -712,8 +713,8 @@ Things other engines must copy exactly for `events.json` to match:
 `shared/fixtures/RoundTrip.java` loads every fixture with the Android code and saves it again. From the repo root:
 
 ```
-javac -d build/rt app/src/main/java/com/tideclock/messmachine/engine/*.java shared/fixtures/RoundTrip.java
-java -cp build/rt RoundTrip shared/fixtures app/src/main/assets/sounds/
+./gradlew :core:roundTrip          # with Gradle (what the build runs)
+tools/kt-check.sh all              # without Gradle: the Kotlin compiler alone, plus the engine test
 ```
 
 The second argument is optional. With it, sound keys are checked against the real `library.json`, as the app does.
