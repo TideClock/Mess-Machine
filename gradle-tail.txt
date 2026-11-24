@@ -1,0 +1,78 @@
+Starting a Gradle Daemon (subsequent builds will be faster)
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:jvmProcessResources NO-SOURCE
+> Task :core:processJvmMainResources SKIPPED
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugBuildConfig
+> Task :app:generateDebugResValues
+> Task :app:checkDebugAarMetadata
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:parseDebugLocalResources
+> Task :app:mergeDebugResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:processDebugManifestForPackage
+> Task :app:javaPreCompileDebug
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest
+> Task :app:mergeDebugShaders
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets
+> Task :app:processDebugResources
+> Task :app:packageDebugUnitTestForUnitTest
+> Task :app:generateDebugUnitTestConfig
+
+> Task :core:compileKotlinJvm
+w: file:///home/runner/work/Mess-Machine/Mess-Machine/core/src/commonMain/kotlin/com/tideclock/messmachine/engine/Engine.kt:1930:21 Condition is always 'false'.
+w: file:///home/runner/work/Mess-Machine/Mess-Machine/core/src/commonMain/kotlin/com/tideclock/messmachine/engine/MidiOut.kt:38:21 Condition is always 'false'.
+w: file:///home/runner/work/Mess-Machine/Mess-Machine/core/src/commonMain/kotlin/com/tideclock/messmachine/engine/MidiOut.kt:75:28 Condition is always 'false'.
+
+> Task :core:compileJvmMainJava NO-SOURCE
+> Task :core:jvmMainClasses
+> Task :core:jvmJar
+> Task :app:compileDebugKotlin
+> Task :app:compileDebugJavaWithJavac
+> Task :app:processDebugJavaRes
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:compileDebugUnitTestKotlin
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes
+
+> Task :app:testDebugUnitTest
+
+TapeRender > p0 SKIPPED
+
+TapeRender > p1 STANDARD_OUT
+    DEMO done p1 frames=132 audio=211200 samples
+
+TapeRender > p1 PASSED
+
+TapeRender > x1 SKIPPED
+
+TapeRender > x2 SKIPPED
+
+TapeRender > x3 SKIPPED
+
+TapeRender > x4 SKIPPED
+
+TapeRender > x5 SKIPPED
+
+TapeRender > x6 SKIPPED
+
+TapeRender > x7 SKIPPED
+
+TapeRender > x8 SKIPPED
+
+TapeRender > x9 SKIPPED
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1795515269449.json
+
+BUILD SUCCESSFUL in 2m 9s
+30 actionable tasks: 30 executed

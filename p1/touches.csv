@@ -1,0 +1,5 @@
+frame,type,x,y,note
+12,down,84,2314,open-padmenu
+15,up,84,2314,open-padmenu
+67,down,818,331,loop-song
+70,up,818,331,loop-song
