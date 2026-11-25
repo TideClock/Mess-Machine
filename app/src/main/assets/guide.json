@@ -1,14 +1,16 @@
 {
-  "title": "The sound engine was rebuilt to share with iPhone",
+  "title": "Meet the FAQ guy",
   "thisBuild": [
-    "The engine that makes every sound was rewritten in a language the iPhone and web versions can share. It should sound exactly the same: the old and new engines were checked against each other and give identical audio.",
-    "Nothing else changed: same keys, sounds and layout as the last build."
+    "Your grinning paper drawing is now the FAQ guy, redrawn in NSD colours to match the other icons.",
+    "He is the What the FAQ button, and he does the talking in What the FAQ, the lessons, the speed guide and this start guide.",
+    "He sits inside each card, so he never covers anything, and hops when he says something new."
   ],
   "watch": [
-    "Play a few loops, a synth and a chord: does anything sound different, late or crackly?",
-    "Bounce a loop, share a mess and import a sound from your files: do they all still work?"
+    "Tap the FAQ button, then a few controls: does he read as a face at that size?",
+    "Run one lesson and the speed guide: does the hop feel fun or annoying?"
   ],
   "limits": [
-    "If anything sounds or acts differently from the last build, send a bug note right away. That points straight at this change."
+    "Your newest bug notes have not reached GitHub yet. Open Notes in the menu and send any that are waiting.",
+    "The bug video waits on Hugging Face being allowed, so its fixes are not in this build."
   ]
 }

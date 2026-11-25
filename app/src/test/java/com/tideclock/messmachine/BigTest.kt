@@ -21,6 +21,7 @@ import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -2224,6 +2225,8 @@ class BigTest {
         assertEquals("the tap explains Play", "play", state.faqTag)
         assertFalse("and does not press it", state.playing)
         rule.onNodeWithTag("faq-text").assertExists()
+        // Nov 24: the FAQ guy (Tyler's drawing) is the one talking, inside the card
+        rule.onNodeWithContentDescription("FAQ guy").assertExists()
         shot("72-what-the-faq")
         rule.onNodeWithTag("faq-done").performClick(); settle()
         assertFalse(state.faqOn)

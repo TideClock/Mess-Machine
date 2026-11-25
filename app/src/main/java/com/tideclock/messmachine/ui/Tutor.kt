@@ -96,6 +96,7 @@ fun BoxScope.TutorOverlay(state: AppState) {
                 .background(C.Ink).border(3.dp, C.Yellow).padding(12.dp).tagged("tut-card"),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                FaqGuy(t.id to state.tutStep, modifier = Modifier.padding(end = 10.dp))
                 T(t.title.uppercase(), size = 12.sp, color = C.Yellow, spacing = .1.em, modifier = Modifier.weight(1f))
                 T("${state.tutStep + 1} of ${t.steps.size}", size = 12.sp, color = C.Dim, family = Mono)
             }

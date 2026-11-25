@@ -324,8 +324,15 @@ def _():
     poly(d,[(256,400),(380,260),(310,260),(310,110),(202,110),(202,260),(132,260)],Y); return im
 @icon('tool','What the FAQ')
 def _():
-    im,d=new(); ell(d,[60,60,452,452],PU); ell(d,[60,60,452,452],None); d.arc([170,110,342,280],180,90,fill=CR,width=50)
-    line(d,[(256,280),(256,330)],CR,50); d.ellipse([228,360,284,416],fill=CR); return im
+    # Nov 24 (Tyler): the FAQ guy, from Tyler's paper drawing of the grinning shield face, in NSD colours
+    im,d=new()
+    head=[(70,70),(445,30),(470,280),(420,430),(310,495),(200,480),(100,380),(75,230)]
+    poly(d,head,T)
+    poly(d,[(170,450),(230,360),(270,430),(320,330),(360,420),(410,320),(445,390),(420,430),(310,495),(200,480)],P,w=20)
+    for x,y in [(160,175),(360,140)]: d.ellipse([x-36,y-36,x+36,y+36],fill=K)
+    d.polygon([(105,250),(170,215),(230,260),(250,320),(320,310),(375,235),(425,170),(435,240),(400,330),(320,385),(225,380),(175,330),(150,290),(120,300)],fill=K)
+    d.polygon([(255,322),(315,314),(285,365)],fill=CR); d.polygon([(330,300),(372,250),(375,310)],fill=CR)
+    d.line(head+[head[0]],fill=K,width=LW,joint='curve'); im.info['noshade']=True; return im
 @icon('tool','Close')
 def _():
     im,d=new(); line(d,[(110,110),(402,402)],K,90); line(d,[(402,110),(110,402)],K,90); line(d,[(110,110),(402,402)],R,50); line(d,[(402,110),(110,402)],R,50); return im
