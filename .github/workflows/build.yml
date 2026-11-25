@@ -41,6 +41,15 @@ jobs:
       - name: Engine tests (the Kotlin engine in core/ on the JVM, no phone needed)
         run: ./gradlew :core:engineTest :core:roundTrip --stacktrace
 
+      # Nov 25: run 201 lost its whole big test to one refused download of Robolectric's Android. Fetch it first, with
+      # retries, into the local Maven folder Robolectric reads before it tries the network.
+      - name: Fetch Robolectric's Android (with retries)
+        run: |
+          v=14-robolectric-10818077-i6; d=~/.m2/repository/org/robolectric/android-all-instrumented/$v; mkdir -p $d
+          u=https://repo1.maven.org/maven2/org/robolectric/android-all-instrumented/$v/android-all-instrumented-$v
+          for i in 1 2 3 4 5; do curl -fsSL --retry 3 -o $d/android-all-instrumented-$v.pom $u.pom && curl -fsSL --retry 3 -o $d/android-all-instrumented-$v.jar $u.jar && break; echo "try $i failed"; sleep 30; done
+          ls -la $d
+
       - name: The big test (every screen, with screenshots)
         id: bigtest
         continue-on-error: true
