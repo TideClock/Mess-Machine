@@ -412,12 +412,22 @@ class CloudTest {
         assertEquals("the original now has phone 1's change", 131, p2.files.first { it.id == id2 }.bpm)
         assertEquals("the screen follows the copy", copy.id, p2.fileId)
         assertEquals(93, p2.project.bpm)
-        assertTrue("phone 2 said so: ${p2.cloudNotice}", p2.cloudNotice.contains("Yours is kept as $name (this phone)"))
+        // Tyler's answer 7: both phones are mine, so phone 2 asks what to keep (both stay until it is answered)
+        assertTrue("phone 2 asks", p2.twoPhones != null && p2.twoPhones!!.canMerge && p2.twoPhones!!.copyId == copy.id)
         later(6000)
         assertEquals("the copy went online as its own mess", 2, fake.messCount(email))
         assertEquals(CloudStore.M_SYNCED, p2.store!!.mark(copy.id))
+        show(p2)
+        shot("cloud-11-two-phones")
+        tap("two-merge")
+        later(6000)
+        waitFor("the copy is gone") { p2.files.size == 1 }
+        waitFor("the main mess is on screen") { p2.fileId == id2 }
+        assertEquals("phone 2's change is laid on phone 1's", 93, p2.project.bpm)
+        assertEquals("and online only one is left", 1, fake.messCount(email))
+        assertEquals(null, p2.twoPhones)
         openMesses()
-        shot("cloud-11-kept-both")
+        shot("cloud-11b-merged")
     }
 
     @Test fun cloudOfflineThenBack() {
