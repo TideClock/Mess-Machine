@@ -3,7 +3,8 @@
 # Fresh install and launch (the start guide path), relaunch, a walk through every tab, then long
 # random touch runs. Any crash or freeze fails the build before it is published.
 APK="$1"
-PKG=com.tideclock.messmachine
+PKG=app.shotgunstudio.messmachine
+ACT=com.tideclock.messmachine.MainActivity   # the store ID changed, the code package did not
 OUT=phone-out
 mkdir -p $OUT
 fail=0
@@ -13,7 +14,7 @@ note() { echo "PHONE: $*"; echo "$*" >> $OUT/steps.txt; }
 # is Mess Machine the app in front? (a running process alone is not enough: it can sit behind the home screen)
 infront() {
   if adb shell dumpsys window | grep -E "mCurrentFocus|mFocusedApp" | grep -q $PKG; then note "$1: in front"
-  else note "$1: NOT IN FRONT"; fail=1; adb shell am start -n $PKG/.MainActivity; sleep 4; fi
+  else note "$1: NOT IN FRONT"; fail=1; adb shell am start -n $PKG/$ACT; sleep 4; fi
 }
 # Android's own "isn't responding" boxes (build 45's run: the emulator's launcher froze and its box sat
 # over the app, so the screen map held only that box). Turned off up front; any that still show are closed.
@@ -53,7 +54,7 @@ size=$(adb shell wm size | grep -o '[0-9]*x[0-9]*' | tail -1); W=${size%x*}; H=$
 note "screen ${W}x${H}"
 
 # 1. first launch of a new build: the start guide opens (build 41 crashed right here)
-t=$(adb shell am start -W -n $PKG/.MainActivity | grep -E "TotalTime" | tr -d '\r')
+t=$(adb shell am start -W -n $PKG/$ACT | grep -E "TotalTime" | tr -d '\r')
 note "first launch (fresh install, nothing compiled yet): $t ms"
 sleep 10; shot 01-first-launch
 alive && note "first launch: running" || { note "first launch: NOT RUNNING"; fail=1; }
@@ -65,12 +66,12 @@ if [ -n "$xy" ]; then adb shell input tap $xy; else adb shell input keyevent KEY
 sleep 2; shot 02-guide-closed
 infront "guide closed"
 adb shell am force-stop $PKG; sleep 1
-t=$(adb shell am start -W -n $PKG/.MainActivity | grep -E "TotalTime" | tr -d '\r')
+t=$(adb shell am start -W -n $PKG/$ACT | grep -E "TotalTime" | tr -d '\r')
 note "cold start before the Baseline Profile is compiled: $t ms"
 # MM-4, MM-7: compile the app the way Android does overnight (with the Baseline Profile), then time a cold start again
 adb shell cmd package compile -m speed-profile -f $PKG >/dev/null 2>&1
 adb shell am force-stop $PKG; sleep 1
-t=$(adb shell am start -W -n $PKG/.MainActivity | grep -E "TotalTime" | tr -d '\r')
+t=$(adb shell am start -W -n $PKG/$ACT | grep -E "TotalTime" | tr -d '\r')
 note "cold start after the Baseline Profile is compiled: $t ms"
 sleep 8; shot 03-relaunch
 alive && note "relaunch: running" || { note "relaunch: NOT RUNNING"; fail=1; }
@@ -96,7 +97,7 @@ for t in tab-Pads loop-open tab-Synth tab-Steps tab-Perform tab-Sounds; do
   adb shell input tap $xy; sleep 2
   adb shell input swipe $(( W / 2 )) $(( H / 2 )) $(( W / 2 )) $(( H / 4 )) 300; sleep 1
   shot "04-$t"
-  alive || { note "$t: NOT RUNNING"; fail=1; adb shell am start -n $PKG/.MainActivity; sleep 5; }
+  alive || { note "$t: NOT RUNNING"; fail=1; adb shell am start -n $PKG/$ACT; sleep 5; }
   infront "$t"
 done
 # Nov 22: the song lives in the loop strip: open the strip, then Song, then Back closes it
@@ -107,7 +108,7 @@ xy=$(centre loop-song)
 # the strip may have been open already (the tap above closed it): tap the readout again
 [ -z "$xy" ] && { xy=$(centre loop-open); [ -n "$xy" ] && { adb shell input tap $xy; sleep 1; }; xy=$(centre loop-song); }
 if [ -z "$xy" ]; then note "loop-song: NOT FOUND"; fail=1; else adb shell input tap $xy; sleep 2; shot "04-loop-song"; fi
-alive || { note "loop-song: NOT RUNNING"; fail=1; adb shell am start -n $PKG/.MainActivity; sleep 5; }
+alive || { note "loop-song: NOT RUNNING"; fail=1; adb shell am start -n $PKG/$ACT; sleep 5; }
 infront "loop-song"
 adb shell input keyevent KEYCODE_BACK; sleep 1
 
@@ -137,7 +138,7 @@ if [ -z "$xy" ]; then note "pad 6: NOT FOUND"; fail=1; else
   shot 06-circle
   adb shell input motionevent UP $cx $cy; sleep 1
 fi
-alive && note "gestures: running" || { note "gestures: NOT RUNNING"; fail=1; adb shell am start -n $PKG/.MainActivity; sleep 5; }
+alive && note "gestures: running" || { note "gestures: NOT RUNNING"; fail=1; adb shell am start -n $PKG/$ACT; sleep 5; }
 
 # 3d. the overhaul on the release APK: every colour skin on the Play tab, then the Edit tray's five drawers
 #     (R8 shrinks the release build; this is where a stripped class or a bad colour would show)
@@ -160,7 +161,7 @@ for sk in specimen stage felt rust classic; do
   if [ -z "$k" ]; then note "skin $sk: chip NOT FOUND"; fail=1; else adb shell input tap $k; sleep 1; note "skin $sk: picked"; fi
   close_sheets
   shot "10-skin-$sk"
-  alive || { note "skin $sk: NOT RUNNING"; fail=1; adb shell am start -n $PKG/.MainActivity; sleep 5; }
+  alive || { note "skin $sk: NOT RUNNING"; fail=1; adb shell am start -n $PKG/$ACT; sleep 5; }
 done
 p=$(centre pad-1); e=$(centre open-padmenu)
 if [ -n "$p" ] && [ -n "$e" ]; then
@@ -174,7 +175,7 @@ if [ -n "$p" ] && [ -n "$e" ]; then
   [ -z "$(centre tray)" ] && note "edit tray: Back closed it" || { note "edit tray: Back DID NOT close it"; fail=1; }
   infront "after the edit tray"
 else note "edit tray: pad or Edit NOT FOUND"; fail=1; fi
-alive && note "skins and edit tray: running" || { note "skins and edit tray: NOT RUNNING"; fail=1; adb shell am start -n $PKG/.MainActivity; sleep 5; }
+alive && note "skins and edit tray: running" || { note "skins and edit tray: NOT RUNNING"; fail=1; adb shell am start -n $PKG/$ACT; sleep 5; }
 infront "gestures"
 
 # 3b. sound and smoothness: play the demo mess for 30 seconds, then read the audio log and the frame stats
@@ -203,10 +204,10 @@ for t in tab-Pads tab-Synth tab-Steps tab-Perform tab-Sounds; do
   xy=$(centre "$t")
   [ -z "$xy" ] && { note "unfolded $t: NOT FOUND"; shot "09-unfolded-$t"; continue; }
   adb shell input tap $xy; sleep 2; shot "09-unfolded-$t"
-  alive || { note "unfolded $t: NOT RUNNING"; fail=1; adb shell am start -n $PKG/.MainActivity; sleep 5; }
+  alive || { note "unfolded $t: NOT RUNNING"; fail=1; adb shell am start -n $PKG/$ACT; sleep 5; }
 done
 adb shell wm size reset; sleep 4
-alive && note "fold and unfold: running" || { note "fold and unfold: NOT RUNNING"; fail=1; adb shell am start -n $PKG/.MainActivity; sleep 5; }
+alive && note "fold and unfold: running" || { note "fold and unfold: NOT RUNNING"; fail=1; adb shell am start -n $PKG/$ACT; sleep 5; }
 infront "after unfolding"
 
 # 4. two long random runs (different seeds), with a cold restart between them
@@ -224,7 +225,7 @@ for seed in 11 2026; do
     note "monkey $seed: CRASH or freeze in the app"; fail=1
   elif ! alive; then note "monkey $seed: app not running after the run"; fail=1
   else note "monkey $seed: clean"; fi
-  adb shell am force-stop $PKG; sleep 1; adb shell am start -W -n $PKG/.MainActivity; sleep 5
+  adb shell am force-stop $PKG; sleep 1; adb shell am start -W -n $PKG/$ACT; sleep 5
 done
 alive && note "after everything: running" || { note "after everything: NOT RUNNING"; fail=1; }
 shot 08-end

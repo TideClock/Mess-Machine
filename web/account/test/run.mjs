@@ -352,7 +352,7 @@ function sourceChecks() {
   let links = null, aasa = null;
   try { links = JSON.parse(fs.readFileSync(path.join(ACCOUNT, ".well-known/assetlinks.json"), "utf8")); } catch { /* fails below */ }
   try { aasa = JSON.parse(fs.readFileSync(path.join(ACCOUNT, ".well-known/apple-app-site-association"), "utf8")); } catch { /* fails below */ }
-  check("assetlinks.json names the app package and has a fingerprint slot", !!links && links[0].target.package_name === "com.tideclock.messmachine" && links[0].target.sha256_cert_fingerprints.length === 1);
+  check("assetlinks.json names the app package and has a fingerprint slot", !!links && links[0].target.package_name === "app.shotgunstudio.messmachine" && links[0].target.sha256_cert_fingerprints.length === 1);
   const comps = aasa ? aasa.applinks.details[0].components.map((c) => c["/"]) : [];
   check("apple-app-site-association covers /m/* and /join/*", comps.includes("/m/*") && comps.includes("/join/*"), comps.join());
 }

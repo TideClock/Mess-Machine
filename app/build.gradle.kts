@@ -9,7 +9,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.tideclock.messmachine"
+        applicationId = "app.shotgunstudio.messmachine"   // Nov 24 2026: the permanent store ID (the code keeps its com.tideclock package)
         minSdk = 26
         targetSdk = 36
         // CI passes the run number so every build installs over the last one

@@ -107,3 +107,10 @@ to fill the ring, and the app makes sound. Then the screens move to Compose Mult
 
 Say what you set up, what runs on the Simulator, what is blocked on the shared engine, and the one decision you need
 from him. Keep it short.
+
+## App ID (Nov 24 2026)
+
+The store ID is **`app.shotgunstudio.messmachine`** on both stores (Tyler is buying shotgunstudio.app; developer name
+Shotgun Studio). Use it as the iOS bundle ID. The Kotlin code keeps its `com.tideclock.messmachine` package; only the
+Android applicationId changed.
+
