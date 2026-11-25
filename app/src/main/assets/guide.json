@@ -1,16 +1,14 @@
 {
-  "title": "Accounts are in, waiting for a server",
+  "title": "Getting ready for the new app name",
   "thisBuild": [
-    "Everything for accounts is now in the app: messes online, two people in one mess, live edits, share links, History, reporting, delete account and the Vault. None of it shows until the Supabase server is set up, so the app looks the same as the last build.",
-    "New for later: when one of your messes changes on two of your own phones, a banner asks Merge, Keep this phone's, or Keep both.",
-    "Everything from your bug video is still here: stutter rates, the new Settings, the tighter loop strip, Tempo drop-down, Mixer, Auto trim and Auto sample."
+    "The app is moving to its permanent store ID, app.shotgunstudio.messmachine, before launch. This build only gets the old app ready to hand over your messes.",
+    "The next update installs as a new app next to this one. On its first launch it copies all your messes, Workbench sounds, packs and settings across by itself.",
+    "The engine now has a speed check in every build: it takes about 22 microseconds per sound block, the same as the old Java engine."
   ],
   "watch": [
-    "Play a few loops and record a take: everything should work exactly as in the last build.",
-    "If anything acts differently from the last build, send a bug note: that points at the accounts code."
+    "Nothing should look or sound different from the last build."
   ],
   "limits": [
-    "No account screens yet: they appear once the server exists.",
-    "Mixer levels are per sound: two pads with the same sound move together."
+    "Keep this old app installed until the new one has opened once and says your messes moved over. Then you can uninstall the old one."
   ]
 }

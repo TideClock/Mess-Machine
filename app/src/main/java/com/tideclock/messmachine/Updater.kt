@@ -137,7 +137,7 @@ class Updater(private val app: Context) {
             val err = try {
                 val pi = app.packageManager.packageInstaller
                 val p = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
-                p.setAppPackageName(app.packageName)
+                // not pinned to this package: the move to the new app ID installs the new app from here (Nov 24)
                 if (Build.VERSION.SDK_INT >= 31) p.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
                 val id = pi.createSession(p)
                 pi.openSession(id).use { s ->

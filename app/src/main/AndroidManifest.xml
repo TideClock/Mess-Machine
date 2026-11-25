@@ -18,8 +18,13 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
 
+    <!-- Moving to the new app ID (Nov 24): the old app hands its files to the new one, signed with the same key only -->
+    <permission android:name="com.tideclock.messmachine.MOVE" android:protectionLevel="signature" />
+    <uses-permission android:name="com.tideclock.messmachine.MOVE" />
+
     <!-- Android 11+ hides other apps unless asked: the quick note needs to see the phone's speech service (note #20) -->
     <queries>
+        <package android:name="com.tideclock.messmachine" />
         <intent>
             <action android:name="android.speech.RecognitionService" />
         </intent>
@@ -99,6 +104,12 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
+
+        <provider
+            android:name=".MoveProvider"
+            android:authorities="${applicationId}.move"
+            android:exported="true"
+            android:permission="com.tideclock.messmachine.MOVE" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

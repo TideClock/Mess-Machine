@@ -8,6 +8,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxSize
 import com.tideclock.messmachine.ui.MessMachineApp
 
 /** Holds the one AppState so it outlives the screen. */
@@ -40,9 +42,28 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
+        // the new app ID's first launch: take the old app's messes before anything reads the settings (Nov 24)
+        if (Move.needed(this)) {
+            moving = true
+            setContent { MovingScreen() }
+            Thread({
+                val said = Move.run(this)
+                runOnUiThread {
+                    moving = false
+                    setContent { MessMachineApp(state) }
+                    state.say(said)
+                    startSound()
+                    if (savedInstanceState == null) handle(intent)
+                }
+            }, "mess-move-in").start()
+            return
+        }
         setContent { MessMachineApp(state) }
         if (savedInstanceState == null) handle(intent)
     }
+
+    /** True while the old app's files are coming over; nothing may touch the AppState until then. */
+    private var moving = false
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -53,6 +74,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        if (moving) return
+        startSound()
+    }
+
+    private fun startSound() {
         state.onScreen = true
         state.audio.start()
         try { midi.start() } catch (_: Exception) {}
@@ -60,6 +86,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
+        if (moving) return
         try { midi.stop() } catch (_: Exception) {}
         state.saveNow()
         // accounts: a mess saved in the last few seconds goes online now, not when the app comes back
@@ -89,5 +116,16 @@ class MainActivity : ComponentActivity() {
                 else state.importUri(u)
             }
         }
+    }
+}
+
+/** Shown for the few seconds the old app's files take to move over. */
+@androidx.compose.runtime.Composable
+private fun MovingScreen() {
+    androidx.compose.foundation.layout.Box(
+        androidx.compose.ui.Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFF1E1B20)),
+        contentAlignment = androidx.compose.ui.Alignment.Center,
+    ) {
+        androidx.compose.material3.Text("Moving your messes over from the old app…", color = androidx.compose.ui.graphics.Color(0xFFFCF8EE))
     }
 }
