@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import com.tideclock.messmachine.ui.MessMachineApp
 
 /** Holds the one AppState so it outlives the screen. */
-class MessApp : Application() {
+open class MessApp : Application() {  // open: the big test runs TestMessApp (app/src/test)
     // accounts: SupabaseApi.orNull is null when this build has no server, and then the app is exactly as before
     val state: AppState by lazy { AppState(this, SupabaseApi.orNull(this)) }
 
