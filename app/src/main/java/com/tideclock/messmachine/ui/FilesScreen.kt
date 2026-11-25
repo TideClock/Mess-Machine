@@ -358,7 +358,7 @@ fun TempoScreen(state: AppState) {
         }
         Wrap(gap = 6.dp) {
             Btn("Click", { state.switchClick() }, on = state.live.click, onColor = C.Yellow, small = true, tight = true, icon = "Click", tag = "tempo-click")
-            Btn(if (state.countInBars == 0) "Count off" else "Count ${state.countInBars}", { state.cycleCountIn() }, small = true, tight = true, on = state.countInBars > 0, onColor = C.Yellow, icon = "Count in", tag = "tempo-countin")
+            Btn(if (state.countInBars == 0) "Count-in: off" else "Count-in: ${state.countInBars} bar${if (state.countInBars > 1) "s" else ""}", { state.cycleCountIn() }, small = true, tight = true, on = state.countInBars > 0, onColor = C.Yellow, icon = "Count in", tag = "tempo-countin")
             Btn("Hear steps on tap", { state.switchPlayOnTap(!state.playOnTap) }, on = state.playOnTap, small = true, onColor = C.Teal)
         }
     }
