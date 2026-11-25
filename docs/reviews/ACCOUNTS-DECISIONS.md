@@ -51,6 +51,16 @@ Slices, each shippable and tested alone. The app shows no account feature unless
 2. A Vault submission still pending when its submitter deletes their account is withdrawn and deleted.
 3. Two phones on one account editing the same mess merge, like two people.
 
+## Tyler's answers after the build (Nov 24 2026, evening)
+
+4. Vault: status only (pending, approved, declined on the sound's row). No withdraw, no submissions list.
+5. The Play reviewer's sign-in button on the sign-in card stays.
+6. Blocking for someone who does not own the mess stays as "Send and block" on a report.
+7. One mess on two of your own phones (replaces answer 3 for messes nobody else shares): keep both copies as today, and
+   say so. When the same mess changed on two of your phones, the app asks: "This mess changed on two of your phones.
+   Merge them, or keep this one as the main?" Merge runs the ops merge once; Keep this one makes it the copy everyone
+   loads. Tyler leaned this way over live merging because of the unknown cost on the phone. Shared messes still merge live.
+
 ## Test additions that are now required
 
 - Server: the two-connection race per limit (A M1), the table-driven "a stranger gets an error and changes nothing"
