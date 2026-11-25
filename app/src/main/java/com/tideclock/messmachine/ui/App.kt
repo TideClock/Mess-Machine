@@ -161,7 +161,6 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
                 if (state.micOn) RecordingBanner(state)
                 if (state.updater.ready && !state.updater.later || state.updater.busy) UpdateBar(state)
                 if (state.cpuAsk) CpuBanner(state)
-                state.twoPhones?.let { TwoPhonesBanner(state, it) }
                 Row(Modifier.weight(1f).fillMaxWidth().closeStripOnTap(state)) {
                 if (state.layout != "new") Dock(state)
                 Box(Modifier.weight(1f).fillMaxHeight().tagged("screen-${state.tab.label}")) {
@@ -226,6 +225,8 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
             // What the FAQ goes over everything: while it is on, a tap explains instead of pressing
             FaqOverlay(state)
             if (state.quickText != null) QuickNoteBar(state, Modifier.align(Alignment.BottomStart))
+            // over every sheet too (the Messes sheet is where a clash is most often seen)
+            state.twoPhones?.let { TwoPhonesBanner(state, it, Modifier.align(Alignment.TopCenter).padding(top = 56.dp, start = 8.dp, end = 8.dp)) }
             state.toast?.let { msg ->
                 // above the tabs, and above the bottom dock where it shows, so a message never covers Menu or the dock's Fold
                 val dockUp = state.tab == Tab.Pads || state.tab == Tab.Console || state.tab == Tab.Synth
@@ -476,8 +477,8 @@ fun CpuBanner(state: AppState) {
  * keep this phone's as the main one, or keep both.
  */
 @Composable
-fun TwoPhonesBanner(state: AppState, t: com.tideclock.messmachine.cloud.TwoPhones) {
-    Column(Modifier.fillMaxWidth().background(C.Card2).tagged("two-banner").padding(horizontal = 14.dp, vertical = 10.dp)) {
+fun TwoPhonesBanner(state: AppState, t: com.tideclock.messmachine.cloud.TwoPhones, modifier: Modifier = Modifier) {
+    Column(modifier.fillMaxWidth().trayFrame().tagged("two-banner").padding(horizontal = 14.dp, vertical = 10.dp)) {
         T("\"${t.name.uppercase()}\" CHANGED ON TWO OF YOUR PHONES", size = 13.sp, color = C.Yellow, spacing = .06.em, lines = 2)
         T(if (t.canMerge) "Merge them, keep this phone's as the main one, or keep both." else "Keep this phone's as the main one, or keep both.",
             size = 13.sp, weight = androidx.compose.ui.text.font.FontWeight.Medium, modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
