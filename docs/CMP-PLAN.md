@@ -15,12 +15,12 @@ test green before the next starts.
 ## The shape when it is done
 
 - `core/` (engine and cloud client, common Kotlin) stays as it is.
-- A new KMP module `shared/` (Compose Multiplatform): AppState, the screens, Faq, Tutorials, resources. It depends on
+- A new KMP module `ui/` (Compose Multiplatform; not `shared/`, which already holds the platform contract): AppState, the screens, Faq, Tutorials, resources. It depends on
   `core` with `api(...)` and is the one place iOS builds a framework from.
-- **One static framework, named `MessMachine`,** built by `shared` with `export(project(":core"))`, so the engine and
+- **One static framework, named `MessMachine`,** built by `ui` with `export(project(":core"))`, so the engine and
   the screens share one Kotlin runtime. `core` stops building its own `MessEngine` framework in the same step that
   `MessMachine` appears (the iOS chat updates `tools/build-engine.sh`).
-- `shared/src/iosMain`: `fun MainViewController(platform: Platform): UIViewController`.
+- `ui/src/iosMain`: `fun MainViewController(platform: Platform): UIViewController`.
 - `app/` keeps only Android: `MainActivity`, the Android `Platform`, the updater, notification permission, display
   refresh, and the tests.
 
@@ -43,8 +43,13 @@ test green before the next starts.
    5% of real time or 1 in 100 over 25%. Measured here: the Kotlin engine and the old Java engine take the same time,
    about 22 microseconds per 256-frame block, under half a percent of real time.
 1. **Build plumbing, no code moves.** Compose Multiplatform plugin and versions matched to the Compose that Android
-   uses today (so nothing draws differently), the empty `shared/` module wired into `app`, the screenshot comparison
+   uses today (so nothing draws differently), the empty `ui/` module wired into `app`, the screenshot comparison
    step in CI. iOS targets only on a Mac, as `core` does.
+   Done Nov 24 as two pushes on the `cmp` branch (it builds and tests but never publishes): 1a the screen gate
+   (`tools/screen-diff.py`; the first run seeds the `cmp-ref` release, later runs publish `cmp-diff`; `[screens-ok]`
+   in a commit message accepts a change and resets the reference), 1b the module. Compose Multiplatform 1.7.0 asks
+   for Android Compose 1.7.1; `app/build.gradle.kts` holds every Compose library at the tested 1.7.0. Moved files
+   keep their package (`com.tideclock.messmachine.ui`), so a move changes folders, not code.
 2. **Resources.** Fonts, icons and art into `shared/composeResources`; `R.drawable` and `R.font` uses go through one
    lookup. Screenshots must match pixel for pixel.
 3. **Pure logic.** Faq, Tutorials, BarPlan, Icons' tables, the skins and colours, Theory helpers used by the UI.

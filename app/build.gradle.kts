@@ -104,8 +104,19 @@ composeCompiler {
     enableStrongSkippingMode.set(false)
 }
 
+// Nov 24 (CMP step 1): Compose Multiplatform 1.7.0 asks for Android Compose 1.7.1. Hold every Compose library at the
+// 1.7.0 the app was tested on (BOM 2024.09.00), so the shared module changes nothing on the phone. Material 3 has
+// its own numbers and is left alone.
+configurations.configureEach {
+    resolutionStrategy.eachDependency {
+        if (requested.group.startsWith("androidx.compose.") && requested.group != "androidx.compose.material3" &&
+            requested.version?.startsWith("1.7.") == true) useVersion("1.7.0")
+    }
+}
+
 dependencies {
     implementation(project(":core"))
+    implementation(project(":ui"))
     implementation(platform("androidx.compose:compose-bom:2024.09.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.foundation:foundation")
