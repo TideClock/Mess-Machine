@@ -327,6 +327,7 @@ fun StepPitchStrip(state: AppState, pad: Int, k: String, col: Color) {
             Btn("✕", { state.openStepStrip(pad) }, small = true, color = C.Riot)
         }
         val tm = rememberTextMeasurer()
+        val monoFace = Mono  // read here: a resource font can only be loaded while composing
         Canvas(
             Modifier
                 .fillMaxWidth()
@@ -350,7 +351,7 @@ fun StepPitchStrip(state: AppState, pad: Int, k: String, col: Color) {
                 drawRect(fill, topLeft = Offset(x + 2f, 2f), size = Size(w - 4f, size.height - 4f))
                 drawRect(C.Black, topLeft = Offset(x + 1f, 1f), size = Size(w - 2f, size.height - 2f), style = Stroke(width = 2f))
                 if (Theory.pcOf(p) == 0 || p == now) drawText(tm, Theory.noteName(p), topLeft = Offset(x + 3f, 4f),
-                    style = TextStyle(color = if (black && p != now) C.Cream else C.Ink, fontSize = 9.sp, fontFamily = Mono, fontWeight = FontWeight.Bold))
+                    style = TextStyle(color = if (black && p != now) C.Cream else C.Ink, fontSize = 9.sp, fontFamily = monoFace, fontWeight = FontWeight.Bold))
             }
         }
     }

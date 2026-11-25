@@ -379,6 +379,7 @@ fun ChordSlots(state: AppState, pad: Int, col: Color, oct: Int) {
         val perRow = if (maxWidth >= 56.dp * n) n else (n + 1) / 2
         val rows = (n + perRow - 1) / perRow
         val rowH = listOf(52.dp, 68.dp, 88.dp, 120.dp, 150.dp)[state.padianoSize]
+        val monoFace = Mono  // read here: a resource font can only be loaded while composing
         Canvas(
             Modifier
                 .fillMaxWidth()
@@ -425,7 +426,7 @@ fun ChordSlots(state: AppState, pad: Int, col: Color, oct: Int) {
                 drawRect(C.Black, topLeft = Offset(x + 2f, y + 2f), size = Size(w - 4f, h - 4f), style = Stroke(width = 3f))
                 drawText(tm, Theory.slotName(state.chordMode, j, P.root), topLeft = Offset(x + 8f, y + h * .28f),
                     style = TextStyle(color = if (down) ink(col) else C.Cream, fontSize = 15.sp, fontWeight = FontWeight.Black))
-                drawText(tm, "${j + 1}", topLeft = Offset(x + 8f, y + 6f), style = TextStyle(color = C.Dim, fontSize = 9.sp, fontFamily = Mono))
+                drawText(tm, "${j + 1}", topLeft = Offset(x + 8f, y + 6f), style = TextStyle(color = C.Dim, fontSize = 9.sp, fontFamily = monoFace))
             }
         }
     }
@@ -469,6 +470,7 @@ fun PadianoSquares(state: AppState, pad: Int, col: Color, base: Int) {
             val inRow = if (line == sub - 1) one.size - line * perRow else perRow
             return if (c < 0 || c >= inRow) null else b.getOrNull(line * perRow + c)
         }
+        val monoFace = Mono  // read here: a resource font can only be loaded while composing
         Canvas(
             Modifier
                 .fillMaxWidth()
@@ -510,7 +512,7 @@ fun PadianoSquares(state: AppState, pad: Int, col: Color, base: Int) {
                 drawRect(C.Black, topLeft = Offset(x + 1f, y + 1f), size = Size(w - 2f, h - 2f), style = Stroke(width = 2.5f))
                 if (Theory.pcOf(p) == 0 || L.isRoot(p) || i == 0) {
                     drawText(tm, Theory.noteName(p), topLeft = Offset(x + 4f, y + 5f),
-                        style = TextStyle(color = if (blk && p !in L.down) C.Cream else C.Ink, fontSize = 9.sp, fontFamily = Mono, fontWeight = FontWeight.Bold))
+                        style = TextStyle(color = if (blk && p !in L.down) C.Cream else C.Ink, fontSize = 9.sp, fontFamily = monoFace, fontWeight = FontWeight.Bold))
                 }
             }
         }
@@ -558,6 +560,7 @@ fun PadianoKeys(state: AppState, pad: Int, col: Color, keysHeight: Dp) {
                 // each row up starts on the white key after the row below ends (note #20)
                 val from = (first + o * visible).coerceAtMost(whites.size - 1)
                 val shown = whites.subList(from, minOf(from + visible, whites.size))
+                val monoFace = Mono  // read here: a resource font can only be loaded while composing
                 Canvas(
                     Modifier
                         .fillMaxWidth()
@@ -612,7 +615,7 @@ fun PadianoKeys(state: AppState, pad: Int, col: Color, keysHeight: Dp) {
                         drawRect(C.Black, topLeft = Offset(x, 0f), size = Size(ww, size.height), style = Stroke(width = 3f))
                         if (Theory.pcOf(p) == 0 || root) {
                             drawText(tm, Theory.noteName(p), topLeft = Offset(x + 4f, size.height - 34f),
-                                style = TextStyle(color = C.Ink, fontSize = 10.sp, fontFamily = Mono, fontWeight = FontWeight.Bold))
+                                style = TextStyle(color = C.Ink, fontSize = 10.sp, fontFamily = monoFace, fontWeight = FontWeight.Bold))
                         }
                     }
                     for (i in 0 until visible - 1) {

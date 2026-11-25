@@ -237,6 +237,7 @@ fun FxSettingsCard(state: AppState, pad: Int, t: Int, name: String) {
 @Composable
 fun Vial(value: Float, color: Color, live: Boolean, tag: String, height: androidx.compose.ui.unit.Dp = 112.dp, label: String? = null, onChange: (Float, Boolean) -> Unit) {
     val tm = androidx.compose.ui.text.rememberTextMeasurer()
+    val stencilFace = Stencil  // read here: a resource font can only be loaded while composing
     Canvas(
         Modifier
             .fillMaxWidth()
@@ -293,7 +294,7 @@ fun Vial(value: Float, color: Color, live: Boolean, tag: String, height: android
         drawLine(Color.White.copy(alpha = .22f), Offset(x0 + w * .72f, glassTop + 4f), Offset(x0 + w * .72f, size.height - bot - r), 2.5f)
         // a name written up the glass, like a specimen label (the throws: their names are too long to sit under a vial)
         if (label != null) {
-            val lay = tm.measure(label, androidx.compose.ui.text.TextStyle(fontFamily = Stencil, fontSize = 10.sp, color = Hw.Engrave.copy(alpha = .9f), letterSpacing = .08.em))
+            val lay = tm.measure(label, androidx.compose.ui.text.TextStyle(fontFamily = stencilFace, fontSize = 10.sp, color = Hw.Engrave.copy(alpha = .9f), letterSpacing = .08.em))
             val mid = Offset(size.width / 2, glassTop + glassH / 2)
             rotate(-90f, mid) {
                 drawText(lay, topLeft = Offset(mid.x - lay.size.width / 2f, mid.y - lay.size.height / 2f))

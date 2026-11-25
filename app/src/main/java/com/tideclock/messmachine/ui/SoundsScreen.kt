@@ -49,7 +49,7 @@ import com.tideclock.messmachine.R
 import com.tideclock.messmachine.engine.Library
 import com.tideclock.messmachine.engine.Project
 
-fun jarArt(cab: String): Int = when (cab) {
+fun jarArt(cab: String): org.jetbrains.compose.resources.DrawableResource = when (cab) {
     "thumps" -> Res.drawable.jar_thumps
     "bodily" -> Res.drawable.jar_bodily
     "machines" -> Res.drawable.jar_machines
@@ -165,7 +165,7 @@ fun SoundsScreen(state: AppState, pickFor: Int?) {
 }
 
 @Composable
-private fun JarTab(id: String, name: String, col: Color, on: Boolean, art: Int?, onClick: () -> Unit) {
+private fun JarTab(id: String, name: String, col: Color, on: Boolean, art: org.jetbrains.compose.resources.DrawableResource?, onClick: () -> Unit) {
     Column(
         Modifier
             .width(104.dp)

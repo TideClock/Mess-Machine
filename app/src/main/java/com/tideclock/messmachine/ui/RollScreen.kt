@@ -102,6 +102,7 @@ fun Roll(state: AppState) {
     val tm = rememberTextMeasurer()
     val rowH = 30.dp
     val keyW = 46.dp
+    val archivoFace = Archivo  // read here: a resource font can only be loaded while composing
     Canvas(
         Modifier
             .fillMaxWidth()
@@ -136,7 +137,7 @@ fun Roll(state: AppState) {
             drawRect(if (black) C.Ink else lerp(C.Cream, pcColor(p - P.root), .25f), topLeft = Offset(0f, y), size = Size(kw - 2, rh - 1))
             if (Theory.pcOf(p) == 0 || p == lo + 24 || P.fold) {
                 drawText(tm, Theory.noteName(p), topLeft = Offset(5f, y + rh * .22f),
-                    style = TextStyle(color = if (black) C.Cream else C.Ink, fontSize = 11.sp, fontFamily = Archivo, fontWeight = FontWeight.ExtraBold))
+                    style = TextStyle(color = if (black) C.Cream else C.Ink, fontSize = 11.sp, fontFamily = archivoFace, fontWeight = FontWeight.ExtraBold))
             }
             drawLine(C.Black, Offset(0f, y + rh), Offset(size.width, y + rh), strokeWidth = 1f)
         }
