@@ -13,9 +13,11 @@ android {
         minSdk = 26
         targetSdk = 36
         // CI passes the run number so every build installs over the last one
-        versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
-        versionName = "0.1." + (System.getenv("GITHUB_RUN_NUMBER") ?: "0")
-        buildConfigField("String", "GIT_SHA", "\"" + (System.getenv("GITHUB_SHA") ?: "local").take(7) + "\"")
+        // MM_BUILD_NUMBER / MM_BUILD_SHA: the cmp branch's big test pins both, so its screens can be compared run to run
+        fun env(vararg names: String) = names.firstNotNullOfOrNull { n -> System.getenv(n)?.takeIf { it.isNotBlank() } }
+        versionCode = (env("MM_BUILD_NUMBER", "GITHUB_RUN_NUMBER") ?: "1").toInt()
+        versionName = "0.1." + (env("MM_BUILD_NUMBER", "GITHUB_RUN_NUMBER") ?: "0")
+        buildConfigField("String", "GIT_SHA", "\"" + (env("MM_BUILD_SHA", "GITHUB_SHA") ?: "local").take(7) + "\"")
         // accounts (docs/ACCOUNTS-API.md s5): empty by default, and then the app shows no account feature at all
         fun cloudSetting(env: String, prop: String): String =
             (System.getenv(env)?.takeIf { it.isNotBlank() } ?: (project.findProperty(prop) as String?) ?: "").trim()

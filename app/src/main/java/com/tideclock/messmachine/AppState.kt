@@ -1905,6 +1905,10 @@ class AppState(
 
     fun clearSlot() { sync?.hint(com.tideclock.messmachine.cloud.Ops.loopClear(project.cur)); edit { pat().clear() }; sayUndo("Loop ${Project.LETTERS[project.cur]} cleared.") }
 
+    /** Random drums' dice. Under the big test (Robolectric) it is seeded, so the same taps draw the same beat every run. */
+    internal var dice: kotlin.random.Random =
+        if (android.os.Build.FINGERPRINT == "robolectric") kotlin.random.Random(25) else kotlin.random.Random.Default
+
     /** The site's Random drums: fresh steps for every pad in this bank, busier on the first row. */
     fun randomDrums() {
         val rows = (0 until Project.BANK).map { bank * Project.BANK + it }.filter { project.kit[it].isNotEmpty() }
@@ -1914,7 +1918,7 @@ class AppState(
             val P = pat()
             rows.forEachIndexed { n, i ->
                 val k = kit[i]
-                for (j in 0 until P.len) P.setStep(k, j, Math.random() < (if (n == 0) .3 else .14))
+                for (j in 0 until P.len) P.setStep(k, j, dice.nextDouble() < (if (n == 0) .3 else .14))
             }
         }
     }

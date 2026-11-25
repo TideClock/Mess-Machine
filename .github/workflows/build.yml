@@ -44,6 +44,10 @@ jobs:
       - name: The big test (every screen, with screenshots)
         id: bigtest
         continue-on-error: true
+        env:
+          # the cmp branch compares screens run to run, so the build number and commit shown on screen are pinned there
+          MM_BUILD_NUMBER: ${{ github.ref == 'refs/heads/cmp' && '1' || '' }}
+          MM_BUILD_SHA: ${{ github.ref == 'refs/heads/cmp' && 'cmpfixed' || '' }}
         # the output is also kept in gradle.log, which an accounts run that fails publishes (last step of this job)
         run: set -o pipefail; ./gradlew testDebugUnitTest --stacktrace 2>&1 | tee -a gradle.log
 
