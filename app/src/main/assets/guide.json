@@ -1,24 +1,16 @@
 {
-  "title": "Your bug video, fixed and built",
+  "title": "Accounts are in, waiting for a server",
   "thisBuild": [
-    "Stutter holds one speed, locked to the beat. The vial has four zones, bottom up: quarter, eighth, 16th and 32nd notes (it shows on the vial while held).",
-    "Settings is two short groups, Look and Playing, with a switch per on/off. Hold to record is gone: tap to start, tap to stop.",
-    "The loop strip is tighter: smaller loops, one bar of keys, a small Loop/Song switch. It closes when you change page or tap the page under it.",
-    "Click and Count-in sit in the top bar on every page (your fold's wide screen), and in Tempo.",
-    "Tempo drops down under the top bar instead of taking the whole screen.",
-    "Synth: To pad and Over moved up beside Scratch and the preset, so that row is gone.",
-    "Edit tray: no empty space at the top, shorter drawer keys, shorter FX vials. Repeat and Toss are smaller.",
-    "New: Auto trim (Settings, on), Auto sample (pad menu or Edit, Sound: the next sound lands on that pad), Chop to pads in the Sample sheet's Play tab, and a Mixer in Seq.",
-    "Icons: A to H as block letters and a bed for Rest in the song painter, and DROP in big letters on a grey key. FX tray's More is now Sample sheet."
+    "Everything for accounts is now in the app: messes online, two people in one mess, live edits, share links, History, reporting, delete account and the Vault. None of it shows until the Supabase server is set up, so the app looks the same as the last build.",
+    "New for later: when one of your messes changes on two of your own phones, a banner asks Merge, Keep this phone's, or Keep both.",
+    "Everything from your bug video is still here: stutter rates, the new Settings, the tighter loop strip, Tempo drop-down, Mixer, Auto trim and Auto sample."
   ],
   "watch": [
-    "Hold the Stutter vial low, then high: does each height keep one steady speed?",
-    "Seq, then Mixer: move a pad's fader and the bank fader. Do levels stick and sound right?",
-    "Auto sample a pad, then clap once. Does it land and stop by itself?",
-    "Open the loop strip and tap a pad: it should close and the pad should still play."
+    "Play a few loops and record a take: everything should work exactly as in the last build.",
+    "If anything acts differently from the last build, send a bug note: that points at the accounts code."
   ],
   "limits": [
-    "Mixer levels are per sound: two pads with the same sound move together.",
-    "Auto sample stops after a third of a second of quiet, so a long reverb tail gets cut short."
+    "No account screens yet: they appear once the server exists.",
+    "Mixer levels are per sound: two pads with the same sound move together."
   ]
 }
