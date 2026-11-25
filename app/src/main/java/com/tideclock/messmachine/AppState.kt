@@ -175,6 +175,7 @@ class AppState(
     val bench = Workbench(app, lib)
 
     var project: Project = loadCurrent()
+        private set
     /** Accounts, Slice B: the open mess's session when it is edited by ops (docs/ACCOUNTS-HOST-B.md). null otherwise, always null without a server. */
     @JvmField var sync: com.tideclock.messmachine.cloud.SyncSession? = null
     /** The local id of the mess the session belongs to. */
@@ -187,7 +188,6 @@ class AppState(
     private val opsIds: MutableSet<String> = HashSet(prefs.getStringSet("cloudOps", emptySet())!!)
     /** Messes I was removed from (or that went away) this run: never opened by ops again. */
     private val goneIds = HashSet<String>()
-        private set
     var version by mutableIntStateOf(0)
         private set
     var liveV by mutableIntStateOf(0)
