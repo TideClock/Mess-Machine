@@ -418,8 +418,10 @@ class CloudTest {
         assertEquals("the copy went online as its own mess", 2, fake.messCount(email))
         assertEquals(CloudStore.M_SYNCED, p2.store!!.mark(copy.id))
         show(p2)
+        rule.runOnUiThread { p2.overlay = null }; settle()   // the banner sits under the top bar, behind the Messes sheet
         shot("cloud-11-two-phones")
         tap("two-merge")
+        assertEquals("the answer was taken", null, p2.twoPhones)
         later(6000)
         waitFor("the copy is gone") { p2.files.size == 1 }
         waitFor("the main mess is on screen") { p2.fileId == id2 }
