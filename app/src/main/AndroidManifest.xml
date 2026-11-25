@@ -66,6 +66,26 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="content" android:mimeType="application/json" />
             </intent-filter>
+            <!-- accounts: an invite (j) or a share link (m), from the "Open in Mess Machine" button on the site's pages -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="messmachine" android:host="j" />
+                <data android:scheme="messmachine" android:host="m" />
+            </intent-filter>
+            <!-- the same links as https on the account site. Android opens these in the app only once the site's
+                 assetlinks.json names this app's signing fingerprint; until then they open the web page, whose button
+                 uses the messmachine:// form above. The host is unset.invalid in a build without a site. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="${siteHost}" />
+                <data android:pathPrefix="/join/" />
+                <data android:pathPrefix="/j/" />
+                <data android:pathPrefix="/m/" />
+            </intent-filter>
         </activity>
 
         <service

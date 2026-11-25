@@ -52,6 +52,8 @@ class SyncSession(private val api: CloudApi, private val cache: CloudCache, priv
     @JvmField var serverRev = 0L        // highest rev held with no gap below it
     @JvmField var shownRev = 0L         // other people's ops up to here are on screen
     @JvmField var previewRev = 0L       // serverRev when preview() last ran
+    /** Slice C: the host sets it while the live socket is joined; the poll is then only the safety net (POLL_JOINED_MS). */
+    @JvmField var socketJoined = false
 
     /** A batch as the server ordered it. mine: its id was one of my own batches (never judged by user id). */
     private class Entry(@JvmField val rev: Long, @JvmField val user: String, @JvmField val id: String, @JvmField val v: Int,
@@ -414,6 +416,11 @@ class SyncSession(private val api: CloudApi, private val cache: CloudCache, priv
         if (opened && memberCount > 1 && !seat && !offline && now - lastJoinAt >= WATCH_MS) joinLive()
     }
 
+    /** Slice C: the live socket said the mess changed (an `ops` or `meta` broadcast): ask the server at the next tick, not at the next poll. */
+    fun nudge() { if (ready && !closed && !gone) pollSoon = true }
+    /** How many people are on this mess, as the server last said. */
+    fun memberCount(): Int = memberCount
+
     /** A structural edit is about to be reported by localChanged: Ops.loopLen, loopCopy, loopClear, padSwap or padPut. */
     fun hint(op: Op) { if (ready && !closed && !gone) hints.add(op) }
 
@@ -556,7 +563,7 @@ class SyncSession(private val api: CloudApi, private val cache: CloudCache, priv
     /* ================= sending ================= */
 
     private fun sendEvery(): Long = if (memberCount > 1) SEND_MS else SOLO_SEND_MS
-    private fun pollEvery(): Long = if (memberCount > 1 || !opened) POLL_MS else SOLO_POLL_MS
+    private fun pollEvery(): Long = if (memberCount > 1 || !opened) (if (socketJoined && opened) POLL_JOINED_MS else POLL_MS) else SOLO_POLL_MS
 
     private fun trySend(now: Long, force: Boolean) {
         if (!ready || !opened || closed || gone || flightBusy) return

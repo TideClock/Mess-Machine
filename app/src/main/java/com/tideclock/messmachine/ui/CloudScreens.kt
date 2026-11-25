@@ -39,6 +39,7 @@ import com.tideclock.messmachine.MessFile
 import com.tideclock.messmachine.Overlay
 import com.tideclock.messmachine.cloud.CloudStore
 import com.tideclock.messmachine.cloud.MessRow
+import com.tideclock.messmachine.cloud.SyncSession
 
 /*
  * Accounts, Slice A (docs/ACCOUNTS-SPEC.md s5.3 after the rulings): sign in with an email code, the terms, the name
@@ -103,6 +104,32 @@ fun CloudMark(state: AppState, f: MessFile) {
         else -> "On this phone only" to C.Dim
     }
     val open = f.id == state.fileId
+    val live = if (open) state.sync else null
+    if (live != null) {
+        // a mess edited together: every change goes up as it is made, so the lamp is the session's
+        val n = live.pending()
+        val st = state.syncState
+        val off = st == SyncSession.OFFLINE
+        val lamp = when { off -> C.Dim; n > 0 || st == SyncSession.OPENING -> C.Yellow; else -> Color(0xFF3DDC84) }
+        val words = when {
+            off -> if (n > 0) "Offline, $n changes waiting" else "Offline"
+            st == SyncSession.OPENING -> "Opening"
+            st == SyncSession.WATCH -> "Listening only, 4 people are editing"
+            n > 0 -> if (n == 1) "1 change going up" else "$n changes going up"
+            live.shared() -> "Online, edited together"
+            else -> "Online"
+        }
+        Row(Modifier.padding(top = 4.dp).tagged("mess-cloud-${f.id}"), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(10.dp).background(lamp, CircleShape).tagged("sync-state"))
+            T(words, size = 12.sp, color = if (off) C.Dim else C.Teal, weight = FontWeight.Medium, lines = 1, modifier = Modifier.padding(start = 6.dp))
+        }
+        if (state.syncNewer) T("Someone here has a newer Mess Machine. Update to see everything they do.", size = 12.sp, color = C.Yellow, weight = FontWeight.Medium,
+            modifier = Modifier.padding(top = 4.dp).tagged("sync-newer"))
+        val miss = s.missing(f.id)
+        if (miss > 0) Btn(if (miss == 1) "Get 1 sound now" else "Get $miss sounds now", { state.cloudGetSounds() }, small = true, color = C.Teal, tag = "sounds-get",
+            modifier = Modifier.padding(top = 6.dp))
+        return
+    }
     Row(Modifier.padding(top = 4.dp).tagged("mess-cloud-${f.id}"), verticalAlignment = Alignment.CenterVertically) {
         if (open) {
             // the one lamp, on the open mess: green online, amber changes waiting, grey offline
@@ -127,6 +154,11 @@ fun CloudRowButton(state: AppState, f: MessFile, sure: Boolean, onSure: (Boolean
     @Suppress("UNUSED_VARIABLE") val v = state.cloudV
     if (s.state == CloudStore.OUT) return
     val online = s.mark(f.id) != CloudStore.M_PHONE
+    val cid = s.cloudId(f.id)
+    // Share: who is on it, invite someone to make it with you
+    if (cid.isNotEmpty() && s.state == CloudStore.IN) Btn("Share", { state.openShare(cid) }, small = true, tag = "omess-share-${cid.take(8)}")
+    // a mess other people are on is not kept off the cloud from here: the owner deletes it online, the others leave (Share)
+    if (cid.isNotEmpty() && state.cloudByOps(cid)) return
     if (online) Btn(if (sure) "Really? It goes offline" else "Keep off the cloud", {
         if (sure) { onSure(false); state.keepOffCloud(f.id, true) } else onSure(true)
     }, small = true, color = if (sure) C.Riot else C.Card2, tag = "mess-offcloud-${f.id}")
@@ -160,6 +192,7 @@ private fun OnlineRow(state: AppState, r: MessRow, sure: Boolean, onSure: (Boole
             }
             Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Btn("Duplicate", { state.dupCloudMess(r.id) }, small = true, tag = "omess-dup-$cid")
+                Btn("Share", { state.openShare(r.id) }, small = true, tag = "omess-share-$cid")
                 if (mine) Btn(if (sure) "Really delete online?" else "Delete online", {
                     if (sure) { onSure(false); state.deleteCloudMess(r.id) } else onSure(true)
                 }, small = true, color = if (sure) C.Riot else C.Card2, tag = "omess-del-$cid")
@@ -176,8 +209,11 @@ fun AccountScreen(state: AppState) {
     ScrollPane(hPad = 14.dp, vPad = 0.dp) {
         when {
             s.checking() -> Card(Modifier.fillMaxWidth().padding(top = 4.dp)) { T("Checking your account…", size = 15.sp) }
-            s.state == CloudStore.OUT -> SignIn(state, s)
+            s.state == CloudStore.OUT -> { LinkCards(state, s); SignIn(state, s) }
             s.state == CloudStore.TERMS -> Terms(state, s)
+            // a link is waiting (it came through signing in and the terms): the name others will see, then the question
+            state.pendingInvite.isNotEmpty() && s.nameNeeded() -> NameCard(state, s, asking = true)
+            state.linkWaiting() -> LinkCards(state, s)
             !state.nameAsked && s.nameNeeded() -> NameCard(state, s, asking = true)
             !state.moveAsked && phoneOnly(state, s) > 0 -> MoveAsk(state, phoneOnly(state, s))
             else -> AccountPage(state, s)
@@ -264,7 +300,7 @@ private fun Terms(state: AppState, s: CloudStore) {
 
 /** The name others see: asked once after the first sign-in (name-ask), and on the Account page (acct-name). */
 @Composable
-private fun NameCard(state: AppState, s: CloudStore, asking: Boolean) {
+internal fun NameCard(state: AppState, s: CloudStore, asking: Boolean) {
     var name by remember { mutableStateOf(s.me?.display_name ?: "") }
     var err by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
@@ -317,6 +353,7 @@ private fun AccountPage(state: AppState, s: CloudStore) {
         }
     }
     NameCard(state, s, asking = false)
+    AccountPeople(state)
     Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
         Column {
             T("SOUNDS", size = 12.sp, color = C.Yellow, spacing = .1.em)

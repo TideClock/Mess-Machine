@@ -81,7 +81,13 @@ class MainActivity : ComponentActivity() {
                 else if (text != null && text.trimStart().startsWith("{")) state.importText(text)
                 else if (text != null) state.say("That share was not a Mess Machine file.")
             }
-            Intent.ACTION_VIEW -> i.data?.let { state.importUri(it) }
+            // accounts: an invite or share link (messmachine://j/<token>, or the site's /join/ page) opens here; anything
+            // else is a mess file
+            Intent.ACTION_VIEW -> i.data?.let { u ->
+                val sch = u.scheme ?: ""
+                if (sch == "messmachine" || sch == "https" || sch == "http") { if (!state.cloudLink(u.toString())) state.say("That link is not one this app opens.") }
+                else state.importUri(u)
+            }
         }
     }
 }

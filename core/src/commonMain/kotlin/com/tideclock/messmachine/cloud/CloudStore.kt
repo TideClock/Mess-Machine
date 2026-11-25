@@ -59,6 +59,12 @@ class CloudStore(private val api: CloudApi, private val tokens: TokenStore, priv
     @JvmField var listOpen = false
     /** false after a call got no answer, true again once one did. */
     @JvmField var online = true
+    /**
+     * Slice B (rule 8): the host says which cloud messes it edits by ops (through a SyncSession). Push and pull leave
+     * the docs and names of those alone: only their sounds go up and come down here. null (the default): none, and an
+     * Opened with doc_rev < rev is still "Update to open this mess".
+     */
+    @JvmField var byOps: ((String) -> Boolean)? = null
 
     /** One phone mess and its cloud mess. The first group is kept in index.json. */
     private class Link(var local: String) {
@@ -306,6 +312,8 @@ class CloudStore(private val api: CloudApi, private val tokens: TokenStore, priv
 
     /* ---------- the list ---------- */
 
+    private fun ops(l: Link): Boolean { val f = byOps; return f != null && l.cloud.isNotEmpty() && l.rev >= 0L && f(l.cloud) }
+
     private fun find(localId: String): Link? { for (l in links) if (l.local == localId) return l; return null }
     private fun byCloud(cloudId: String): Link? { for (l in links) if (l.cloud == cloudId && l.made()) return l; return null }
 
@@ -343,7 +351,7 @@ class CloudStore(private val api: CloudApi, private val tokens: TokenStore, priv
         for (s in loadSounds(l)) if (s.src != "gone" && !arrived(s)) n++
         return n
     }
-    private fun renameDue(l: Link): Boolean = l.made() && l.role == "owner" && l.name.isNotEmpty() && l.name != l.sname
+    private fun renameDue(l: Link): Boolean = l.made() && !ops(l) && l.role == "owner" && l.name.isNotEmpty() && l.name != l.sname
 
     /** Call after every local save: signed in and not kept off means it goes online. */
     fun saved(localId: String, name: String) {
@@ -357,8 +365,15 @@ class CloudStore(private val api: CloudApi, private val tokens: TokenStore, priv
         }
         if (l.off) return
         if (l.cloud.isEmpty()) { l.cloud = api.newId(); l.rev = -1L }
-        if (name.isNotEmpty()) l.name = name
         val now = clock.nowMs()
+        if (ops(l)) {
+            // edited by ops: the session sends the mess and its name; only its sounds go up from here
+            l.snd = true; l.sndAt = now; l.dirty = false; l.firstAt = 0L
+            saveIndex()
+            host.onMesses()
+            return
+        }
+        if (name.isNotEmpty()) l.name = name
         l.dirty = true
         l.ver++
         if (l.firstAt == 0L) l.firstAt = now
@@ -454,7 +469,7 @@ class CloudStore(private val api: CloudApi, private val tokens: TokenStore, priv
             return
         }
         online = true
-        if (o.doc_rev < o.rev) {       // a newer app is editing it by ops: leave it alone
+        if (o.doc_rev < o.rev && byOps == null) {       // a newer app is editing it by ops: leave it alone
             host.notice(N_UPDATE, UPDATE_TEXT)
             cb.done(null, CloudErr("client_too_old", 0, UPDATE_TEXT))
             return
@@ -469,6 +484,9 @@ class CloudStore(private val api: CloudApi, private val tokens: TokenStore, priv
             setSounds(l, o.sounds)
         } else if (l.busy) {
             // a push or pull of it is running: that one decides
+        } else if (ops(l)) {
+            l.role = o.role; l.sname = o.name; l.name = o.name
+            setSounds(l, o.sounds)                 // the session brings the mess itself
         } else if (l.dirty && o.rev > l.rev && mine != null) {
             if (settle(l, o, mine) == 0) { l.dirty = false; l.firstAt = 0L }
         } else {
@@ -478,6 +496,13 @@ class CloudStore(private val api: CloudApi, private val tokens: TokenStore, priv
         host.onMesses()
         val local = l.local
         afterOpen(l) { cb.done(local, null) }
+    }
+
+    /** Slice B: a mess edited by ops may list a sound this phone has not seen: read its sounds list again (rule 6 follows). */
+    fun soundsChanged(localId: String) {
+        val l = find(localId)
+        if (l == null || !l.made() || l.off || l.busy || session == null) return
+        pullOne(l)
     }
 
     /** "Get 3 sounds now": fetch once whatever dataOk says. */
@@ -638,6 +663,7 @@ class CloudStore(private val api: CloudApi, private val tokens: TokenStore, priv
     private fun work(l: Link, now: Long): Boolean {
         if (l.del) return true
         if (l.off) return false
+        if (ops(l)) return l.snd && dataOk && now >= l.sndAt
         if (l.dirty) return now >= l.dueAt
         return renameDue(l) || (l.snd && dataOk && now >= l.sndAt)
     }
@@ -684,7 +710,7 @@ class CloudStore(private val api: CloudApi, private val tokens: TokenStore, priv
             return
         }
         if (l.name.isEmpty()) l.name = nameIn(doc)
-        val p = Push(l, doc, l.ver, ++l.job, gen, l.dirty)
+        val p = Push(l, doc, l.ver, ++l.job, gen, l.dirty && !ops(l))
         l.busy = true; l.pushing = true; l.snd = false
         if (l.err == M_OFFLINE) l.err = 0
         for (k in host.needs(l.local)) if (k.startsWith("bn:") && !p.keys.contains(k)) p.keys.add(k)
@@ -870,6 +896,7 @@ class CloudStore(private val api: CloudApi, private val tokens: TokenStore, priv
         if (p.created && !p.needPut) { renameStep(p); return }
         // sounds that went up after their doc: the doc goes again so the rev moves and the other phones look
         if (!p.created && !p.docDirty && p.attached == 0) { renameStep(p); return }
+        if (!p.created && ops(l)) { renameStep(p); return }       // edited by ops: the doc is the session's to send
         api.putDoc(l.cloud, p.doc, l.rev, "Saved") { s, err ->
             if (live(p)) {
                 if (s != null) { l.rev = s.rev; l.maybe.clear(); docDone(p); saveIndex(); renameStep(p) }
@@ -941,7 +968,7 @@ class CloudStore(private val api: CloudApi, private val tokens: TokenStore, priv
         api.openMess(l.cloud) { o, err ->
             if (live(p)) {
                 if (o == null) pushFail(p, err)
-                else if (o.doc_rev < o.rev) updateNeeded(p)
+                else if (o.doc_rev < o.rev && byOps == null) updateNeeded(p)
                 else {
                     val how = settle(l, o, p.doc)
                     if (how == 1 && p.clashes == 0) { p.clashes++; putStep(p) }      // the server held my own lost save: send the newer doc on top
@@ -1041,6 +1068,11 @@ class CloudStore(private val api: CloudApi, private val tokens: TokenStore, priv
             }
             l.role = row.role
             if (row.blocked) l.err = M_BLOCKED else if (l.err == M_BLOCKED) l.err = 0
+            if (ops(l)) {
+                if (row.name != l.sname) { l.name = row.name; l.sname = row.name; changed = true }
+                if (!l.busy && missingOf(l) > 0) pullOne(l)
+                continue
+            }
             if (row.rev > l.rev) {
                 if (l.dirty) { l.dueAt = now; l.retryAt = 0L }
                 else if (!l.busy) pullOne(l)
@@ -1065,6 +1097,13 @@ class CloudStore(private val api: CloudApi, private val tokens: TokenStore, priv
                     val code = err?.code ?: ""
                     if (code == "net") online = false
                     if (code == "not_found") { val id = l.cloud; unlink(l); dropRow(id); saveIndex(); saveList(); host.onMesses() }
+                } else if (ops(l)) {
+                    online = true
+                    l.role = o.role
+                    setSounds(l, o.sounds)
+                    saveIndex()
+                    host.onMesses()
+                    afterOpen(l) {}
                 } else if (o.doc_rev < o.rev) {
                     if (updSaid.add(l.cloud)) host.notice(N_UPDATE, UPDATE_TEXT)
                 } else {

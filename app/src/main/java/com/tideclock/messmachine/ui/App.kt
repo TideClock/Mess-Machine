@@ -202,6 +202,7 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
                     Overlay.Learn -> Sheet(state, "Learn") { LearnScreen(state) }
                     Overlay.Mouth -> Sheet(state, "Mouth control") { MouthScreen(state) }
                     Overlay.Account -> Sheet(state, "Account") { AccountScreen(state) }
+                    is Overlay.Share -> Sheet(state, "Share") { ShareScreen(state, o.cloudId) }
                     null -> Box(Modifier) {}
                 }
             }

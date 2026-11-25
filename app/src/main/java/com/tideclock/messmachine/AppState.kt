@@ -136,6 +136,8 @@ sealed class Overlay {
     data class Xy(val pad: Int) : Overlay()
     /** Accounts: sign in, the terms, and your account. Only ever opened when a server is configured. */
     data object Account : Overlay()
+    /** Accounts, Slice B: who is on an online mess, invites, and (later slices) its share link and history. */
+    data class Share(val cloudId: String) : Overlay()
 }
 
 /** A saved mess in the list. colors and grid draw its little picture: bank 1's pads, and its first loop with something in it. */
@@ -173,6 +175,18 @@ class AppState(
     val bench = Workbench(app, lib)
 
     var project: Project = loadCurrent()
+    /** Accounts, Slice B: the open mess's session when it is edited by ops (docs/ACCOUNTS-HOST-B.md). null otherwise, always null without a server. */
+    @JvmField var sync: com.tideclock.messmachine.cloud.SyncSession? = null
+    /** The local id of the mess the session belongs to. */
+    private var syncLocal: String? = null
+    /** How many snapshots this phone has built: Snapshot.seq. */
+    private var snapSeq = 0
+    /** A rebuild happened (or someone's edit is held): arm the next loop's snapshot at the next frame. */
+    private var armDue = false
+    /** Cloud ids this phone edits by ops: kept, so a mess that was shared once stays that way here. */
+    private val opsIds: MutableSet<String> = HashSet(prefs.getStringSet("cloudOps", emptySet())!!)
+    /** Messes I was removed from (or that went away) this run: never opened by ops again. */
+    private val goneIds = HashSet<String>()
         private set
     var version by mutableIntStateOf(0)
         private set
@@ -460,6 +474,7 @@ class AppState(
 
     /** The practice mess goes in without touching your file choice. */
     private fun replaceProjectQuiet(p: Project) {
+        syncClose()
         if (playing) engine.stop()
         project = p
         bank = 0; page = 0
@@ -576,7 +591,12 @@ class AppState(
         // a lesson's practice mess is never saved over yours
         if (tut != null) return
         val json = project.toJson()
-        worker.execute { try { writeSafe(currentFile, json) } catch (_: Exception) {} }
+        // accounts: a mess edited together has no unsaved state, so its file in Messes follows the screen too
+        val sid = if (sync != null) syncLocal else null
+        worker.execute {
+            try { writeSafe(currentFile, json) } catch (_: Exception) {}
+            if (sid != null) try { if (messFile(sid).exists()) writeSafe(messFile(sid), json) } catch (_: Exception) {}
+        }
     }
 
     /** Decode any pad sounds that are not ready yet, then let the engine hear them. */
@@ -596,7 +616,12 @@ class AppState(
         for ((k, sp) in project.synths) lib.addSynth(k, sp.name)
         // the wavetables are made once, off the audio thread, as soon as a mess has a wavetable synth
         if (!tablesMade && project.synths.values.any { it.kind == Synth.WAVE }) { tablesMade = true; worker.execute { Synth.warm() } }
-        engine.setSnapshot(Engine.Snapshot.build(project, lib, live))
+        // accounts: every snapshot carries the count of local rebuilds, so a snapshot armed for the next loop only goes
+        // in while it was built on the one playing (docs/ACCOUNTS-HOST-B.md)
+        val snap = Engine.Snapshot.build(project, lib, live)
+        snap.seq = ++snapSeq
+        engine.setSnapshot(snap)
+        if (sync != null) armDue = true
         syncBakes()
     }
 
@@ -647,6 +672,7 @@ class AppState(
         val key = project.kit[Project.SCRATCH]
         val sp = project.synths[key] ?: return
         val old = project.kit[pad]
+        sync?.hint(com.tideclock.messmachine.cloud.Ops.padPut(pad))
         edit {
             kit[pad] = key
             opts[pad] = opts[Project.SCRATCH]?.copy()
@@ -686,6 +712,7 @@ class AppState(
         val key = project.newSynthKey()
         val old = project.kit[pad]
         val made = preset.copy().also { if (it.kind == Synth.GRAIN && it.src.isEmpty()) it.src = defaultGrainSource(pad) }
+        sync?.hint(com.tideclock.messmachine.cloud.Ops.padPut(pad))
         edit {
             synths[key] = made
             kit[pad] = key
@@ -788,6 +815,7 @@ class AppState(
         if (commit) commitUndo()
         scheduleSave()
         loadKit()
+        syncChanged(commit)
     }
 
     /** Changes that should not land in undo: which pad or loop you are looking at. */
@@ -822,15 +850,26 @@ class AppState(
         undoFlags()
     }
 
-    private fun undoFlags() { canUndo = hi > 0; canRedo = hi < hist.size - 1 }
+    private fun undoFlags() {
+        // accounts: in a mess edited together, Undo takes back your own changes only, and there is no Redo
+        val s = sync
+        if (s != null && s.shared()) { canUndo = s.canUndo(); canRedo = false; return }
+        canUndo = hi > 0; canRedo = hi < hist.size - 1
+    }
 
     fun undo() {
         notes.trail("undo")
         // a take still open (Rec just stopped, or still going) closes first, so Undo takes the whole take back
-        if (takeOpen) { takeOpen = false; commitUndo() }
+        if (takeOpen) { takeOpen = false; commitUndo(); sync?.localChanged(true) }
+        val s = sync
+        if (s != null && s.shared()) { s.undo(); undoFlags(); return }
         if (hi > 0) { hi--; restore(hist[hi]) }
     }
-    fun redo() { notes.trail("redo"); if (hi < hist.size - 1) { hi++; restore(hist[hi]) } }
+    fun redo() {
+        notes.trail("redo")
+        if (sync?.shared() == true) return
+        if (hi < hist.size - 1) { hi++; restore(hist[hi]) }
+    }
 
     private fun restore(j: String) {
         project = Project.fromJson(j, lib::has).project
@@ -839,9 +878,11 @@ class AppState(
         restFx()
         scheduleSave()
         undoFlags()
+        syncChanged(true)
     }
 
     private fun replaceProject(p: Project, id: String?) {
+        syncClose()
         if (playing) engine.stop()
         project = p
         fileId = id
@@ -893,7 +934,7 @@ class AppState(
         if (playing != p.playing) playing = p.playing
         backgroundPlay(playing)
         val st = if (p.playing) p.step else -1
-        if (heardStep != st) { heardStep = st; if (recHold.isNotEmpty() && st != recStep) { writeMoves(); rebuild() } }
+        if (heardStep != st) { heardStep = st; if (recHold.isNotEmpty() && st != recStep) { writeMoves(); if (sync != null) changed(false) else rebuild() } }
         if (heardPat != p.pat) heardPat = p.pat
         // a loop picked while playing changes on the last step of the bar, so the next bar starts on it
         if (pendingSlot >= 0 && (!p.playing || (st >= 0 && st % 16 == 15))) { val k = pendingSlot; pendingSlot = -1; selectSlot(k) }
@@ -933,7 +974,8 @@ class AppState(
         }
         if (hitNew.size > 64) hitNew.keys.take(32).toList().forEach { hitNew.remove(it) }
         if (any) { if (taking()) { changed(false); takeOpen = true } else changed(true) }
-        if (takeOpen && !taking()) { takeOpen = false; commitUndo() }
+        if (takeOpen && !taking()) { takeOpen = false; commitUndo(); sync?.localChanged(true); undoFlags() }
+        syncTick()
     }
 
     /** Build 105: while Rec plays, everything recorded is one take, and one Undo takes the whole take back. */
@@ -1487,7 +1529,9 @@ class AppState(
     fun putOnPad(pad: Int, key: String) {
         bench.item(key)?.let { b -> if (b.kind == "chop" && !project.edits.containsKey(key)) project.setEdit(key, SoundEdit().also { it.st = b.st; it.en = b.en }) }
         notes.trail("put ${lib.titleOf(key)} on pad ${pad + 1}")
+        sync?.hint(com.tideclock.messmachine.cloud.Ops.padPut(pad))
         edit { this.assign(pad, key) }
+        cloudSoundUsed(key)
         bank = pad / Project.BANK
         preview(key)
         say("${lib.titleOf(key)} is on pad ${pad + 1}.")
@@ -1497,6 +1541,7 @@ class AppState(
         keyboards.remove(pad)
         notes.trail("clear pad ${pad + 1}")
         val t = lib.titleOf(project.kit[pad])
+        sync?.hint(com.tideclock.messmachine.cloud.Ops.padPut(pad))
         edit { this.clearPad(pad) }
         restFx()
         sayUndo("Pad ${pad + 1} is empty again${if (t.isNotEmpty()) " ($t is back in its jar)" else ""}.")
@@ -1716,6 +1761,7 @@ class AppState(
     fun swapPads(a: Int, b: Int) {
         if (a == b || a !in 0 until Project.NPADS || b !in 0 until Project.NPADS) return
         notes.trail("swap pads ${a + 1} ${b + 1}")
+        sync?.hint(com.tideclock.messmachine.cloud.Ops.padSwap(a, b))
         edit { this.swapPads(a, b) }
         restFx()
         if (project.sel == a) selectPad(b, false)
@@ -1804,6 +1850,7 @@ class AppState(
         val L = Project.LETTERS[project.cur]
         val old = P.len
         if (n == old || n < 16 || n > 128 || n % 16 != 0) return
+        sync?.hint(com.tideclock.messmachine.cloud.Ops.loopLen(project.cur, n, fill))
         edit {
             if (n > old && !fill) {
                 // + : an empty bar at the end
@@ -1850,7 +1897,7 @@ class AppState(
     /** Bottle it (build 105): the loop becomes one sound on a free pad, as its FAQ line and lesson always said. */
     fun bottleIt() = resampleLoop()
 
-    fun clearSlot() { edit { pat().clear() }; sayUndo("Loop ${Project.LETTERS[project.cur]} cleared.") }
+    fun clearSlot() { sync?.hint(com.tideclock.messmachine.cloud.Ops.loopClear(project.cur)); edit { pat().clear() }; sayUndo("Loop ${Project.LETTERS[project.cur]} cleared.") }
 
     /** The site's Random drums: fresh steps for every pad in this bank, busier on the first row. */
     fun randomDrums() {
@@ -1869,6 +1916,7 @@ class AppState(
     fun copySlotTo(to: Int) {
         if (to == project.cur) return
         val from = project.cur
+        sync?.hint(com.tideclock.messmachine.cloud.Ops.loopCopy(from, to))
         edit { pats[to] = pats[from].copy() }
         say("Loop ${Project.LETTERS[from]} copied onto ${Project.LETTERS[to]}.")
     }
@@ -1888,10 +1936,11 @@ class AppState(
     var slotMenu by mutableIntStateOf(-1)
     fun copySlotToNextEmpty(i: Int) {
         val to = (0 until Project.NSLOTS).firstOrNull { it != i && !project.pats[it].used() } ?: run { say("Every loop is in use."); return }
+        sync?.hint(com.tideclock.messmachine.cloud.Ops.loopCopy(i, to))
         edit { pats[to] = pats[i].copy() }
         say("Loop ${Project.LETTERS[i]} copied to ${Project.LETTERS[to]}.")
     }
-    fun clearSlotAt(i: Int) { edit { pats[i].clear() }; sayUndo("Loop ${Project.LETTERS[i]} cleared.") }
+    fun clearSlotAt(i: Int) { sync?.hint(com.tideclock.messmachine.cloud.Ops.loopClear(i)); edit { pats[i].clear() }; sayUndo("Loop ${Project.LETTERS[i]} cleared.") }
 
     /** Steps: the pitch strip under one sound's row, and the step it is setting. */
     var stepStrip by mutableIntStateOf(-1)
@@ -1957,7 +2006,10 @@ class AppState(
     fun saveMess(name: String, asNew: Boolean) {
         notes.trail("save mess")
         val nm = name.trim().ifEmpty { project.name.ifEmpty { "Untitled mess" } }
+        // accounts: Save as new leaves a mess edited together as it is; its session ends before the name changes
+        if (asNew) syncClose()
         project.name = nm
+        if (!asNew) syncChanged(true)
         val id = if (asNew || fileId == null) System.currentTimeMillis().toString(36) else fileId!!
         val json = project.toJson()
         fileId = id
@@ -1967,7 +2019,11 @@ class AppState(
         worker.execute {
             try { writeSafe(File(messDir, "$id.json"), json) } catch (_: Exception) {}
             // accounts: signed in and not kept off the cloud, the saved file goes online a few seconds later
-            main.post { refreshFiles(); say("Saved \"$nm\"."); store?.saved(id, nm) }
+            main.post {
+                refreshFiles(); say("Saved \"$nm\"."); store?.saved(id, nm)
+                // accounts: in a mess edited together, Save keeps a named version online
+                if (syncLocal == id) sync?.saveVersion("Saved")
+            }
         }
     }
 
@@ -2124,6 +2180,7 @@ class AppState(
         Overlay.AudioCheck -> "latency"
         Overlay.Start -> "start card"
         Overlay.Account -> "account"
+        is Overlay.Share -> "share"
     }
 
     // ---- Audio check (MM-1): where the time goes between a tap and the sound ----
@@ -3763,9 +3820,10 @@ class AppState(
 
     /** The server, when this build has one. */
     @JvmField val cloud: com.tideclock.messmachine.cloud.CloudApi? = cloudApi?.takeIf { it.configured() }
+    private val cloudClk: com.tideclock.messmachine.cloud.Clock = cloudClock ?: com.tideclock.messmachine.cloud.Clock { System.currentTimeMillis() }
     /** My messes online: account, list and whole-mess sync. Built only when cloud is not null. */
     val store: com.tideclock.messmachine.cloud.CloudStore? = cloud?.let {
-        com.tideclock.messmachine.cloud.CloudStore(it, AndroidTokens(app), AndroidCache(app), cloudClock ?: com.tideclock.messmachine.cloud.Clock { System.currentTimeMillis() }, CloudHost(this))
+        com.tideclock.messmachine.cloud.CloudStore(it, AndroidTokens(app), AndroidCache(app), cloudClk, CloudHost(this))
     }
     /** Bumped whenever the account, the online list or a cloud mark changes, so the sheets redraw. */
     var cloudV by mutableIntStateOf(0)
@@ -3794,6 +3852,7 @@ class AppState(
 
     init {
         if (store != null) {
+            store.byOps = { cid -> cloudByOps(cid) }
             store.start()
             main.postDelayed(cloudTimer, 1000)
         }
@@ -3805,6 +3864,8 @@ class AppState(
         s.dataOk = cloudData || onWifi()
         s.listOpen = overlay == Overlay.Files
         s.tick()
+        syncTick()
+        cloudWaits()
     }
 
     /** The app left the screen: whatever waits goes up now. */
@@ -3812,6 +3873,7 @@ class AppState(
         val s = store ?: return
         s.dataOk = cloudData || onWifi()
         s.background()
+        sync?.background()
     }
 
     private fun onWifi(): Boolean {
@@ -3933,8 +3995,11 @@ class AppState(
 
     /** The bn: keys a saved mess plays: pads, granular sources, and the sounds its chops cut from. */
     internal fun cloudNeeds(id: String): List<String> {
-        val doc = localMessDoc(id) ?: return emptyList()
-        val p = try { Project.fromJson(doc, lib::has).project } catch (_: Exception) { return emptyList() }
+        // a mess open in a session: the screen is the mess (its file follows a moment later)
+        val p = if (sync != null && syncLocal == id) project else {
+            val doc = localMessDoc(id) ?: return emptyList()
+            try { Project.fromJson(doc, lib::has).project } catch (_: Exception) { return emptyList() }
+        }
         val out = LinkedHashSet<String>()
         for (k in p.kit.toList() + p.synths.values.map { it.src }) {
             if (k.startsWith("bn:")) out.add(k)
@@ -3952,6 +4017,7 @@ class AppState(
 
     /** The server's doc replaces the file, and the screen when this mess is open. Unsaved work on screen is never lost. */
     internal fun cloudTakeServer(id: String, name: String, doc: String) {
+        if (sync != null && syncLocal == id) return      // the session owns this mess
         val f = messFile(id)
         val text = withMessName(doc, name)
         val before = localMessDoc(id)
@@ -4026,4 +4092,485 @@ class AppState(
 
     /** A sound arrived or went: the pads that use it load (or read Missing). */
     private fun cloudSoundsChanged() { loadKit(); rebuild(); version++ }
+
+    /* ---------------- accounts, Slice B: two people in one mess (docs/ACCOUNTS-API.md s4.6, docs/ACCOUNTS-HOST-B.md) ---------------- */
+    // A mess that more than one person is on (or that has an invite out) is edited by ops through a SyncSession:
+    // every change goes up as it is made, and other people's changes come in at the top of the next loop while
+    // playing, at once when stopped. Everything here is a no-op without a server.
+
+    private val cloudCache by lazy { AndroidCache(app) }
+    private var armToken = 0
+    private val armRevs = HashMap<Int, Long>()
+    private var seenSwap = 0
+    private var syncPlaying = false
+    private var syncShared = false
+    private var syncPend = 0
+    private var syncFresh = false
+    private var syncFreshCanon: String? = null
+    private var syncGoneDue = false
+    private var soundCheckAt = 0L
+    private var soundCheckDue = false
+    /** The session's state (SyncSession.OPENING ...), -1 with no session. Compose reads it through cloudV. */
+    var syncState = -1
+        private set
+    /** sync-newer: someone on this mess has a newer app. */
+    var syncNewer by mutableStateOf(false)
+        private set
+    /** The people on the open shared mess, owner first (from the server; names and colours never come from presence). */
+    var syncPeople by mutableStateOf<List<com.tideclock.messmachine.cloud.Member>>(emptyList())
+        private set
+
+    internal fun cloudByOps(cid: String): Boolean {
+        if (goneIds.contains(cid)) return false
+        if (opsIds.contains(cid)) return true
+        val st = store ?: return false
+        for (r in st.rows) if (r.id == cid) return r.members > 1
+        return false
+    }
+    private fun markOps(cid: String) { if (opsIds.add(cid)) prefs.edit().putStringSet("cloudOps", HashSet(opsIds)).apply() }
+    private fun unmarkOps(cid: String) { if (opsIds.remove(cid)) prefs.edit().putStringSet("cloudOps", HashSet(opsIds)).apply() }
+
+    /** True while the open mess is edited together with someone (more than one member). */
+    fun sharedNow(): Boolean = sync?.shared() == true
+
+    /** After every change to the mess (ACCOUNTS-HOST-B): the session hears of it, then the next loop is armed again. */
+    private fun syncChanged(commit: Boolean) {
+        val s = sync ?: return
+        s.localChanged(commit)
+        armDue = true
+        if (s.shared()) undoFlags()
+    }
+
+    /** Every frame (and once a second from the cloud timer, so it also runs with the screen off). */
+    fun syncTick() {
+        val st = store ?: return
+        val id = fileId
+        val cid = if (tut == null && id != null && st.state == com.tideclock.messmachine.cloud.CloudStore.IN) st.cloudId(id) else ""
+        val want = cid.isNotEmpty() && cloudByOps(cid)
+        val s0 = sync
+        if (s0 != null && (!want || s0.messId != cid || syncLocal != id)) syncClose()
+        if (sync == null && want && id != null) syncOpen(id, cid)
+        val s = sync ?: return
+        if (syncGoneDue) {
+            syncGoneDue = false
+            val gone = s.messId
+            syncClose()
+            goneIds.add(gone); unmarkOps(gone)
+            st.refresh()
+            cloudSay("You are not on this mess any more. It stays on this phone as your own copy.")
+            return
+        }
+        if (playing != syncPlaying) { syncPlaying = playing; s.setPlaying(playing) }
+        s.setRecording(live.rec)
+        s.setPerPass(taking())
+        s.tick()
+        val tok = engine.swapToken
+        if (tok != seenSwap) {
+            seenSwap = tok
+            val r = armRevs[tok]
+            armRevs.keys.removeAll { it <= tok }
+            if (r != null) s.loopTop(r)
+        }
+        if (armDue) syncArm()
+        val sh = s.shared()
+        if (sh != syncShared) { syncShared = sh; undoFlags(); cloudRedraw() }
+        val pend = s.pending()
+        if (pend != syncPend) { syncPend = pend; if (overlay != null) cloudRedraw() }
+        // a pad whose sound is not on this phone yet: ask the mess's sounds list again every few seconds
+        val now = cloudClk.nowMs()
+        if (soundCheckDue || now - soundCheckAt >= 5000L) {
+            soundCheckDue = false; soundCheckAt = now
+            if (project.kit.any { it.startsWith("bn:") && !lib.has(it) }) st.soundsChanged(id ?: "")
+        }
+        rtTick()
+    }
+
+    /** arm(), at most once a frame: the mess as it will be once everything held is let in, set to go in at the top of the loop. */
+    private fun syncArm() {
+        armDue = false
+        val s = sync ?: return
+        if (!playing) return
+        val p = s.preview() ?: return
+        val snap = Engine.Snapshot.build(p, lib, live)
+        snap.seq = snapSeq
+        armToken++
+        armRevs[armToken] = s.previewRev
+        engine.setSnapshotAtWrap(snap, armToken)
+    }
+
+    private fun syncOpen(local: String, cid: String) {
+        val st = store ?: return
+        val api = cloud ?: return
+        markOps(cid)
+        // a first open shows the mess as the server has it: what is on screen and was never saved is kept as a copy first
+        syncFresh = cloudCache.load("$cid.base.json") == null
+        syncFreshCanon = if (!syncFresh) null else try {
+            localMessDoc(local)?.let { com.tideclock.messmachine.cloud.Ops.canon(Project.fromJson(it, lib::has).project) }
+        } catch (_: Exception) { null }
+        val s = com.tideclock.messmachine.cloud.SyncSession(SyncApi(api), cloudCache, cloudClk, SyncSide(), cid, st.userId())
+        sync = s; syncLocal = local
+        syncPlaying = false; syncShared = false; syncGoneDue = false; syncNewer = false
+        armRevs.clear(); seenSwap = engine.swapToken
+        soundCheckDue = true
+        notes.trail("shared mess session open")
+        s.open()
+        syncShared = s.shared()
+        undoFlags()
+        cloudRedraw()
+    }
+
+    /** Ends the session (the mess on screen is still its mess when this runs). */
+    private fun syncClose() {
+        val s = sync ?: return
+        val local = syncLocal
+        try { s.close() } catch (_: Exception) {}
+        sync = null; syncLocal = null; syncState = -1
+        rtLeave()
+        armRevs.clear()
+        armDue = false
+        engine.setSnapshotAtWrap(null, ++armToken)
+        syncPeople = emptyList(); syncNewer = false
+        // the file in Messes holds the screen as the session last saw it, so the next open has nothing new to send
+        if (local != null) {
+            val json = project.toJson()
+            worker.execute { try { if (messFile(local).exists()) writeSafe(messFile(local), json) } catch (_: Exception) {} }
+        }
+        syncShared = false
+        undoFlags()
+        cloudRedraw()
+    }
+
+    /** The screen's mess as a new mess on this phone only. Answers its name. */
+    private fun keepCopyNow(): String {
+        val name = project.name.ifEmpty { "Untitled mess" }.take(38) + " (my copy)"
+        val id = newMessId()
+        try { writeSafe(messFile(id), withMessName(project.toJson(), name)) } catch (_: Exception) {}
+        refreshFiles()
+        return name
+    }
+
+    /** The app side of the session: it owns the mess the screens draw. */
+    private inner class SyncSide : com.tideclock.messmachine.cloud.SyncHost {
+        override fun project(): Project = project
+        override fun replace(p: Project) {
+            if (syncFresh) {
+                syncFresh = false
+                val was = syncFreshCanon
+                syncFreshCanon = null
+                if (was != null && com.tideclock.messmachine.cloud.Ops.canon(project) != was) {
+                    val n = keepCopyNow()
+                    cloudSay("This mess is edited together now. What you had not saved is kept as \"$n\".")
+                }
+            }
+            project = p
+            version++
+            rebuild()
+            scheduleSave()
+            loadKit()
+            if (sync?.shared() != true) { hist.clear(); hi = -1; commitUndo() }
+            undoFlags()
+            soundCheckDue = true
+        }
+        override fun patched() {
+            version++
+            rebuild()
+            scheduleSave()
+            loadKit()
+            undoFlags()
+        }
+        override fun onState(state: Int) {
+            syncState = state
+            if (state == com.tideclock.messmachine.cloud.SyncSession.GONE) syncGoneDue = true
+            cloudRedraw()
+        }
+        override fun onNotice(kind: Int, n: Int, who: String) {
+            val w = who.ifEmpty { "Someone" }
+            when (kind) {
+                com.tideclock.messmachine.cloud.SyncSession.N_REPLACED -> cloudSay("$w changed some of the same things while you were away. Theirs stayed.")
+                com.tideclock.messmachine.cloud.SyncSession.N_UNDO_SKIPPED -> say("Undo left alone what $w changed after you.")
+                com.tideclock.messmachine.cloud.SyncSession.N_JOINED -> { say("Someone joined this mess."); cloudRedraw() }
+                com.tideclock.messmachine.cloud.SyncSession.N_LEFT -> { say("Someone left this mess."); cloudRedraw() }
+                com.tideclock.messmachine.cloud.SyncSession.N_NEWER -> { syncNewer = true; cloudRedraw() }
+                com.tideclock.messmachine.cloud.SyncSession.N_FULL -> cloudSay("Four people are editing this mess already. You can listen; your changes wait for a free seat.")
+                com.tideclock.messmachine.cloud.SyncSession.N_KEPT_COPY -> {}     // keepCopy said it
+            }
+        }
+        override fun onSound(s: com.tideclock.messmachine.cloud.Sound) { soundCheckDue = true }
+        override fun onHeld() { armDue = true }
+        override fun keepCopy(why: Int) {
+            val n = keepCopyNow()
+            cloudSay(
+                if (why == com.tideclock.messmachine.cloud.SyncSession.W_GONE) "Your last changes are kept as \"$n\"."
+                else "Some of your changes could not go into the shared mess. They are kept as \"$n\"."
+            )
+        }
+        override fun onPeers(peers: List<com.tideclock.messmachine.cloud.Peer>) {}
+    }
+
+    /** The server as the session sees it: the same calls, with the app listening in for the members and the live topic. */
+    private inner class SyncApi(private val c: com.tideclock.messmachine.cloud.CloudApi) : com.tideclock.messmachine.cloud.CloudApi by c {
+        override fun openMess(messId: String, cb: com.tideclock.messmachine.cloud.Done<com.tideclock.messmachine.cloud.Opened>) {
+            c.openMess(messId) { o, e ->
+                if (o != null && sync?.messId == messId) { syncPeople = o.members; rtTopic(o.topic) }
+                cb.done(o, e)
+            }
+        }
+        override fun opsSince(messId: String, from: Long, cb: com.tideclock.messmachine.cloud.Done<com.tideclock.messmachine.cloud.Since>) {
+            c.opsSince(messId, from) { v, e ->
+                if (v != null && sync?.messId == messId) rtTopic(v.topic)
+                cb.done(v, e)
+            }
+        }
+        override fun members(messId: String, cb: com.tideclock.messmachine.cloud.Done<List<com.tideclock.messmachine.cloud.Member>>) {
+            c.members(messId) { v, e ->
+                if (v != null && sync?.messId == messId) { syncPeople = v; rtPeers() }
+                cb.done(v, e)
+            }
+        }
+    }
+
+    /** A sound of your own went onto a pad: in a mess edited together it goes online now, not at the next Save. */
+    private fun cloudSoundUsed(key: String) {
+        if (sync == null || !key.startsWith("bn:")) return
+        val id = syncLocal ?: return
+        store?.saved(id, project.name)
+    }
+
+    /* ---- the Share sheet: invite, members, leave, remove, block ---- */
+
+    var shareMembers by mutableStateOf<List<com.tideclock.messmachine.cloud.Member>>(emptyList())
+        private set
+    var shareInvites by mutableStateOf<List<com.tideclock.messmachine.cloud.InviteRow>>(emptyList())
+        private set
+    var shareBusy by mutableStateOf(false)
+        private set
+    var shareNote by mutableStateOf("")
+    /** The invite link just made (shown once, and handed to the phone's share sheet). */
+    var inviteLink by mutableStateOf("")
+        private set
+    /** Tests read what was last handed to the phone's share sheet. */
+    var lastShared = ""
+        private set
+    private var inviteWait: String? = null
+    private var inviteWaitUntil = 0L
+
+    fun cloudRow(cid: String): com.tideclock.messmachine.cloud.MessRow? = store?.rows?.firstOrNull { it.id == cid }
+    fun cloudMine(cid: String): Boolean = (cloudRow(cid)?.role ?: "owner") == "owner"
+    fun myUserId(): String = store?.userId() ?: ""
+
+    /** omess-share-<cid>: the Share sheet of an online mess. */
+    fun openShare(cid: String) {
+        notes.trail("open share sheet")
+        shareMembers = emptyList(); shareInvites = emptyList(); shareNote = ""; inviteLink = ""
+        /*share-reset*/
+        overlay = Overlay.Share(cid)
+        shareLoad(cid)
+    }
+
+    fun shareLoad(cid: String) {
+        val api = cloud ?: return
+        api.members(cid) { v, e ->
+            if (v != null) { shareMembers = v; if (sync?.messId == cid) { syncPeople = v; rtPeers() } }
+            else if (e != null && e.code != "net") shareNote = cloudErrText(e)
+        }
+        if (cloudMine(cid)) api.listInvites(cid) { v, _ -> if (v != null) shareInvites = v.filter { !it.revoked && it.uses_left > 0 } }
+    }
+
+    fun inviteUrl(token: String): String = if (siteHost.isNotEmpty()) "https://$siteHost/join/$token" else "messmachine://j/$token"
+    fun shareUrl(token: String): String = if (siteHost.isNotEmpty()) "https://$siteHost/m/$token" else "messmachine://m/$token"
+
+    /** share-invite: a 7 day link that lets one person join and edit. What is on screen goes online first. */
+    fun inviteToEdit(cid: String) {
+        val st = store ?: return
+        if (shareBusy) return
+        notes.trail("invite to edit")
+        shareBusy = true; shareNote = ""
+        val local = st.localId(cid)
+        if (local.isNotEmpty() && local == fileId && sync == null && tut == null) {
+            // the friend must get the mess as it is on screen, not as it was last saved
+            val file = try { localMessDoc(local)?.let { Project.fromJson(it, lib::has).project.toJson(false) } } catch (_: Exception) { null }
+            if (file != project.toJson(false)) {
+                try { writeSafe(messFile(local), project.toJson()) } catch (_: Exception) {}
+                st.saved(local, project.name)
+                cloudBackground()
+            }
+        }
+        inviteWait = cid
+        inviteWaitUntil = cloudClk.nowMs() + 20000L
+        cloudWaits()
+    }
+
+    /** Things that wait on the store (once a second, and right after they are asked for). */
+    private fun cloudWaits() {
+        val st = store ?: return
+        val cid = inviteWait ?: return
+        val local = st.localId(cid)
+        val ready = local.isEmpty() || st.mark(local) == com.tideclock.messmachine.cloud.CloudStore.M_SYNCED
+        if (!ready && cloudClk.nowMs() < inviteWaitUntil) return
+        inviteWait = null
+        if (!ready) { shareBusy = false; shareNote = "This mess could not go online just now. Try again in a moment."; return }
+        val api = cloud ?: return
+        api.makeInvite(cid, 7) { inv, e ->
+            shareBusy = false
+            if (inv == null) { shareNote = if (e?.code == "too_many_invites") "There are 20 unused invites already. Cancel one first." else cloudErrText(e); return@makeInvite }
+            markOps(cid)
+            inviteLink = inviteUrl(inv.token)
+            shareLoad(cid)
+            shareText(inviteLink, "Invite to " + (cloudRow(cid)?.name ?: "a mess"))
+        }
+    }
+
+    /** The phone's own share sheet, with a line of text. */
+    fun shareText(text: String, title: String) {
+        lastShared = text
+        try {
+            val send = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, text) }
+            app.startActivity(Intent.createChooser(send, title).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (_: Exception) { say("No app on this phone took the link. It is shown here to copy.") }
+    }
+
+    /** inv-revoke-<iid>: an unused invite stops working. */
+    fun revokeInvite(cid: String, inviteId: String) {
+        val api = cloud ?: return
+        notes.trail("cancel invite")
+        api.revokeInvite(inviteId) { ok, e -> if (ok != null) { say("That invite is cancelled."); shareLoad(cid) } else shareNote = cloudErrText(e) }
+    }
+
+    /** mem-remove-go, mem-remove-block: the owner takes someone off the mess (and, when asked, blocks them). */
+    fun removeMember(cid: String, userId: String, block: Boolean) {
+        val api = cloud ?: return
+        notes.trail(if (block) "remove and block member" else "remove member")
+        api.removeMember(cid, userId, block) { ok, e ->
+            if (ok != null) { say(if (block) "Removed and blocked. They keep their own copy." else "Removed. They keep their own copy."); shareLoad(cid); sync?.nudge() }
+            else shareNote = cloudErrText(e)
+        }
+    }
+
+    /** mem-leave: you leave a mess someone else made. Your copy on this phone stays. */
+    fun leaveMess(cid: String) {
+        val api = cloud ?: return
+        val st = store ?: return
+        notes.trail("leave mess")
+        if (sync?.messId == cid) syncClose()
+        goneIds.add(cid); unmarkOps(cid)
+        api.leaveMess(cid) { ok, e ->
+            if (ok != null || e?.code == "not_found") {
+                overlay = Overlay.Files
+                st.refresh()
+                cloudSay("You left. The mess stays on this phone as your own copy.")
+            } else { goneIds.remove(cid); shareNote = if (e?.code == "owner_cannot_leave") "You made this mess. Delete it online instead." else cloudErrText(e) }
+        }
+    }
+
+    /* ---- people you blocked (the Account page) ---- */
+
+    var blocks by mutableStateOf<List<com.tideclock.messmachine.cloud.Blocked>?>(null)
+        private set
+    /** acct-blocks: load (or hide) the list. */
+    fun toggleBlocks() {
+        if (blocks != null) { blocks = null; return }
+        loadBlocks()
+    }
+    private fun loadBlocks() {
+        val api = cloud ?: return
+        api.myBlocks { v, e -> if (v != null) blocks = v else say(cloudErrText(e)) }
+    }
+    /** block-undo-<uid> */
+    fun unblock(userId: String) {
+        val api = cloud ?: return
+        notes.trail("unblock")
+        api.unblockUser(userId) { ok, e -> if (ok != null) { say("Unblocked."); loadBlocks() } else say(cloudErrText(e)) }
+    }
+
+    /* ---- links: an invite (j) or a share link (m), from a tap outside the app or pasted ---- */
+
+    /** The invite token waiting for Join. Kept in settings, so it survives signing in, the terms and a restart. */
+    var pendingInvite by mutableStateOf(prefs.getString("cloudInvite", "") ?: "")
+        private set
+    /** The share link token being looked at (Slice D). */
+    var pendingShare by mutableStateOf("")
+        private set
+    var inviteInfo by mutableStateOf<com.tideclock.messmachine.cloud.InviteInfo?>(null)
+        private set
+    var inviteNote by mutableStateOf("")
+        private set
+    var inviteBusy by mutableStateOf(false)
+        private set
+
+    private val linkRe = Regex("(?:messmachine://|https?://[^/\\s]+/)(j|join|m)/([A-Za-z0-9_-]{16,80})")
+
+    /** A link came in. true: it was one of ours. */
+    fun cloudLink(text: String): Boolean {
+        if (store == null) return false
+        val m = linkRe.find(text.trim()) ?: return false
+        val kind = m.groupValues[1]; val token = m.groupValues[2]
+        notes.trail("link opened: " + (if (kind == "m") "share" else "invite"))
+        if (kind == "m") { /*open-shared*/ say("That is a share link. This build opens invite links only."); return true }
+        else { setInvite(token); inviteInfo = null; inviteNote = ""; loadInvite() }
+        overlay = Overlay.Account
+        return true
+    }
+
+    /** link-paste: the link on the phone's clipboard. */
+    fun pasteLink() {
+        val text = try {
+            (app.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager).primaryClip?.getItemAt(0)?.coerceToText(app)?.toString() ?: ""
+        } catch (_: Exception) { "" }
+        if (!cloudLink(text)) say("No Mess Machine link is on the clipboard. Copy the link first.")
+    }
+
+    private fun setInvite(token: String) { pendingInvite = token; prefs.edit().putString("cloudInvite", token).apply() }
+
+    /** "Join Basement jam?": who made the invite and for which mess. Works signed out. */
+    fun loadInvite() {
+        val api = cloud ?: return
+        val token = pendingInvite
+        if (token.isEmpty()) return
+        api.inviteInfo(token) { v, e ->
+            if (token != pendingInvite) return@inviteInfo
+            if (v != null) { inviteInfo = v; inviteNote = "" }
+            else inviteNote = if (e?.code == "invite_invalid") "This invite has been used or has run out. Ask for a new one." else cloudErrText(e)
+        }
+    }
+
+    /** A link is waiting for its answer on the Account sheet. */
+    fun linkWaiting(): Boolean = pendingInvite.isNotEmpty() || pendingShare.isNotEmpty()
+
+    /** invite-no */
+    fun dropInvite() { setInvite(""); inviteInfo = null; inviteNote = "" }
+
+    /** invite-join: join the mess and open it. */
+    fun joinInvite() {
+        val api = cloud ?: return
+        val st = store ?: return
+        val token = pendingInvite
+        if (token.isEmpty() || inviteBusy) return
+        notes.trail("join by invite")
+        inviteBusy = true
+        api.redeemInvite(token) { j, e ->
+            inviteBusy = false
+            if (j == null) {
+                inviteNote = when (e?.code) {
+                    "invite_invalid" -> "This invite has been used or has run out. Ask for a new one."
+                    "mess_full" -> "That mess has 8 people already."
+                    "blocked" -> "You cannot join this mess."
+                    else -> cloudErrText(e)
+                }
+                return@redeemInvite
+            }
+            dropInvite()
+            goneIds.remove(j.mess_id)
+            markOps(j.mess_id)
+            st.refresh()
+            openCloudMess(j.mess_id)
+        }
+    }
+
+    /* ---- Slice C, the live socket: filled in by the next slice ---- */
+    /*rt-begin*/
+    private fun rtTick() {}
+    private fun rtLeave() {}
+    private fun rtTopic(topic: String) {}
+    private fun rtPeers() {}
+    /*rt-end*/
 }
