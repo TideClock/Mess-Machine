@@ -3253,18 +3253,18 @@ class AppState(private val app: Context) {
     }
 
     /**
-     * Nov 24 (Tyler's video): where a finger sits on the Stutter vial picks its rate, and it holds that rate. Bottom is
-     * slow (half notes), top is fast (32nd notes). A plain held Stutter button keeps eighth notes.
+     * Nov 24 (Tyler's video): where a finger sits on the Stutter vial picks its rate, and it holds that rate, locked to
+     * the grid. Four quarters of the vial, bottom up (Tyler, Nov 24 evening): quarter, eighth, 16th and 32nd notes.
+     * A plain held Stutter button keeps eighth notes.
      */
     fun stutterSteps(pos: Float?): Float = when {
         pos == null -> 2f
-        pos < .2f -> 8f
-        pos < .4f -> 4f
-        pos < .6f -> 2f
-        pos < .8f -> 1f
+        pos < .25f -> 4f
+        pos < .5f -> 2f
+        pos < .75f -> 1f
         else -> .5f
     }
-    fun stutterName(pos: Float?): String = when (stutterSteps(pos)) { 8f -> "1/2"; 4f -> "1/4"; 2f -> "1/8"; 1f -> "1/16"; else -> "1/32" }
+    fun stutterName(pos: Float?): String = when (stutterSteps(pos)) { 4f -> "1/4"; 2f -> "1/8"; 1f -> "1/16"; else -> "1/32" }
 
     private fun sendFx(name: String, s: FxSet, on: Boolean, amt: Float) {
         if (name == "stutter" && on) engine.stutterLength(stutterSteps(fxLive[name]))

@@ -1,7 +1,7 @@
 {
   "title": "Your bug video, fixed and built",
   "thisBuild": [
-    "Stutter holds one speed now. Where you grab the Stutter vial sets it: low is half notes, high is 32nd notes (it shows on the vial).",
+    "Stutter holds one speed, locked to the beat. The vial has four zones, bottom up: quarter, eighth, 16th and 32nd notes (it shows on the vial while held).",
     "Settings is two short groups, Look and Playing, with a switch per on/off. Hold to record is gone: tap to start, tap to stop.",
     "The loop strip is tighter: smaller loops, one bar of keys, a small Loop/Song switch. It closes when you change page or tap the page under it.",
     "Click and Count-in sit in the top bar on every page (your fold's wide screen), and in Tempo.",

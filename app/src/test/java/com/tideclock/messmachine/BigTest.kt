@@ -3221,7 +3221,7 @@ class BigTest {
         rule.onNodeWithTag("pad-0").performTouchInput { down(center); up() }; settle()
         assertFalse("a tap under it puts it away", state.loopStripOpen)
         // the stutter's rate follows the vial: bottom slow, top 32nd notes
-        assertEquals(8f, state.stutterSteps(.05f)); assertEquals(.5f, state.stutterSteps(.95f)); assertEquals(2f, state.stutterSteps(null))
+        assertEquals(4f, state.stutterSteps(.05f)); assertEquals(2f, state.stutterSteps(.3f)); assertEquals(1f, state.stutterSteps(.6f)); assertEquals(.5f, state.stutterSteps(.95f)); assertEquals(2f, state.stutterSteps(null))
         assertEquals("1/32", state.stutterName(.95f))
         // Auto trim: a take that starts with room hiss starts on the sound
         val rate = 44100
