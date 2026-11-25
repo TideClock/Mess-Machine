@@ -3194,7 +3194,7 @@ class BigTest {
         val trim = state.autoTrim
         at("set-autotrim").performClick(); settle()
         assertEquals("Auto trim switches", !trim, state.autoTrim)
-        assertTrue("no hold-to-record choice", rule.onAllNodesWithTag("set-rechold").fetchSemanticsNodes().isEmpty())
+        assertFalse("tap start, tap stop always (no hold-to-record)", state.recordHold)
         val line = rule.onNodeWithTag("set-buzz").fetchSemanticsNode().boundsInRoot.height
         assertTrue("an on/off setting is one short line ($line)", line < 140f)
         shot("nov24-settings")
