@@ -69,7 +69,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           MSG: ${{ github.event.head_commit.message }}
         run: |
-          pip install -q pillow numpy
+          # its own Python folder: the runner's system Python refuses pip installs (PEP 668)
+          python3 -m venv "$RUNNER_TEMP/sd" && "$RUNNER_TEMP/sd/bin/pip" install -q pillow numpy
           mkdir -p ref diff
           (cd app/build/screens && zip -q ../../ref-new.zip *.png)
           if ! gh release download cmp-ref -p screens.zip -D ref -R ${{ github.repository }}; then
@@ -78,7 +79,7 @@ jobs:
             echo "reference seeded"; exit 0
           fi
           (cd ref && unzip -q screens.zip)
-          rc=0; python3 tools/screen-diff.py ref app/build/screens diff || rc=$?
+          rc=0; "$RUNNER_TEMP/sd/bin/python" tools/screen-diff.py ref app/build/screens diff || rc=$?
           (cd diff && zip -q ../screen-diff.zip *) || true
           bash tools/release.sh cmp-diff "Screens against the reference" "Build ${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7}), result ${rc}." screen-diff.zip || true
           if [ $rc != 0 ] && echo "$MSG" | grep -q '\[screens-ok\]'; then
