@@ -88,11 +88,12 @@ class FakeCloudAll(clock: Clock) : FakeCloudB(clock) {
         subs.removeAll(gone)
         for (s in gone) enqueue(null, false) { s.l.onDrop(old) }
     }
-    private fun cast(m: FakeMess, send: (Sub) -> Unit) {
+    /** still: only to phones still on the channel when it arrives (false for the last word before the key turns). */
+    private fun cast(m: FakeMess, still: Boolean = true, send: (Sub) -> Unit) {
         if (!live || m.topic.isEmpty()) return
-        for (s in ArrayList(subs)) if (s.topic == m.topic) enqueue(null, false) { if (s.c.online && subs.contains(s)) send(s) }
+        for (s in ArrayList(subs)) if (s.topic == m.topic) enqueue(null, false) { if (s.c.online && (!still || subs.contains(s))) send(s) }
     }
-    private fun meta(m: FakeMess, kind: String, gone: String, sha: String) = cast(m) { s -> s.l.onMeta(s.topic, kind, gone, sha) }
+    private fun meta(m: FakeMess, kind: String, gone: String, sha: String, still: Boolean = true) = cast(m, still) { s -> s.l.onMeta(s.topic, kind, gone, sha) }
     private fun pushPresence(topic: String) {
         val list = ArrayList<Presence>()
         for (s in subs) if (s.topic == topic) s.state?.let { list.add(it) }
@@ -126,7 +127,7 @@ class FakeCloudAll(clock: Clock) : FakeCloudB(clock) {
         val m = messes[messId]
         // the real server sends the meta before the key turns; the checks run first, so a refused call sends nothing
         val ok = super.srvRemoveMember(u, messId, user, block)
-        if (m != null) { meta(m, "members", user, ""); rotate(m) }
+        if (m != null) { meta(m, "members", user, "", still = false); rotate(m) }
         return ok
     }
     override fun srvFinishUpload(u: FakeUser, sha256: String): Used {
@@ -143,7 +144,7 @@ class FakeCloudAll(clock: Clock) : FakeCloudB(clock) {
     override fun srvDeleteMess(u: FakeUser, messId: String): Boolean {
         val m = messes[messId]
         val ok = super.srvDeleteMess(u, messId)
-        if (m != null) { meta(m, "deleted", "", ""); val t = m.topic; val gone = subs.filter { it.topic == t }; subs.removeAll(gone) }
+        if (m != null) { meta(m, "deleted", "", "", still = false); val t = m.topic; val gone = subs.filter { it.topic == t }; subs.removeAll(gone) }
         return ok
     }
 
