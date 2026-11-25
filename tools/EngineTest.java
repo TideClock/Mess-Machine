@@ -586,6 +586,27 @@ public class EngineTest {
       for (int i = 0; i < 400; i++) { fe.render(b, 256); Engine.Position ps = fe.heard(); if (ps.step >= 0) seen.add(ps.step); }
       check(seen.size() <= 3, "stutter holds the loop on two steps: " + seen);
       fe.fx("stutter", false);
+      // Nov 24 (Tyler's video): the stutter holds the length it is set to and never speeds up on its own
+      Project fullP = new Project(); fullP.kit[0] = "imp"; fullP.bpm = 100; for (int st = 0; st < 16; st++) fullP.pats[0].setStep("imp", st, true);
+      for (float sL : new float[]{8f, 4f, 1f}) {
+        Engine le = new Engine(rate); le.setSnapshot(Engine.Snapshot.build(tp, k -> k.equals("imp") ? is : null, new Engine.Live()));
+        le.play(); for (int i = 0; i < 30; i++) le.render(b, 256);
+        le.stutterLength(sL); le.fx("stutter", true);
+        java.util.Set<Integer> s2 = new java.util.TreeSet<>();
+        for (int i = 0; i < 1200; i++) { le.render(b, 256); Engine.Position ps = le.heard(); if (i > 40 && ps.step >= 0) s2.add(ps.step); }
+        check(s2.size() <= (int) sL + 1 && s2.size() >= Math.min((int) sL, 2), "stutter at " + sL + " sixteenths loops that many steps: " + s2);
+      }
+      {
+        // 32nd notes: twice the hits of a one-step stutter over the same time
+        int[] hits = new int[2]; float[] lens = {1f, .5f};
+        for (int sq = 0; sq < 2; sq++) {
+          Engine le = new Engine(rate); le.setSnapshot(Engine.Snapshot.build(fullP, k -> k.equals("imp") ? is : null, new Engine.Live()));
+          le.play(); for (int i = 0; i < 30; i++) le.render(b, 256);
+          le.stutterLength(lens[sq]); le.fx("stutter", true);
+          int st0 = le.triggers; for (int i = 0; i < 1200; i++) le.render(b, 256); hits[sq] = le.triggers - st0;
+        }
+        check(hits[1] > hits[0] * 1.6, "32nd-note stutter plays about twice as often as sixteenths: " + hits[0] + " vs " + hits[1]);
+      }
       // tape stop: the clock slows and then stops making sound
       Engine te = new Engine(rate); te.setSnapshot(Engine.Snapshot.build(p, lib, new Engine.Live())); te.play();
       for (int i = 0; i < 20; i++) te.render(b, 256);

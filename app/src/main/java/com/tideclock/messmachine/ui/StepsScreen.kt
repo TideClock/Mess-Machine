@@ -66,6 +66,8 @@ fun StepsScreen(state: AppState) {
     val P = state.project
     val pat = P.pat()
     val off = state.page.coerceIn(0, pat.len / 16 - 1) * 16
+    // Nov 24 (Tyler's video): the Mixer is the third view of the Seq tab
+    if (state.mixerOn) { MixerScreen(state); return }
     ScrollPane {
         SeqSwitch(state)
         SlotBar(state, tools = true)

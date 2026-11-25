@@ -495,3 +495,40 @@ def _():
     for cx,cy,c in [(140,140,T),(372,140,P),(140,372,Y),(372,372,PU)]:
         ell(d,[cx-96,cy-96,cx+96,cy+96],c); line(d,[(cx,cy),(cx-50,cy-50)],K,30)
     return im
+# ---------- Nov 24 (Tyler's video): the loops as block letters, and Rest as a bed ----------
+from PIL import ImageFont
+_BUNGEE = __import__('os').path.join(__import__('os').path.dirname(__import__('os').path.abspath(__file__)), '../../app/src/main/res/font/bungee.ttf')
+def _letter(ch, col):
+    im, d = new()
+    f = ImageFont.truetype(_BUNGEE, 440)
+    bb = d.textbbox((0, 0), ch, font=f, stroke_width=26)
+    x = (S - (bb[2] - bb[0])) / 2 - bb[0]; y = (S - (bb[3] - bb[1])) / 2 - bb[1]
+    d.text((x + 18, y + 22), ch, font=f, fill=K, stroke_width=26, stroke_fill=K)   # a drop shadow, like a sticker
+    d.text((x, y), ch, font=f, fill=col, stroke_width=26, stroke_fill=K)
+    return im
+for _i, (_ch, _c) in enumerate(zip('ABCDEFGH', [P, Y, T, PU, R, GR, TL, YD])):
+    icon('loop', 'Loop ' + _ch)((lambda ch=_ch, c=_c: (lambda: _letter(ch, c)))())
+@icon('loop', 'Rest')
+def _():
+    im, d = new()
+    rect(d, [50, 300, 462, 380], YD)                   # the frame
+    rect(d, [50, 180, 110, 460], YD)                   # headboard
+    rect(d, [402, 280, 462, 460], YD)                  # footboard
+    rect(d, [110, 250, 402, 300], CR, w=16)            # mattress
+    ell(d, [120, 190, 230, 260], W, w=16)              # pillow
+    poly(d, [(200, 240), (402, 240), (402, 300), (200, 300)], T, w=16)  # the blanket
+    for i, (x, y) in enumerate([(300, 70), (360, 120), (410, 160)]):    # z z z
+        s = 26 + i * 8; line(d, [(x - s, y - s), (x + s, y - s), (x - s, y + s), (x + s, y + s)], K, 16)
+    return im
+@icon('tool', 'Drop')
+def _():
+    # Nov 24 (Tyler's video): DROP in big block letters on the grey function tile, like the other keys
+    im, d = new()
+    f = ImageFont.truetype(_BUNGEE, 210)
+    for row, word in enumerate(['DR', 'OP']):
+        bb = d.textbbox((0, 0), word, font=f, stroke_width=20)
+        x = (S - (bb[2] - bb[0])) / 2 - bb[0]; y = 40 + row * 230 - bb[1]
+        d.text((x + 12, y + 14), word, font=f, fill=K, stroke_width=20, stroke_fill=K)
+        d.text((x, y), word, font=f, fill=CR, stroke_width=20, stroke_fill=K)
+    line(d, [(110, 495), (402, 495)], P, 22)   # the floor it drops to
+    return im

@@ -261,6 +261,9 @@ class Engine(private val rate: Int) {
     private var fxStut = false; private var fxTape = false; private var fxOct = false; private var fxRev = false; private var fxCrush = false; private var fxDirt = false
     private var fxRing = false; private var fxGate = false; private var fxEcho = false; private var xyOn = false; private var xyHP = false; private var filtSlow = false
     private var stutA = 0; private var stutB = 0; private var lastStep = 0
+    /** Nov 24 (Tyler's video): how long the stutter's loop is, in sixteenths: 8 (half note) down to .5 (32nd notes). */
+    private var stutLen = 2f
+    private fun stutSteps(): Int = maxOf(1, stutLen.toInt())
     private var tapeAt = 0.0
     private var wCrush = 0f; private var wDirt = 0f; private var wRing = 0f; private var wGate = 0f; private var wSend = 0f
     private var ringPh = 0.0; private var ringHz = 220.0; private var gatePh = 0.0; private var gateHz = 8.0
@@ -283,7 +286,7 @@ class Engine(private val rate: Int) {
     private fun fxSet(S: Snapshot?, n: String, on: Boolean) {
         when (n) {
             "stutter" -> {
-                if (on && playing && !fxStut) { stutA = lastStep - (lastStep % 2); stutB = step }
+                if (on && playing && !fxStut) { val L = stutSteps(); stutA = lastStep - (lastStep % L); stutB = step }
                 fxStut = on && playing
             }
             "tape" -> {
@@ -369,6 +372,8 @@ class Engine(private val rate: Int) {
 
     /* ---------- perform FX, held from the UI ---------- */
     fun fx(name: String, on: Boolean) { cmds.add(arrayOf<Any?>("fx", name, on)) }
+    /** The stutter's loop length in sixteenths: 8, 4, 2, 1, or .5 for 32nd notes. 2 until set. */
+    fun stutterLength(steps: Float) { cmds.add(arrayOf<Any?>("stutl", steps)) }
     /** The filter pad: x 0..1 is cutoff, y 0..1 is resonance (top = more). on = finger down. */
     fun xy(x: Float, y: Float, on: Boolean) { cmds.add(arrayOf<Any?>("xy", x, y, on)) }
     fun xyHighPass(hp: Boolean) { cmds.add(arrayOf<Any?>("xyhp", hp)) }
@@ -610,6 +615,12 @@ class Engine(private val rate: Int) {
             "fxt" -> {
                 val k = fxIndex(c[1] as String); val t = c[2] as Int
                 if (k >= 0 && t >= 0 && t < tFx.size) tFx[t][k] = maxOf(0f, minOf(1f, c[3] as Float))
+            }
+            "stutl" -> {
+                val nl = maxOf(.5f, minOf(8f, c[1] as Float))
+                // a new length while held: loop the new length from where it is now, so it never jumps or speeds up on its own
+                if (fxStut && stutSteps() != maxOf(1, nl.toInt())) { val L = maxOf(1, nl.toInt()); stutA = lastStep - (lastStep % L); stutB = step }
+                stutLen = nl
             }
             "famt" -> { val k = fxIndex(c[1] as String); if (k >= 0) mixAmt[k] = maxOf(0f, minOf(1f, c[2] as Float)) }
             "gatelen" -> { gateSteps = maxOf(1, c[1] as Int); gateHz = 1.0 / (60.0 / maxOf(40, S!!.bpm) / 4 * gateSteps) }
@@ -874,7 +885,7 @@ class Engine(private val rate: Int) {
             mute = f >= .97
         }
         var s = step
-        if (fxStut) { s = stutA + (step - stutB).mod(2); if (s >= len) s = 0 }
+        if (fxStut) { s = stutA + (step - stutB).mod(stutSteps()); if (s >= len) s = 0 }
         lastStep = s
         val s0 = s
         val at = nextStepAt - frame + (if (s % 2 == 1) S.swing / 100.0 * spb * .5 else 0.0)
@@ -893,7 +904,11 @@ class Engine(private val rate: Int) {
                     val on = !lv.isNaN() && t.steps[ts]
                     if (on || lockOn[ti][lt]) { lockOn[ti][lt] = on; if (on) lockVal[ti][lt] = lv; combine(ti, lt) }
                 }
-                if (t.steps[ts] && (t.chance == null || plays(t.chance!![ts].toInt()))) trigger(t.pad, rateMul, t.gap[ts] * spb / rate, false, t.gain!![ts], delay, false)
+                if (t.steps[ts] && (t.chance == null || plays(t.chance!![ts].toInt()))) {
+                    // 32nd-note stutter: each hit plays again half a step later, both cut short so they never pile up
+                    if (fxStut && stutLen < 1f) { val g = minOf(t.gap[ts].toDouble(), .5) * spb / rate; trigger(t.pad, rateMul, g, false, t.gain!![ts], delay, false); trigger(t.pad, rateMul, g, false, t.gain!![ts], delay + jRound(spb * .5), false) }
+                    else trigger(t.pad, rateMul, t.gap[ts] * spb / rate, false, t.gain!![ts], delay, false)
+                }
                 // hits between the sixteenths, at their tick inside this step
                 val offs = t.offs
                 if (offs != null && ts < offs.size) for (tk in offs[ts]) trigger(t.pad, rateMul, spb / rate, false, .85f, delay + jRound(tk * spb / Project.TICKS), false)

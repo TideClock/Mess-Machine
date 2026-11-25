@@ -54,9 +54,10 @@ fun SongBody(state: AppState) {
                 Btn(
                     Project.LETTERS[i].toString() + if (P.pats[i].used()) "" else "·", { state.brush = i },
                     on = state.brush == i, onColor = C.Letters[i], small = true, tight = true, modifier = Modifier.weight(1f),
+                    icon = "Loop " + Project.LETTERS[i],
                 )
             }
-            Btn("Rest", { state.brush = -1 }, on = state.brush == -1, onColor = C.Cream, small = true, tight = true, modifier = Modifier.weight(1.4f))
+            Btn("Rest", { state.brush = -1 }, on = state.brush == -1, onColor = C.Cream, small = true, tight = true, modifier = Modifier.weight(1.4f), icon = "Rest")
         }
         val playBar = if (state.playing && P.songMode) state.heardSong else -1
         val shown = minOf(Project.MAXSONG, maxOf(16, ((len + 8) / 8) * 8))

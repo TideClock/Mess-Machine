@@ -58,6 +58,8 @@ fun SynthScreen(state: AppState) {
     val scratch = state.synthScratch || state.synthOn(sel) == null
     val pad = if (scratch) Project.SCRATCH else sel
     val sp = state.synthOn(pad) ?: return
+    // a phone held wide or a foldable has room for To pad beside the synth's name; a narrow phone keeps its own row
+    val wideSynth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 560
     ScrollPane(hPad = 12.dp, vPad = 0.dp) {
         // Nov 22 (second video, Tyler: "a ludicrous amount of space at the top"): the synth's pad plays it, and beside it
         // two short rows: which synth and its preset share one, Simple or Full and the mode slide under them
@@ -80,6 +82,9 @@ fun SynthScreen(state: AppState) {
                     )
                     // the same synth as a Padiano on the pad grid, next to your other pads (note #11)
                     if (!scratch) Btn("Pads", { state.padianoOnGrid(pad) }, small = true, tight = true, tag = "synth-to-pads", icon = "Keys")
+                    // Nov 24 (Tyler's video: "I absolutely despise this row"): the scratch synth's To pad and Over buttons
+                    // sit up here beside Scratch and the preset, not on a row of their own
+                    if (scratch && wideSynth) ScratchToPad(state)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     val full = state.synthView == "full"
@@ -98,19 +103,8 @@ fun SynthScreen(state: AppState) {
         val kinds = Synth.KINDS.filter { !scratch || it != Synth.GRAIN }
         PickSlider(kinds.map { kindShort(it) to it.name }, kinds.indexOf(sp.kind), { i -> val k = kinds[i]; if (sp.kind != k) state.loadSynthPreset(pad, k.presets.first()) },
             Modifier.padding(bottom = 8.dp, end = 4.dp), tags = kinds.map { if (scratch) "scratchkind-${it.id}" else "synthkind-${it.id}" }, tag = "synthkind-chips", onColor = C.Yellow)
-        if (scratch) {
-            // the scratch synth onto a pad: an empty one in one tap; a pad with a sound on it takes a second tap
-            // (Nov 22: it was too easy to overwrite the snare you had picked)
-            Row(Modifier.fillMaxWidth().padding(bottom = 10.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
-                val empty = state.emptyPadInBank()
-                if (empty >= 0) Btn("To pad ${empty + 1}", { state.scratchToPad(empty) }, small = true, tight = true, tag = "synth-new-empty")
-                val selFull = P.kit.getOrNull(sel).orEmpty().isNotEmpty()
-                val armed = state.replaceArmed == sel
-                if (!selFull) { if (empty != sel) Btn("To pad ${sel + 1}", { state.scratchToPad(sel) }, small = true, tight = true, tag = "synth-new-here") }
-                else Btn(if (armed) "Replace ${sel + 1}?" else "Over ${sel + 1}", { if (armed) { if (state.replaceReady()) { state.replaceArmed = -1; state.scratchToPad(sel) } } else state.armReplace(sel) },
-                    on = armed, onColor = C.Riot, small = true, tight = true, tag = "synth-new-here")
-            }
-        }
+        if (scratch && !wideSynth) Row(Modifier.fillMaxWidth().padding(bottom = 10.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.End),
+            verticalAlignment = Alignment.CenterVertically) { ScratchToPad(state) }
         // the model choice some kinds have (drums' kit, the plucked string's body)
         sp.kind.params.firstOrNull { it.id == "model" }?.let { mp ->
             Wrap(Modifier.padding(bottom = 10.dp).tagged("synthmodel-chips")) {
@@ -284,3 +278,16 @@ fun Knob(pm: Synth.Param, value: Double, set: (Double, Boolean) -> Unit, modifie
     }
 }
 
+/** The scratch synth onto a pad: an empty one in one tap; a pad with a sound on it takes a second tap (Nov 22). */
+@Composable
+fun ScratchToPad(state: AppState) {
+    val P = state.project
+    val sel = P.sel
+    val empty = state.emptyPadInBank()
+    if (empty >= 0) Btn("To pad ${empty + 1}", { state.scratchToPad(empty) }, small = true, tight = true, tag = "synth-new-empty")
+    val selFull = P.kit.getOrNull(sel).orEmpty().isNotEmpty()
+    val armed = state.replaceArmed == sel
+    if (!selFull) { if (empty != sel) Btn("To pad ${sel + 1}", { state.scratchToPad(sel) }, small = true, tight = true, tag = "synth-new-here") }
+    else Btn(if (armed) "Replace ${sel + 1}?" else "Over ${sel + 1}", { if (armed) { if (state.replaceReady()) { state.replaceArmed = -1; state.scratchToPad(sel) } } else state.armReplace(sel) },
+        on = armed, onColor = C.Riot, small = true, tight = true, tag = "synth-new-here")
+}

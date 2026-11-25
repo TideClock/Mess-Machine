@@ -1,16 +1,24 @@
 {
-  "title": "Meet the FAQ guy",
+  "title": "Your bug video, fixed and built",
   "thisBuild": [
-    "Your grinning paper drawing is now the FAQ guy, redrawn in NSD colours to match the other icons.",
-    "He is the What the FAQ button, and he does the talking in What the FAQ, the lessons, the speed guide and this start guide.",
-    "He sits inside each card, so he never covers anything, and hops when he says something new."
+    "Stutter holds one speed now. Where you grab the Stutter vial sets it: low is half notes, high is 32nd notes (it shows on the vial).",
+    "Settings is two short groups, Look and Playing, with a switch per on/off. Hold to record is gone: tap to start, tap to stop.",
+    "The loop strip is tighter: smaller loops, one bar of keys, a small Loop/Song switch. It closes when you change page or tap the page under it.",
+    "Click and Count-in sit in the top bar on every page (your fold's wide screen), and in Tempo.",
+    "Tempo drops down under the top bar instead of taking the whole screen.",
+    "Synth: To pad and Over moved up beside Scratch and the preset, so that row is gone.",
+    "Edit tray: no empty space at the top, shorter drawer keys, shorter FX vials. Repeat and Toss are smaller.",
+    "New: Auto trim (Settings, on), Auto sample (pad menu or Edit, Sound: the next sound lands on that pad), Chop to pads in the Sample sheet's Play tab, and a Mixer in Seq.",
+    "Icons: A to H as block letters and a bed for Rest in the song painter, and DROP in big letters on a grey key. FX tray's More is now Sample sheet."
   ],
   "watch": [
-    "Tap the FAQ button, then a few controls: does he read as a face at that size?",
-    "Run one lesson and the speed guide: does the hop feel fun or annoying?"
+    "Hold the Stutter vial low, then high: does each height keep one steady speed?",
+    "Seq, then Mixer: move a pad's fader and the bank fader. Do levels stick and sound right?",
+    "Auto sample a pad, then clap once. Does it land and stop by itself?",
+    "Open the loop strip and tap a pad: it should close and the pad should still play."
   ],
   "limits": [
-    "Your newest bug notes have not reached GitHub yet. Open Notes in the menu and send any that are waiting.",
-    "The bug video waits on Hugging Face being allowed, so its fixes are not in this build."
+    "Mixer levels are per sound: two pads with the same sound move together.",
+    "Auto sample stops after a third of a second of quiet, so a long reverb tail gets cut short."
   ]
 }

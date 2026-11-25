@@ -154,6 +154,41 @@ fun DoctorScreen(state: AppState, key: String) {
                 if (looping) smp?.let { state.engine.preview(it, e, 0, true) } else state.engine.stopPreviews()
             }, on = looping, onColor = C.Pink, small = true)
         }
+        // Nov 24 (Tyler's video: "you need to have the chop to pads and slices in the play section"): chopping is in Play
+        // and in Tools, one copy of it
+        @Composable
+        fun chopSection() {
+            Section("Chop to pads")
+            Wrap(Modifier.tagged("chop-chips")) {
+                for ((m, label) in listOf("equal" to "Equal", "auto" to "Auto (by hits)", "tap" to "Tap the wave", "lazy" to "Lazy (while it plays)")) {
+                    Btn(label, { chopMode = m; cuts = emptyList(); refreshCuts() }, on = chopMode == m, onColor = C.Teal, small = true)
+                }
+            }
+            when (chopMode) {
+                // wraps: on a narrow phone the fourth one (16 slices) was squeezed to a sliver
+                "equal" -> Wrap(Modifier.padding(top = 8.dp).tagged("slice-chips"), gap = 8.dp) {
+                    for (n in listOf(2, 4, 8, 16)) Btn("$n slices", { chopN = n; cuts = equalCuts(n) }, on = chopN == n, small = true)
+                }
+                "auto" -> SliderRow("Sensitivity", sens, 0f..1f, { "${(it * 100).roundToInt()}" }, { sens = it }, { refreshCuts() }, accent = C.Teal)
+                "tap" -> Help("Tap the waveform to add a cut; tap a cut to take it away. Zoom in for fine work.", modifier = Modifier.padding(top = 8.dp))
+                else -> Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Btn("Play", { cuts = emptyList(); looping = false; state.engine.stopPreviews(); state.preview(key); lazyT0 = System.nanoTime() }, small = true, color = C.Teal)
+                    Btn("Chop here", {
+                        if (lazyT0 == 0L) state.say("Tap Play first, then Chop here at each spot you want a cut.")
+                        else {
+                            val el = (System.nanoTime() - lazyT0) / 1e9 * Math.pow(2.0, (e.tune + e.fine / 100) / 12) / maxOf(.001, seconds)
+                            val f = e.st + el
+                            if (f > e.st + .002 && f < e.en - .002) cuts = (cuts + f).sorted()
+                        }
+                    }, small = true, color = C.Pink)
+                }
+            }
+            Wrap(Modifier.padding(top = 10.dp)) {
+                T("${cuts.count { it > e.st && it < e.en } + 1} slices", size = 13.sp, color = C.Yellow)
+                Btn("Clear cuts", { cuts = emptyList() }, small = true, tier = Tier.Danger)
+                Btn("Chop to pads", { state.chopToPads(key, cuts); state.overlay = null }, small = true, color = C.Pink)
+            }
+        }
         Row(Modifier.fillMaxWidth().padding(bottom = 10.dp, end = 4.dp).tagged("dtab-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             // each tab as wide as its word needs (equal widths cut Shape and Effects short on a phone); Effects is FX here so all five fit
             for ((t, n) in listOf("play" to "Play", "trim" to "Trim", "shape" to "Shape", "fx" to "FX", "tools" to "Tools")) {
@@ -161,6 +196,8 @@ fun DoctorScreen(state: AppState, key: String) {
             }
         }
         if (dtab == "play") {
+        chopSection()
+        T(" ", size = 6.sp)
         // SE-1: Stretch or Grain
         T("PITCH", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(bottom = 4.dp))
         Row(Modifier.fillMaxWidth().padding(bottom = 14.dp, end = 4.dp).tagged("pitch-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -261,36 +298,7 @@ fun DoctorScreen(state: AppState, key: String) {
         }
         Btn("Fit", { state.fitToTempo(key, fitBars); e = state.project.edit(key).copy() }, small = true, color = C.Pink, modifier = Modifier.padding(top = 6.dp))
 
-        Section("Chop to pads")
-        Wrap(Modifier.tagged("chop-chips")) {
-            for ((m, label) in listOf("equal" to "Equal", "auto" to "Auto (by hits)", "tap" to "Tap the wave", "lazy" to "Lazy (while it plays)")) {
-                Btn(label, { chopMode = m; cuts = emptyList(); refreshCuts() }, on = chopMode == m, onColor = C.Teal, small = true)
-            }
-        }
-        when (chopMode) {
-            // wraps: on a narrow phone the fourth one (16 slices) was squeezed to a sliver
-            "equal" -> Wrap(Modifier.padding(top = 8.dp).tagged("slice-chips"), gap = 8.dp) {
-                for (n in listOf(2, 4, 8, 16)) Btn("$n slices", { chopN = n; cuts = equalCuts(n) }, on = chopN == n, small = true)
-            }
-            "auto" -> SliderRow("Sensitivity", sens, 0f..1f, { "${(it * 100).roundToInt()}" }, { sens = it }, { refreshCuts() }, accent = C.Teal)
-            "tap" -> Help("Tap the waveform to add a cut; tap a cut to take it away. Zoom in for fine work.", modifier = Modifier.padding(top = 8.dp))
-            else -> Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Btn("Play", { cuts = emptyList(); looping = false; state.engine.stopPreviews(); state.preview(key); lazyT0 = System.nanoTime() }, small = true, color = C.Teal)
-                Btn("Chop here", {
-                    if (lazyT0 == 0L) state.say("Tap Play first, then Chop here at each spot you want a cut.")
-                    else {
-                        val el = (System.nanoTime() - lazyT0) / 1e9 * Math.pow(2.0, (e.tune + e.fine / 100) / 12) / maxOf(.001, seconds)
-                        val f = e.st + el
-                        if (f > e.st + .002 && f < e.en - .002) cuts = (cuts + f).sorted()
-                    }
-                }, small = true, color = C.Pink)
-            }
-        }
-        Wrap(Modifier.padding(top = 10.dp)) {
-            T("${cuts.count { it > e.st && it < e.en } + 1} slices", size = 13.sp, color = C.Yellow)
-            Btn("Clear cuts", { cuts = emptyList() }, small = true, tier = Tier.Danger)
-            Btn("Chop to pads", { state.chopToPads(key, cuts); state.overlay = null }, small = true, color = C.Pink)
-        }
+        chopSection()
 
         Section("Keep it")
         Wrap(Modifier) {

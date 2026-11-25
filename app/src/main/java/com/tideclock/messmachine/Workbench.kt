@@ -204,7 +204,11 @@ class Workbench(app: Context, private val lib: Library) {
 
     /** Start sampling the mic (permission already granted). done gets the take when you stop or at 30 seconds. */
     @SuppressLint("MissingPermission")
-    fun startMic(done: (Sample?) -> Unit) {
+    /**
+     * auto (Nov 24, Tyler's video): Auto sample. The mic listens and keeps only the last half second until a sound
+     * comes, then records it, and stops by itself once it has been quiet for a third of a second.
+     */
+    fun startMic(trim: Boolean = true, auto: Boolean = false, done: (Sample?) -> Unit) {
         if (recording) return
         val rate = 44100
         val min = AudioRecord.getMinBufferSize(rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
@@ -221,36 +225,71 @@ class Workbench(app: Context, private val lib: Library) {
             val buf = ShortArray(2048)
             try {
                 rec.startRecording()
+                var floor = 1f; var started = false; var quietFor = 0; var heardFor = 0
                 while (recording && out.size < rate * 30) {
                     val n = rec.read(buf, 0, buf.size)
                     for (i in 0 until maxOf(0, n)) out.add(buf[i] / 32768f)
+                    if (!auto || n <= 0) continue
+                    var e = 0.0
+                    for (i in 0 until n) { val v = buf[i] / 32768.0; e += v * v }
+                    val r = kotlin.math.sqrt(e / n).toFloat()
+                    heardFor += n
+                    if (!started) {
+                        // the room's hiss: the quietest stretch so far (the first tenth of a second settles it)
+                        floor = minOf(floor, maxOf(r, .0005f))
+                        if (heardFor > rate / 10 && r > maxOf(floor * 6f, .02f)) started = true
+                        else if (out.size > rate / 2) out.keepLast(rate / 2)
+                    } else {
+                        quietFor = if (r < maxOf(floor * 2.5f, .008f)) quietFor + n else 0
+                        if (quietFor > rate / 3) break
+                    }
                 }
                 rec.stop()
             } catch (_: Exception) {}
             rec.release()
             recording = false
-            done(trimSilence(Sample("mic", out.toArray(), rate)))
+            val raw = Sample("mic", out.toArray(), rate)
+            done(if (trim) trimSilence(raw) else raw.takeIf { it.data.isNotEmpty() })
         }, "mess-mic").also { it.start() }
     }
 
     fun stopMic() { recording = false }
     fun isRecording() = recording
 
-    /** Cut the quiet off both ends, keeping 10 ms before the first sound. */
-    private fun trimSilence(s: Sample): Sample? {
+    /**
+     * Cut the quiet off both ends (Auto trim). Nov 24 (Tyler's video: takes still started with a gap): the quiet is
+     * measured, not guessed. The loudness runs in 5 ms windows; the room's own hiss is the quietest tenth of them, and
+     * the sound starts at the first window clearly over both that and 3% of the peak. 5 ms before it stays, and the tail
+     * keeps 50 ms after the last loud window with a short fade, so nothing clicks.
+     */
+    fun trimSilence(s: Sample): Sample? {
         val d = s.data
         if (d.isEmpty()) return null
         var peak = 0f
         for (v in d) if (kotlin.math.abs(v) > peak) peak = kotlin.math.abs(v)
         if (peak < .002f) return null
-        val th = peak * .03f
-        var a = 0
-        while (a < d.size && kotlin.math.abs(d[a]) < th) a++
-        var z = d.size - 1
-        while (z > a && kotlin.math.abs(d[z]) < th) z--
-        a = maxOf(0, a - s.rate / 100)
-        z = minOf(d.size - 1, z + s.rate / 20)
-        return Sample("mic", d.copyOfRange(a, z + 1), s.rate)
+        val w = maxOf(1, s.rate / 200)
+        val nw = (d.size + w - 1) / w
+        val rms = FloatArray(nw)
+        for (k in 0 until nw) {
+            var e = 0.0; val a0 = k * w; val a1 = minOf(d.size, a0 + w)
+            for (i in a0 until a1) e += d[i] * d[i].toDouble()
+            rms[k] = kotlin.math.sqrt(e / maxOf(1, a1 - a0)).toFloat()
+        }
+        val sorted = rms.copyOf().also { it.sort() }
+        val floor = sorted[minOf(sorted.size - 1, sorted.size / 10)]
+        val th = maxOf(peak * .03f, floor * 4f, .001f)
+        var first = 0
+        while (first < nw && rms[first] < th) first++
+        if (first >= nw) return null
+        var last = nw - 1
+        while (last > first && rms[last] < th) last--
+        val a = maxOf(0, first * w - s.rate / 200)
+        val z = minOf(d.size - 1, (last + 1) * w + s.rate / 20)
+        val out = d.copyOfRange(a, z + 1)
+        val fade = minOf(out.size, s.rate / 100)
+        for (i in 0 until fade) out[out.size - 1 - i] *= i / fade.toFloat()
+        return Sample("mic", out, s.rate)
     }
 }
 
@@ -261,4 +300,6 @@ class FloatList {
         private set
     fun add(v: Float) { if (size == a.size) a = a.copyOf(a.size * 2); a[size++] = v }
     fun toArray(): FloatArray = a.copyOf(size)
+    /** Keep only the newest n values (Auto sample's rolling wait). */
+    fun keepLast(n: Int) { if (size > n) { a.copyInto(a, 0, size - n, size); size = n } }
 }

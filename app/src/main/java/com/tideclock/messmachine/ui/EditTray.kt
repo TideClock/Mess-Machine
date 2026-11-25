@@ -44,14 +44,15 @@ fun EditTray(state: AppState, pad: Int) {
                 // the panel Look: five drawer keys, the open drawer's lamp lit in the pad's colour; narrow words, so a Fold's cover fits them
                 val on = state.editTab == id
                 androidx.compose.foundation.layout.Box(
-                    Modifier.weight(1f).heightIn(min = (40f / UiLook.scale.coerceIn(.4f, 2f)).coerceAtLeast(36f).dp + UiLook.lip)
+                    Modifier.weight(1f).heightIn(min = (34f / UiLook.scale.coerceIn(.4f, 2f)).coerceAtLeast(32f).dp + UiLook.lip)
                         .bakelite(on, col, false).clickable { state.pickEditTab(id) }.tagged("edit-tab-$id")
                         .semantics { selected = on }.padding(start = 2.dp, end = 2.dp, bottom = UiLook.lip),
                     contentAlignment = Alignment.Center,
                 ) {
                     // Nov 22: each drawer key carries its icon over its word
                     androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icons.named(name)?.let { InlayIcon(it, 30.dp * UiLook.big, on, name) }
+                        // Nov 24: a smaller icon, so the drawer keys are shorter
+                        Icons.named(name)?.let { InlayIcon(it, 22.dp * UiLook.big, on, name) }
                         T(name.uppercase(), size = 11.sp, color = if (on) lerp(Hw.Engrave, col, .35f) else Hw.Engrave, lines = 1, spacing = 0.em, family = Worn, weight = androidx.compose.ui.text.font.FontWeight.Normal)
                     }
                 }
@@ -71,6 +72,7 @@ fun EditTray(state: AppState, pad: Int) {
                     if (!scratch) {
                         Btn("Swap sound", { state.closeEdit(); state.overlay = Overlay.Picker(pad) }, tag = "menu-swap")
                         Btn(if (recHere) "■ Stop recording" else "● Record onto it", { state.closeEdit(); state.askRecord(pad) }, enabled = !state.micOn || recHere, tag = "menu-record")
+                        if (!recHere) Btn("◉ Auto sample", { state.closeEdit(); state.askAutoSample(pad) }, enabled = !state.micOn, tag = "menu-autosample")
                         Btn(if (k in state.favs) "★ Starred" else "☆ Star", { state.toggleFav(k) }, on = k in state.favs, onColor = C.Yellow, tag = "menu-star")
                         Btn("Keep in Workbench", { state.keepInBench(pad) }, tag = "menu-keep")
                         Btn("Share this sound", { state.shareSoundWav(k) }, tag = "menu-share")

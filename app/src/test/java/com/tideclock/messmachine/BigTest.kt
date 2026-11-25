@@ -3187,6 +3187,66 @@ class BigTest {
         state.overlay = null; settle()
     }
 
+    /** Nov 24 (Tyler's bug video): the settings, the loop strip, Tempo, the synth's row, the Mixer, Auto trim, the stutter. */
+    @Test fun nov24VideoNotes() {
+        // Settings: switches on one line each; Auto trim is one of them, and hold-to-record is gone
+        state.overlay = Overlay.Settings; settle()
+        val trim = state.autoTrim
+        at("set-autotrim").performClick(); settle()
+        assertEquals("Auto trim switches", !trim, state.autoTrim)
+        assertTrue("no hold-to-record choice", rule.onAllNodesWithTag("set-rechold").fetchSemanticsNodes().isEmpty())
+        val line = rule.onNodeWithTag("set-buzz").fetchSemanticsNode().boundsInRoot.height
+        assertTrue("an on/off setting is one short line ($line)", line < 140f)
+        shot("nov24-settings")
+        state.overlay = null; settle()
+        // Tempo drops down under the top bar, with Click and Count-in in it
+        state.overlay = Overlay.Tempo; settle()
+        val sheetH = rule.onNodeWithTag("sheet").fetchSemanticsNode().boundsInRoot.height
+        val screenH = rule.onRoot().fetchSemanticsNode().boundsInRoot.height
+        assertTrue("Tempo is not a whole screen ($sheetH of $screenH)", sheetH < screenH * .8f)
+        val clickWas = state.live.click
+        at("tempo-click").performClick(); settle()
+        assertEquals("Click from Tempo", !clickWas, state.live.click)
+        at("tempo-click").performClick(); settle()
+        shot("nov24-tempo-drop")
+        at("done").performClick(); settle()
+        assertEquals(null, state.overlay)
+        // the loop strip goes away on another page, and on a tap under it
+        tab("Pads"); strip()
+        assertTrue(state.loopStripOpen)
+        shot("nov24-loop-strip")
+        tab("Synth")
+        assertFalse("another page puts the strip away", state.loopStripOpen)
+        tab("Pads"); strip()
+        rule.onNodeWithTag("pad-0").performTouchInput { down(center); up() }; settle()
+        assertFalse("a tap under it puts it away", state.loopStripOpen)
+        // the stutter's rate follows the vial: bottom slow, top 32nd notes
+        assertEquals(8f, state.stutterSteps(.05f)); assertEquals(.5f, state.stutterSteps(.95f)); assertEquals(2f, state.stutterSteps(null))
+        assertEquals("1/32", state.stutterName(.95f))
+        // Auto trim: a take that starts with room hiss starts on the sound
+        val rate = 44100
+        val data = FloatArray(rate) { i -> if (i < rate / 2) (if (i % 2 == 0) .01f else -.01f) else (if (i % 40 < 20) .6f else -.6f) * kotlin.math.exp(-(i - rate / 2) / 4000f) }
+        val cut = state.bench.trimSilence(com.tideclock.messmachine.engine.Sample("mic", data, rate))!!
+        assertTrue("the hiss before the sound is cut (kept ${cut.data.size} of ${data.size})", cut.data.size < rate / 2 + rate / 10)
+        assertTrue("and it starts right on the sound", cut.data.take(rate / 100).any { kotlin.math.abs(it) > .3f })
+        // the Mixer: the Seq tab's third view, a fader per pad and one for the bank
+        tab("Steps")
+        at("seq-mixer").performClick(); settle()
+        assertTrue(state.mixerOn)
+        at("mixer-pads").assertExists(); at("mixer-bank").assertExists()
+        val k0 = state.project.kit[0]
+        val v0 = state.project.edit(k0).vol
+        rule.onNodeWithTag("mixer-0").performTouchInput { down(Offset(center.x, height * .9f)); up() }; settle()
+        assertTrue("a pad's fader sets its level (${state.project.edit(k0).vol} was $v0)", state.project.edit(k0).vol < v0)
+        shot("nov24-mixer")
+        at("seq-steps").performClick(); settle()
+        assertFalse(state.mixerOn)
+        // the pad menu offers Auto sample
+        rule.runOnUiThread { state.padMenu = 0 }; settle()
+        assertTrue("Auto sample is in the pad menu", rule.onAllNodesWithTag("menu-autosample").fetchSemanticsNodes().isNotEmpty())
+        rule.runOnUiThread { state.padMenu = -1 }; settle()
+    }
+
     /** Nov 23 (Tyler: "tapping Click isn't working most of the time"): the key shows its new state on every tap. */
     @Test fun nov23ClickKeyShowsEveryTap() {
         fun lit() = rule.onNodeWithTag("loop-click").fetchSemanticsNode().config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.Selected) == true
