@@ -1,5 +1,7 @@
 package com.tideclock.messmachine.ui
 
+import com.tideclock.messmachine.ui.res.*
+
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -36,7 +38,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -48,15 +50,15 @@ import com.tideclock.messmachine.engine.Library
 import com.tideclock.messmachine.engine.Project
 
 fun jarArt(cab: String): Int = when (cab) {
-    "thumps" -> R.drawable.jar_thumps
-    "bodily" -> R.drawable.jar_bodily
-    "machines" -> R.drawable.jar_machines
-    "tones" -> R.drawable.jar_tones
-    "goo" -> R.drawable.jar_goo
-    "bw" -> R.drawable.jar_bw
-    "qbldy", "loops" -> R.drawable.jar_qbldy
-    "mine" -> R.drawable.jar_mine
-    else -> R.drawable.jar_heap
+    "thumps" -> Res.drawable.jar_thumps
+    "bodily" -> Res.drawable.jar_bodily
+    "machines" -> Res.drawable.jar_machines
+    "tones" -> Res.drawable.jar_tones
+    "goo" -> Res.drawable.jar_goo
+    "bw" -> Res.drawable.jar_bw
+    "qbldy", "loops" -> Res.drawable.jar_qbldy
+    "mine" -> Res.drawable.jar_mine
+    else -> Res.drawable.jar_heap
 }
 
 /** The jars. pickFor = a pad number when choosing a sound for that pad, null when just browsing. */

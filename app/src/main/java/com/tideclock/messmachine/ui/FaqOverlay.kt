@@ -1,5 +1,7 @@
 package com.tideclock.messmachine.ui
 
+import com.tideclock.messmachine.ui.res.*
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -55,7 +57,7 @@ fun FaqGuy(says: Any?, size: androidx.compose.ui.unit.Dp = 48.dp, modifier: Modi
         hop.snapTo(1f); hop.animateTo(0f, androidx.compose.animation.core.spring(dampingRatio = .35f, stiffness = 500f))
     }
     androidx.compose.foundation.Image(
-        androidx.compose.ui.graphics.ImageBitmap.imageResource(com.tideclock.messmachine.R.drawable.ic_what_the_faq), "FAQ guy",
+        org.jetbrains.compose.resources.imageResource(Res.drawable.ic_what_the_faq), "FAQ guy",
         modifier.size(side).graphicsLayer { translationY = -hop.value * 10.dp.toPx(); rotationZ = hop.value * -8f },
         filterQuality = androidx.compose.ui.graphics.FilterQuality.None,
     )

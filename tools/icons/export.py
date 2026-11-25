@@ -1,6 +1,6 @@
 """Write every icon as a 40 x 40 PNG (32 x 32 art, ink outline, white glow, clear background) into the app's
-res/drawable-nodpi as ic_<name>.png. The app draws the colored tile behind it, so a look can recolor tiles.
-Run from this folder: python3 export.py ../../app/src/main/res/drawable-nodpi"""
+ui/src/commonMain/composeResources/drawable as ic_<name>.png. The app draws the colored tile behind it, so a look can recolor tiles.
+Run from this folder: python3 export.py ../../ui/src/commonMain/composeResources/drawable"""
 import sys, re, json
 from icons import *
 out = sys.argv[1]

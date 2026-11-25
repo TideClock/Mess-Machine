@@ -1,5 +1,7 @@
 package com.tideclock.messmachine.ui
 
+import com.tideclock.messmachine.ui.res.*
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.horizontalScroll
@@ -280,18 +282,18 @@ object C {
     val Letters get() = listOf(Pink, Teal, Yellow, Purple, Color(skin.sky), Color(skin.orange), Lime, Riot)
 }
 
-val Archivo = FontFamily(
-    Font(R.font.archivo_medium, FontWeight.Medium),
-    Font(R.font.archivo_extrabold, FontWeight.ExtraBold),
-    Font(R.font.archivo_black, FontWeight.Black),
+val Archivo @Composable get() = FontFamily(
+    org.jetbrains.compose.resources.Font(Res.font.archivo_medium, FontWeight.Medium),
+    org.jetbrains.compose.resources.Font(Res.font.archivo_extrabold, FontWeight.ExtraBold),
+    org.jetbrains.compose.resources.Font(Res.font.archivo_black, FontWeight.Black),
 )
-val Bungee = FontFamily(Font(R.font.bungee))
-val Mono = FontFamily(Font(R.font.plexmono_400, FontWeight.Normal), Font(R.font.plexmono_700, FontWeight.Bold))
+val Bungee @Composable get() = FontFamily(org.jetbrains.compose.resources.Font(Res.font.bungee))
+val Mono @Composable get() = FontFamily(org.jetbrains.compose.resources.Font(Res.font.plexmono_400, FontWeight.Normal), org.jetbrains.compose.resources.Font(Res.font.plexmono_700, FontWeight.Bold))
 /** The panel Look's type (Nov 21): worn rubber-stamp letters on the keys, a stencil for the tiny stamped words, an LCD face for readouts */
-val Worn = FontFamily(Font(R.font.rubik_distressed))
-val Stencil = FontFamily(Font(R.font.black_ops_one))
+val Worn @Composable get() = FontFamily(org.jetbrains.compose.resources.Font(Res.font.rubik_distressed))
+val Stencil @Composable get() = FontFamily(org.jetbrains.compose.resources.Font(Res.font.black_ops_one))
 /** Thick block letters for the word plates (Nov 22, from the icon review). */
-val Block = FontFamily(Font(R.font.archivo_black, FontWeight.Black))
+val Block @Composable get() = FontFamily(org.jetbrains.compose.resources.Font(Res.font.archivo_black, FontWeight.Black))
 
 /**
  * The word plate under a key (Nov 22, Tyler: "the same type of frame with letters in them"): a dark plate with a
@@ -311,7 +313,7 @@ fun PlateWord(word: String, on: Boolean, onColor: Color, modifier: Modifier = Mo
             modifier = Modifier.graphicsLayer(scaleX = .86f))
     }
 }
-val Lcd = FontFamily(Font(R.font.share_tech_mono))
+val Lcd @Composable get() = FontFamily(org.jetbrains.compose.resources.Font(Res.font.share_tech_mono))
 
 /** An aged enamel look for the inlaid icons: a little less colour, a little warmer, unless the key is lit. */
 fun enamel(lit: Boolean): androidx.compose.ui.graphics.ColorFilter {
@@ -331,7 +333,7 @@ fun enamel(lit: Boolean): androidx.compose.ui.graphics.ColorFilter {
  * stays crisp (no uneven pixels), with a dark engraved shadow under it for depth.
  */
 @Composable
-fun InlayIcon(res: Int, maxDp: androidx.compose.ui.unit.Dp, lit: Boolean, label: String, modifier: Modifier = Modifier) {
+fun InlayIcon(res: org.jetbrains.compose.resources.DrawableResource, maxDp: androidx.compose.ui.unit.Dp, lit: Boolean, label: String, modifier: Modifier = Modifier) {
     val dens = androidx.compose.ui.platform.LocalDensity.current
     val px = with(dens) { maxDp.toPx() }
     // the nearest whole multiple (a 26 dp icon on a 2.6x screen is 68 px: 2x, 80 px, not 1x and half the size)
@@ -339,7 +341,7 @@ fun InlayIcon(res: Int, maxDp: androidx.compose.ui.unit.Dp, lit: Boolean, label:
     // Nov 22: up to a fifth bigger than asked is fine (the art has a clear margin), so an icon lands on 2x, not 1x
     if (k > 1 && 40f * k > px * 1.22f) k--
     val side = with(dens) { (40f * k).toDp() }
-    val img = androidx.compose.ui.graphics.ImageBitmap.imageResource(res)
+    val img = org.jetbrains.compose.resources.imageResource(res)
     Box(modifier.size(side)) {
         androidx.compose.foundation.Image(img, null, Modifier.size(side).offset(1.dp, 1.5.dp), filterQuality = androidx.compose.ui.graphics.FilterQuality.None,
             colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.Black.copy(alpha = .7f), androidx.compose.ui.graphics.BlendMode.SrcIn))

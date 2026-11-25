@@ -497,7 +497,7 @@ def _():
     return im
 # ---------- Nov 24 (Tyler's video): the loops as block letters, and Rest as a bed ----------
 from PIL import ImageFont
-_BUNGEE = __import__('os').path.join(__import__('os').path.dirname(__import__('os').path.abspath(__file__)), '../../app/src/main/res/font/bungee.ttf')
+_BUNGEE = __import__('os').path.join(__import__('os').path.dirname(__import__('os').path.abspath(__file__)), '../../ui/src/commonMain/composeResources/font/bungee.ttf')
 def _letter(ch, col):
     im, d = new()
     f = ImageFont.truetype(_BUNGEE, 440)

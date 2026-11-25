@@ -1,5 +1,5 @@
 // The screens and the app logic in shared Kotlin (Compose Multiplatform), so the iPhone shows the same UI.
-// docs/CMP-PLAN.md. Step 1 (Nov 24 2026): the module exists and is wired into the app; nothing has moved into it yet.
+// docs/CMP-PLAN.md. Step 1 (Nov 24 2026): the module exists and is wired into the app. Step 2: the art and fonts.
 // The folder is ui/ because shared/ already holds the platform contract (PARITY.md, MESS-FORMAT.md).
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
@@ -24,6 +24,8 @@ kotlin {
         commonMain.dependencies {
             implementation(compose.runtime)
             implementation(compose.foundation)
+            // the art and fonts (composeResources), read through the generated Res class
+            api(compose.components.resources)
         }
     }
 }
@@ -37,6 +39,13 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+}
+
+// Step 2: the icons, jar art and fonts live in src/commonMain/composeResources; the app reads them through Res
+compose.resources {
+    packageOfResClass = "com.tideclock.messmachine.ui.res"
+    publicResClass = true
+    generateResClass = always
 }
 
 composeCompiler {
