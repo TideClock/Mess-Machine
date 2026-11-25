@@ -1,0 +1,67 @@
+# Screens and app logic to Compose Multiplatform (issue #25)
+
+Nov 24 2026. From the iOS chat, approved by Tyler. The second half of `docs/handoff/IOS.md`: the screens and the app
+logic move into shared Kotlin, so the iPhone shows the same UI through `ComposeUIViewController`. One dedicated job,
+in small steps. Each step is one push, and each one must keep the big test, the audit, the phone test and the engine
+test green before the next starts.
+
+## The rule for every step: Android looks and behaves exactly the same
+
+- The big test's screenshots are the reference. A step adds a screenshot comparison against the last published
+  `test-screens` zip (step 1); a screen that changes by more than anti-aliasing fails the step unless the step says why.
+- No behaviour change rides along with a move. A bug found during a move gets its own commit.
+- Test tags stay exactly as they are (`Modifier.tagged`), so the iPhone UI test finds the same controls.
+
+## The shape when it is done
+
+- `core/` (engine and cloud client, common Kotlin) stays as it is.
+- A new KMP module `shared/` (Compose Multiplatform): AppState, the screens, Faq, Tutorials, resources. It depends on
+  `core` with `api(...)` and is the one place iOS builds a framework from.
+- **One static framework, named `MessMachine`,** built by `shared` with `export(project(":core"))`, so the engine and
+  the screens share one Kotlin runtime. `core` stops building its own `MessEngine` framework in the same step that
+  `MessMachine` appears (the iOS chat updates `tools/build-engine.sh`).
+- `shared/src/iosMain`: `fun MainViewController(platform: Platform): UIViewController`.
+- `app/` keeps only Android: `MainActivity`, the Android `Platform`, the updater, notification permission, display
+  refresh, and the tests.
+
+## The Platform interfaces (common), each implemented in app/ (Android) and in Swift (iOS)
+
+| Interface | What it covers | Android today |
+| --- | --- | --- |
+| `AudioOut` | start, stop, rate, buffer frames, underruns, lag line, the fill loop calling `Engine.render` / `renderInto` | AudioOut.kt (AAudio, AudioTrack) |
+| `MidiIn` | delivers midiDown, midiUp, midiCc, midiBend | Midi.kt |
+| `MicIn` | samples to MouthTracker; Workbench takes and imports as WAV in an app folder | Workbench.kt, MouthMic.kt |
+| `Files` | the app's folders, open a mess or sound, share or export a mess, WAV, stems, MIDI | AppState file code, ShareScreens.kt |
+| `Background` | keep playing with a Stop control | PlayService |
+| `NotesOut` | post an issue, read replies, speech to text | Notes.kt, VoiceNote.kt |
+| `Device` | haptics, keep awake, the settings store (prefs), the back action, a main-thread poster, a worker | Activity, SharedPreferences, Handler, executors |
+| `Cloud` | CloudHost, SupabaseApi, Realtime: Ktor in common if it builds for both, otherwise this interface | CloudHost.kt, SupabaseApi.kt, Realtime.kt |
+
+## Steps (each one push, each green)
+
+0. **Engine timing check** in `tools/EngineTest.java` (done with this plan): fails when the average block takes over
+   5% of real time or 1 in 100 over 25%. Measured here: the Kotlin engine and the old Java engine take the same time,
+   about 22 microseconds per 256-frame block, under half a percent of real time.
+1. **Build plumbing, no code moves.** Compose Multiplatform plugin and versions matched to the Compose that Android
+   uses today (so nothing draws differently), the empty `shared/` module wired into `app`, the screenshot comparison
+   step in CI. iOS targets only on a Mac, as `core` does.
+2. **Resources.** Fonts, icons and art into `shared/composeResources`; `R.drawable` and `R.font` uses go through one
+   lookup. Screenshots must match pixel for pixel.
+3. **Pure logic.** Faq, Tutorials, BarPlan, Icons' tables, the skins and colours, Theory helpers used by the UI.
+4. **The Platform interfaces** in common, the Android implementations wrapping today's classes. AppState still in app/,
+   now calling the interfaces instead of Android directly.
+5. **AppState to commonMain.** `java.io.File`, `Handler`, executors and `SharedPreferences` are gone from it by then.
+6. **Screens, a few files per step:** Widgets and Icons first, then the pages (Pads, Synth, Steps, Roll, Song, Perform,
+   Sounds), then the sheets and overlays (Doctor, Settings, Files, Share, Cloud, Notes, FAQ, Tutor).
+7. **iOS entry point** (`MainViewController`) and the `MessMachine` framework; the iOS chat hosts it.
+8. **Cloud:** Ktor in common if it builds for iOS and Android with the same behaviour, otherwise behind `Cloud`.
+
+## Risks
+
+- [Likely] Compose Multiplatform pins its own Compose version. If it is newer than the Android Compose the app uses
+  today, text and layout can shift by a pixel. Step 1 picks the version that matches, or shows the differences before
+  anything else moves.
+- [Certain] Every step is a full CI cycle (about 20 to 25 minutes), and the Android build cannot run in the cloud
+  workspace, so a compile error costs a cycle.
+- [Guessing] AppState (5,100 lines) is the longest step; it may need to be split by area (playing, files, cloud,
+  lessons) to stay small.

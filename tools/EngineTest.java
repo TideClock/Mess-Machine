@@ -1016,6 +1016,7 @@ public class EngineTest {
     int zi = (int) Math.round(z * hat.data.length);
     check(zi > 0 && (hat.data[zi - 1] <= 0) != (hat.data[zi] <= 0), "snap lands on a zero crossing");
     wrapTests(rate, p, lib);
+    timingTest(p, lib);
     System.out.println(failures == 0 ? "ALL GOOD" : failures + " FAILED");
     repeatPatternTests(rate);
     mouthTests();
@@ -1364,5 +1365,31 @@ public class EngineTest {
       mf.feed(hush, 0, hush.length);
       check(!mf.on, "Mouth: stop making the sound and it goes off");
     }
+  }
+
+  /**
+   * Issue #25 (Tyler: does sharing code cost speed?): the time the Kotlin engine takes per audio block, the demo mess
+   * playing with Repeat on and a held chord. A 256-frame block at 48 kHz has 5.33 ms; the build fails when the
+   * average block takes over 20% of that or the slowest 1 in 100 over 60%, so a slowdown shows up as a red build.
+   */
+  static void timingTest(Project p, Library lib) {
+    int rate = 48000, n = 256;
+    Engine e = new Engine(rate);
+    e.setSnapshot(Engine.Snapshot.build(p, lib, new Engine.Live()));
+    e.play();
+    float[] b = new float[n * 2];
+    for (int i = 0; i < 2000; i++) e.render(b, n);           // warm up (the JIT, the caches)
+    for (int k = 0; k < 4; k++) e.down(100 + k, k, new int[]{0, 4, 7}, false);
+    int blocks = 3750;                                       // 20 seconds of sound
+    long[] t = new long[blocks];
+    for (int i = 0; i < blocks; i++) { long a = System.nanoTime(); e.render(b, n); t[i] = System.nanoTime() - a; }
+    long sum = 0; for (long v : t) sum += v;
+    long[] s = t.clone(); java.util.Arrays.sort(s);
+    double budget = n * 1e9 / rate;
+    double avg = sum / (double) blocks, p99 = s[(int) (blocks * .99)];
+    System.out.println(String.format(java.util.Locale.US, "ENGINE TIMING: %.0f us average, %.0f us p99, %.0f us worst per %d-frame block (budget %.0f us): %.1f%% of real time",
+      avg / 1000, p99 / 1000, s[blocks - 1] / 1000.0, n, budget / 1000, avg / budget * 100));
+    check(avg < budget * .05, "engine: the average block takes under 5% of its time (" + Math.round(avg / budget * 100) + "%)");
+    check(p99 < budget * .25, "engine: 99 blocks in 100 take under 25% of their time (" + Math.round(p99 / budget * 100) + "%)");
   }
 }
