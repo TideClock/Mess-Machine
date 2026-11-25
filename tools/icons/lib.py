@@ -48,7 +48,9 @@ def shade_rim(big,depth=56):
         rim=m&~below
         out[rim,0],out[rim,1],out[rim,2]=dk
     return Image.fromarray(out,'RGBA')
-def finish(big): return shade_rim(fit(big))
+def finish(big):
+    # an icon can ask for no dark rim (the FAQ guy: a rim under his eyes and grin muddies his face at 32 px)
+    f=fit(big); return f if big.info.get('noshade') else shade_rim(f)
 def tile(big,col,n=32,pad=4,glow=True):
     px=to_px(finish(big),n); N=n+2*pad
     t=Image.new('RGBA',(N,N),(0,0,0,0)); d=ImageDraw.Draw(t)

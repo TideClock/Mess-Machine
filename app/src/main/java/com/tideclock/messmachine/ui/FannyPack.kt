@@ -150,7 +150,8 @@ fun VialStrip(state: AppState, pad: Int, underRow: Boolean = false) {
     val rt = com.tideclock.messmachine.engine.Engine.T_RES
     val all = FX_STRIP + listOf(ft to "Cut", rt to "Res")
     // the vials grow with the screen (a Fold's inner screen gets tall ones) and with Large keys
-    val vialH = ((UiLook.widthDp / 3.6f).coerceIn(112f, 190f) * UiLook.big).dp
+    // Nov 24 (Tyler's video: "these guys are way too tall, they eat up so much space"): shorter, most of all on a wide screen
+    val vialH = ((UiLook.widthDp / 5.5f).coerceIn(92f, 128f) * UiLook.big).dp
     val nameSp = if (UiLook.widthDp > 560) 10f * UiLook.big else if (underRow) 9.5f * UiLook.big else 7.5f * UiLook.big
     Column(Modifier.fillMaxWidth().padding(bottom = 6.dp).tagged("fxstrip-$pad")) {
         T("FX · PAD ${pad + 1}", size = 12.sp, color = C.Yellow, spacing = .1.em, modifier = Modifier.padding(bottom = 6.dp))

@@ -1,8 +1,8 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
-const VIEWS = ['home','shop','emporium','noise','brotherwife','internship','specimens','channel','arcade','ramblings','bio','attic','crawlspace'];
+const VIEWS = ['home','shop','emporium','noise','brotherwife','internship','specimens','arcade','ramblings','bio','attic','crawlspace'];
 const SIZES = { phone: { width: 390, height: 844, isMobile: true, hasTouch: true }, desktop: { width: 1280, height: 900 } };
-const URL = 'file://' + (process.env.NSD_PAGE || '/home/claude/site/live.html') + '';
+const URL = process.env.NSD_URL || ('file://' + (process.env.NSD_PAGE || '/home/claude/site/live.html'));
 (async () => {
   const b = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] });
   const out = {};
@@ -11,7 +11,8 @@ const URL = 'file://' + (process.env.NSD_PAGE || '/home/claude/site/live.html') 
     for (const v of VIEWS) {
       const p = await ctx.newPage(); const errs = [];
       p.on('pageerror', e => errs.push('pageerror: ' + e.message));
-      p.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 200)); });
+      p.on('console', m => { if (m.type() === 'error' && !/^Failed to load resource/.test(m.text())) errs.push('console: ' + m.text().slice(0, 200)); });
+      p.on('response', r => { if (r.status() >= 400) errs.push('failed: ' + r.url() + ' ' + r.status()); });
       p.on('requestfailed', r => { const u = r.url(); if (!/fonts\.g/.test(u)) errs.push('failed: ' + u.replace('file:///home/claude/site/', '')); });
       const t0 = Date.now();
       await p.goto(URL + '#' + v, { waitUntil: 'load' }).catch(e => errs.push('goto ' + e.message));

@@ -20,7 +20,17 @@ interface StoreHost {
     /** Added to the contract (it gave the store no way to learn them): what this phone knows about one of its own
      *  bn: sounds, for register_sound. Only kind, title, bpm, beats and mkey are read. null: an import with the key as title. */
     fun soundInfo(key: String): Sound? = null
+    /** Added Nov 24 (Tyler: two of my phones): the copy the user chose not to keep. Delete its mess file. */
+    fun dropLocal(localId: String) {}
 }
+
+/**
+ * Tyler's answer 7 (Nov 24, docs/reviews/ACCOUNTS-DECISIONS.md): the same mess changed on two of his phones. Both are
+ * kept (localId has the server's, copyId this phone's) until he answers: keep both, keep this phone's as the main
+ * one, or merge them. canMerge: the last version both phones had is known here, so the two sets of changes can be
+ * laid on top of each other.
+ */
+class TwoPhones(@JvmField val localId: String, @JvmField val copyId: String, @JvmField val name: String, @JvmField val canMerge: Boolean)
 
 /**
  * Slice A of accounts: the account state, the one mess list's cloud marks, and whole-mess sync with a compare
@@ -37,7 +47,8 @@ class CloudStore(private val api: CloudApi, private val tokens: TokenStore, priv
         const val M_PHONE = 0; const val M_SYNCED = 1; const val M_WAITING = 2; const val M_SENDING = 3   // a mess's cloud mark
         const val M_OFFLINE = 4; const val M_BLOCKED = 5; const val M_REFUSED = 6
         const val N_KEPT_BOTH = 1; const val N_SIGNED_OUT = 2; const val N_QUOTA = 3; const val N_TOO_BIG = 4
-        const val N_TOO_LONG = 5; const val N_UPDATE = 6; const val N_FULL = 7
+        const val N_TOO_LONG = 5; const val N_UPDATE = 6; const val N_FULL = 7; const val N_TWO_PHONES = 8
+        const val TWO_KEEP_BOTH = 0; const val TWO_THIS_ONE = 1; const val TWO_MERGE = 2
         const val SAVE_MS = 5000L; const val PULL_MS = 60000L
         /** A mess that keeps changing still goes up this long after its first unsent change. */
         const val MAX_WAIT_MS = 30000L
@@ -48,6 +59,9 @@ class CloudStore(private val api: CloudApi, private val tokens: TokenStore, priv
     }
 
     @JvmField var state = OUT
+    /** A mess changed on two of my phones and waits for the answer (Tyler's answer 7); null when none waits. */
+    @JvmField var two: TwoPhones? = null
+    private var twoDocs: Array<String?>? = null      // base, mine, server
     @JvmField var me: Me? = null
     /** The last my_messes answer (kept in list.json for offline). */
     @JvmField var rows: List<MessRow> = emptyList()
@@ -481,6 +495,7 @@ class CloudStore(private val api: CloudApi, private val tokens: TokenStore, priv
             l = Link(local)
             l.cloud = o.id; l.rev = o.rev; l.name = o.name; l.sname = o.name; l.role = o.role; l.seq = seq
             links.add(l)
+            base(l, o.doc)
             setSounds(l, o.sounds)
         } else if (l.busy) {
             // a push or pull of it is running: that one decides
@@ -899,7 +914,7 @@ class CloudStore(private val api: CloudApi, private val tokens: TokenStore, priv
         if (!p.created && ops(l)) { renameStep(p); return }       // edited by ops: the doc is the session's to send
         api.putDoc(l.cloud, p.doc, l.rev, "Saved") { s, err ->
             if (live(p)) {
-                if (s != null) { l.rev = s.rev; l.maybe.clear(); docDone(p); saveIndex(); renameStep(p) }
+                if (s != null) { l.rev = s.rev; l.maybe.clear(); base(l, p.doc); docDone(p); saveIndex(); renameStep(p) }
                 else if (err != null && err.code == "conflict") clash(p)
                 else { if (err != null && err.code == "net") lost(l, p.doc); pushFail(p, err) }
             }
@@ -986,12 +1001,14 @@ class CloudStore(private val api: CloudApi, private val tokens: TokenStore, priv
      */
     private fun settle(l: Link, o: Opened, mine: String): Int {
         val server = sig(o.doc)
-        if (server == sig(mine)) { l.rev = o.rev; l.maybe.clear(); setSounds(l, o.sounds); return 0 }
+        if (server == sig(mine)) { l.rev = o.rev; l.maybe.clear(); setSounds(l, o.sounds); base(l, o.doc); return 0 }
         if (l.maybe.contains(server)) { l.rev = o.rev; l.maybe.clear(); setSounds(l, o.sounds); return 1 }
         val name = if (l.name.isNotEmpty()) l.name else o.name
         val copyName = copyName(name)
         val now = clock.nowMs()
+        val baseDoc = if (l.cloud.isEmpty()) null else cache.load(l.cloud + ".base.json")
         val copy = host.keepBoth(l.local, copyName, o.name, o.doc)
+        base(l, o.doc)
         l.job++
         l.rev = o.rev; l.dirty = false; l.name = o.name; l.sname = o.name; l.role = o.role; l.maybe.clear()
         l.busy = false; l.pushing = false; l.tries = 0; l.retryAt = 0L; l.err = 0; l.firstAt = 0L
@@ -1002,8 +1019,50 @@ class CloudStore(private val api: CloudApi, private val tokens: TokenStore, priv
             links.add(c)
         }
         saveIndex()
-        host.notice(N_KEPT_BOTH, o.name + " was changed on another phone. Yours is kept as " + copyName + ".")
+        if (copy.isNotEmpty() && (me?.id ?: "") == o.owner_id) {
+            // my own mess on another of my phones: ask (Tyler's answer 7); someone else's change keeps both as before
+            two = TwoPhones(l.local, copy, o.name, baseDoc != null)
+            twoDocs = arrayOf(baseDoc, mine, o.doc)
+            host.notice(N_TWO_PHONES, o.name + " changed on two of your phones.")
+        } else host.notice(N_KEPT_BOTH, o.name + " was changed on another phone. Yours is kept as " + copyName + ".")
         return 2
+    }
+
+    /** The last version this phone and the server agreed on, for a merge later (Tyler's answer 7). */
+    private fun base(l: Link, doc: String) { if (l.cloud.isNotEmpty()) cache.save(l.cloud + ".base.json", doc) }
+
+    /**
+     * The answer to "changed on two of your phones". TWO_KEEP_BOTH leaves both. TWO_THIS_ONE puts this phone's back on
+     * the main mess and drops the copy; TWO_MERGE lays this phone's changes (since the last shared version) on top of
+     * the other phone's and drops the copy. Either way the main mess goes up again on top of the server's.
+     */
+    fun settleTwo(choice: Int) {
+        val t = two ?: return
+        val docs = twoDocs
+        two = null; twoDocs = null
+        if (choice == TWO_KEEP_BOTH || docs == null) { host.onMesses(); return }
+        val mine = docs[1] ?: return
+        val doc = if (choice == TWO_MERGE) merged(docs[0], mine, docs[2]) ?: mine else mine
+        host.takeServer(t.localId, t.name, doc)
+        keepOff(t.copyId, true)
+        host.dropLocal(t.copyId)
+        val c = find(t.copyId)
+        if (c != null && !c.made() && !c.del) links.remove(c)
+        saved(t.localId, t.name)
+        saveIndex()
+        host.onMesses()
+    }
+
+    /** base -> mine as ops, laid on server. null when a doc does not read. */
+    private fun merged(base: String?, mine: String, server: String?): String? {
+        if (base == null || server == null) return null
+        return try {
+            val b = com.tideclock.messmachine.engine.Project.fromJson(base, null).project
+            val m = com.tideclock.messmachine.engine.Project.fromJson(mine, null).project
+            val sv = com.tideclock.messmachine.engine.Project.fromJson(server, null).project
+            Ops.apply(sv, Ops.diff(b, m))
+            sv.toJson(false)
+        } catch (e: Exception) { null }
     }
 
     private fun copyName(name: String): String {
@@ -1122,6 +1181,7 @@ class CloudStore(private val api: CloudApi, private val tokens: TokenStore, priv
         if (!l.dirty && (o.rev > l.rev || o.name != l.sname)) {
             host.takeServer(l.local, o.name, o.doc)
             l.rev = o.rev; l.name = o.name; l.sname = o.name
+            base(l, o.doc)
         }
         l.role = o.role
         setSounds(l, o.sounds)

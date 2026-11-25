@@ -113,10 +113,11 @@ fun ThrowVial(state: AppState, id: String, label: String, color: Color, modifier
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         // Nov 22: the throw's icon over its vial
         Icons.named(label)?.let { InlayIcon(it, 30.dp * UiLook.big, lit, label, Modifier.padding(bottom = 4.dp)) }
-        Vial(shown, color, true, "fx-$id", height = 140.dp, label = label.uppercase()) { pos, on ->
+        Vial(shown, color, true, "fx-$id", height = 140.dp, label = if (id == "stutter" && held) state.stutterName(level) else label.uppercase()) { pos, on ->
             val amt = pos.coerceIn(.05f, 1f)
             if (on && !held) {
                 held = true; level = amt
+                if (id == "stutter") state.fxLive[id] = amt  // the vial's height is the stutter's rate (Nov 24)
                 state.fxPress(id, true, amt)
                 if (s.behave != "stays") state.fxLive[id] = amt
             } else if (on) {

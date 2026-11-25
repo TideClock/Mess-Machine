@@ -165,8 +165,13 @@ fun Guide(state: AppState) {
     if (g.isEmpty()) return
     Card(Modifier.fillMaxWidth().padding(bottom = 14.dp), color = C.Card2) {
         Column {
-            T("Build ${state.buildName}", size = 12.sp, color = C.Dim)
-            T(Json.str(g["title"], "What's new"), size = 17.sp, modifier = Modifier.padding(bottom = 6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 6.dp)) {
+                FaqGuy(state.buildName, modifier = Modifier.padding(end = 10.dp))
+                Column {
+                    T("Build ${state.buildName}", size = 12.sp, color = C.Dim)
+                    T(Json.str(g["title"], "What's new"), size = 17.sp)
+                }
+            }
             for ((k, head) in listOf("thisBuild" to "In this build", "watch" to "Try this", "limits" to "Not in yet")) {
                 val items = Json.list(g[k])
                 if (items.isEmpty()) continue

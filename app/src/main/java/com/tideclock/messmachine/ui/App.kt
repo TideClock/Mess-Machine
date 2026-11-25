@@ -66,6 +66,8 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -141,7 +143,8 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
             state.askMicFor = -1
             if (ok && pad == com.tideclock.messmachine.MIC_FOR_NOTE) state.bugTap()
             else if (ok && pad == com.tideclock.messmachine.MIC_FOR_MOUTH) state.switchMouth(true)
-            else if (ok && pad >= 0) state.recordToPad(pad) else if (!ok) state.say("The mic needs permission. You can allow it in the phone's settings for Mess Machine.")
+            else if (ok && pad >= 0) { if (state.autoAfterAsk) { state.autoAfterAsk = false; state.autoSampleTo(pad) } else state.recordToPad(pad) }
+            else if (!ok) state.say("The mic needs permission. You can allow it in the phone's settings for Mess Machine.")
         }
         LaunchedEffect(state.askMicFor) { if (state.askMicFor != -1) micPerm.launch(android.Manifest.permission.RECORD_AUDIO) }
         @Suppress("UNUSED_VARIABLE") val v = state.version
@@ -158,7 +161,8 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
                 if (state.micOn) RecordingBanner(state)
                 if (state.updater.ready && !state.updater.later || state.updater.busy) UpdateBar(state)
                 if (state.cpuAsk) CpuBanner(state)
-                Row(Modifier.weight(1f).fillMaxWidth()) {
+                state.twoPhones?.let { TwoPhonesBanner(state, it) }
+                Row(Modifier.weight(1f).fillMaxWidth().closeStripOnTap(state)) {
                 if (state.layout != "new") Dock(state)
                 Box(Modifier.weight(1f).fillMaxHeight().tagged("screen-${state.tab.label}")) {
                     // pages change with a short fade instead of a hard cut (note #5)
@@ -194,7 +198,7 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
                     is Overlay.Xy -> Sheet(state, "XY for pad ${o.pad + 1}") { XyEditor(state, o.pad) }
                     Overlay.Files -> Sheet(state, "Messes") { FilesScreen(state) }
                     Overlay.Settings -> Sheet(state, "Settings") { SettingsScreen(state) }
-                    Overlay.Tempo -> Sheet(state, "Tempo + feel") { TempoScreen(state) }
+                    Overlay.Tempo -> TempoDrop(state)
                     Overlay.Notes -> Sheet(state, "Notes for Claude") { NotesScreen(state) }
                     Overlay.Start -> Sheet(state, "Welcome to the mess") { StartScreen(state) }
                     Overlay.AudioCheck -> Sheet(state, "Latency") { AudioCheckScreen(state) }
@@ -355,11 +359,42 @@ fun Transport(state: AppState) {
         ) {
             T(if (state.countNow > 0) "COUNT ${state.countNow}" else if (state.pendingSlot >= 0) "→ " + com.tideclock.messmachine.engine.Project.LETTERS[state.pendingSlot] else position(state), size = if (state.look == "panel") 12.sp else 10.sp, color = if (state.look == "panel") Hw.Amber else C.Yellow, lines = 1, family = if (state.look == "panel") Lcd else Mono, weight = FontWeight.Bold, modifier = Modifier.tagged("position"))
         }
+        // Nov 24 (Tyler's video: "the click and count-in should just be right there in all the screens"): on a wide screen
+        // they sit in the top bar on every page; a narrow phone keeps them on the Play page and in Tempo
+        if (topClick()) {
+            BarBtn(state, "Click", "Click", { state.switchClick() }, on = state.live.click, onColor = C.Yellow, tag = "loop-click", word = "Click", tier = Tier.Quiet, modifier = Modifier.weight(if (state.look == "panel") 1f else .55f))
+            BarBtn(state, if (state.countInBars == 0) "Count off" else "Count ${state.countInBars}", "Count in", { state.cycleCountIn() }, on = state.countInBars > 0, onColor = C.Yellow, tag = "loop-countin",
+                word = if (state.countInBars == 0) "Count" else "Count ${state.countInBars}", tier = Tier.Quiet, modifier = Modifier.weight(if (state.look == "panel") 1f else .55f))
+        }
         // What the FAQ (Tyler's name): tap it, then tap anything to learn what it is. Page help moved onto its card
         BarBtn(state, "?", "What the FAQ", { state.switchFaq() }, on = state.faqOn, onColor = C.Teal, tag = "help-toggle", tier = Tier.Quiet, word = "FAQ", modifier = Modifier.weight(if (state.look == "panel") 1f else .55f))
         TopMenu(state, Modifier.weight(if (state.look == "panel") 1f else .55f))
     }
 }
+
+/**
+ * Nov 24 (Tyler's video): with the loop strip open, a tap anywhere on the page under it puts it away. The tap still
+ * does its own job (a pad plays); a drag or a scroll leaves the strip where it is.
+ */
+fun Modifier.closeStripOnTap(state: AppState): Modifier = this.pointerInput(Unit) {
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false, pass = androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+        if (!state.loopStripOpen) return@awaitEachGesture
+        val slop = viewConfiguration.touchSlop
+        var moved = false
+        while (true) {
+            val e = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+            val c = e.changes.firstOrNull { it.id == down.id } ?: break
+            if ((c.position - down.position).getDistance() > slop) moved = true
+            if (!c.pressed) break
+        }
+        if (!moved) state.loopStripOpen = false
+    }
+}
+
+/** Click and Count-in ride in the top bar when the screen is wide enough for them (a foldable, a phone held wide). */
+@Composable
+fun topClick(): Boolean = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 560
 
 /** ☰: messes, settings, lessons and redo, so the top bar stays one row. Notes for Claude is the bug by the tabs. */
 @Composable
@@ -432,6 +467,24 @@ fun CpuBanner(state: AppState) {
             Btn("Bake them", { state.bakePads(pads); state.cpuAsk = false }, on = true, onColor = C.Teal, small = true, tag = "cpu-bake")
             Btn("Latency", { state.cpuAsk = false; state.overlay = Overlay.AudioCheck }, small = true, tag = "cpu-latency")
             Btn("Not now", { state.cpuAsk = false }, small = true, tag = "cpu-no")
+        }
+    }
+}
+
+/**
+ * Tyler's answer 7 (Nov 24): the same mess changed on two of his phones. Both are kept until he picks: merge them,
+ * keep this phone's as the main one, or keep both.
+ */
+@Composable
+fun TwoPhonesBanner(state: AppState, t: com.tideclock.messmachine.cloud.TwoPhones) {
+    Column(Modifier.fillMaxWidth().background(C.Card2).tagged("two-banner").padding(horizontal = 14.dp, vertical = 10.dp)) {
+        T("\"${t.name.uppercase()}\" CHANGED ON TWO OF YOUR PHONES", size = 13.sp, color = C.Yellow, spacing = .06.em, lines = 2)
+        T(if (t.canMerge) "Merge them, keep this phone's as the main one, or keep both." else "Keep this phone's as the main one, or keep both.",
+            size = 13.sp, weight = androidx.compose.ui.text.font.FontWeight.Medium, modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
+        Wrap(gap = 8.dp) {
+            if (t.canMerge) Btn("Merge", { state.answerTwo(com.tideclock.messmachine.cloud.CloudStore.TWO_MERGE) }, on = true, onColor = C.Teal, small = true, tag = "two-merge")
+            Btn("Keep this phone's", { state.answerTwo(com.tideclock.messmachine.cloud.CloudStore.TWO_THIS_ONE) }, small = true, tag = "two-this")
+            Btn("Keep both", { state.answerTwo(com.tideclock.messmachine.cloud.CloudStore.TWO_KEEP_BOTH) }, small = true, tag = "two-both")
         }
     }
 }
@@ -695,8 +748,10 @@ fun LoopStrip(state: AppState) {
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            // Nov 24 (Tyler's video: "song feels a little bit too big"): the Loop and Song switch is only as wide as its words
             PickSlider(listOf("Loop" to null, (if (P.songMode) "Song on" else "Song") to null), if (state.songOpen) 1 else 0, { state.songOpen = it == 1 },
-                Modifier.weight(1f), tags = listOf("loop-tab-loop", "loop-song"), tag = "loopside-chips", onColor = C.Yellow, icons = false)
+                Modifier.width(190.dp), tags = listOf("loop-tab-loop", "loop-song"), tag = "loopside-chips", onColor = C.Yellow, icons = false)
+            Spacer(Modifier.weight(1f))
             CloseScrew({ state.loopStripOpen = false }, tag = "loop-close", label = "Close the loops", small = true)
         }
         // no early return here: inside a Column it breaks Compose's bookkeeping (see the perform row)
@@ -704,7 +759,10 @@ fun LoopStrip(state: AppState) {
     }
 }
 
-/** The Loop side of the strip. */
+/**
+ * The Loop side of the strip. Nov 24 (Tyler's video: "hopefully all of these things could fit in this one bar"): the
+ * loops, then one bar of keys (when a pick lands, the length, copy, clear, Auto, Bottle it), wrapping only on a narrow phone.
+ */
 @Composable
 private fun LoopSide(state: AppState, bars: Int) {
     val P = state.project
@@ -712,26 +770,24 @@ private fun LoopSide(state: AppState, bars: Int) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             for (i in 0 until com.tideclock.messmachine.engine.Project.NSLOTS) LoopPad(state, i, Modifier.weight(1f))
         }
-        // when a pick lands, then the loop's length (Click and Count moved to the Play page, Nov 22)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Wrap(gap = 4.dp, modifier = Modifier.tagged("loop-keys")) {
             Btn(if (state.loopAtBar) "Wait bar" else "Now", { state.switchLoopAtBar() }, small = true, tight = true, on = state.loopAtBar, onColor = C.Teal, tag = "loop-when", modifier = Modifier.widthIn(min = Floor.KEY.rdp), icon = if (state.loopAtBar) "Wait bar" else "Now")
-            Spacer(Modifier.weight(1f))
-            T("${bars} BAR${if (bars > 1) "S" else ""}", size = 11.sp, color = C.Dim, spacing = .06.em, lines = 1, modifier = Modifier.tagged("loop-bars"))
+            Box(Modifier.height(Floor.KEY.rdp), contentAlignment = Alignment.Center) {
+                T("${bars} BAR${if (bars > 1) "S" else ""}", size = 11.sp, color = C.Dim, spacing = .06.em, lines = 1, modifier = Modifier.padding(horizontal = 4.dp).tagged("loop-bars"))
+            }
             Btn("−", { state.dropBar() }, small = true, tight = true, enabled = bars > 1, tag = "loop-minus", modifier = Modifier.widthIn(min = Floor.KEY.rdp), icon = "Bar minus")
             Btn("+", { state.addBar() }, small = true, tight = true, enabled = bars < 8, tag = "loop-plus", modifier = Modifier.widthIn(min = Floor.KEY.rdp), icon = "Bar plus")
             Btn("2×", { state.doubleLoop() }, small = true, tight = true, enabled = bars <= 4, tag = "loop-double", modifier = Modifier.widthIn(min = Floor.KEY.rdp), icon = "Double")
+            Select("Copy to", (0 until com.tideclock.messmachine.engine.Project.NSLOTS).filter { it != P.cur }.map { it to "Loop ${com.tideclock.messmachine.engine.Project.LETTERS[it]}" }, { state.copySlotTo(it) })
+            Btn("Clear loop", { state.clearSlot() }, small = true, tight = true, enabled = P.pat().used(), tier = Tier.Danger, tag = "loop-clear", icon = "Clear")
+            Btn("Auto", { state.movesOpen = !state.movesOpen }, on = state.movesOpen, onColor = C.Teal, small = true, tight = true, tag = "moves-open", icon = "Auto")
+            if (P.pat().hasMotion()) Btn("Clear auto", { state.clearMoves() }, small = true, tight = true, tag = "clear-moves")
+            Btn("Bottle it", { state.bottleIt() }, small = true, tight = true, color = C.Pink, enabled = P.pat().used(), tag = "bottle", icon = "Bottle it")
         }
         // the bars of this loop: pick the one Steps and Roll show
         if (bars > 1) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
             T("BAR", size = 11.sp, color = C.Dim, spacing = .1.em)
             for (b in 0 until bars) Btn("${b + 1}", { state.page = b }, on = state.page == b, small = true, tight = true, tag = if (b == 1) "page2" else "page-${b + 1}", modifier = Modifier.weight(1f))
-        }
-        Wrap(gap = 6.dp) {
-            Select("Copy to", (0 until com.tideclock.messmachine.engine.Project.NSLOTS).filter { it != P.cur }.map { it to "Loop ${com.tideclock.messmachine.engine.Project.LETTERS[it]}" }, { state.copySlotTo(it) })
-            Btn("Clear loop", { state.clearSlot() }, small = true, enabled = P.pat().used(), tier = Tier.Danger, tag = "loop-clear", icon = "Clear")
-            Btn("Auto", { state.movesOpen = !state.movesOpen }, on = state.movesOpen, onColor = C.Teal, small = true, tag = "moves-open")
-            if (P.pat().hasMotion()) Btn("Clear auto", { state.clearMoves() }, small = true, tag = "clear-moves")
-            Btn("Bottle it", { state.bottleIt() }, small = true, color = C.Pink, enabled = P.pat().used(), tag = "bottle")
         }
         if (state.movesOpen) MovesPanel(state)
     }
@@ -745,7 +801,7 @@ fun LoopPad(state: AppState, i: Int, modifier: Modifier) {
     val playingHere = state.playing && state.heardPat == i
     val L = com.tideclock.messmachine.engine.Project.LETTERS[i]
     Box(
-        modifier.height(58.dp)
+        modifier.height(54.dp)
             .sticker(if (cur) C.Yellow else if (wait) C.Pink else if (used) C.Card2 else C.Ink, shadow = if (cur) 1.dp else 3.dp, border = if (playingHere) 4.dp else 2.5.dp, borderColor = if (playingHere) C.Pink else C.Cream)
             .tapOrHold(i, { state.pickLoop(i) }, { if (!state.locked) state.slotMenu = i })
             .tagged("loop-$i"),
@@ -889,12 +945,12 @@ fun SettingsTray(state: AppState, kind: String, modifier: Modifier = Modifier) {
     }
     Column(
         modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, bottom = if (dockUp) 100.dp else 52.dp).trayFrame()
-            .heightIn(min = if (kind.startsWith("edit:")) 430.dp else 0.dp, max = if (kind.startsWith("edit:")) 470.dp else 380.dp).verticalScroll(rememberScrollState()).padding(12.dp).tagged("tray"),
+            .heightIn(max = if (kind.startsWith("edit:")) 470.dp else 380.dp).verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp).tagged("tray"),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             T(title, size = 12.sp, color = C.Yellow, spacing = .1.em, lines = 1, modifier = Modifier.weight(1f))
             // the deep layer: the sound's own Sample sheet (its FX page and the rest)
-            if (kind.startsWith("fx:") && state.project.kit.getOrNull(pad).orEmpty().isNotEmpty()) Btn("More", {
+            if (kind.startsWith("fx:") && state.project.kit.getOrNull(pad).orEmpty().isNotEmpty()) Btn("Sample sheet", {  // Nov 24: "More" read as a stray button; say where it goes
                 state.tray = null; state.overlay = Overlay.Doctor(state.project.kit[pad])
             }, small = true, tight = true, tier = Tier.Quiet, tag = "tray-more")
             CloseScrew({ state.tray = null }, tag = "tray-done", modifier = Modifier.padding(start = 6.dp))

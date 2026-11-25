@@ -1,17 +1,24 @@
 {
-  "title": "Playing together is built, and switched off for now",
+  "title": "Your bug video, fixed and built",
   "thisBuild": [
-    "Behind the scenes: accounts are finished on the phone. Signing in, saving online, inviting someone into a mess and making it together, share links, History, reporting, deleting an account and giving a sound to the Vault are built and tested against a pretend server.",
-    "All of it stays switched off until the real server is set up, so nothing you see has changed.",
-    "The sound engine is the same as the last build: it should sound exactly as before."
+    "Stutter holds one speed, locked to the beat. The vial has four zones, bottom up: quarter, eighth, 16th and 32nd notes (it shows on the vial while held).",
+    "Settings is two short groups, Look and Playing, with a switch per on/off. Hold to record is gone: tap to start, tap to stop.",
+    "The loop strip is tighter: smaller loops, one bar of keys, a small Loop/Song switch. It closes when you change page or tap the page under it.",
+    "Click and Count-in sit in the top bar on every page (your fold's wide screen), and in Tempo.",
+    "Tempo drops down under the top bar instead of taking the whole screen.",
+    "Synth: To pad and Over moved up beside Scratch and the preset, so that row is gone.",
+    "Edit tray: no empty space at the top, shorter drawer keys, shorter FX vials. Repeat and Toss are smaller.",
+    "New: Auto trim (Settings, on), Auto sample (pad menu or Edit, Sound: the next sound lands on that pad), Chop to pads in the Sample sheet's Play tab, and a Mixer in Seq.",
+    "Icons: A to H as block letters and a bed for Rest in the song painter, and DROP in big letters on a grey key. FX tray's More is now Sample sheet."
   ],
   "watch": [
-    "Play a few loops, save a mess and open it again: does it all work as before?",
-    "Undo and Redo: do they still take back and bring back as before?",
-    "Open Messes from the menu and hold a sound in Your Workbench: both should look exactly like the last build."
+    "Hold the Stutter vial low, then high: does each height keep one steady speed?",
+    "Seq, then Mixer: move a pad's fader and the bank fader. Do levels stick and sound right?",
+    "Auto sample a pad, then clap once. Does it land and stop by itself?",
+    "Open the loop strip and tap a pad: it should close and the pad should still play."
   ],
   "limits": [
-    "There is no Sign in yet. It appears once the server is ready, in the menu and at the top of Messes.",
-    "Playing together has only met a pretend server so far. The first real test is two phones on the real one."
+    "Mixer levels are per sound: two pads with the same sound move together.",
+    "Auto sample stops after a third of a second of quiet, so a long reverb tail gets cut short."
   ]
 }

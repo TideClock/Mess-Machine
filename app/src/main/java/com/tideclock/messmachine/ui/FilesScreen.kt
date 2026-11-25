@@ -3,6 +3,17 @@ package com.tideclock.messmachine.ui
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
@@ -152,140 +163,178 @@ fun MessPicture(f: com.tideclock.messmachine.MessFile, modifier: Modifier = Modi
     }
 }
 
-/** ⚙ Settings: how the app looks and plays (split from the Messes sheet, which keeps files only). */
+/**
+ * ⚙ Settings: how the app looks and plays (split from the Messes sheet, which keeps files only).
+ * Nov 24 (Tyler's video: "way too much empty space", "these can be converted into the switch mode"): two groups, Look
+ * and Playing, side by side when the screen is wide; every on/off is a switch on one short line; Build sits in the header.
+ */
 @Composable
 fun SettingsScreen(state: AppState) {
     // Nov 23 (Tyler: "tapping Click isn't working most of the time"): the live settings are not Compose state; reading
     // liveV makes this redraw when one changes (Click toggled, but its key only showed it on the next redraw)
     @Suppress("UNUSED_VARIABLE") val lvBump = state.liveV
-    val ctx = androidx.compose.ui.platform.LocalContext.current
-    // Android 13 and up ask before an app shows notifications; without it the music still plays, the Stop notification just stays hidden
-    val notif = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
+    val wide = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 560
     ScrollPane(hPad = 14.dp, vPad = 0.dp) {
-        // update from inside the app (Tyler, Nov 17)
-        Card(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 14.dp)) {
-            Column {
+        // update from inside the app (Tyler, Nov 17), as one line
+        Row(Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(Modifier.weight(1f)) {
                 T("BUILD ${state.updater.current}", size = 12.sp, color = C.Yellow, spacing = .1.em)
-                if (state.updater.status.isNotEmpty()) Note(state.updater.status, modifier = Modifier.padding(top = 2.dp))
-                Wrap(Modifier.padding(top = 6.dp)) {
-                    if (state.updater.ready) Btn("Update to build ${state.updater.latest}", { state.installUpdate() }, small = true, color = C.Teal, enabled = !state.updater.busy, tag = "update-go")
-                    else Btn("Check for updates", { state.updater.check(false) }, small = true, enabled = !state.updater.busy, tag = "update-check")
-                }
+                if (state.updater.status.isNotEmpty()) Note(state.updater.status)
             }
+            if (state.updater.ready) Btn("Update to build ${state.updater.latest}", { state.installUpdate() }, small = true, color = C.Teal, enabled = !state.updater.busy, tag = "update-go")
+            else Btn("Check for updates", { state.updater.check(false) }, small = true, enabled = !state.updater.busy, tag = "update-check")
         }
-        Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
-            Column {
-                T("VIEW SIZE", size = 12.sp, color = C.Yellow, spacing = .1.em)
-                Wrap(Modifier.tagged("zoom-chips")) {
-                    for (z in listOf(.7f, .8f, .9f, 1f, 1.1f, 1.2f)) {
-                        Btn("${(z * 100).toInt()}%", { state.setViewSize(z) }, on = kotlin.math.abs(state.uiScale - z) < .01f, small = true, tag = "zoom-${(z * 100).toInt()}")
-                    }
-                }
+        if (wide) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.weight(1f)) { LookSettings(state) }
+            Column(Modifier.weight(1f)) { PlaySettings(state); HotkeySettings(state) }
+        } else { LookSettings(state); PlaySettings(state); HotkeySettings(state) }
+        T(" ", size = 30.sp)
+    }
+}
+
+/** One group of settings: a heading and its lines, in a box only as tall as they are. */
+@Composable
+fun SetGroup(title: String, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Card(modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+        Column {
+            T(title, size = 12.sp, color = C.Yellow, spacing = .1.em, modifier = Modifier.padding(bottom = 2.dp))
+            content()
+        }
+    }
+}
+
+/** A small label over a row of choices inside a group. */
+@Composable
+fun SetLabel(text: String) = T(text, size = 11.sp, color = C.Dim, spacing = .1.em, lines = 1, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
+
+/** An on/off setting as one line: its name, and a switch. The whole line is the switch. */
+@Composable
+fun SwitchLine(label: String, on: Boolean, onToggle: () -> Unit, tag: String) {
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 40.dp).clickable { onToggle() }.tagged(tag)
+            .semantics { role = androidx.compose.ui.semantics.Role.Switch; stateDescription = if (on) "on" else "off" },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        T(label, size = 14.sp, color = C.Cream, modifier = Modifier.weight(1f))
+        Box(Modifier.size(width = 44.dp, height = 24.dp).background(if (on) C.Teal else C.Well, androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+            .border(2.dp, if (on) C.Teal else C.Dim, androidx.compose.foundation.shape.RoundedCornerShape(12.dp)).padding(3.dp),
+            contentAlignment = if (on) Alignment.CenterEnd else Alignment.CenterStart) {
+            Box(Modifier.size(18.dp).background(if (on) C.Ink else C.Dim, androidx.compose.foundation.shape.CircleShape))
+        }
+    }
+}
+
+@Composable
+fun LookSettings(state: AppState) {
+    SetGroup("LOOK") {
+        SetLabel("VIEW SIZE")
+        Wrap(Modifier.tagged("zoom-chips"), gap = 6.dp) {
+            for (z in listOf(.7f, .8f, .9f, 1f, 1.1f, 1.2f)) {
+                Btn("${(z * 100).toInt()}%", { state.setViewSize(z) }, on = kotlin.math.abs(state.uiScale - z) < .01f, small = true, tight = true, tag = "zoom-${(z * 100).toInt()}")
             }
         }
         // build 5 of the overhaul: colour skins. The Look below is the button skin; any skin goes with any Look
-        Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
-            Column {
-                T("SKIN", size = 12.sp, color = C.Yellow, spacing = .1.em)
-                Wrap(Modifier.padding(top = 6.dp).tagged("skin-chips")) {
-                    Skins.all.forEach { k ->
-                        Btn(k.name, { state.pickSkin(k.id) }, on = state.skin == k.id, onColor = androidx.compose.ui.graphics.Color(k.pink), small = true, tag = "skin-${k.id}")
-                    }
-                }
+        SetLabel("SKIN")
+        Wrap(Modifier.tagged("skin-chips"), gap = 6.dp) {
+            Skins.all.forEach { k ->
+                Btn(k.name, { state.pickSkin(k.id) }, on = state.skin == k.id, onColor = androidx.compose.ui.graphics.Color(k.pink), small = true, tight = true, tag = "skin-${k.id}")
             }
         }
         // the looks (Nov 18): Classic, or the Pro looks with icon tiles on printed rails, dark or light
-        Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
-            Column {
-                T("LOOK (BUTTONS)", size = 12.sp, color = C.Yellow, spacing = .1.em)
-                Wrap(Modifier.padding(top = 6.dp).tagged("look-chips")) {
-                    Btn("Panel", { state.pickLook("panel") }, on = state.look == "panel", onColor = C.Yellow, small = true, tag = "look-panel")
-                    Btn("Classic", { state.pickLook("classic") }, on = state.look == "classic", small = true, tag = "look-classic")
-                    Btn("Pro dark", { state.pickLook("dark") }, on = state.look == "dark", onColor = C.Teal, small = true, tag = "look-dark")
-                    Btn("Pro light", { state.pickLook("light") }, on = state.look == "light", onColor = C.Pink, small = true, tag = "look-light")
-                }
-                if (state.look != "classic") Btn(if (state.proWords) "Words under icons: on" else "Words under icons: off", { state.switchProWords() }, on = state.proWords, onColor = C.Teal, small = true, tag = "look-words",
-                    modifier = Modifier.padding(top = 8.dp))
-                if (state.look == "panel") Btn(if (state.tabSlot) "Tabs: slot" else "Tabs: keys", { state.switchTabSlot() }, on = state.tabSlot, onColor = C.Teal, small = true, tag = "look-tabslot", modifier = Modifier.padding(top = 8.dp))
-                if (state.look == "panel" && state.proWords) Btn(if (state.wordPlate) "Words: plates" else "Words: stamped", { state.switchWordPlate() }, on = state.wordPlate, onColor = C.Teal, small = true, tag = "look-wordplate", modifier = Modifier.padding(top = 8.dp))
-                // Nov 21: a quarter bigger everywhere, for playing at 70 to 80 percent view size
-                Btn(if (state.largeKeys) "Large keys: on" else "Large keys: off", { state.switchLargeKeys(!state.largeKeys) }, on = state.largeKeys, onColor = C.Teal, small = true, tag = "look-large",
-                    modifier = Modifier.padding(top = 8.dp))
-            }
+        SetLabel("BUTTONS")
+        Wrap(Modifier.tagged("look-chips"), gap = 6.dp) {
+            Btn("Panel", { state.pickLook("panel") }, on = state.look == "panel", onColor = C.Yellow, small = true, tight = true, tag = "look-panel")
+            Btn("Classic", { state.pickLook("classic") }, on = state.look == "classic", small = true, tight = true, tag = "look-classic")
+            Btn("Pro dark", { state.pickLook("dark") }, on = state.look == "dark", onColor = C.Teal, small = true, tight = true, tag = "look-dark")
+            Btn("Pro light", { state.pickLook("light") }, on = state.look == "light", onColor = C.Pink, small = true, tight = true, tag = "look-light")
         }
+        if (state.look != "classic") SwitchLine("Words under icons", state.proWords, { state.switchProWords() }, "look-words")
+        if (state.look == "panel") SwitchLine("Tabs in a slot (off: keys)", state.tabSlot, { state.switchTabSlot() }, "look-tabslot")
+        if (state.look == "panel" && state.proWords) SwitchLine("Words on plates (off: stamped)", state.wordPlate, { state.switchWordPlate() }, "look-wordplate")
+        // Nov 21: a quarter bigger everywhere, for playing at 70 to 80 percent view size
+        SwitchLine("Large keys", state.largeKeys, { state.switchLargeKeys(!state.largeKeys) }, "look-large")
         // build 107: where things live. New is the default; Classic puts back build 104's Menu, FX and side dock
-        Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
-            Column {
-                T("LAYOUT", size = 12.sp, color = C.Yellow, spacing = .1.em)
-                Wrap(Modifier.padding(top = 6.dp).tagged("layout-chips")) {
-                    Btn("New", { state.pickLayout("new") }, on = state.layout == "new", onColor = C.Teal, small = true, tag = "layout-new")
-                    Btn("New, row on the side", { state.pickLayout("side") }, on = state.layout == "side", onColor = C.Teal, small = true, tag = "layout-side")
-                    Btn("Classic", { state.pickLayout("classic") }, on = state.layout == "classic", small = true, tag = "layout-classic")
-                }
-            }
+        SetLabel("LAYOUT")
+        Wrap(Modifier.tagged("layout-chips"), gap = 6.dp) {
+            Btn("New", { state.pickLayout("new") }, on = state.layout == "new", onColor = C.Teal, small = true, tight = true, tag = "layout-new")
+            Btn("Row on the side", { state.pickLayout("side") }, on = state.layout == "side", onColor = C.Teal, small = true, tight = true, tag = "layout-side")
+            Btn("Classic", { state.pickLayout("classic") }, on = state.layout == "classic", small = true, tight = true, tag = "layout-classic")
         }
         // My Desk is a way of seeing the machine, so it lives here (Tyler, Nov 18): the Play tab shows the pads or your desk
-        Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
-            Column {
-                T("PLAY LAYOUT", size = 12.sp, color = C.Yellow, spacing = .1.em)
-                Wrap(Modifier.padding(top = 6.dp).tagged("layout-chips")) {
-                    val desk = state.playView == com.tideclock.messmachine.Tab.Console
-                    Btn("Pads", { state.pickPlayLayout(false) }, on = !desk, small = true, tag = "layout-pads")
-                    Btn("My Desk", { state.pickPlayLayout(true) }, on = desk, onColor = C.Teal, small = true, tag = "layout-desk")
-                }
+        SetLabel("PLAY TAB SHOWS")
+        Wrap(Modifier.tagged("playlayout-chips"), gap = 6.dp) {
+            val desk = state.playView == com.tideclock.messmachine.Tab.Console
+            Btn("Pads", { state.pickPlayLayout(false) }, on = !desk, small = true, tight = true, tag = "layout-pads")
+            Btn("My Desk", { state.pickPlayLayout(true) }, on = desk, onColor = C.Teal, small = true, tight = true, tag = "layout-desk")
+        }
+    }
+}
+
+@Composable
+fun PlaySettings(state: AppState) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    // Android 13 and up ask before an app shows notifications; without it the music still plays, the Stop notification just stays hidden
+    val notif = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
+    SetGroup("PLAYING") {
+        SwitchLine("Keep playing when I leave", state.bgPlay, {
+            val on = !state.bgPlay
+            state.switchBgPlay(on)
+            if (on && android.os.Build.VERSION.SDK_INT >= 33 && androidx.core.content.ContextCompat.checkSelfPermission(ctx, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED)
+                notif.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }, "set-bgplay")
+        SwitchLine("Pad buzz", state.buzz, { state.switchBuzz(!state.buzz) }, "set-buzz")
+        // Nov 18: the finer time grid lets live hits record exactly where they were played
+        SwitchLine("Record exactly where I hit (off: snap to 16ths)", state.live.recExact, { state.switchRecExact() }, "set-recexact")
+        // Nov 24 (Tyler's video): trim the quiet off both ends of a new recording
+        SwitchLine("Auto trim new recordings", state.autoTrim, { state.switchAutoTrim(!state.autoTrim) }, "set-autotrim")
+        // Nov 18 / 21: a quick flick up off a button opens its settings
+        SwitchLine("Flick up off a button for its settings", state.flickOn, { state.switchFlick() }, "set-flick")
+    }
+    SetGroup("SOUND AND SPEED") {
+        // Nov 21 (lag): the screen at 60 a second leaves more time for the sound
+        SwitchLine("Smooth screen (off: 60 a second, more time for sound)", state.smoothScreen, { state.switchSmoothScreen(!state.smoothScreen) }, "set-smooth")
+        SwitchLine("Steady buffer (off: tight, lower latency)", state.steadyBuffer, { state.switchSteadyBuffer(!state.steadyBuffer) }, "set-buffer")
+        // Nov 21 (L4): AAudio is Android's fast path; the older one is there for a phone where it misbehaves
+        SwitchLine("Fast sound path, AAudio (now: ${state.audio.path})", state.aaudio, { state.switchAAudio(!state.aaudio) }, "set-aaudio")
+        SetLabel("BEAT GLOW")
+        Wrap(Modifier.tagged("glow-chips"), gap = 6.dp) {
+            for ((v, n) in listOf(0 to "Off", 1 to "Soft", 2 to "Full")) Btn(n, { state.setPulse(v) }, on = state.pulseLevel == v, small = true, tight = true, tag = "set-pulse-$v")
+        }
+    }
+}
+
+/** Nov 21 video: HotKeys, what a quick swipe off a pad does in each direction. */
+@Composable
+fun HotkeySettings(state: AppState) {
+    SetGroup("HOTKEYS", Modifier.tagged("hotkeys")) {
+        SwitchLine("Pad swipes", state.padFlick, { state.switchPadFlick() }, "set-padflick")
+        for ((dir, word) in listOf("up" to "Up", "down" to "Down", "left" to "Left", "right" to "Right")) {
+            val now = SWIPE_ACTIONS.firstOrNull { it.first == state.swipe[dir] }?.second ?: "Nothing"
+            Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                T(word.uppercase(), size = 12.sp, spacing = .08.em, color = if (state.padFlick) C.Cream else C.Dim, modifier = Modifier.width(64.dp))
+                Select(now, SWIPE_ACTIONS, { state.setSwipe(dir, it) }, tag = "swipe-$dir")
             }
         }
-        Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
-            Column {
-                T("PLAYING", size = 12.sp, color = C.Yellow, spacing = .1.em)
-                T("MIC ON AN EMPTY PAD", size = 11.sp, color = C.Dim, spacing = .1.em, lines = 1, modifier = Modifier.padding(top = 6.dp, bottom = 4.dp))
-                Wrap(Modifier.padding(top = 6.dp).tagged("recmode-chips")) {
-                    Btn("Tap start, tap stop", { state.switchRecordHold(false) }, on = !state.recordHold, onColor = C.Teal, small = true, tag = "set-rectap")
-                    Btn("Hold to record", { state.switchRecordHold(true) }, on = state.recordHold, onColor = C.Teal, small = true, tag = "set-rechold")
-                }
-                Btn(if (state.bgPlay) "Keep playing when I leave: on" else "Keep playing when I leave: off", {
-                    val on = !state.bgPlay
-                    state.switchBgPlay(on)
-                    if (on && android.os.Build.VERSION.SDK_INT >= 33 && androidx.core.content.ContextCompat.checkSelfPermission(ctx, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED)
-                        notif.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                }, on = state.bgPlay, onColor = C.Teal, small = true, tag = "set-bgplay", modifier = Modifier.padding(top = 10.dp))
-                Btn(if (state.buzz) "Pad buzz: on" else "Pad buzz: off", { state.switchBuzz(!state.buzz) }, on = state.buzz, onColor = C.Teal, small = true, tag = "set-buzz", modifier = Modifier.padding(top = 8.dp))
-                // Nov 18: the finer time grid lets live hits record exactly where they were played
-                Btn(if (state.live.recExact) "Recording: exactly where you hit" else "Recording: snapped to 16ths", { state.switchRecExact() }, on = state.live.recExact, onColor = C.Teal, small = true, tag = "set-recexact",
-                    modifier = Modifier.padding(top = 8.dp))
-                // Nov 18: a quick flick up off a button opens its settings, like Menu then tap (try it; off by default)
-                // Nov 21: flicks in one row: a flick up off a pad opens its Edit tray (on), off a button its settings (off)
-                T("FLICK UP FOR SETTINGS", size = 11.sp, color = C.Dim, spacing = .1.em, lines = 1, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
-                Wrap(Modifier.tagged("flick-chips")) {
-                    Btn("Buttons: " + (if (state.flickOn) "on" else "off"), { state.switchFlick() }, on = state.flickOn, onColor = C.Teal, small = true, tag = "set-flick")
-                }
-                // Nov 21 (lag): the screen at 60 a second leaves more time for the sound
-                Btn(if (state.smoothScreen) "Screen: smooth" else "Screen: 60 a second", { state.switchSmoothScreen(!state.smoothScreen) }, on = state.smoothScreen, onColor = C.Teal, small = true, tag = "set-smooth", modifier = Modifier.padding(top = 8.dp))
-                Btn(if (state.steadyBuffer) "Buffer: steady" else "Buffer: tight", { state.switchSteadyBuffer(!state.steadyBuffer) }, on = state.steadyBuffer, onColor = C.Teal, small = true, tag = "set-buffer", modifier = Modifier.padding(top = 8.dp))
-                // Nov 21 (L4): AAudio is Android's fast path; the older one is there for a phone where it misbehaves
-                T("SOUND OUT · NOW ${state.audio.path.uppercase()}", size = 11.sp, color = C.Dim, spacing = .1.em, lines = 1, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
-                Btn(if (state.aaudio) "Sound out: AAudio" else "Sound out: older", { state.switchAAudio(!state.aaudio) }, on = state.aaudio, onColor = C.Teal, small = true, tag = "set-aaudio")
-                T("BEAT GLOW", size = 11.sp, color = C.Dim, spacing = .1.em, lines = 1, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
-                Wrap(Modifier.tagged("glow-chips")) {
-                    for ((v, n) in listOf(0 to "Off", 1 to "Soft", 2 to "Full")) Btn(n, { state.setPulse(v) }, on = state.pulseLevel == v, small = true, tag = "set-pulse-$v")
-                }
+    }
+}
+
+/**
+ * Tempo + feel as a drop-down under the tempo readout (Nov 24, Tyler's video: "unnecessary to load out into its own
+ * whole screen"). The page stays in view; a tap outside or the screw puts it away.
+ */
+@Composable
+fun TempoDrop(state: AppState) {
+    Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { state.overlay = null } }) {
+        Column(
+            Modifier.align(Alignment.TopCenter).padding(top = 60.dp, start = 8.dp, end = 8.dp).widthIn(max = 480.dp).fillMaxWidth()
+                .heightIn(max = 520.dp).trayFrame().pointerInput(Unit) { detectTapGestures { } }.tagged("sheet").padding(12.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                T("TEMPO + FEEL", size = 12.sp, color = C.Yellow, spacing = .1.em, modifier = Modifier.weight(1f))
+                CloseScrew({ state.overlay = null }, tag = "done", small = true)
             }
+            TempoScreen(state)
         }
-        // Nov 21 video: HotKeys, what a quick swipe off a pad does in each direction
-        Card(Modifier.fillMaxWidth().padding(bottom = 14.dp).tagged("hotkeys")) {
-            Column {
-                T("HOTKEYS", size = 12.sp, color = C.Yellow, spacing = .1.em)
-                Btn("Pad swipes: " + (if (state.padFlick) "on" else "off"), { state.switchPadFlick() }, on = state.padFlick, onColor = C.Teal, small = true, tag = "set-padflick")
-                for ((dir, word) in listOf("up" to "Up", "down" to "Down", "left" to "Left", "right" to "Right")) {
-                    val now = SWIPE_ACTIONS.firstOrNull { it.first == state.swipe[dir] }?.second ?: "Nothing"
-                    Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        T(word.uppercase(), size = 12.sp, spacing = .08.em, color = if (state.padFlick) C.Cream else C.Dim, modifier = Modifier.width(64.dp))
-                        Select(now, SWIPE_ACTIONS, { state.setSwipe(dir, it) }, tag = "swipe-$dir")
-                    }
-                }
-            }
-        }
-        T(" ", size = 30.sp)
     }
 }
 
@@ -295,7 +344,7 @@ fun TempoScreen(state: AppState) {
     var bpm by remember { mutableStateOf(P.bpm.toFloat()) }
     var swing by remember { mutableStateOf(P.swing.toFloat()) }
     @Suppress("UNUSED_VARIABLE") val lv = state.liveV
-    ScrollPane(hPad = 14.dp, vPad = 0.dp) {
+    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(top = 6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Btn("−", { state.setBpm(P.bpm - 1); bpm = state.project.bpm.toFloat() })
             T("${state.project.bpm}", size = 44.sp, family = Bungee)
@@ -319,8 +368,9 @@ fun TempoScreen(state: AppState) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 4.dp)) {
             Btn("As it was", { squash = .5f; level = 1f; state.setMaster(.5, 1.0) }, small = true, tag = "master-reset")
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Btn("Click", { state.switchClick() }, on = state.live.click, small = true)
+        Wrap(gap = 6.dp) {
+            Btn("Click", { state.switchClick() }, on = state.live.click, onColor = C.Yellow, small = true, tight = true, icon = "Click", tag = "tempo-click")
+            Btn(if (state.countInBars == 0) "Count-in: off" else "Count-in: ${state.countInBars} bar${if (state.countInBars > 1) "s" else ""}", { state.cycleCountIn() }, small = true, tight = true, on = state.countInBars > 0, onColor = C.Yellow, icon = "Count in", tag = "tempo-countin")
             Btn("Hear steps on tap", { state.switchPlayOnTap(!state.playOnTap) }, on = state.playOnTap, small = true, onColor = C.Teal)
         }
     }

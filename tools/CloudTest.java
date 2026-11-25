@@ -61,6 +61,7 @@ public class CloudTest {
     public void soundArrived(Sound s, String path) { lib.put(s.key, path); events.add("arrived:" + s.key); }
     public void soundGone(Sound s) { lib.remove(s.key); events.add("gone:" + s.key); }
     public void notice(int kind, String text) { notices.add(kind); texts.add(text); events.add("notice:" + kind); }
+    public void dropLocal(String id) { docs.remove(id); events.add("drop:" + id); }
     public Sound soundInfo(String key) { return new Sound(key, "", "user", "", "wav", 0, 0, 0, "mic", "Take " + key.substring(3), 96, 0, "A minor", "ready"); }
     static String named(String doc, String name) {
       Project p = Project.fromJson(doc, null).project;
@@ -130,6 +131,8 @@ public class CloudTest {
     signInTests();
     saveAndOpen();
     bothEdit();
+    twoPhonesMerge();
+    twoPhonesThisOne();
     offlineAndKill();
     lostAnswers();
     quotas();
@@ -252,7 +255,9 @@ public class CloudTest {
     Project m2 = p2.project(b1); m2.bpm = 122; m2.swing = 40;
     p1.save("a1", m1); p2.save(b1, m2);
     run(8, p1, p2);
-    check(p2.notices(CloudStore.N_KEPT_BOTH) == 1 && p1.notices(CloudStore.N_KEPT_BOTH) == 0, "a clash keeps both and says so once, on the phone that lost the race");
+    // Tyler's answer 7: my own mess on two of my phones asks, and keeps both until answered
+    check(p2.notices(CloudStore.N_TWO_PHONES) == 1 && p1.notices(CloudStore.N_TWO_PHONES) == 0 && p2.store.two != null && p2.store.two.canMerge,
+        "a clash between two of my phones asks once, on the phone that lost the race, and can merge");
     String copy = null;
     for (String id : p2.host.docs.keySet()) if (!id.equals(b1)) copy = id;
     check(copy != null && "Duet (this phone)".equals(p2.project(copy).name), "the copy is named '<name> (this phone)'");
@@ -265,6 +270,52 @@ public class CloudTest {
         "the server's mess is untouched and both marks read synced");
     p1.store.refresh(); fake.deliver(); fake.deliver(); fake.deliver();
     check(p1.store.rows.size() == 2 && p1.project("a1").bpm == 111, "phone 1 sees both messes and keeps its own");
+    p2.store.settleTwo(CloudStore.TWO_KEEP_BOTH);
+    check(p2.store.two == null && p2.host.docs.size() == 2, "Keep both leaves both");
+  }
+
+  /** Tyler's answer 7: Merge lays this phone's changes on the other phone's, and the copy goes. */
+  static void twoPhonesMerge() {
+    fresh();
+    Phone p1 = new Phone("mia@test", "a"), p2 = new Phone("mia@test", "b");
+    signIn(p1, true); signIn(p2, true);
+    p1.save("a1", mess("Duet", 100)); run(6, p1, p2);
+    String cid = p1.store.cloudId("a1");
+    Res<String> o = new Res<>(); p2.store.open(cid, o); fake.deliver();
+    String b1 = o.v;
+    Project m1 = p1.project("a1"); m1.bpm = 111; m1.pats[2].setStep("samples/basement-kick.wav", 1, true);
+    Project m2 = p2.project(b1); m2.swing = 40; m2.pats[3].setStep("samples/basement-kick.wav", 5, true);
+    p1.save("a1", m1); p2.save(b1, m2);
+    run(8, p1, p2);
+    check(p2.store.two != null, "the question waits");
+    String copy = p2.store.two.copyId;
+    p2.store.settleTwo(CloudStore.TWO_MERGE);
+    run(8, p1, p2);
+    Project got = Project.fromJson(fake.messDoc(cid), null).project;
+    check(got.bpm == 111 && got.swing == 40 && got.pats[2].step("samples/basement-kick.wav", 1) && got.pats[3].step("samples/basement-kick.wav", 5),
+        "merge keeps both phones' changes: bpm " + got.bpm + ", swing " + got.swing);
+    check(!p2.host.docs.containsKey(copy) && fake.messCount("mia@test") == 1, "the copy is gone, on the phone and online");
+    p1.store.refresh(); fake.deliver(); fake.deliver(); fake.deliver(); run(3, p1);
+    check(p1.project("a1").swing == 40, "phone 1 gets the merge");
+  }
+
+  /** Tyler's answer 7: Keep this one makes this phone's the main mess. */
+  static void twoPhonesThisOne() {
+    fresh();
+    Phone p1 = new Phone("mia@test", "a"), p2 = new Phone("mia@test", "b");
+    signIn(p1, true); signIn(p2, true);
+    p1.save("a1", mess("Duet", 100)); run(6, p1, p2);
+    String cid = p1.store.cloudId("a1");
+    Res<String> o = new Res<>(); p2.store.open(cid, o); fake.deliver();
+    String b1 = o.v;
+    Project m1 = p1.project("a1"); m1.bpm = 111;
+    Project m2 = p2.project(b1); m2.bpm = 122;
+    p1.save("a1", m1); p2.save(b1, m2);
+    run(8, p1, p2);
+    p2.store.settleTwo(CloudStore.TWO_THIS_ONE);
+    run(8, p1, p2);
+    check(Project.fromJson(fake.messDoc(cid), null).project.bpm == 122 && fake.messCount("mia@test") == 1 && p2.host.docs.size() == 1,
+        "this phone's is the main mess and the copy is gone");
   }
 
   static void offlineAndKill() {

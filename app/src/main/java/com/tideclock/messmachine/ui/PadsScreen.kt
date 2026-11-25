@@ -151,8 +151,11 @@ private fun RowScope.BankButtons(state: AppState) {
         Btn("${b + 1}", modifier = Modifier.weight(1f).holdFor(b) { state.toggleBankMute(b) }, onClick = { state.bank = b }, on = state.bank == b && !state.keysMode, small = true, enabled = !state.keysMode, tag = "bank-$b")
     }
     // Nov 22 (Tyler: "click and count should be just on the main screen"): in the room the Sample key left
-    Btn("Click", { state.switchClick() }, small = true, tight = true, on = state.live.click, onColor = C.Yellow, tag = "loop-click", modifier = Modifier.widthIn(min = Floor.KEY.rdp), icon = "Click")
-    Btn(if (state.countInBars == 0) "Count off" else "Count ${state.countInBars}", { state.cycleCountIn() }, small = true, tight = true, on = state.countInBars > 0, onColor = C.Yellow, tag = "loop-countin", modifier = Modifier.widthIn(min = Floor.KEY.rdp), icon = "Count in")
+    // Nov 24: on a wide screen they moved up to the top bar, on every page
+    if (!topClick()) {
+        Btn("Click", { state.switchClick() }, small = true, tight = true, on = state.live.click, onColor = C.Yellow, tag = "loop-click", modifier = Modifier.widthIn(min = Floor.KEY.rdp), icon = "Click")
+        Btn(if (state.countInBars == 0) "Count off" else "Count ${state.countInBars}", { state.cycleCountIn() }, small = true, tight = true, on = state.countInBars > 0, onColor = C.Yellow, tag = "loop-countin", modifier = Modifier.widthIn(min = Floor.KEY.rdp), icon = "Count in")
+    }
 }
 
 /** One key on the bottom dock: its tag, when it goes into ⋯ (higher goes first, 0 never), its words, and how it draws. */
@@ -560,6 +563,7 @@ fun PadMenu(state: AppState, i: Int) {
         val recHere = state.micOn && state.micPad == i
         if (k.isEmpty()) {
             item(if (recHere) "■ Stop recording" else "● Record onto this pad", "menu-record", enabled = !state.micOn || recHere) { state.askRecord(i) }
+            if (!recHere) item("◉ Auto sample: the next sound lands here", "menu-autosample", enabled = !state.micOn) { state.askAutoSample(i) }
             item("Pick a sound", "menu-pick") { state.selectPad(i, false); state.overlay = Overlay.Picker(i) }
         } else {
             group("PLAY")
@@ -572,6 +576,7 @@ fun PadMenu(state: AppState, i: Int) {
             item("Route: " + (if (P.opt(i).route == 0) "mix" else "bus ${P.opt(i).route}") + " (tap for next)", "menu-route") { state.cycleRoute(i) }
             group("SOUND")
             item(if (recHere) "■ Stop recording" else "● Record onto this pad", "menu-record", enabled = !state.micOn || recHere) { state.askRecord(i) }
+            if (!recHere) item("◉ Auto sample: the next sound lands here", "menu-autosample", enabled = !state.micOn) { state.askAutoSample(i) }
             if (com.tideclock.messmachine.engine.Project.isSynth(k)) item("◎ Synth", "menu-synth") { state.selectPad(i, false); state.padMenu = -1; state.tab = com.tideclock.messmachine.Tab.Synth }
             else item("✂ Sample", "menu-doctor") { state.selectPad(i, false); state.overlay = Overlay.Doctor(k) }
             item("Swap sound", "menu-swap") { state.selectPad(i, false); state.overlay = Overlay.Picker(i) }

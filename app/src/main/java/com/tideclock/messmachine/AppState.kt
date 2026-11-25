@@ -246,7 +246,8 @@ class AppState(
     var tab: Tab
         get() = tabState.value
         set(v) {
-            if (v != tabState.value) { notes.trail("tab ${v.label}"); markHelpSeen(tabState.value.label) }
+            // Nov 24 (Tyler's video): going to another page puts the loop strip away
+            if (v != tabState.value) { notes.trail("tab ${v.label}"); markHelpSeen(tabState.value.label); loopStripOpen = false }
             if (v == Tab.Pads || v == Tab.Console) { playDesk = v == Tab.Console; prefs.edit().putBoolean("playDesk", playDesk).apply() }
             tabState.value = v
         }
@@ -260,6 +261,8 @@ class AppState(
         notes.trail("play layout ${if (desk) "desk" else "pads"}")
     }
     var bank by mutableIntStateOf(project.sel / Project.BANK)
+    /** Nov 24 (Tyler's video): the Seq tab shows the Mixer instead of Steps. */
+    var mixerOn by mutableStateOf(false)
     var keysMode by mutableStateOf(false)
     /**
      * Step mode (Maschine and the drum machines): the 16 pads are the picked sound's 16 steps of the bar on screen.
@@ -3322,7 +3325,22 @@ class AppState(
         if (name == "gate") engine.gateLength(s.steps)
     }
 
+    /**
+     * Nov 24 (Tyler's video): where a finger sits on the Stutter vial picks its rate, and it holds that rate, locked to
+     * the grid. Four quarters of the vial, bottom up (Tyler, Nov 24 evening): quarter, eighth, 16th and 32nd notes.
+     * A plain held Stutter button keeps eighth notes.
+     */
+    fun stutterSteps(pos: Float?): Float = when {
+        pos == null -> 2f
+        pos < .25f -> 4f
+        pos < .5f -> 2f
+        pos < .75f -> 1f
+        else -> .5f
+    }
+    fun stutterName(pos: Float?): String = when (stutterSteps(pos)) { 4f -> "1/4"; 2f -> "1/8"; 1f -> "1/16"; else -> "1/32" }
+
     private fun sendFx(name: String, s: FxSet, on: Boolean, amt: Float) {
+        if (name == "stutter" && on) engine.stutterLength(stutterSteps(fxLive[name]))
         if (s.target < 0) {
             engine.fxAmount(name, amt)
             engine.fx(name, on)
@@ -3643,8 +3661,12 @@ class AppState(
     }
 
     /** Settings for playing: empty pads record, hold-to-record, the beat glow, in key only. */
-    var recordHold by mutableStateOf(prefs.getBoolean("recHold", false))
+    // Nov 24 (Tyler: "we just do tap, then tap to stop"): the hold-to-record choice is gone from Settings; tap start, tap stop always
+    var recordHold by mutableStateOf(false)
         private set
+    /** Nov 24 (Tyler's video): trim the quiet off both ends of every new mic take. On unless switched off. */
+    var autoTrim by mutableStateOf(prefs.getBoolean("autoTrim", true))
+    fun switchAutoTrim(v: Boolean) { autoTrim = v; prefs.edit().putBoolean("autoTrim", v).apply() }
     private var holdRecPad = -1
     /** The beat glow behind the whole screen: 0 off, 1 soft, 2 full. */
     var pulseLevel by mutableIntStateOf(prefs.getInt("pulse", 1))
@@ -3679,6 +3701,27 @@ class AppState(
         startMic()
     }
 
+    /** Auto sample (Nov 24, Tyler's video): the mic waits on this pad and the next sound it hears lands on it. */
+    var micAuto by mutableStateOf(false)
+        private set
+    fun askAutoSample(pad: Int) {
+        padMenu = -1
+        if (micOn) { bench.stopMic(); return }
+        val ok = androidx.core.content.ContextCompat.checkSelfPermission(app, android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (!ok) { askMicFor = pad; autoAfterAsk = true; return }
+        autoSampleTo(pad)
+    }
+    /** The mic was allowed after an Auto sample asked: listen, not record. */
+    var autoAfterAsk = false
+    fun autoSampleTo(pad: Int) {
+        if (micOn) { bench.stopMic(); return }
+        if (mouthOn) switchMouth(false)
+        micPad = pad; micOn = true; micAuto = true
+        notes.trail("auto sample pad ${pad + 1}")
+        say("Listening on pad ${pad + 1}: make a sound.")
+        bench.startMic(autoTrim, auto = true) { take -> main.post { micAuto = false; takeArrived(take, pad) } }
+    }
+
     fun toggleMic() {
         if (micOn) { bench.stopMic(); return }
         micPad = -1
@@ -3691,7 +3734,7 @@ class AppState(
         micOn = true
         val pad = micPad
         notes.trail(if (pad >= 0) "record onto pad ${pad + 1}" else "mic on")
-        bench.startMic { take -> main.post { takeArrived(take, pad) } }
+        bench.startMic(autoTrim) { take -> main.post { takeArrived(take, pad) } }
     }
 
     /** A mic take is in: keep it in Your Workbench and put it on its pad (or the first empty one). */
@@ -3836,6 +3879,29 @@ class AppState(
         private set
     /** The last thing the store had to say (kept both, sound space full, ...), shown in the Messes sheet. */
     var cloudNotice by mutableStateOf("")
+    /** Tyler's answer 7: a mess of mine changed on two of my phones; the banner asks what to keep. */
+    var twoPhones by mutableStateOf<com.tideclock.messmachine.cloud.TwoPhones?>(null)
+    private var twoMain: String? = null
+    fun answerTwo(choice: Int) {
+        val t = twoPhones ?: return
+        twoMain = t.localId
+        notes.trail("two phones $choice")
+        store?.settleTwo(choice)
+        twoPhones = null
+        twoMain = null
+        say(when (choice) {
+            com.tideclock.messmachine.cloud.CloudStore.TWO_MERGE -> "Merged: both phones' changes are in \"${t.name}\"."
+            com.tideclock.messmachine.cloud.CloudStore.TWO_THIS_ONE -> "This phone's \"${t.name}\" is the main one now."
+            else -> "Both kept. This phone's is the one marked (this phone)."
+        })
+    }
+    /** The copy that was not kept: its file goes, and if it was on screen, the main one opens. */
+    internal fun cloudDropLocal(id: String) {
+        try { File(messDir, "$id.json").delete() } catch (_: Exception) {}
+        val main = twoMain
+        if (fileId == id) { if (main != null) openMess(main) else fileId = null }
+        refreshFiles()
+    }
     /** acct-data: "Use mobile data for sounds". Off out of the box: sounds go up and down on Wi-Fi only. */
     var cloudData by mutableStateOf(prefs.getBoolean("cloudData", false))
         private set

@@ -19,6 +19,10 @@ class CloudHost(private val s: AppState) : StoreHost {
         s.cloudKeepBoth(localId, copyName, serverName, serverDoc)
     override fun soundArrived(s: Sound, path: String) = this.s.cloudSoundArrived(s, path)
     override fun soundGone(s: Sound) = this.s.cloudSoundGone(s)
-    override fun notice(kind: Int, text: String) = s.cloudSay(text)
+    override fun notice(kind: Int, text: String) {
+        // Tyler's answer 7: my mess changed on two of my phones, so the app asks instead of only saying so
+        if (kind == com.tideclock.messmachine.cloud.CloudStore.N_TWO_PHONES) s.twoPhones = s.store?.two else s.cloudSay(text)
+    }
+    override fun dropLocal(localId: String) = s.cloudDropLocal(localId)
     override fun soundInfo(key: String): Sound? = s.cloudSoundInfo(key)
 }

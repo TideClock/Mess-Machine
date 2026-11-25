@@ -101,6 +101,7 @@ object Icons {
         "Update" to (R.drawable.ic_update to "tool"),
         "What the FAQ" to (R.drawable.ic_what_the_faq to "tool"),
         "Close" to (R.drawable.ic_close to "tool"),
+        "Drop" to (R.drawable.ic_drop to "tool"),
         "Bake" to (R.drawable.ic_bake to "tool"),
         "Bottle it" to (R.drawable.ic_bottle_it to "tool"),
         "Random" to (R.drawable.ic_random to "tool"),
@@ -134,6 +135,10 @@ object Icons {
         "Gate" to (R.drawable.ic_gate to "throw"),
         "Ring mod" to (R.drawable.ic_ring_mod to "throw"),
         "Reverse" to (R.drawable.ic_reverse to "throw"),
+        // Nov 24 (Tyler's video): the loops as block letters and Rest as a bed, for the song painter
+        "Loop A" to (R.drawable.ic_loop_a to "loop"), "Loop B" to (R.drawable.ic_loop_b to "loop"), "Loop C" to (R.drawable.ic_loop_c to "loop"),
+        "Loop D" to (R.drawable.ic_loop_d to "loop"), "Loop E" to (R.drawable.ic_loop_e to "loop"), "Loop F" to (R.drawable.ic_loop_f to "loop"),
+        "Loop G" to (R.drawable.ic_loop_g to "loop"), "Loop H" to (R.drawable.ic_loop_h to "loop"), "Rest" to (R.drawable.ic_rest to "loop"),
         "Sound" to (R.drawable.ic_sound to "edit"),
         "More" to (R.drawable.ic_more to "edit"),
     )

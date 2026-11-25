@@ -44,4 +44,11 @@
   `verifyCode` sends a code that starts with `pw:` to `signInPassword`. Nothing else changes for the store.
 - **Not built:** taking a Vault submission back (`vault_withdraw` is not in `CloudApi`; the rulings cut `vault-mine`).
   The Workbench row shows the status from `my_sounds` instead.
+- **One mess changed on two of my phones (Nov 24, Tyler's answer 7).** When the clash is on a mess I own, the store
+  keeps both as before but posts `N_TWO_PHONES` and sets `two` (main id, copy id, name, `canMerge`) instead of
+  `N_KEPT_BOTH`. The host shows a question and calls `settleTwo(TWO_KEEP_BOTH | TWO_THIS_ONE | TWO_MERGE)`. The store
+  keeps the last doc it and the server agreed on in the cache (`<cloud id>.base.json`), so Merge can lay this phone's
+  changes since then (`Ops.diff`) on the other phone's doc. Keep this one and Merge write the main mess with
+  `takeServer`, keep the copy off the cloud (deleting it online if it went up) and call the new `StoreHost.dropLocal`
+  for its file. tools/CloudTest.java checks all three answers.
 

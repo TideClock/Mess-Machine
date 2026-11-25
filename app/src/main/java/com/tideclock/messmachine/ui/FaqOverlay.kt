@@ -12,6 +12,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.imageResource
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -35,6 +38,28 @@ import com.tideclock.messmachine.AppState
 import com.tideclock.messmachine.Faq
 import com.tideclock.messmachine.Tutorials
 import kotlinx.coroutines.delay
+
+/**
+ * The FAQ guy (Nov 24, from Tyler's paper drawing): the one talking in What the FAQ, the lessons, the speed guide and
+ * the start guide. He sits inside the card, so he never covers the screen, and hops up each time he says something new.
+ * Drawn at a whole multiple of his 40 pixels so the pixel art stays crisp.
+ */
+@Composable
+fun FaqGuy(says: Any?, size: androidx.compose.ui.unit.Dp = 48.dp, modifier: Modifier = Modifier) {
+    val dens = androidx.compose.ui.platform.LocalDensity.current
+    val k = maxOf(1, Math.round(with(dens) { size.toPx() } / 40f))
+    val side = with(dens) { (40f * k).toDp() }
+    val hop = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(says) {
+        if (UiFlags.testing) return@LaunchedEffect
+        hop.snapTo(1f); hop.animateTo(0f, androidx.compose.animation.core.spring(dampingRatio = .35f, stiffness = 500f))
+    }
+    androidx.compose.foundation.Image(
+        androidx.compose.ui.graphics.ImageBitmap.imageResource(com.tideclock.messmachine.R.drawable.ic_what_the_faq), "FAQ guy",
+        modifier.size(side).graphicsLayer { translationY = -hop.value * 10.dp.toPx(); rotationZ = hop.value * -8f },
+        filterQuality = androidx.compose.ui.graphics.FilterQuality.None,
+    )
+}
 
 /** The tag under a point: the smallest tagged control there that has a FAQ line (a button before the page it sits on). */
 fun faqTagAt(p: Offset): String? =
@@ -68,6 +93,7 @@ fun BoxScope.FaqOverlay(state: AppState) {
                 .background(C.Ink).border(3.dp, C.Teal).padding(12.dp).tagged("faq-card"),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                FaqGuy(tag, modifier = Modifier.padding(end = 10.dp))
                 T("WHAT THE FAQ", size = 12.sp, color = C.Teal, spacing = .1.em, modifier = Modifier.weight(1f))
                 CloseScrew({ state.switchFaq(false) }, tag = "faq-done")
             }
@@ -130,6 +156,7 @@ fun BoxScope.SpeedGuideOverlay(state: AppState) {
                 .background(C.Ink).border(3.dp, C.Yellow).padding(12.dp).tagged("speed-card"),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                FaqGuy(i, modifier = Modifier.padding(end = 10.dp))
                 T("SPEED GUIDE", size = 12.sp, color = C.Yellow, spacing = .1.em, modifier = Modifier.weight(1f))
                 T("${i + 1} of ${SPEED_STOPS.size}", size = 12.sp, color = C.Dim, family = Mono)
             }

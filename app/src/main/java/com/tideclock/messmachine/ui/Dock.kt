@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
@@ -96,7 +97,10 @@ private fun PerformBody(state: AppState) {
     val items = state.dockItems.toList().filter { it !in com.tideclock.messmachine.PERFORM_SKIP }
     Column(Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-            for (t in items) if (t != "pitch" && t != "filter") Box(Modifier.weight(1f)) { PerformKey(state, t) }
+            // Nov 24 (Tyler's video: "repeat and toss can be made a little bit shorter, a little bit smaller"): keys share the
+            // row but stop at a key's width, so on a wide screen they do not stretch into long bars
+            for (t in items) if (t != "pitch" && t != "filter") Box(Modifier.weight(1f, fill = false).widthIn(max = 104.dp)) { PerformKey(state, t) }
+            Spacer(Modifier.weight(.01f))
             var pick by remember { mutableStateOf(false) }
             Box {
                 Btn("⋯", { pick = true }, small = true, tight = true, tag = "perform-edit", enabled = !state.locked, modifier = Modifier.width(40.dp))
