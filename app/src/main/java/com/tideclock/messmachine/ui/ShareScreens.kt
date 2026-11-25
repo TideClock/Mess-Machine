@@ -83,7 +83,7 @@ fun ShareScreen(state: AppState, cid: String) {
                     Row(Modifier.fillMaxWidth().padding(top = 8.dp).tagged("mem-$uid"), verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(12.dp).background(personColor(m.colour), CircleShape))
                         T(name + (if (m.id == me) " (you)" else ""), size = 15.sp, lines = 1, modifier = Modifier.weight(1f).padding(start = 8.dp))
-                        T(if (m.role == "owner") "made it" else "can edit", size = 12.sp, color = C.Dim, weight = FontWeight.Medium)
+                        T((if (m.role == "owner") "made it" else "can edit") + (if (state.here.any { it.id == m.id }) ", here now" else ""), size = 12.sp, color = C.Dim, weight = FontWeight.Medium)
                     }
                     if (mine && m.id != me) {
                         Wrap(Modifier.padding(top = 6.dp)) {
@@ -106,6 +106,19 @@ fun ShareScreen(state: AppState, cid: String) {
         }
         ShareExtras(state, cid, mine)
         T(" ", size = 30.sp)
+    }
+}
+
+/** here-chip: who else has this mess open right now. Small, in the mess's header on the Messes sheet. */
+@Composable
+fun HereChips(state: AppState) {
+    val here = state.here
+    if (here.isEmpty()) return
+    Wrap(Modifier.padding(top = 6.dp, bottom = 2.dp).tagged("here-chip"), gap = 6.dp) {
+        for (p in here) Row(Modifier.background(C.Card2).padding(horizontal = 8.dp, vertical = 4.dp).tagged("here-${p.id.take(8)}"), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(10.dp).background(personColor(p.colour), CircleShape))
+            T(p.name.ifEmpty { "Someone" } + (if (p.playing) " is playing" else " is here"), size = 12.sp, weight = FontWeight.Medium, modifier = Modifier.padding(start = 6.dp))
+        }
     }
 }
 
@@ -161,15 +174,198 @@ fun AccountPeople(state: AppState) {
     }
 }
 
-/* ---- filled in by the later slices ---- */
-/*extras-begin*/
-@Composable
-private fun PersonExtras(@Suppress("UNUSED_PARAMETER") state: AppState, @Suppress("UNUSED_PARAMETER") cid: String, @Suppress("UNUSED_PARAMETER") uid: String,
-                         @Suppress("UNUSED_PARAMETER") name: String, @Suppress("UNUSED_PARAMETER") mine: Boolean) {}
+/* ---------------- Slice E on a person: report (and block) ---------------- */
 
 @Composable
-private fun ShareExtras(@Suppress("UNUSED_PARAMETER") state: AppState, @Suppress("UNUSED_PARAMETER") cid: String, @Suppress("UNUSED_PARAMETER") mine: Boolean) {}
+private fun PersonExtras(state: AppState, cid: String, uid: String, name: String, @Suppress("UNUSED_PARAMETER") mine: Boolean) {
+    if (uid == state.myUserId()) return
+    Wrap(Modifier.padding(top = 6.dp)) {
+        Btn(if (state.reportFor == uid) "Not now" else "Report", { state.openReport(uid) }, small = true, tier = Tier.Quiet, tag = "report-user-${uid.take(8)}")
+    }
+    if (state.reportFor == uid) ReportCard(state, cid, "", "Report $name", person = true)
+}
+
+/** The reasons, then Send. For a person there is also "Send and block". */
+@Composable
+private fun ReportCard(state: AppState, cid: String, token: String, title: String, person: Boolean) {
+    Column(Modifier.fillMaxWidth().padding(top = 8.dp).background(C.Black.copy(alpha = .35f)).padding(10.dp)) {
+        T(title.uppercase(), size = 12.sp, color = C.Yellow, spacing = .1.em)
+        T("What is wrong? We look at every report within 24 hours.", size = 12.sp, color = C.Dim, weight = FontWeight.Medium, modifier = Modifier.padding(top = 4.dp, bottom = 6.dp))
+        Wrap {
+            for ((id, word) in state.reportReasons) Btn(word, { state.reportReason = id }, small = true, on = state.reportReason == id, onColor = C.Yellow, tag = "report-r-$id")
+        }
+        Wrap(Modifier.padding(top = 8.dp)) {
+            Btn("Send report", { state.sendReport(cid, token, false) }, small = true, color = C.Teal, enabled = state.reportReason.isNotEmpty(), tag = "report-send")
+            if (person) Btn("Send and block", { state.sendReport(cid, token, true) }, small = true, tier = Tier.Danger, enabled = state.reportReason.isNotEmpty(), tag = "report-send-block")
+            Btn("Never mind", { state.closeReport() }, small = true, tag = "report-no")
+        }
+    }
+}
+
+/* ---------------- Slice D on the Share sheet: the link, History; Slice E: report this mess ---------------- */
 
 @Composable
-private fun SharedCard(@Suppress("UNUSED_PARAMETER") state: AppState, @Suppress("UNUSED_PARAMETER") s: CloudStore) {}
-/*extras-end*/
+private fun ShareExtras(state: AppState, cid: String, mine: Boolean) {
+    var sureRestore by remember(cid) { mutableStateOf("") }
+    if (mine) Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
+        Column {
+            T("A LINK TO LISTEN", size = 12.sp, color = C.Yellow, spacing = .1.em)
+            val link = state.shareLink
+            val mode = link?.share_mode ?: "off"
+            T(when (mode) { "view" -> "Anyone with the link can listen. They cannot change it or copy it."; "copy" -> "Anyone with the link can listen and make their own copy."; else -> "Off. Nobody without an invite can open this mess." },
+                size = 13.sp, weight = FontWeight.Medium, modifier = Modifier.padding(top = 4.dp, bottom = 8.dp))
+            Wrap {
+                Btn("Off", { state.setShare(cid, "off", false) }, small = true, on = mode == "off", enabled = link != null, tag = "share-link-off")
+                Btn("Listen", { state.setShare(cid, "view", false) }, small = true, on = mode == "view", onColor = C.Teal, enabled = link != null, tag = "share-link-view")
+                Btn("Listen and copy", { state.setShare(cid, "copy", false) }, small = true, on = mode == "copy", onColor = C.Teal, enabled = link != null, tag = "share-link-copy")
+            }
+            if (link != null && mode != "off" && link.share_token.isNotEmpty()) {
+                T(state.shareUrl(link.share_token), size = 12.sp, color = C.Cream, weight = FontWeight.Normal, family = Mono, modifier = Modifier.padding(top = 8.dp))
+                Wrap(Modifier.padding(top = 8.dp)) {
+                    Btn("Send the link", { state.sendShareLink(cid) }, small = true, color = C.Teal, tag = "share-link-send")
+                    Btn("New link", { state.setShare(cid, mode, true) }, small = true, tag = "share-link-new")
+                }
+            }
+        }
+    }
+    Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
+        Column {
+            T("HISTORY", size = 12.sp, color = C.Yellow, spacing = .1.em)
+            val list = state.versions
+            Btn(if (list == null) "Show saved versions" else "Hide them", { state.toggleHistory(cid) }, small = true, on = list != null, tag = "hist-open", modifier = Modifier.padding(top = 6.dp))
+            if (list != null) {
+                if (list.isEmpty()) T("No saved versions yet. Save makes one.", size = 13.sp, weight = FontWeight.Medium, modifier = Modifier.padding(top = 8.dp))
+                list.forEachIndexed { n, ver ->
+                    Row(Modifier.fillMaxWidth().padding(top = 8.dp).tagged("hist-$n"), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            T(ver.label.ifEmpty { "Kept by itself" }, size = 14.sp, lines = 1)
+                            T(ver.at.take(16).replace('T', ' ') + (if (ver.by_name.isNotEmpty()) ", " + ver.by_name else ""), size = 12.sp, color = C.Dim, weight = FontWeight.Medium, lines = 1)
+                        }
+                        Btn(if (sureRestore == ver.id) "Really?" else "Restore", {
+                            if (sureRestore == ver.id) { sureRestore = ""; state.restoreVersion(cid, ver.id) } else sureRestore = ver.id
+                        }, small = true, tier = if (sureRestore == ver.id) Tier.Danger else Tier.Normal, tag = "hist-restore-$n")
+                    }
+                }
+                if (list.isNotEmpty()) T("Restore puts the mess back for everyone on it. What it is now is kept here as Before restore.", size = 12.sp, color = C.Dim,
+                    weight = FontWeight.Medium, modifier = Modifier.padding(top = 8.dp))
+            }
+        }
+    }
+    if (!mine) Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
+        Column {
+            Btn(if (state.reportFor == "") "Not now" else "Report this mess", { state.openReport("") }, small = true, tier = Tier.Quiet, tag = "report-mess")
+            if (state.reportFor == "") ReportCard(state, cid, "", "Report this mess", person = false)
+        }
+    }
+}
+
+/** A share link's answer: the mess it points at, Listen, and (a copy link, signed in) Make it mine. */
+@Composable
+private fun SharedCard(state: AppState, s: CloudStore) {
+    val token = state.pendingShare
+    if (token.isEmpty()) return
+    LaunchedEffect(token) { if (state.sharedMess == null) state.loadShared() }
+    val m = state.sharedMess
+    Card(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 14.dp)) {
+        Column {
+            T(if (m == null) "A SHARED MESS" else m.name.ifEmpty { "A mess" }.uppercase(), size = 12.sp, color = C.Yellow, spacing = .1.em)
+            if (m != null) T("By " + m.owner_name.ifEmpty { "someone" } + ". " + (if (m.mode == "copy") "You can listen and make your own copy." else "You can listen."),
+                size = 13.sp, weight = FontWeight.Medium, modifier = Modifier.padding(top = 4.dp))
+            else if (state.sharedNote.isEmpty()) T("Looking it up.", size = 13.sp, color = C.Dim, weight = FontWeight.Medium, modifier = Modifier.padding(top = 4.dp))
+            if (state.sharedNote.isNotEmpty()) T(state.sharedNote, size = 13.sp, color = C.Riot, weight = FontWeight.Bold, modifier = Modifier.padding(top = 6.dp))
+            Wrap(Modifier.padding(top = 8.dp)) {
+                if (m != null) Btn("Listen", { state.openShared() }, color = C.Teal, small = true, tag = "shared-open")
+                if (m != null && m.mode == "copy") Btn(if (state.sharedBusy) "Copying" else "Make it mine", { state.makeSharedMine() }, small = true, enabled = !state.sharedBusy, tag = "shared-mine")
+                Btn("No thanks", { state.dropShared() }, small = true, tag = "shared-no")
+            }
+            if (m != null && m.mode == "copy" && s.state != CloudStore.IN) T("Make it mine needs you signed in (below).", size = 12.sp, color = C.Dim, weight = FontWeight.Medium, modifier = Modifier.padding(top = 6.dp))
+            if (m != null) {
+                Btn(if (state.reportFor == "") "Not now" else "Report this mess", { state.openReport("") }, small = true, tier = Tier.Quiet, tag = "report-mess", modifier = Modifier.padding(top = 10.dp))
+                if (state.reportFor == "") ReportCard(state, "", token, "Report this mess", person = false)
+            }
+        }
+    }
+}
+
+/* ---------------- Slice E on the Account sheet: delete the account ---------------- */
+
+/** acct-delete, then what goes and what stays, a fresh code, and the last tap. */
+@Composable
+fun DeleteAccountCard(state: AppState, s: CloudStore) {
+    var code by remember { mutableStateOf("") }
+    Card(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 14.dp)) {
+        Column {
+            T("DELETE YOUR ACCOUNT", size = 12.sp, color = C.Riot, spacing = .1.em)
+            T("This goes, for good:", size = 13.sp, modifier = Modifier.padding(top = 6.dp))
+            T("Your account and your name.\nEvery mess you made online. The people on them lose them too.\nYour sounds online.\nSounds you sent to the Vault that nobody has listened to yet.",
+                size = 13.sp, weight = FontWeight.Medium, modifier = Modifier.padding(top = 2.dp))
+            T("This stays:", size = 13.sp, modifier = Modifier.padding(top = 8.dp))
+            T("The messes and sounds on this phone.\nCopies other people made of your messes.\nSounds the Vault already took in.",
+                size = 13.sp, weight = FontWeight.Medium, modifier = Modifier.padding(top = 2.dp))
+            if (state.delStep == 1) {
+                T("To be sure it is you, we mail a fresh code to " + s.email() + ".", size = 12.sp, color = C.Dim, weight = FontWeight.Medium, modifier = Modifier.padding(top = 8.dp, bottom = 8.dp))
+                Wrap {
+                    Btn("Send me a code", { state.deleteSendCode() }, small = true, enabled = !state.delBusy, tag = "del-send")
+                    Btn("Keep my account", { state.deleteCancel() }, small = true, color = C.Teal, tag = "del-no")
+                }
+            } else {
+                androidx.compose.material3.OutlinedTextField(
+                    value = code, onValueChange = { t -> code = t.filter { it.isDigit() }.take(10) }, singleLine = true,
+                    placeholder = { T("123456", color = C.Dim, weight = FontWeight.Medium) },
+                    textStyle = androidx.compose.ui.text.TextStyle(color = C.Cream, fontFamily = Mono, fontSize = 20.sp),
+                    colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(focusedBorderColor = C.Pink, unfocusedBorderColor = C.Card2, cursorColor = C.Pink),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberPassword),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).tagged("del-code"),
+                )
+                Wrap {
+                    Btn(if (state.delBusy) "Deleting" else "Delete it all", { state.deleteGo(code) }, small = true, tier = Tier.Danger, enabled = !state.delBusy && code.length >= 6, tag = "del-go")
+                    Btn("Keep my account", { state.deleteCancel() }, small = true, color = C.Teal, tag = "del-no")
+                }
+            }
+            if (state.delNote.isNotEmpty()) T(state.delNote, size = 13.sp, color = C.Riot, weight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
+        }
+    }
+}
+
+/* ---------------- Slice F: give a Workbench sound to the Vault ---------------- */
+
+@Composable
+fun VaultScreen(state: AppState, key: String) {
+    val s = state.store ?: return
+    var credit by remember(key) { mutableStateOf(s.me?.display_name ?: "") }
+    var agreed by remember(key) { mutableStateOf(false) }
+    val g = state.vaultGrant
+    val line = state.vaultLine(key)
+    ScrollPane(hPad = 14.dp, vPad = 0.dp) {
+        Card(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 14.dp)) {
+            Column {
+                T("GIVE IT TO THE VAULT", size = 12.sp, color = C.Yellow, spacing = .1.em)
+                T(state.lib.titleOf(key), size = 16.sp, lines = 1, modifier = Modifier.padding(top = 4.dp))
+                T("The Vault is the sounds everyone gets with Mess Machine. We listen to every sound before it goes in.", size = 13.sp, weight = FontWeight.Medium, modifier = Modifier.padding(top = 4.dp))
+                if (line != null) T(line, size = 13.sp, color = C.Teal, modifier = Modifier.padding(top = 8.dp))
+            }
+        }
+        if (line == null || line.startsWith("Vault: not") || line.startsWith("Vault: taken")) Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
+            Column {
+                T("THE WORDS YOU AGREE TO", size = 12.sp, color = C.Yellow, spacing = .1.em)
+                Box(Modifier.fillMaxWidth().padding(vertical = 8.dp).background(C.Black.copy(alpha = .35f)).tagged("vault-grant").padding(10.dp)) {
+                    T(g?.body ?: "Fetching the words.", size = 13.sp, weight = FontWeight.Medium)
+                }
+                T("CREDIT IT TO", size = 12.sp, color = C.Yellow, spacing = .1.em)
+                androidx.compose.material3.OutlinedTextField(
+                    value = credit, onValueChange = { credit = it.take(40) }, singleLine = true,
+                    textStyle = androidx.compose.ui.text.TextStyle(color = C.Cream, fontFamily = Archivo, fontSize = 16.sp),
+                    colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(focusedBorderColor = C.Pink, unfocusedBorderColor = C.Card2, cursorColor = C.Pink),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).tagged("vault-credit"),
+                )
+                Wrap(Modifier.padding(top = 4.dp)) {
+                    Btn(if (agreed) "I agree: yes" else "I agree", { agreed = !agreed }, small = true, on = agreed, onColor = C.Teal, enabled = g != null, tag = "vault-agree")
+                    Btn(if (state.vaultBusy) "Sending" else "Send it", { state.vaultSend(key, credit) }, small = true, color = C.Teal,
+                        enabled = agreed && g != null && credit.isNotBlank() && !state.vaultBusy, tag = "vault-send")
+                }
+                if (state.vaultNote.isNotEmpty()) T(state.vaultNote, size = 13.sp, color = C.Riot, weight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
+            }
+        }
+        T(" ", size = 30.sp)
+    }
+}

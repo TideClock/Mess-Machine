@@ -47,6 +47,8 @@ fun FilesScreen(state: AppState) {
         Card(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 14.dp)) {
             Column {
                 T("THIS MESS", size = 12.sp, color = C.Yellow, spacing = .1.em)
+                // accounts: who else has this mess open right now (only in a mess edited together; never on the pads)
+                if (state.store != null) HereChips(state)
                 OutlinedTextField(
                     value = name, onValueChange = { name = it.take(48) }, singleLine = true,
                     placeholder = { T("Untitled mess", color = C.Dim, weight = FontWeight.Medium) },

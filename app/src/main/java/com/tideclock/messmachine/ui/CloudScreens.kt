@@ -208,6 +208,8 @@ fun AccountScreen(state: AppState) {
     @Suppress("UNUSED_VARIABLE") val v = state.cloudV
     ScrollPane(hPad = 14.dp, vPad = 0.dp) {
         when {
+            // deleting the account keeps its card up while the fresh sign-in reloads the page behind it
+            state.delStep > 0 && s.state != CloudStore.OUT -> DeleteAccountCard(state, s)
             s.checking() -> Card(Modifier.fillMaxWidth().padding(top = 4.dp)) { T("Checking your account…", size = 15.sp) }
             s.state == CloudStore.OUT -> { LinkCards(state, s); SignIn(state, s) }
             s.state == CloudStore.TERMS -> Terms(state, s)
@@ -268,6 +270,24 @@ private fun SignIn(state: AppState, s: CloudStore) {
                 }
             }
             if (err.isNotEmpty()) T(err, size = 13.sp, color = C.Riot, weight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
+            // the app stores' reviewers sign in with a password we give them; nobody else has one
+            var review by remember { mutableStateOf(false) }
+            var pass by remember { mutableStateOf("") }
+            Btn(if (review) "Hide reviewer sign-in" else "Reviewer sign-in", { review = !review }, small = true, tier = Tier.Quiet, tag = "acct-review", modifier = Modifier.padding(top = 12.dp))
+            if (review) {
+                OutlinedTextField(
+                    value = pass, onValueChange = { pass = it.take(80); err = "" }, singleLine = true,
+                    placeholder = { T("Reviewer password", color = C.Dim, weight = FontWeight.Medium) },
+                    textStyle = TextStyle(color = C.Cream, fontFamily = Mono, fontSize = 16.sp), colors = fieldColors(),
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).tagged("acct-review-pass"),
+                )
+                Btn("Sign in as reviewer", {
+                    busy = true; err = ""
+                    s.verify(email, AppState.REVIEW_MARK + pass) { m, e -> busy = false; if (m == null) err = state.cloudErrText(e) }
+                }, small = true, enabled = !busy && email.contains('@') && pass.isNotEmpty(), tag = "acct-review-go")
+            }
         }
     }
 }
@@ -372,6 +392,7 @@ private fun AccountPage(state: AppState, s: CloudStore) {
         Column {
             Btn("Sign out", { s.signOut(); state.say("Signed out. Your messes on this phone stay.") }, small = true, tier = Tier.Danger, tag = "acct-signout")
             T("Your messes on this phone stay.", size = 12.sp, color = C.Dim, weight = FontWeight.Medium, modifier = Modifier.padding(top = 6.dp))
+            Btn("Delete my account", { state.deleteStart() }, small = true, tier = Tier.Quiet, tag = "acct-delete", modifier = Modifier.padding(top = 14.dp))
         }
     }
 }

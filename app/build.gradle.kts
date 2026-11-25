@@ -112,6 +112,8 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.activity:activity-compose:1.9.2")
     implementation("androidx.core:core-ktx:1.13.1")
+    // accounts, Slice C: only for the live websocket to the server (SupabaseApi); everything else is HttpURLConnection
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     // installs the Baseline Profile (MM-4) when the APK is sideloaded, not only from the Play Store
     implementation("androidx.profileinstaller:profileinstaller:1.3.1")
 

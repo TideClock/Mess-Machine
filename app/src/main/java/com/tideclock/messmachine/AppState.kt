@@ -138,6 +138,8 @@ sealed class Overlay {
     data object Account : Overlay()
     /** Accounts, Slice B: who is on an online mess, invites, and (later slices) its share link and history. */
     data class Share(val cloudId: String) : Overlay()
+    /** Accounts, Slice F: give one of your Workbench sounds to the Vault. */
+    data class Vault(val key: String) : Overlay()
 }
 
 /** A saved mess in the list. colors and grid draw its little picture: bank 1's pads, and its first loop with something in it. */
@@ -883,6 +885,7 @@ class AppState(
 
     private fun replaceProject(p: Project, id: String?) {
         syncClose()
+        sharedView = false
         if (playing) engine.stop()
         project = p
         fileId = id
@@ -2005,6 +2008,8 @@ class AppState(
 
     fun saveMess(name: String, asNew: Boolean) {
         notes.trail("save mess")
+        // accounts: a mess shared to look at (a View link) is not copied onto this phone
+        if (sharedView) { say("This mess was shared to listen to, not to copy. Ask its maker for a copy link."); return }
         val nm = name.trim().ifEmpty { project.name.ifEmpty { "Untitled mess" } }
         // accounts: Save as new leaves a mess edited together as it is; its session ends before the name changes
         if (asNew) syncClose()
@@ -2181,6 +2186,7 @@ class AppState(
         Overlay.Start -> "start card"
         Overlay.Account -> "account"
         is Overlay.Share -> "share"
+        is Overlay.Vault -> "vault"
     }
 
     // ---- Audio check (MM-1): where the time goes between a tap and the sound ----
@@ -3823,7 +3829,7 @@ class AppState(
     private val cloudClk: com.tideclock.messmachine.cloud.Clock = cloudClock ?: com.tideclock.messmachine.cloud.Clock { System.currentTimeMillis() }
     /** My messes online: account, list and whole-mess sync. Built only when cloud is not null. */
     val store: com.tideclock.messmachine.cloud.CloudStore? = cloud?.let {
-        com.tideclock.messmachine.cloud.CloudStore(it, AndroidTokens(app), AndroidCache(app), cloudClk, CloudHost(this))
+        com.tideclock.messmachine.cloud.CloudStore(StoreApi(it), AndroidTokens(app), AndroidCache(app), cloudClk, CloudHost(this))
     }
     /** Bumped whenever the account, the online list or a cloud mark changes, so the sheets redraw. */
     var cloudV by mutableIntStateOf(0)
@@ -4362,9 +4368,10 @@ class AppState(
     fun openShare(cid: String) {
         notes.trail("open share sheet")
         shareMembers = emptyList(); shareInvites = emptyList(); shareNote = ""; inviteLink = ""
-        /*share-reset*/
+        shareLink = null; versions = null; reportFor = null
         overlay = Overlay.Share(cid)
         shareLoad(cid)
+        shareLinkLoad(cid)
     }
 
     fun shareLoad(cid: String) {
@@ -4403,6 +4410,7 @@ class AppState(
     /** Things that wait on the store (once a second, and right after they are asked for). */
     private fun cloudWaits() {
         val st = store ?: return
+        restoreWaits()
         val cid = inviteWait ?: return
         val local = st.localId(cid)
         val ready = local.isEmpty() || st.mark(local) == com.tideclock.messmachine.cloud.CloudStore.M_SYNCED
@@ -4505,7 +4513,7 @@ class AppState(
         val m = linkRe.find(text.trim()) ?: return false
         val kind = m.groupValues[1]; val token = m.groupValues[2]
         notes.trail("link opened: " + (if (kind == "m") "share" else "invite"))
-        if (kind == "m") { /*open-shared*/ say("That is a share link. This build opens invite links only."); return true }
+        if (kind == "m") { pendingShare = token; sharedMess = null; sharedNote = ""; loadShared() }
         else { setInvite(token); inviteInfo = null; inviteNote = ""; loadInvite() }
         overlay = Overlay.Account
         return true
@@ -4566,11 +4574,472 @@ class AppState(
         }
     }
 
-    /* ---- Slice C, the live socket: filled in by the next slice ---- */
-    /*rt-begin*/
-    private fun rtTick() {}
-    private fun rtLeave() {}
-    private fun rtTopic(topic: String) {}
-    private fun rtPeers() {}
-    /*rt-end*/
+    /* ---------------- accounts, Slice C: live feel (docs/ACCOUNTS-API.md s2, Realtime) ---------------- */
+    // The live socket only makes things arrive sooner: a broadcast says "the mess changed", and the session asks the
+    // server at once instead of at its next 2 s poll. With no socket (or a server without one) the poll carries
+    // everything. Presence is who is here and what they are on; names and colours always come from the members list.
+
+    private var rtWant = ""            // the topic the open mess should be joined to ("" on a server without the socket)
+    private var rtNow = ""             // the topic joined or being joined
+    private var rtJoined = false
+    private var rtRetryAt = 0L
+    private var rtTries = 0
+    private var rtTrackAt = 0L
+    private var rtSent = ""
+    private var rtPresence: List<com.tideclock.messmachine.cloud.Presence> = emptyList()
+    /** here-chip: the other people who have this mess open right now, with what each is on. */
+    var here by mutableStateOf<List<com.tideclock.messmachine.cloud.Peer>>(emptyList())
+        private set
+    /** True while the live socket is joined for the open mess. */
+    var liveSocket by mutableStateOf(false)
+        private set
+
+    private fun rtTopic(topic: String) { rtWant = topic }
+
+    private fun rtDropped(now: Long, again: Boolean) {
+        rtNow = ""; rtJoined = false; liveSocket = false
+        sync?.socketJoined = false
+        rtPresence = emptyList(); rtSent = ""
+        rtPeers()
+        val wait = longArrayOf(1000L, 2000L, 5000L, 10000L)
+        rtRetryAt = if (again) now + wait[minOf(rtTries, wait.size - 1)] else Long.MAX_VALUE
+        rtTries++
+    }
+
+    private fun rtLeave() {
+        if (rtNow.isNotEmpty()) try { cloud?.leave(rtNow) } catch (_: Exception) {}
+        rtNow = ""; rtWant = ""; rtJoined = false; liveSocket = false; rtRetryAt = 0L; rtTries = 0; rtSent = ""
+        rtPresence = emptyList()
+        if (here.isNotEmpty()) here = emptyList()
+    }
+
+    private val rtListener = object : com.tideclock.messmachine.cloud.RealtimeListener {
+        override fun onJoin(topic: String, ok: Boolean, reason: String) {
+            if (topic != rtNow) return
+            if (ok) {
+                rtJoined = true; liveSocket = true; rtTries = 0
+                sync?.socketJoined = true
+                sync?.nudge()                      // whatever happened while the socket was away
+                rtTrackAt = 0L; rtSent = ""
+                cloudRedraw()
+            } else rtDropped(cloudClk.nowMs(), reason != "unbuilt")
+        }
+        override fun onOps(topic: String, b: com.tideclock.messmachine.cloud.Batch) { if (topic == rtNow) sync?.nudge() }
+        override fun onMeta(topic: String, kind: String, gone: String, sha256: String) {
+            if (topic != rtNow) return
+            when (kind) {
+                "sound" -> soundCheckDue = true
+                "members" -> { sync?.nudge(); val id = sync?.messId; if (id != null) shareLoad(id) }
+                else -> sync?.nudge()              // deleted, blocked: the next look says so and the session ends
+            }
+        }
+        override fun onPresence(topic: String, peers: List<com.tideclock.messmachine.cloud.Presence>) {
+            if (topic != rtNow) return
+            rtPresence = peers
+            rtPeers()
+        }
+        override fun onDrop(topic: String) { if (topic == rtNow) rtDropped(cloudClk.nowMs(), true) }
+    }
+
+    /** Who is here: presence joined with the members list. A `u` that is not a member is dropped; I am left out. */
+    private fun rtPeers() {
+        val me = myUserId()
+        val out = ArrayList<com.tideclock.messmachine.cloud.Peer>()
+        for (p in rtPresence) {
+            if (p.u == me || out.any { it.id == p.u }) continue
+            val m = syncPeople.firstOrNull { it.id == p.u } ?: continue
+            out.add(com.tideclock.messmachine.cloud.Peer(m.id, m.name, m.colour, m.role, p.page, p.loop, p.pad, p.playing, p.rec))
+        }
+        val same = out.size == here.size && out.indices.all { i ->
+            val a = out[i]; val b = here[i]
+            a.id == b.id && a.name == b.name && a.page == b.page && a.loop == b.loop && a.pad == b.pad && a.playing == b.playing && a.rec == b.rec
+        }
+        if (!same) { here = out; cloudRedraw() }
+    }
+
+    /** The page and pad I am on, as presence says it: "edit" while a pad's Edit tray is open, else the tab's name. */
+    private fun myPresence(): com.tideclock.messmachine.cloud.Presence {
+        val t = tray
+        val editPad = if (t != null && t.startsWith("edit:")) t.substring(5).toIntOrNull() else null
+        return com.tideclock.messmachine.cloud.Presence(
+            myUserId(), if (editPad != null) "edit" else tab.label.take(12), project.cur.coerceIn(0, 7),
+            (editPad ?: project.sel).coerceIn(-1, 63), playing, live.rec,
+        )
+    }
+
+    /** The name of someone else whose Edit tray is open on this pad right now, or null. The Edit tray says so in one line. */
+    fun shapingToo(pad: Int): com.tideclock.messmachine.cloud.Peer? = here.firstOrNull { it.page == "edit" && it.pad == pad }
+
+    private fun rtTick() {
+        val api = cloud ?: return
+        val s = sync ?: return
+        val now = cloudClk.nowMs()
+        if (rtNow.isNotEmpty() && rtNow != rtWant) {
+            // the key turned (someone was removed) or the mess changed: leave the old channel
+            try { api.leave(rtNow) } catch (_: Exception) {}
+            rtNow = ""; rtJoined = false; liveSocket = false; s.socketJoined = false; rtRetryAt = 0L
+            rtPresence = emptyList(); rtPeers()
+        }
+        if (rtNow.isEmpty() && rtWant.isNotEmpty() && now >= rtRetryAt) { rtNow = rtWant; api.join(rtWant, rtListener) }
+        if (rtJoined && now - rtTrackAt >= 2000L) {
+            val p = myPresence()
+            val sig = p.page + "|" + p.loop + "|" + p.pad + "|" + p.playing + "|" + p.rec
+            if (sig != rtSent) { rtSent = sig; rtTrackAt = now; api.track(rtNow, p) }
+        }
+    }
+
+    /* ---------------- accounts, Slice D: share links (view and copy) and History ---------------- */
+
+    /** The open Share sheet's link: its mode (off, view, copy) and token. Only the mess's maker has one. */
+    var shareLink by mutableStateOf<com.tideclock.messmachine.cloud.Share?>(null)
+        private set
+    /** History of the open Share sheet's mess, newest first; null while closed. */
+    var versions by mutableStateOf<List<com.tideclock.messmachine.cloud.VersionRow>?>(null)
+        private set
+    /** The mess a share link points at (asked without signing in). */
+    var sharedMess by mutableStateOf<com.tideclock.messmachine.cloud.Shared?>(null)
+        private set
+    var sharedNote by mutableStateOf("")
+        private set
+    var sharedBusy by mutableStateOf(false)
+        private set
+    /** The mess on screen came from a View link: it plays, and Save is off. */
+    private var sharedView = false
+
+    private fun shareLinkLoad(cid: String) {
+        val api = cloud ?: return
+        if (!cloudMine(cid)) return
+        api.openMess(cid) { o, _ -> if (o != null && (overlay as? Overlay.Share)?.cloudId == cid) shareLink = com.tideclock.messmachine.cloud.Share(o.share_mode.ifEmpty { "off" }, o.share_token) }
+    }
+
+    /** share-link-off, share-link-view, share-link-copy, share-link-new: who the link lets in. A new link kills the old one. */
+    fun setShare(cid: String, mode: String, fresh: Boolean) {
+        val api = cloud ?: return
+        notes.trail("share link $mode" + (if (fresh) " new" else ""))
+        api.setShare(cid, mode, fresh) { v, e ->
+            if (v != null) {
+                shareLink = v
+                say(when { mode == "off" -> "The link is off. Nobody can open it now."; fresh -> "A new link. The old one stopped working."; mode == "copy" -> "Anyone with the link can listen and make a copy."; else -> "Anyone with the link can listen." })
+            } else shareNote = cloudErrText(e)
+        }
+    }
+
+    /** share-link-send: the link goes to the phone's share sheet. */
+    fun sendShareLink(cid: String) {
+        val t = shareLink?.share_token ?: ""
+        if (t.isEmpty()) return
+        notes.trail("send share link")
+        shareText(shareUrl(t), "Share " + (cloudRow(cid)?.name ?: "a mess"))
+    }
+
+    fun loadShared() {
+        val api = cloud ?: return
+        val token = pendingShare
+        if (token.isEmpty()) return
+        api.openShared(token) { v, e ->
+            if (token != pendingShare) return@openShared
+            if (v != null) { sharedMess = v; sharedNote = "" }
+            else sharedNote = if (e?.code == "not_found") "This link is switched off, or the mess is gone." else cloudErrText(e)
+        }
+    }
+
+    /** shared-no */
+    fun dropShared() { pendingShare = ""; sharedMess = null; sharedNote = "" }
+
+    /** The shared mess as it stands now: its last snapshot with the edits since. */
+    private fun sharedProject(v: com.tideclock.messmachine.cloud.Shared): Project {
+        val p = Project.fromJson(v.doc, lib::has).project
+        for (b in v.ops) { val ops = b.ops; if (ops != null && b.v <= com.tideclock.messmachine.cloud.Ops.V) com.tideclock.messmachine.cloud.Ops.apply(p, com.tideclock.messmachine.cloud.Ops.fromList(ops)) }
+        if (v.name.isNotEmpty()) p.name = v.name
+        return p
+    }
+
+    /** shared-open: listen to a shared mess. It is not saved here; a View link keeps Save off. */
+    fun openShared() {
+        val v = sharedMess ?: return
+        val token = pendingShare
+        notes.trail("open shared mess")
+        val p = try { sharedProject(v) } catch (_: Exception) { sharedNote = "That mess would not open."; return }
+        replaceProject(p, null)
+        sharedView = v.mode != "copy"
+        dropShared()
+        overlay = null
+        say("\"" + p.name.ifEmpty { "Untitled mess" } + "\" is open to listen to." + (if (v.mode == "copy") " Save keeps a copy." else ""))
+        fetchShared(token, v.sounds)
+    }
+
+    /** The sounds of a shared mess, fetched with the link itself (no sign-in). */
+    private fun fetchShared(token: String, sounds: List<com.tideclock.messmachine.cloud.Sound>) {
+        val api = cloud ?: return
+        val need = sounds.filter { it.src != "gone" && it.state == "ready" && !lib.has(it.key) }
+        if (need.isEmpty()) return
+        api.soundUrls("", token) { urls, _ ->
+            if (urls != null) for (snd in need) {
+                val u = urls.firstOrNull { it.sha256 == snd.sha256 } ?: continue
+                api.fetchSound(u.url, snd.sha256, u.bytes) { path, _ -> if (path != null) cloudSoundArrived(snd, path) }
+            }
+        }
+    }
+
+    /** shared-mine: "Make it mine". A copy of the shared mess becomes a mess of yours, online and on this phone. */
+    fun makeSharedMine() {
+        val api = cloud ?: return
+        val st = store ?: return
+        val v = sharedMess ?: return
+        val token = pendingShare
+        if (sharedBusy) return
+        if (st.state != com.tideclock.messmachine.cloud.CloudStore.IN) { sharedNote = "Sign in below first. Then Make it mine."; return }
+        notes.trail("make shared mess mine")
+        val p = try { sharedProject(v) } catch (_: Exception) { sharedNote = "That mess would not open."; return }
+        val name = p.name.ifEmpty { "Untitled mess" }.take(43) + " copy"
+        p.name = name
+        sharedBusy = true
+        val id = api.newId()
+        api.forkMess(id, "", token, name, com.tideclock.messmachine.cloud.Ops.uploadDoc(p, false)) { r, e ->
+            sharedBusy = false
+            if (r == null) {
+                sharedNote = when (e?.code) {
+                    "no_copy" -> "This link is for listening only."
+                    "too_many_messes" -> "You have 200 messes online. Delete one first."
+                    else -> cloudErrText(e)
+                }
+                return@forkMess
+            }
+            dropShared()
+            st.refresh()
+            openCloudMess(id)
+        }
+    }
+
+    /** hist-open: the saved versions of this mess (or hide them). */
+    fun toggleHistory(cid: String) {
+        if (versions != null) { versions = null; return }
+        val api = cloud ?: return
+        notes.trail("open history")
+        api.versions(cid) { v, e -> if (v != null) versions = v else shareNote = cloudErrText(e) }
+    }
+
+    private var restoreCid = ""
+    private var restoreVid = ""
+    private var restoreAt = 0L
+    private var restoreTries = 0
+
+    /** hist-restore-<n>: the mess goes back to this version, for everyone on it. What it was is kept as "Before restore". */
+    fun restoreVersion(cid: String, versionId: String) {
+        notes.trail("restore version")
+        restoreCid = cid; restoreVid = versionId; restoreTries = 0; restoreAt = 0L
+        shareNote = ""
+        restoreWaits()
+    }
+
+    private fun restoreWaits() {
+        val api = cloud ?: return
+        if (restoreCid.isEmpty() || cloudClk.nowMs() < restoreAt) return
+        val cid = restoreCid; val vid = restoreVid
+        restoreAt = Long.MAX_VALUE
+        api.restoreVersion(cid, vid) { r, e ->
+            if (r != null) {
+                restoreCid = ""
+                versions = null
+                say("Restored. The mess as it was is in History as Before restore.")
+                sync?.nudge()
+                store?.refresh()
+            } else if (e?.code == "snapshot_first" && restoreTries < 6 && sync?.messId == cid) {
+                // the newest edits are not in a snapshot yet: save one, then ask again
+                restoreTries++
+                sync?.saveVersion("")
+                restoreAt = cloudClk.nowMs() + 1000L
+            } else { restoreCid = ""; shareNote = cloudErrText(e) }
+        }
+    }
+
+    /* ---------------- accounts, Slice E: report, block, delete account, the review account ---------------- */
+
+    /** The report being written on the Share sheet (or on a shared link): null closed, "" this mess, else a person's id. */
+    var reportFor by mutableStateOf<String?>(null)
+        private set
+    var reportReason by mutableStateOf("")
+    val reportReasons = listOf("sexual" to "Sexual", "hate" to "Hate", "harassment" to "Harassment", "copyright" to "Someone else's music", "spam" to "Spam", "other" to "Something else")
+
+    /** report-mess, report-user-<uid> */
+    fun openReport(about: String) { reportFor = if (reportFor == about) null else about; reportReason = "" }
+    /** report-no */
+    fun closeReport() { reportFor = null; reportReason = "" }
+
+    /** report-send, report-send-block: we look at every report within 24 hours. Block also keeps that person out of your messes. */
+    fun sendReport(cid: String, token: String, block: Boolean) {
+        val api = cloud ?: return
+        val about = reportFor ?: return
+        val reason = reportReason
+        if (reason.isEmpty()) return
+        notes.trail("report " + (if (about.isEmpty()) "mess" else "person") + " $reason")
+        api.reportMess(cid, token, reason, "", about) { ok, e ->
+            if (ok == null) {
+                val t = if (e?.code == "rate_limited") "You have sent as many reports as a day allows. We have them." else cloudErrText(e)
+                if (token.isEmpty()) shareNote = t else sharedNote = t
+                return@reportMess
+            }
+            closeReport()
+            say("Reported. We look at every report within 24 hours.")
+            if (block && about.isNotEmpty()) api.blockUser(about) { b, _ -> if (b != null) { say("Reported and blocked."); if (cid.isNotEmpty()) shareLoad(cid) } }
+        }
+    }
+
+    /** Deleting the account: 0 closed, 1 what goes and what stays, 2 a fresh code was mailed. Kept here, since the page behind it reloads. */
+    var delStep by mutableIntStateOf(0)
+        private set
+    var delNote by mutableStateOf("")
+        private set
+    var delBusy by mutableStateOf(false)
+        private set
+
+    /** acct-delete */
+    fun deleteStart() { delStep = 1; delNote = "" }
+    /** del-no */
+    fun deleteCancel() { delStep = 0; delNote = ""; delBusy = false }
+    /** del-send: deleting needs a sign-in under 10 minutes old, so a fresh code is mailed. */
+    fun deleteSendCode() {
+        val st = store ?: return
+        delBusy = true; delNote = ""
+        st.requestCode(st.email()) { ok, e -> delBusy = false; if (ok != null) delStep = 2 else delNote = cloudErrText(e) }
+    }
+    /** del-go: the code is checked, then the account and everything of yours online is deleted. The phone's files stay. */
+    fun deleteGo(code: String) {
+        val st = store ?: return
+        val api = cloud ?: return
+        if (delBusy) return
+        notes.trail("delete account")
+        delBusy = true; delNote = ""
+        st.verify(st.email(), code) { m, e ->
+            if (m == null) { delBusy = false; delNote = cloudErrText(e); return@verify }
+            api.deleteAccount { ok, e2 ->
+                delBusy = false
+                if (ok == null) { delNote = if (e2?.code == "stale_login") "That took too long. Send a new code and try again." else cloudErrText(e2); return@deleteAccount }
+                syncClose()
+                opsIds.clear(); prefs.edit().putStringSet("cloudOps", HashSet<String>()).apply()
+                delStep = 0
+                st.signOut()
+                overlay = Overlay.Account
+                cloudSay("Your account is deleted. The messes and sounds on this phone stay.")
+            }
+        }
+    }
+
+    /** The store's server: the same calls, with the review account's password going where a code would (contract s1.2). */
+    private class StoreApi(private val c: com.tideclock.messmachine.cloud.CloudApi) : com.tideclock.messmachine.cloud.CloudApi by c {
+        override fun verifyCode(email: String, code: String, cb: com.tideclock.messmachine.cloud.Done<com.tideclock.messmachine.cloud.Session>) {
+            if (code.startsWith(REVIEW_MARK)) c.signInPassword(email, code.substring(REVIEW_MARK.length), cb) else c.verifyCode(email, code, cb)
+        }
+    }
+
+    /* ---------------- accounts, Slice F: the Vault ---------------- */
+
+    /** The words you agree to when you give a sound (the newest grant on the server). */
+    var vaultGrant by mutableStateOf<com.tideclock.messmachine.cloud.Grant?>(null)
+        private set
+    var vaultNote by mutableStateOf("")
+        private set
+    var vaultBusy by mutableStateOf(false)
+        private set
+    /** Workbench key to where that sound stands with the Vault: pending, approved, declined, withdrawn. */
+    var vaultStates by mutableStateOf<Map<String, String>>(emptyMap())
+        private set
+    /** Workbench key to the hash it was sent under (kept, so its status can be asked for later). */
+    private val vaultSent: MutableMap<String, String> = HashMap<String, String>().also { m ->
+        try { for ((k, v) in Json.map(Json.parse(prefs.getString("vaultSent", "{}") ?: "{}"))) if (v is String) m[k] = v } catch (_: Exception) {}
+    }
+
+    /** A plain line for where a Workbench sound stands with the Vault, or null when it was never sent. */
+    fun vaultLine(key: String): String? = when (vaultStates[key]) {
+        "pending" -> "Vault: waiting for a listen"
+        "approved" -> "In the Vault"
+        "declined" -> "Vault: not taken"
+        "withdrawn" -> "Vault: taken back"
+        else -> null
+    }
+
+    /** vault-give: open the sheet for one of your Workbench sounds. */
+    fun vaultOpen(key: String) {
+        val api = cloud ?: return
+        val st = store ?: return
+        if (st.state != com.tideclock.messmachine.cloud.CloudStore.IN) { say("Sign in first (the menu, Account). Then you can give sounds to the Vault."); return }
+        notes.trail("vault sheet")
+        vaultNote = ""; vaultBusy = false
+        overlay = Overlay.Vault(key)
+        api.vaultGrant { g, e -> if (g != null) vaultGrant = g else vaultNote = cloudErrText(e) }
+        vaultRefresh()
+    }
+
+    /** Where my sent sounds stand (my_sounds tells, by hash). */
+    fun vaultRefresh() {
+        val api = cloud ?: return
+        if (vaultSent.isEmpty() || store?.state != com.tideclock.messmachine.cloud.CloudStore.IN) return
+        api.mySounds { list, _ ->
+            if (list != null) {
+                val by = HashMap<String, String>()
+                for (x in list) if (x.vault.isNotEmpty()) by[x.sha256] = x.vault
+                val out = HashMap<String, String>()
+                for ((k, sha) in vaultSent) by[sha]?.let { out[k] = it }
+                vaultStates = out
+            }
+        }
+    }
+
+    private fun vaultFail(e: com.tideclock.messmachine.cloud.CloudErr?) {
+        vaultBusy = false
+        vaultNote = when (e?.code) {
+            "too_long" -> "The Vault takes sounds up to 100 seconds."
+            "too_big" -> "That sound is over 20 MB."
+            "quota" -> "Your online sound space is full."
+            "not_found" -> "That sound is not on this phone any more."
+            "already_submitted" -> "This sound is with the Vault already."
+            "too_many_pending" -> "10 of your sounds are waiting for a listen already. Send more once some are through."
+            "bad_name" -> "That credit name cannot be used. Try another."
+            "grant_outdated" -> "The words above changed. Read them again, then agree."
+            "not_ready" -> "The sound did not finish going up. Try again."
+            else -> cloudErrText(e)
+        }
+        if (e?.code == "grant_outdated") cloud?.vaultGrant { g, _ -> if (g != null) vaultGrant = g }
+    }
+
+    /** vault-send: the sound goes up (when it is not online yet), then it is offered to the Vault under your credit name. */
+    fun vaultSend(key: String, credit: String) {
+        val api = cloud ?: return
+        val g = vaultGrant ?: return
+        if (vaultBusy) return
+        notes.trail("vault send")
+        vaultBusy = true; vaultNote = ""
+        api.prepareUpload(key) { pr, e ->
+            if (pr == null) { vaultFail(e); return@prepareUpload }
+            val info = cloudSoundInfo(key)
+            var kind = info?.kind ?: ""
+            if (!(kind == "imp" || kind == "mic" || kind == "rs" || kind == "take")) kind = "imp"
+            val submit = {
+                api.vaultSubmit(pr.sha256, credit.trim(), g.version, "") { ok, e4 ->
+                    if (ok == null) vaultFail(e4)
+                    else {
+                        vaultBusy = false
+                        vaultSent[key] = pr.sha256
+                        try { prefs.edit().putString("vaultSent", Json.write(LinkedHashMap<String, Any?>(vaultSent))).apply() } catch (_: Exception) {}
+                        vaultStates = vaultStates + (key to "pending")
+                        overlay = null
+                        say("Sent to the Vault. We listen to every sound before it goes in.")
+                    }
+                }
+            }
+            api.registerSound(pr, kind, key, (info?.title ?: "").ifEmpty { key.removePrefix("bn:") }, info?.bpm ?: 0.0, info?.beats ?: 0, info?.mkey ?: "") { r, e2 ->
+                if (r == null) vaultFail(e2)
+                else if (r.state == "ready") submit()
+                else api.upload(r.path, pr.path, pr.bytes) { up, e3 ->
+                    if (up == null) vaultFail(e3)
+                    else api.finishUpload(pr.sha256) { u, e5 -> if (u == null) vaultFail(e5) else submit() }
+                }
+            }
+        }
+    }
+
+    companion object {
+        /** How the review account's password travels through the store's code step (never typed by anyone else). */
+        const val REVIEW_MARK = "pw:"
+    }
 }

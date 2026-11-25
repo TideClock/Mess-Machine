@@ -38,6 +38,11 @@ fun EditTray(state: AppState, pad: Int) {
     if (k.isEmpty()) { T("This pad is empty.", size = 13.sp, color = C.Dim); return }
     val col = padColor(Color(state.lib.colorOf(k)))
     val scratch = pad == Project.SCRATCH
+    // accounts: someone else has this pad's Edit tray open right now. One line, in their colour, no question.
+    state.shapingToo(pad)?.let { who ->
+        T(who.name.ifEmpty { "Someone" } + " is shaping this too", size = 12.sp, color = personColor(who.colour), weight = androidx.compose.ui.text.font.FontWeight.Medium,
+            lines = 1, modifier = Modifier.padding(bottom = 6.dp))
+    }
     Row(Modifier.fillMaxWidth().tagged("edit-tabs"), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
         for ((id, name) in EDIT_TABS) {
             if (UiLook.panel) {

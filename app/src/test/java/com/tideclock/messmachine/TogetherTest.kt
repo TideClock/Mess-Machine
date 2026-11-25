@@ -64,7 +64,7 @@ import kotlin.math.abs
 class TogetherTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
 
-    private val fake = FakeCloudB(Clock { 1_795_000_000_000L })
+    private val fake = FakeCloudAll(Clock { 1_795_000_000_000L })
     private val shownState = mutableStateOf<AppState?>(null)
     private val shown: AppState get() = shownState.value!!
     private val tyler = "tyler@test"
@@ -504,6 +504,84 @@ class TogetherTest {
         assertEquals(1, fake.memberCount(cid))
     }
 
+    /* ---------- Slice C: live feel (the fake server's channel; the socket's own protocol is RealtimeTest) ---------- */
+
+    @Test fun liveEditArrivesAtOnceAndWhoIsHere() {
+        fake.live = true
+        together()
+        waitFor("both phones on the live channel") { p1.liveSocket && p2.liveSocket }
+        assertEquals(2, fake.joinedCount(cid))
+        // no clock moves here: Tyler's step is on Mia's phone as soon as the server has said so
+        setStep(p1, 0, 3)
+        pump()
+        assertTrue("it arrived at once, not on the 2 s poll", stepOn(p2, 0, 3))
+        // who is here: Mia opens pad 2's Edit tray; Tyler's phone knows within the 2 s presence beat
+        show(p2); p2.overlay = null; settle()
+        p2.openTray("edit:1")
+        both(3)
+        assertEquals("Tyler's phone sees one other person here", 1, p1.here.size)
+        assertEquals("Mia", p1.here[0].name)
+        assertEquals("Mia", p1.shapingToo(1)?.name)
+        assertNull("only on the pad she is on", p1.shapingToo(0))
+        show(p1); p1.overlay = null; settle()
+        p1.openTray("edit:1"); settle()
+        assertTrue("the Edit tray says so in one line", says("Mia is shaping this too"))
+        shot("together-09-shaping-too")
+        p1.openTray(null); settle()
+        for (t in listOf("here-", "mem-", "share-")) assertTrue("no $t control on the play screen", tagsStarting(t).isEmpty())
+        openMesses()
+        rule.onNodeWithTag("here-chip", useUnmergedTree = true).assertExists()
+        assertTrue(says("Mia is here"))
+        shot("together-10-who-is-here")
+        assertNotNull(Faq.lineFor("here-chip")); assertNotNull(Faq.lineFor("here-00000000"))
+        closeSheet()
+        // Mia closes the mess (a new one): she is gone from Tyler's chips
+        p2.newMess()
+        both(2)
+        assertEquals(0, p1.here.size)
+    }
+
+    @Test fun liveSocketDownThePollCarriesEverything() {
+        fake.live = true
+        together()
+        waitFor("both phones on the live channel") { p1.liveSocket && p2.liveSocket }
+        // Mia's socket dies and cannot come back
+        fake.socketsDown = true
+        fake.dropSockets(c2)
+        pump()
+        assertTrue("Mia's phone knows the socket is gone", !p2.liveSocket)
+        both(2)
+        setStep(p1, 0, 8)
+        pump()
+        assertTrue("with no socket nothing arrives before the poll", !stepOn(p2, 0, 8))
+        both(3)
+        assertTrue("the 2 s poll carried it", stepOn(p2, 0, 8))
+        // her own edits still go up as ever
+        setStep(p2, 1, 2)
+        both(2)
+        assertTrue(stepOn(p1, 1, 2))
+        // the socket comes back by itself
+        fake.socketsDown = false
+        later(11000); both(2)
+        waitFor("Mia's phone to join the channel again") { later(500); p2.liveSocket }
+        assertEquals(canon(p1), canon(p2))
+    }
+
+    @Test fun liveRemovedMemberLosesTheChannel() {
+        fake.live = true
+        together()
+        waitFor("both phones on the live channel") { p1.liveSocket && p2.liveSocket }
+        val before = fake.topic(cid)
+        p1.removeMember(cid, fake.userId(mia), false)
+        pump()
+        waitFor("Mia's phone to let go at once") { later(500); p2.sync == null }
+        assertTrue("the channel key turned", fake.topic(cid) != before)
+        assertTrue(!p2.liveSocket)
+        both(3)
+        waitFor("Tyler's phone to join the new channel") { later(500); p1.liveSocket }
+        assertEquals(1, fake.joinedCount(cid))
+    }
+
     @Test fun togetherPasteALinkAndASoundOfMine() {
         tylerInvites()
         // Mia signs in first, then pastes the link she copied
@@ -526,5 +604,207 @@ class TogetherTest {
         waitFor("the take to reach Mia's phone") { p2.lib.loaded(k) }
         assertEquals("it went up once", 1, fake.uploads(c1))
         assertEquals(canon(p1), canon(p2))
+    }
+
+    /* ---------- Slice D: share links and History ---------- */
+
+    @Test fun linkListenThenMakeItMine() {
+        signIn(p1, tyler, "Tyler")
+        p1.setBpm(109)
+        val id = saveByTouch(p1)
+        later(6000)
+        cid = p1.store!!.cloudId(id)
+        openMesses()
+        tap("omess-share-${cid.take(8)}"); pump()
+        assertEquals("the link is off until its maker turns it on", "off", fake.shareMode(cid))
+        assertTrue(!exists("share-link-send"))
+        tap("share-link-view"); pump()
+        assertEquals("view", fake.shareMode(cid))
+        shot("together-11-share-link")
+        faqCovers("the Share sheet with a link")
+        tap("share-link-send")
+        val viewLink = p1.lastShared
+        assertTrue("a share link went to the phone's share sheet: $viewLink", viewLink.startsWith("messmachine://m/"))
+        // Mia, signed out, opens it: she can listen, not copy
+        show(p2)
+        assertTrue(p2.cloudLink(viewLink)); pump()
+        assertTrue("it names the mess's maker", says("By Tyler"))
+        assertTrue("Listen, and no Make it mine on a listen link", exists("shared-open") && !exists("shared-mine"))
+        shot("together-12-shared-link")
+        faqCovers("a shared link, signed out")
+        tap("shared-open"); pump()
+        assertEquals("the shared mess is on her screen", 109, p2.project.bpm)
+        assertNull(p2.fileId)
+        p2.saveMess("Mine now", false); settle()
+        assertNull("a listen link is not copied onto the phone", p2.fileId)
+        // Tyler lets people copy, with a new link: the old one dies
+        show(p1)
+        tap("share-link-copy"); pump()
+        tap("share-link-new"); pump()
+        tap("share-link-send")
+        val copyLink = p1.lastShared
+        assertTrue(copyLink != viewLink && fake.shareMode(cid) == "copy")
+        closeSheet()
+        show(p2)
+        p2.cloudLink(viewLink); pump()
+        assertTrue("the old link is dead: ${p2.sharedNote}", p2.sharedNote.contains("switched off"))
+        tap("shared-no")
+        // signed in, Make it mine gives her a copy of her own
+        signIn(p2, mia, "Mia")
+        show(p2)
+        p2.cloudLink(copyLink); pump()
+        rule.onNodeWithTag("shared-mine").assertExists()
+        tap("shared-mine")
+        waitFor("Mia's own copy to open") { p2.fileId != null && p2.project.bpm == 109 && p2.overlay == null }
+        assertEquals(1, fake.messCount(mia))
+        assertTrue("it is named as a copy: ${p2.project.name}", p2.project.name.endsWith(" copy"))
+        assertNull("her copy is hers alone", p2.sync)
+        assertEquals("she is not on Tyler's mess", 1, fake.memberCount(cid))
+    }
+
+    @Test fun historyRestoreForEveryone() {
+        together()
+        setStep(p1, 0, 4)
+        both(3)
+        // Save in a mess edited together keeps a named version
+        show(p1); openMesses()
+        val had = fake.versionCount(cid)
+        tap("mess-save")
+        waitFor("the saved version") { later(500); fake.versionCount(cid) > had }
+        setStep(p2, 1, 9)
+        p1.setBpm(150)
+        both(4)
+        assertTrue(stepOn(p1, 1, 9) && p2.project.bpm == 150)
+        show(p1)
+        tap("omess-share-${cid.take(8)}"); pump()
+        tap("hist-open"); pump()
+        val n = p1.versions!!.indexOfFirst { it.label == "Saved" }
+        assertTrue("History lists the save: ${p1.versions!!.map { it.label }}", n >= 0)
+        shot("together-13-history")
+        faqCovers("History")
+        tap("hist-restore-$n")
+        tap("hist-restore-$n")
+        waitFor("both phones to be back at the saved version") { later(500); p1.project.bpm == 118 && p2.project.bpm == 118 && !stepOn(p1, 1, 9) && !stepOn(p2, 1, 9) }
+        assertTrue("what was saved is there", stepOn(p1, 0, 4) && stepOn(p2, 0, 4))
+        both(2)
+        assertEquals(canon(p1), canon(p2))
+        tap("hist-open"); pump()
+        assertTrue("what it was is kept: ${p1.versions!!.map { it.label }}", p1.versions!!.any { it.label == "Before restore" })
+    }
+
+    /* ---------- Slice E: report, delete the account, the reviewer ---------- */
+
+    @Test fun reportAMessAndAPersonWithBlock() {
+        together()
+        show(p2); openMesses()
+        tap("omess-share-${cid.take(8)}"); pump()
+        tap("report-mess")
+        rule.onNodeWithTag("report-send").assertExists()
+        shot("together-14-report")
+        faqCovers("the report")
+        tap("report-r-spam")
+        tap("report-send"); pump()
+        assertEquals(1, fake.reports.size)
+        assertEquals("spam", fake.reports[0].reason)
+        assertEquals("the mess, not a person", "", fake.reports[0].about)
+        // a person, and block them too
+        tap(tagsStarting("report-user-").first())
+        tap("report-r-harassment")
+        tap("report-send-block"); pump()
+        assertEquals(2, fake.reports.size)
+        assertEquals(fake.userId(tyler), fake.reports[1].about)
+        // blocking the mess's maker takes her off his mess; her copy stays
+        waitFor("Mia to be off Tyler's mess") { later(500); !fake.isMember(cid, mia) && p2.sync == null }
+        assertNotNull(p2.files.firstOrNull())
+    }
+
+    @Test fun deleteAccountSaysWhatGoesAndWantsAFreshCode() {
+        together()
+        val miaLocal = p2.fileId!!
+        show(p1); openAccount()
+        tap("acct-delete")
+        assertTrue("it lists what goes and what stays", says("This goes, for good") && says("This stays"))
+        shot("together-15-delete-account")
+        faqCovers("Delete account")
+        tap("del-no")
+        assertTrue("Keep my account closes it", exists("acct-signout") && fake.userExists(tyler))
+        tap("acct-delete")
+        fake.advance(61_000)
+        tap("del-send"); pump()
+        rule.onNodeWithTag("del-code").assertExists()
+        type("del-code", "000000")
+        tap("del-go"); pump()
+        assertTrue("a wrong code deletes nothing", says("That code is wrong") && fake.userExists(tyler))
+        type("del-code", fake.lastCode(tyler))
+        tap("del-go")
+        waitFor("the account to be gone") { !fake.userExists(tyler) && p1.store!!.state == CloudStore.OUT }
+        assertTrue("it says so: ${p1.cloudNotice}", p1.cloudNotice.contains("deleted"))
+        assertNotNull("the mess on Tyler's phone stays", p1.files.firstOrNull())
+        assertNull(p1.sync)
+        rule.onNodeWithTag("acct-email").assertExists()
+        // Mia's phone lets go of the mess that went with him, and keeps her copy
+        waitFor("Mia's phone to let go") { later(500); p2.sync == null }
+        assertNotNull(p2.files.firstOrNull { it.id == miaLocal })
+    }
+
+    @Test fun reviewerSignsInWithAPassword() {
+        fake.reviewEmail = "review@test"; fake.reviewPassword = "let-me-in"
+        show(p1); openAccount()
+        type("acct-email", "review@test")
+        tap("acct-review")
+        type("acct-review-pass", "wrong")
+        tap("acct-review-go"); pump()
+        assertEquals("a wrong password signs nobody in", CloudStore.OUT, p1.store!!.state)
+        type("acct-review-pass", "let-me-in")
+        tap("acct-review-go"); pump()
+        afterCode(p1, "Reviewer")
+        assertEquals("review@test", p1.store!!.email())
+    }
+
+    /* ---------- Slice F: the Vault ---------- */
+
+    @Test fun vaultGiveASoundOfMine() {
+        signIn(p1, tyler, "Tyler")
+        val wave = FloatArray(22050) { i -> (kotlin.math.sin(i * 2 * Math.PI * 330 / 44100) * .8).toFloat() }
+        val k = p1.bench.addSample("mic", "My take", Sample("mic", wave, 44100))
+        assertNotNull(Faq.lineFor("vault-give"))
+        show(p1)
+        p1.vaultOpen(k); pump()
+        assertTrue("the Vault sheet is open", p1.overlay is Overlay.Vault)
+        rule.onNodeWithTag("vault-grant").assertExists()
+        assertTrue("the words to agree to come from the server", says("You made this sound yourself"))
+        shot("together-16-vault")
+        faqCovers("the Vault sheet")
+        tap("vault-send"); pump()
+        assertEquals("nothing is sent before I agree", 0, fake.submissions.size)
+        type("vault-credit", "Tyler S")
+        tap("vault-agree")
+        tap("vault-send")
+        waitFor("the sound to be with the Vault") { fake.submissions.size == 1 }
+        assertEquals("Tyler S", fake.submissions[0].credit)
+        assertEquals("pending", fake.submissions[0].status)
+        assertEquals("the sound went up once", 1, fake.uploads(c1))
+        assertEquals("Vault: waiting for a listen", p1.vaultLine(k))
+        assertNull("the sheet closed", p1.overlay)
+        // open it again: it says where the sound stands, and there is nothing to send twice
+        p1.vaultOpen(k); pump()
+        assertTrue(says("Vault: waiting for a listen") && !exists("vault-send"))
+        closeSheet()
+        // we take it in: the Workbench says so the next time it looks
+        fake.review(fake.submissions[0].id, true)
+        p1.vaultRefresh(); pump()
+        assertEquals("In the Vault", p1.vaultLine(k))
+    }
+
+    @Test fun noServerNoSessionNoLinks() {
+        val plain = AppState(ctxFor("plain"))
+        assertNull(plain.cloud); assertNull(plain.store); assertNull(plain.sync)
+        plain.syncTick(); plain.cloudTick()
+        assertTrue("a link means nothing without a server", !plain.cloudLink("messmachine://j/abcdefghijklmnopqrstuvwxyz012345"))
+        plain.edit { bpm = 99 }
+        plain.undo()
+        assertTrue(plain.here.isEmpty() && plain.shapingToo(0) == null && plain.vaultLine("bn:x") == null)
+        plain.vaultOpen("bn:x"); plain.openShared(); plain.makeSharedMine()
+        assertNull(plain.overlay)
     }
 }

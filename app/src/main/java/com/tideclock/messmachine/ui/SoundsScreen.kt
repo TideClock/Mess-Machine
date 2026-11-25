@@ -193,6 +193,8 @@ fun SoundRow(state: AppState, s: Library.Sound, target: Int, picking: Boolean) {
             Triple("Put it on pad ${target + 1}", "rowmenu-put") { state.putOnPad(target, s.key); if (picking) state.overlay = null },
             if (onPad >= 0) Triple("Sample", "rowmenu-doctor") { state.overlay = com.tideclock.messmachine.Overlay.Doctor(s.key) } else null,
             if (s.cab == "mine") Triple("Share it", "rowmenu-share") { state.shareSoundWav(s.key) } else null,
+            // accounts: a sound of your own can be offered to the Vault (only on a build with a server, signed in)
+            if (s.cab == "mine" && state.store?.state == com.tideclock.messmachine.cloud.CloudStore.IN) Triple("Give it to the Vault", "vault-give") { state.vaultOpen(s.key) } else null,
         ))
         Row(
             Modifier
@@ -212,6 +214,7 @@ fun SoundRow(state: AppState, s: Library.Sound, target: Int, picking: Boolean) {
                     else (if (s.cab == "mine") state.bench.item(s.key)?.bpm ?: 0.0 else 0.0).takeIf { it > 0 }?.let { "made at ${Math.round(it)} bpm" },
                     com.tideclock.messmachine.engine.KeyFinder.both(s.mkey).takeIf { it.isNotEmpty() },
                     state.lib.cab(s.cab).name.takeIf { it.isNotEmpty() },
+                    if (s.cab == "mine") state.vaultLine(s.key) else null,
                     s.tags.joinToString(" ").takeIf { it.isNotEmpty() },
                 ).joinToString(" · ")
                 if (info.isNotEmpty()) Note(info, color = if (onPad >= 0) C.Teal else C.Dim, size = 11.sp)

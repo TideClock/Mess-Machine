@@ -23,7 +23,7 @@ import java.util.concurrent.Executors
  * Accounts Slice A on Android (docs/ACCOUNTS-API.md s5): the server calls of HttpCloud over HttpURLConnection.
  * One background thread for the small calls (sign-in, RPC, Edge Functions) and one for files (uploads, downloads,
  * hashing a sound), so a big upload never holds up a save. Every answer is posted back to the main thread, never
- * given inside the call. No new library: OkHttp comes with Slice C's websocket.
+ * given inside the call. OkHttp is used for one thing only, the live websocket of Slice C (the end of this file).
  *
  * Sounds that came from the server are kept by their sha256 in files/cloud/sounds/<sha256>.wav. A file only lands
  * there after its hash checked out, so a file that is there is good.
@@ -181,6 +181,46 @@ class SupabaseApi(private val app: Context, url: String, key: String) : HttpClou
     override fun dropSound(sha256: String) {
         fileQueue.execute { File(soundDir, "$sha256.wav").delete() }
     }
+
+    /* ---------- Slice C: the live socket (docs/ACCOUNTS-API.md s2) ---------- */
+
+    // wss://<project host>/realtime/v1/websocket?apikey=<publishable key>&vsn=1.0.0
+    private val rtUrl: String = base.replaceFirst("https://", "wss://").replaceFirst("http://", "ws://") + "/realtime/v1/websocket?apikey=" + apiKey + "&vsn=1.0.0"
+    private val okClient by lazy { okhttp3.OkHttpClient.Builder().connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS).build() }
+    private val rt by lazy {
+        RealtimeClient(rtUrl, RtConnector { url, events -> openSocket(url, events) }, com.tideclock.messmachine.cloud.Clock { System.currentTimeMillis() },
+            { session?.access ?: "" }, { session?.userId ?: "" })
+    }
+    private var rtTicking = false
+    private val rtTick = object : Runnable {
+        override fun run() {
+            if (rt.channels() == 0) { rtTicking = false; return }
+            rt.tick()
+            main.postDelayed(this, 1000)
+        }
+    }
+
+    /** OkHttp's websocket as an RtSocket: its callbacks come on OkHttp's threads and are posted to the main thread. */
+    private fun openSocket(url: String, events: RtEvents): RtSocket {
+        val ws = okClient.newWebSocket(okhttp3.Request.Builder().url(url).build(), object : okhttp3.WebSocketListener() {
+            override fun onOpen(webSocket: okhttp3.WebSocket, response: okhttp3.Response) { main.post { events.onOpen() } }
+            override fun onMessage(webSocket: okhttp3.WebSocket, text: String) { main.post { events.onText(text) } }
+            override fun onClosing(webSocket: okhttp3.WebSocket, code: Int, reason: String) { try { webSocket.close(1000, null) } catch (_: Exception) {} }
+            override fun onClosed(webSocket: okhttp3.WebSocket, code: Int, reason: String) { main.post { events.onClosed() } }
+            override fun onFailure(webSocket: okhttp3.WebSocket, t: Throwable, response: okhttp3.Response?) { main.post { events.onClosed() } }
+        })
+        return object : RtSocket {
+            override fun send(text: String) { ws.send(text) }
+            override fun close() { try { ws.close(1000, null) } catch (_: Exception) {} }
+        }
+    }
+
+    override fun join(topic: String, l: com.tideclock.messmachine.cloud.RealtimeListener) {
+        rt.join(topic, l)
+        if (!rtTicking) { rtTicking = true; main.postDelayed(rtTick, 1000) }
+    }
+    override fun track(topic: String, state: com.tideclock.messmachine.cloud.Presence) = rt.track(topic, state)
+    override fun leave(topic: String) = rt.leave(topic)
 
     /* ---------- helpers (file thread) ---------- */
 

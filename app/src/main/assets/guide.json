@@ -1,14 +1,17 @@
 {
-  "title": "Saving online is built, and switched off for now",
+  "title": "Playing together is built, and switched off for now",
   "thisBuild": [
-    "Behind the scenes: signing in with your email and saving your messes online, so they open on your other phone, is built and tested. It stays switched off until the server is set up, so nothing you see has changed.",
-    "The sound engine from the last build is the same: it should sound exactly as before."
+    "Behind the scenes: accounts are finished on the phone. Signing in, saving online, inviting someone into a mess and making it together, share links, History, reporting, deleting an account and giving a sound to the Vault are built and tested against a pretend server.",
+    "All of it stays switched off until the real server is set up, so nothing you see has changed.",
+    "The sound engine is the same as the last build: it should sound exactly as before."
   ],
   "watch": [
     "Play a few loops, save a mess and open it again: does it all work as before?",
-    "Open Messes from the menu: it should look exactly like the last build."
+    "Undo and Redo: do they still take back and bring back as before?",
+    "Open Messes from the menu and hold a sound in Your Workbench: both should look exactly like the last build."
   ],
   "limits": [
-    "There is no Sign in yet. It appears once the server is ready, in the menu and at the top of Messes."
+    "There is no Sign in yet. It appears once the server is ready, in the menu and at the top of Messes.",
+    "Playing together has only met a pretend server so far. The first real test is two phones on the real one."
   ]
 }
