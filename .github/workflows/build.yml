@@ -3,7 +3,7 @@ name: Build the app
 on:
   push:
     # accounts: the side branch for accounts and playing together builds and tests, but never publishes the phone download
-    branches: [main, accounts]
+    branches: [main, accounts, cmp]
     paths-ignore: ['site/**', 'library/**']
   pull_request:
     paths-ignore: ['site/**', 'library/**']
@@ -60,6 +60,34 @@ jobs:
             bash tools/release.sh test-screens "Test screenshots" "Screens from build ${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7}). Test outcome: ${{ steps.bigtest.outcome }}." test-screens.zip || true
           fi
 
+      # The Compose Multiplatform move (docs/CMP-PLAN.md) runs on the cmp branch: every screen must match the reference
+      # taken before the move. The first run seeds the reference. "[screens-ok]" in the commit message accepts a change
+      # on purpose and makes this run's screens the new reference.
+      - name: Compare the screens with the reference (cmp branch)
+        if: github.ref == 'refs/heads/cmp' && steps.bigtest.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MSG: ${{ github.event.head_commit.message }}
+        run: |
+          pip install -q pillow numpy
+          mkdir -p ref diff
+          (cd app/build/screens && zip -q ../../ref-new.zip *.png)
+          if ! gh release download cmp-ref -p screens.zip -D ref -R ${{ github.repository }}; then
+            cp ref-new.zip screens.zip
+            bash tools/release.sh cmp-ref "Screens before the move" "Reference screens from build ${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7})." screens.zip
+            echo "reference seeded"; exit 0
+          fi
+          (cd ref && unzip -q screens.zip)
+          rc=0; python3 tools/screen-diff.py ref app/build/screens diff || rc=$?
+          (cd diff && zip -q ../screen-diff.zip *) || true
+          bash tools/release.sh cmp-diff "Screens against the reference" "Build ${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7}), result ${rc}." screen-diff.zip || true
+          if [ $rc != 0 ] && echo "$MSG" | grep -q '\[screens-ok\]'; then
+            cp ref-new.zip screens.zip
+            bash tools/release.sh cmp-ref "Screens before the move" "Reference screens from build ${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7}), accepted with [screens-ok]." screens.zip
+            exit 0
+          fi
+          exit $rc
+
       - name: Stop here if the big test failed
         if: steps.bigtest.outcome == 'failure'
         run: exit 1
@@ -78,7 +106,7 @@ jobs:
       # Accounts (Nov 24): the accounts builders cannot read run logs, so a failed accounts run puts its Gradle output
       # and test reports on the accounts-log release. latest and the phone download are never touched from here.
       - name: Publish the build log (accounts branch, failed runs)
-        if: failure() && github.ref == 'refs/heads/accounts'
+        if: failure() && (github.ref == 'refs/heads/accounts' || github.ref == 'refs/heads/cmp')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -153,7 +181,7 @@ jobs:
           fi
 
       - name: Say how the run ended (accounts branch)
-        if: always() && github.ref == 'refs/heads/accounts'
+        if: always() && (github.ref == 'refs/heads/accounts' || github.ref == 'refs/heads/cmp')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
