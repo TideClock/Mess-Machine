@@ -18,7 +18,15 @@ kotlin {
         compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
     }
     if (wantIos) {
-        iosArm64(); iosSimulatorArm64()
+        // CMP step 7: one static framework, MessMachine, with the engine exported, so Swift sees AppState, the
+        // Platform interfaces and the engine through one Kotlin runtime (docs/CMP-PLAN.md)
+        listOf(iosArm64(), iosSimulatorArm64()).forEach {
+            it.binaries.framework {
+                baseName = "MessMachine"
+                isStatic = true
+                export(project(":core"))
+            }
+        }
     }
     sourceSets {
         // the Android side of PlatformUi: permission asks, pickers, speech, Back and the window (CMP step 6)

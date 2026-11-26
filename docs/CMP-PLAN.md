@@ -98,6 +98,12 @@ test green before the next starts.
    Opening a web page uses Compose's own `LocalUriHandler`. All 128 unit tests passed here; locally every screen
    matched the reference except the ones that show the build number.
 7. **iOS entry point** (`MainViewController`) and the `MessMachine` framework; the iOS chat hosts it.
+   Nov 26: `ui/src/iosMain/.../MainViewController.kt` (`MainViewController(platform: Platform): UIViewController`), the
+   `MessMachine` static framework with `core` exported, and Kotlin versions of the plain platform parts
+   (`IosSettings` on NSUserDefaults, `IosMainThread`, `IosWorker`, `IosFileStore`). The iOS chat writes the rest of
+   its Platform (sound out, mic, Device, pickers through `IosHooks`). The Mac CI job links the framework for the
+   simulator on the cmp branch and posts the log to the `cmp-ios-log` release. `core`'s own MessEngine framework
+   stays until the iOS chat has switched its build to MessMachine.
 8. **Cloud:** Ktor in common if it builds for iOS and Android with the same behaviour, otherwise behind `Cloud`.
 
 ## Risks

@@ -158,6 +158,21 @@ jobs:
       - name: Build the engine for the iPhone simulator, iPhones and the web
         run: ./gradlew :core:compileKotlinIosSimulatorArm64 :core:compileKotlinIosArm64 :core:linkReleaseFrameworkIosSimulatorArm64 :core:compileKotlinJs -Pmm.ios -Pmm.js -Pmm.coreOnly --stacktrace
 
+      # CMP step 7 (docs/CMP-PLAN.md): the whole app (AppState and every screen) as the MessMachine framework for the
+      # iPhone simulator. The log goes to the cmp-ios-log release, since this job never stops the phone build.
+      - name: Build the MessMachine framework (the shared screens, cmp branch)
+        if: github.ref == 'refs/heads/cmp'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          rc=0
+          ./gradlew :ui:linkDebugFrameworkIosSimulatorArm64 -Pmm.ios --stacktrace > ios.log 2>&1 || rc=$?
+          tail -60 ios.log
+          echo "run ${GITHUB_RUN_NUMBER} ${GITHUB_SHA::7} MessMachine framework rc=$rc" > ios-run.txt
+          ls -la ui/build/bin/iosSimulatorArm64/debugFramework 2>/dev/null >> ios-run.txt || true
+          bash tools/release.sh cmp-ios-log "MessMachine framework log" "Run ${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7}), result ${rc}." ios-run.txt ios.log || true
+          exit $rc
+
   phone:
     # the release APK on a real Android emulator: fresh launch, every tab, gestures, long random runs
     needs: apk
