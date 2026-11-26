@@ -9,7 +9,14 @@ OUT=phone-out
 mkdir -p $OUT
 fail=0
 shot() { adb exec-out screencap -p > "$OUT/$1.png" 2>/dev/null || true; }
-alive() { adb shell pidof $PKG >/dev/null 2>&1; }
+# Nov 25: asked twice, 2 s apart (run 202 said "not running" while the log shows the app alive until the next step),
+# and a no is written down with the process list so the next one can be read
+alive() {
+  adb shell pidof $PKG >/dev/null 2>&1 && return 0
+  sleep 2; adb shell pidof $PKG >/dev/null 2>&1 && return 0
+  { echo "--- not running at $(date -u +%T)"; adb shell ps -A | grep -i -E "messmachine|shotgun"; adb shell dumpsys window | grep -E "mCurrentFocus|mFocusedApp"; } >> $OUT/not-running.txt 2>&1
+  return 1
+}
 note() { echo "PHONE: $*"; echo "$*" >> $OUT/steps.txt; }
 # is Mess Machine the app in front? (a running process alone is not enough: it can sit behind the home screen)
 infront() {
