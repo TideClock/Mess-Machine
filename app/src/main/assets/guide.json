@@ -1,16 +1,15 @@
 {
-  "title": "The app's permanent ID: your messes moved over",
+  "title": "Under the hood: one app for Android and iPhone",
   "thisBuild": [
-    "This is the new app, app.shotgunstudio.messmachine, the ID it will have on Google Play and the App Store. It installed next to the old one.",
-    "On its first launch it copied your messes, Workbench sounds, packs and settings from the old app. A message said how many files came across.",
-    "Updates from here on come to this app."
+    "Nothing should look or work differently. The screens and the app's logic moved into shared code that the iPhone version will use too.",
+    "Every screen was checked against the build before the move: 482 test screenshots, the same pixel for pixel.",
+    "Numbers with decimals always use a dot now (a phone set to German used to show a comma)."
   ],
   "watch": [
-    "Open Messes: are all your messes there? Open one with your own recordings and play it.",
-    "Check Settings: your skin, look and view size should match the old app."
+    "Play a mess for a few minutes and use every tab: anything that looks or sounds off, send a note.",
+    "Import a sound, sample the mic and open a mess file: those now go through new code paths."
   ],
   "limits": [
-    "Once everything is here, uninstall the old Mess Machine (the one with the same icon that no longer updates).",
-    "If the message said nothing moved, update the old app once, then open this one again."
+    "The iPhone app is not on TestFlight yet: that needs your Apple Developer account."
   ]
 }

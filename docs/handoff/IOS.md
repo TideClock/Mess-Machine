@@ -114,3 +114,24 @@ The store ID is **`app.shotgunstudio.messmachine`** on both stores (Tyler is buy
 Shotgun Studio). Use it as the iOS bundle ID. The Kotlin code keeps its `com.tideclock.messmachine` package; only the
 Android applicationId changed.
 
+
+## The shared screens are ready (Nov 26 2026, issue #25)
+
+Every screen and AppState now live in the Android repo's `ui/` module as common Kotlin, and the Mac CI job links them
+as one static framework, **`MessMachine`** (engine exported, one Kotlin runtime). [Certain] Run 222 linked it for the
+simulator (`./gradlew :ui:linkDebugFrameworkIosSimulatorArm64 -Pmm.ios`; `linkReleaseFrameworkIosArm64` for a phone).
+
+What the iOS app does with it:
+
+1. Build `MessMachine.framework` instead of `MessEngine` (update `tools/build-engine.sh`). Tell the Android chat when
+   you have switched, and it removes `core`'s MessEngine framework.
+2. Make a `Platform` (`com.tideclock.messmachine.platform.Platform`, a protocol in Swift) and show
+   `MainViewControllerKt.MainViewController(platform:)` as the root view controller.
+3. Ready in Kotlin: `IosSettings`, `IosMainThread`, `IosWorker`, `IosFileStore`. Yours to write: `Device`, `AudioOut`
+   (your Core Audio loop calling `Engine.render`), `Bench`, `NoteBook`, `Packs`, `SpeechIn`, `MouthIn`, `AppUpdater`
+   (finds nothing on iOS). Each interface's file in `ui/src/commonMain/.../platform/` says what it covers.
+4. Set `IosHooks` (`ui/src/iosMain/.../ui/PlatformUi.ios.kt`) at start: mic permission, document picker, tap haptic.
+   Speech to text and Back are stubs for now; say if you want them.
+5. The cloud client is still Android's (OkHttp). Pass `null` for `cloudApi` until step 8.
+
+Plan and history: `docs/CMP-PLAN.md`.
