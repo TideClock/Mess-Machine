@@ -37,6 +37,10 @@ jobs:
           java-version: "17"
 
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          # the cmp branch keeps its own cache too: it needs Compose Multiplatform's libraries, which main's cache
+          # lacks, and run 215 lost its build when Maven Central refused those downloads (429)
+          cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/cmp' }}
 
       - name: Engine tests (the Kotlin engine in core/ on the JVM, no phone needed)
         run: ./gradlew :core:engineTest :core:roundTrip --stacktrace
