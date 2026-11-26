@@ -24,6 +24,9 @@ kotlin {
         commonMain.dependencies {
             implementation(compose.runtime)
             implementation(compose.foundation)
+            // Text, DropdownMenu and the rest the widgets use: Compose Multiplatform 1.7.0 maps to Material 3 1.3.0 on
+            // Android, the version the app already uses
+            implementation(compose.material3)
             // the art and fonts (composeResources), read through the generated Res class
             api(compose.components.resources)
         }

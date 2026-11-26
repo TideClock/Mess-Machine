@@ -91,7 +91,6 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
-import com.tideclock.messmachine.R
 
 /** Set by the test suite so screens skip their endless timers. */
 object UiFlags { @JvmField var testing = false }
@@ -232,10 +231,10 @@ fun CloseScrew(onClick: () -> Unit, tag: String, modifier: Modifier = Modifier, 
             drawCircle(Brush.radialGradient(listOf(Hw.MetalHi, Hw.Metal, Hw.MetalLow), center = Offset(c.x - rad * .35f, c.y - rad * .4f), radius = rad * 1.6f), rad, c)
             drawCircle(Hw.MetalLow, rad, c, style = Stroke(1.5f))
             // the cross slot, set at 45 degrees so it reads as an X, turning as you press
-            val a = Math.toRadians((45f + turn).toDouble()); val len = rad * .62f; val w = rad * .26f
+            val a = (45f + turn).toDouble() * (kotlin.math.PI / 180.0); val len = rad * .62f; val w = rad * .26f
             for (k in 0..1) {
-                val ang = a + k * Math.PI / 2
-                val dx = (Math.cos(ang) * len).toFloat(); val dy = (Math.sin(ang) * len).toFloat()
+                val ang = a + k * kotlin.math.PI / 2
+                val dx = (kotlin.math.cos(ang) * len).toFloat(); val dy = (kotlin.math.sin(ang) * len).toFloat()
                 drawLine(Color(0xFF1A1613), Offset(c.x - dx, c.y - dy), Offset(c.x + dx, c.y + dy), strokeWidth = w, cap = androidx.compose.ui.graphics.StrokeCap.Round)
                 drawLine(Color.White.copy(alpha = .25f), Offset(c.x - dx + 1f, c.y - dy + 1.5f), Offset(c.x + dx + 1f, c.y + dy + 1.5f), strokeWidth = 1f)
             }
@@ -320,7 +319,7 @@ fun InlayIcon(res: org.jetbrains.compose.resources.DrawableResource, maxDp: andr
     val dens = androidx.compose.ui.platform.LocalDensity.current
     val px = with(dens) { maxDp.toPx() }
     // the nearest whole multiple (a 26 dp icon on a 2.6x screen is 68 px: 2x, 80 px, not 1x and half the size)
-    var k = maxOf(1, Math.round(px / 40f))
+    var k = maxOf(1, kotlin.math.floor(px / 40f + .5f).toInt())  // Java's Math.round: halves go up
     // Nov 22: up to a fifth bigger than asked is fine (the art has a clear margin), so an icon lands on 2x, not 1x
     if (k > 1 && 40f * k > px * 1.22f) k--
     val side = with(dens) { (40f * k).toDp() }
@@ -377,14 +376,20 @@ private var gritTile: ImageBitmap? = null
 fun gritBrush(): ShaderBrush {
     val t = gritTile ?: run {
         val n = 96
-        val bmp = android.graphics.Bitmap.createBitmap(n, n, android.graphics.Bitmap.Config.ARGB_8888)
-        val r = java.util.Random(7)
+        // drawn pixel by pixel through Compose's own canvas (common code), with Java's Random(7) sequence kept exactly,
+        // so the grit is the same speckle it was when Android's Bitmap drew it
+        val bmp = ImageBitmap(n, n)
+        val cv = androidx.compose.ui.graphics.Canvas(bmp)
+        val paint = androidx.compose.ui.graphics.Paint().apply { isAntiAlias = false; blendMode = androidx.compose.ui.graphics.BlendMode.Src }
+        val r = JavaRandom(7)
         for (y in 0 until n) for (x in 0 until n) {
             val v = r.nextInt(100)
             val a = when { v < 6 -> 26; v < 12 -> 14; else -> 0 }
-            bmp.setPixel(x, y, android.graphics.Color.argb(a, 255, 244, 226))
+            if (a == 0) continue
+            paint.color = Color(255, 244, 226, a)
+            cv.drawRect(x.toFloat(), y.toFloat(), x + 1f, y + 1f, paint)
         }
-        bmp.asImageBitmap().also { gritTile = it }
+        bmp.also { gritTile = it }
     }
     return ShaderBrush(ImageShader(t, TileMode.Repeated, TileMode.Repeated))
 }

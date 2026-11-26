@@ -42,26 +42,6 @@ import com.tideclock.messmachine.AppState
 import com.tideclock.messmachine.Tutorials
 import kotlinx.coroutines.delay
 
-/** Where every tagged control sits on screen right now, so a lesson can ring the one it means. */
-object TutHi {
-    val rects = HashMap<String, Rect>()
-    /** Which node last placed each tag: a node going away only clears its own record, never a newer copy's. */
-    internal val owners = HashMap<String, Any>()
-    internal fun forget(t: String, who: Any) { if (owners[t] === who) { owners.remove(t); rects.remove(t) } }
-}
-
-private class TutNode(var t: String) : Modifier.Node(), GlobalPositionAwareModifierNode {
-    override fun onGloballyPositioned(coordinates: LayoutCoordinates) { TutHi.owners[t] = this; TutHi.rects[t] = coordinates.boundsInRoot() }
-    override fun onDetach() { TutHi.forget(t, this) }
-}
-
-private data class TutElement(val t: String) : ModifierNodeElement<TutNode>() {
-    override fun create() = TutNode(t)
-    override fun update(node: TutNode) { if (node.t != t) { TutHi.forget(node.t, node); node.t = t } }
-}
-
-/** A test tag that lessons can also find on screen. Every control in the app is tagged with this. */
-fun Modifier.tagged(t: String): Modifier = this.testTag(t).then(TutElement(t))
 
 /**
  * The lesson on top of everything: a pulsing ring round the control the step means (taps go straight through to

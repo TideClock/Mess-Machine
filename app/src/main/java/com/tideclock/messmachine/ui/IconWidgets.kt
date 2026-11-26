@@ -22,14 +22,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 
 
-/** Tile colors by button type (the Pro looks use these too). */
-fun tileColor(group: String): androidx.compose.ui.graphics.Color = when (group) {
-    "transport" -> C.Yellow
-    "place" -> androidx.compose.ui.graphics.Color(0xFFA070E0)
-    "perform" -> C.Pink
-    "sound" -> C.Teal
-    else -> androidx.compose.ui.graphics.Color(0xFF5C5668)
-}
 
 /** A pixel icon on its colored tile, drawn sharp (no smoothing between pixels). */
 @androidx.compose.runtime.Composable

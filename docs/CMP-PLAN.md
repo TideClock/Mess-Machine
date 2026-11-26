@@ -56,7 +56,10 @@ test green before the next starts.
    font in the composable around it. Robolectric starts no content providers, so `TestMessApp` starts Compose
    Multiplatform's resources provider for the tests.
 3. **Pure logic.** Faq, Tutorials, BarPlan, Icons' tables, the skins and colours, Theory helpers used by the UI.
-   3a (Nov 25): Faq, BarPlan, UiLook and the Icons table. Tutorials reads AppState, so it waits for step 5.
+   3a (Nov 25, run 207 green): Faq, BarPlan, UiLook and the Icons table. Tutorials reads AppState, so it waits for step 5.
+   3b: Widgets (the skins, colours, fonts, keys, cards and text), the tag machinery (`tagged`, TutHi) and tileColor.
+   Android's Bitmap and java.util.Random drew the grit; it is now drawn through Compose's own canvas with JavaRandom,
+   the same sequence (JavaRandomTest checks 100,000 draws), so the speckle is unchanged.
 4. **The Platform interfaces** in common, the Android implementations wrapping today's classes. AppState still in app/,
    now calling the interfaces instead of Android directly.
 5. **AppState to commonMain.** `java.io.File`, `Handler`, executors and `SharedPreferences` are gone from it by then.

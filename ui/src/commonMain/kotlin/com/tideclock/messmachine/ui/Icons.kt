@@ -143,3 +143,12 @@ object Icons {
     }
     fun res(name: String): org.jetbrains.compose.resources.DrawableResource? = all[name]?.first
 }
+
+/** Tile colors by button type (the Pro looks use these too). */
+fun tileColor(group: String): androidx.compose.ui.graphics.Color = when (group) {
+    "transport" -> C.Yellow
+    "place" -> androidx.compose.ui.graphics.Color(0xFFA070E0)
+    "perform" -> C.Pink
+    "sound" -> C.Teal
+    else -> androidx.compose.ui.graphics.Color(0xFF5C5668)
+}
