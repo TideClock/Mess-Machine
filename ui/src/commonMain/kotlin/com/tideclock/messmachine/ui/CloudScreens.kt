@@ -27,7 +27,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -58,12 +57,9 @@ private const val TERMS_SHORT = "You must be 13 or older. Your messes and sounds
 @Composable
 private fun fieldColors() = OutlinedTextFieldDefaults.colors(focusedBorderColor = C.Pink, unfocusedBorderColor = C.Card2, cursorColor = C.Pink)
 
-private fun openPage(ctx: android.content.Context, state: AppState, path: String) {
+private fun openPage(ctx: androidx.compose.ui.platform.UriHandler, state: AppState, path: String) {
     if (state.siteHost.isEmpty()) return
-    try {
-        ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://${state.siteHost}/$path/"))
-            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
-    } catch (_: Exception) { state.say("No browser on this phone opened the page.") }
+    try { ctx.openUri("https://${state.siteHost}/$path/") } catch (_: Exception) { state.say("No browser on this phone opened the page.") }
 }
 
 /** acct-open: the row at the top of the Messes sheet. */
@@ -237,7 +233,7 @@ private fun SignIn(state: AppState, s: CloudStore) {
     LaunchedEffect(sentAt) { if (sentAt != 0L) { kotlinx.coroutines.delay(60_000); canResend = true } }
     fun send() {
         busy = true; err = ""
-        s.requestCode(email) { ok, e -> busy = false; if (ok == null) err = state.cloudErrText(e) else { sentAt = System.currentTimeMillis(); code = "" } }
+        s.requestCode(email) { ok, e -> busy = false; if (ok == null) err = state.cloudErrText(e) else { sentAt = state.nowMillis(); code = "" } }
     }
     Card(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 14.dp)) {
         Column {
@@ -294,7 +290,7 @@ private fun SignIn(state: AppState, s: CloudStore) {
 
 @Composable
 private fun Terms(state: AppState, s: CloudStore) {
-    val ctx = LocalContext.current
+    val ctx = androidx.compose.ui.platform.LocalUriHandler.current
     var err by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     Card(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 14.dp)) {
@@ -363,7 +359,7 @@ private fun MoveAsk(state: AppState, n: Int) {
 
 @Composable
 private fun AccountPage(state: AppState, s: CloudStore) {
-    val ctx = LocalContext.current
+    val ctx = androidx.compose.ui.platform.LocalUriHandler.current
     Card(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 14.dp)) {
         Column {
             T("SIGNED IN", size = 12.sp, color = C.Yellow, spacing = .1.em)

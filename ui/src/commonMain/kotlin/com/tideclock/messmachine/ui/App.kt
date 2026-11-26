@@ -1,14 +1,11 @@
 package com.tideclock.messmachine.ui
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.togetherWith
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.LinearOutSlowInEasing
@@ -54,7 +51,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.draw.alpha
@@ -84,20 +80,8 @@ import kotlinx.coroutines.delay
 @Composable
 fun MessMachineApp(state: AppState, ticker: Boolean = true) {
     MaterialTheme(colorScheme = darkColorScheme(primary = C.Pink, secondary = C.Teal, background = C.Paper, surface = C.Card)) {
-        // build 8 of the overhaul: on a light skin the phone's status and navigation bars switch to dark icons
-        val rootView = androidx.compose.ui.platform.LocalView.current
-        val lightSkin = C.skin.light
-        androidx.compose.runtime.SideEffect {
-            val w = (rootView.context as? android.app.Activity)?.window
-            if (w != null) androidx.core.view.WindowCompat.getInsetsController(w, rootView).apply {
-                isAppearanceLightStatusBars = lightSkin; isAppearanceLightNavigationBars = lightSkin
-            }
-        }
-        // Nov 21 (lag): 60 frames a second unless Smooth screen is on (Settings, Playing)
-        LaunchedEffect(state.smoothScreen) {
-            val act = rootView.context as? android.app.Activity
-            if (act != null) try { setScreenRate(act, state.smoothScreen) } catch (_: Throwable) {}
-        }
+        // the bar icons on a light skin, 60 frames a second unless Smooth screen, and pinning while locked (PlatformUi)
+        WindowEffects(C.skin.light, state.smoothScreen, state.locked, state.lockPin)
         if (ticker) LaunchedEffect(Unit) {
             while (true) {
                 val t = withFrameNanos { it }
@@ -129,16 +113,8 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
         BackHandler(enabled = state.overlay != null) { state.overlay = null }
         // Lock: back does nothing but remind you how to unlock; the screen is pinned if you chose that
         BackHandler(enabled = state.locked) { state.say(if (state.layout == "classic") "Locked. Hold the lock on the dock for a second to unlock." else "Locked. Hold the lock in the perform row for a second to unlock.") }
-        val act = androidx.compose.ui.platform.LocalContext.current as? android.app.Activity
-        var pinned by remember { mutableStateOf(false) }
-        LaunchedEffect(state.locked) {
-            try {
-                if (state.locked && state.lockPin && !pinned) { act?.startLockTask(); pinned = true }
-                else if (!state.locked && pinned) { act?.stopLockTask(); pinned = false }
-            } catch (_: Exception) { pinned = false }
-        }
         // a pad asked to record: ask for the mic, then record onto it
-        val micPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        val micPerm = rememberAsk(Perm.MIC) { ok ->
             val pad = state.askMicFor
             state.askMicFor = -1
             if (ok && pad == com.tideclock.messmachine.MIC_FOR_NOTE) state.bugTap()
@@ -146,13 +122,13 @@ fun MessMachineApp(state: AppState, ticker: Boolean = true) {
             else if (ok && pad >= 0) { if (state.autoAfterAsk) { state.autoAfterAsk = false; state.autoSampleTo(pad) } else state.recordToPad(pad) }
             else if (!ok) state.say("The mic needs permission. You can allow it in the phone's settings for Mess Machine.")
         }
-        LaunchedEffect(state.askMicFor) { if (state.askMicFor != -1) micPerm.launch(android.Manifest.permission.RECORD_AUDIO) }
+        LaunchedEffect(state.askMicFor) { if (state.askMicFor != -1) micPerm.ask() }
         @Suppress("UNUSED_VARIABLE") val v = state.version
         val dn = LocalDensity.current
-        UiLook.widthDp = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp / state.uiScale
+        UiLook.widthDp = screenWidthDp() / state.uiScale
         CompositionLocalProvider(LocalDensity provides Density(dn.density * state.uiScale, dn.fontScale), LocalLocked provides state.locked, LocalHelp provides state.helpOn) {
         // test tags show up as view ids, so the phone test on the emulator can find things by name
-        Box(Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }.background(C.Paper).grit().safeDrawingPadding().watchTouches(state)) {
+        Box(Modifier.fillMaxSize().tagsAsIds().background(C.Paper).grit().safeDrawingPadding().watchTouches(state)) {
             PulseBackdrop(state)
             Column(Modifier.fillMaxSize()) {
                 Transport(state)
@@ -395,7 +371,7 @@ fun Modifier.closeStripOnTap(state: AppState): Modifier = this.pointerInput(Unit
 
 /** Click and Count-in ride in the top bar when the screen is wide enough for them (a foldable, a phone held wide). */
 @Composable
-fun topClick(): Boolean = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 560
+fun topClick(): Boolean = screenWidthDp() >= 560
 
 /** ☰: messes, settings, lessons and redo, so the top bar stays one row. Notes for Claude is the bug by the tabs. */
 @Composable
@@ -741,7 +717,7 @@ fun LoopStrip(state: AppState) {
     val P = state.project
     val bars = P.pat().len / 16
     // Nov 22 review: at most half the screen, so a row of pads stays in view even with the song open
-    val tall = (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp / state.uiScale * .5f).dp
+    val tall = (screenHeightDp() / state.uiScale * .5f).dp
     @Suppress("UNUSED_VARIABLE") val lv = state.liveV
     Column(
         Modifier.fillMaxWidth().plate(bottom = true).tagged("loopstrip").heightIn(max = tall)
@@ -979,17 +955,3 @@ fun SettingsTray(state: AppState, kind: String, modifier: Modifier = Modifier) {
 }
 
 
-/** Ask for 60 frames a second (or the fastest the screen has) at the screen's own size. A hint: the phone may still choose. */
-fun setScreenRate(act: android.app.Activity, smooth: Boolean) {
-    val w = act.window
-    val lp = w.attributes
-    if (android.os.Build.VERSION.SDK_INT >= 30) {
-        val d = act.display
-        val cur = d?.mode
-        val same = d?.supportedModes?.filter { cur == null || (it.physicalWidth == cur.physicalWidth && it.physicalHeight == cur.physicalHeight) }.orEmpty()
-        val want = if (smooth) same.maxByOrNull { it.refreshRate } else same.minByOrNull { kotlin.math.abs(it.refreshRate - 60f) }
-        if (want != null) lp.preferredDisplayModeId = want.modeId
-    }
-    lp.preferredRefreshRate = if (smooth) 0f else 60f
-    w.attributes = lp
-}

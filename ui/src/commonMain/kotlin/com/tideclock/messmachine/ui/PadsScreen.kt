@@ -321,7 +321,7 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
     val P = state.project
     var pressed by remember { mutableStateOf(false) }
     val origin = remember { Origin() }
-    val view = androidx.compose.ui.platform.LocalView.current
+    val buzz = rememberTapBuzz()
     // the pad's own width in dp once it is laid out, so its name is sized to fit this pad on this screen
     val dens = androidx.compose.ui.platform.LocalDensity.current.density
     var padDp by remember { mutableStateOf(0f) }
@@ -455,7 +455,7 @@ fun Pad(state: AppState, d: Int, modifier: Modifier) {
                     val deferEmpty = state.emptyActsOnLift(d)
                     var movedFar = false
                     if (!deferEmpty) state.padDown(d, emptyTop = top)
-                    if (state.buzz && state.project.kit[state.bank * Project.BANK + d].isNotEmpty()) view.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+                    if (state.buzz && state.project.kit[state.bank * Project.BANK + d].isNotEmpty()) buzz()
                     val pi = state.bank * Project.BANK + d
                     val det = CircleDetector(40.dp.toPx())
                     var sph: AppState.Sphere? = null

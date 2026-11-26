@@ -1,5 +1,7 @@
 package com.tideclock.messmachine.ui
 
+import com.tideclock.messmachine.platform.fmt
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -59,7 +61,7 @@ fun SynthScreen(state: AppState) {
     val pad = if (scratch) Project.SCRATCH else sel
     val sp = state.synthOn(pad) ?: return
     // a phone held wide or a foldable has room for To pad beside the synth's name; a narrow phone keeps its own row
-    val wideSynth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 560
+    val wideSynth = screenWidthDp() >= 560
     ScrollPane(hPad = 12.dp, vPad = 0.dp) {
         // Nov 22 (second video, Tyler: "a ludicrous amount of space at the top"): the synth's pad plays it, and beside it
         // two short rows: which synth and its preset share one, Simple or Full and the mode slide under them
@@ -233,7 +235,7 @@ fun Knob(pm: Synth.Param, value: Double, set: (Double, Boolean) -> Unit, modifie
                             if (!c.pressed) break
                             val dx = c.position.x - last.x
                             val dy = last.y - c.position.y
-                            if (!moved && Math.abs(c.position.y - d.position.y) + Math.abs(c.position.x - d.position.x) < 6.dp.toPx()) continue
+                            if (!moved && kotlin.math.abs(c.position.y - d.position.y) + kotlin.math.abs(c.position.x - d.position.x) < 6.dp.toPx()) continue
                             moved = true
                             last = c.position
                             k0 = (k0 + (dx + dy) / span).coerceIn(0.0, 1.0)
@@ -252,10 +254,10 @@ fun Knob(pm: Synth.Param, value: Double, set: (Double, Boolean) -> Unit, modifie
             if (bipolar) {
                 val mid = pm.toKnob(0.0).toFloat()
                 val a0 = 135f + 270f * minOf(mid, pos)
-                drawArc(C.Teal, a0, 270f * Math.abs(pos - mid), false, tl, Size(r * 2, r * 2), style = Stroke(sw, cap = StrokeCap.Round))
+                drawArc(C.Teal, a0, 270f * kotlin.math.abs(pos - mid), false, tl, Size(r * 2, r * 2), style = Stroke(sw, cap = StrokeCap.Round))
             } else drawArc(C.Teal, 135f, 270f * pos, false, tl, Size(r * 2, r * 2), style = Stroke(sw, cap = StrokeCap.Round))
-            val a = Math.toRadians(135.0 + 270.0 * pos)
-            drawLine(C.Cream, center, Offset(center.x + (r * .7f * Math.cos(a)).toFloat(), center.y + (r * .7f * Math.sin(a)).toFloat()), strokeWidth = 3.dp.toPx(), cap = StrokeCap.Round)
+            val a = (135.0 + 270.0 * pos) * (kotlin.math.PI / 180.0)
+            drawLine(C.Cream, center, Offset(center.x + (r * .7f * kotlin.math.cos(a)).toFloat(), center.y + (r * .7f * kotlin.math.sin(a)).toFloat()), strokeWidth = 3.dp.toPx(), cap = StrokeCap.Round)
         }
         T(pm.name.uppercase(), size = 10.sp, color = C.Dim, spacing = .04.em, lines = 1)
         // while the MIDI map is up: the controller knob mapped here, in place of the value
@@ -263,7 +265,7 @@ fun Knob(pm: Synth.Param, value: Double, set: (Double, Boolean) -> Unit, modifie
         else T(badge.uppercase(), size = 10.sp, color = C.Yellow, lines = 1, family = Mono)
     }
     if (typing) {
-        var text by remember { mutableStateOf(if (pm.curve == Synth.CHOICE) "" else "%.3f".format(value).trimEnd('0').trimEnd('.')) } // format-ok: number only
+        var text by remember { mutableStateOf(if (pm.curve == Synth.CHOICE) "" else fmt(value.toDouble(), 3).trimEnd('0').trimEnd('.')) } // format-ok: number only
         AlertDialog(
             onDismissRequest = { typing = false },
             title = { Text(pm.name) },

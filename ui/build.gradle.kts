@@ -21,6 +21,11 @@ kotlin {
         iosArm64(); iosSimulatorArm64()
     }
     sourceSets {
+        // the Android side of PlatformUi: permission asks, pickers, speech, Back and the window (CMP step 6)
+        androidMain.dependencies {
+            implementation("androidx.activity:activity-compose:1.9.2")
+            implementation("androidx.core:core-ktx:1.13.1")
+        }
         commonMain.dependencies {
             // the engine (MouthTracker, Project, ...) for the platform interfaces and, later, AppState
             api(project(":core"))

@@ -1,5 +1,7 @@
 package com.tideclock.messmachine.ui
 
+import com.tideclock.messmachine.platform.fmt
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -34,7 +36,7 @@ fun PacksScreen(state: AppState) {
                 Column {
                     T(o.name.uppercase(), size = 13.sp, color = C.Yellow, spacing = .08.em)
                     if (o.blurb.isNotEmpty()) T(o.blurb, size = 13.sp, color = C.Cream, modifier = Modifier.padding(top = 2.dp))
-                    Note("${o.clips} sounds · %.1f MB".format(o.bytes / 1e6) + (if (have != null) " · installed" + (if (have < o.version) ", a newer version is here" else "") else ""), modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)) // format-ok: number only
+                    Note("${o.clips} sounds · ${fmt(o.bytes / 1e6, 1)} MB" + (if (have != null) " · installed" + (if (have < o.version) ", a newer version is here" else "") else ""), modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)) // format-ok: number only
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         val busy = state.packBusy == o.id
                         if (have == null || have < o.version) Btn(if (busy) "Installing…" else if (have == null) "Install" else "Update", { state.installPack(o) }, on = true, onColor = C.Teal, small = true, enabled = state.packBusy.isEmpty(), tag = "pack-install-${o.id}")

@@ -1,11 +1,9 @@
 package com.tideclock.messmachine.ui
 
+import com.tideclock.messmachine.platform.jround
+
 import com.tideclock.messmachine.ui.res.*
 
-import android.Manifest
-import android.content.pm.PackageManager
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -36,16 +34,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import com.tideclock.messmachine.AppState
-import com.tideclock.messmachine.R
 import com.tideclock.messmachine.engine.Library
 import com.tideclock.messmachine.engine.Project
 
@@ -69,9 +64,8 @@ fun SoundsScreen(state: AppState, pickFor: Int?) {
     var q by remember { mutableStateOf("") }
     val target = pickFor ?: P.sel
     @Suppress("UNUSED_VARIABLE") val bv = state.bench.items.size
-    val ctx = LocalContext.current
-    val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris -> state.importSounds(uris.map { it.toString() }) }
-    val micPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+    val importer = rememberPicker(true) { uris -> state.importSounds(uris) }
+    val micPerm = rememberAsk(Perm.MIC) { ok ->
         if (ok) state.toggleMic() else state.say("The mic needs permission. You can allow it in the phone's settings for Mess Machine.")
     }
     val mode = state.soundsMode
@@ -126,11 +120,11 @@ fun SoundsScreen(state: AppState, pickFor: Int?) {
         )
         if (mode == "jar" && cab == "mine" && q.isBlank()) {
             Wrap(Modifier.padding(start = 12.dp, end = 12.dp, top = 12.dp)) {
-                Btn("Import sounds", { importer.launch(arrayOf("audio/*")) }, small = true, color = C.Teal, tag = "import")
+                Btn("Import sounds", { importer(arrayOf("audio/*")) }, small = true, color = C.Teal, tag = "import")
                 Btn(if (state.micOn) "■ Stop recording" else "● Sample the mic", {
                     if (state.micOn) state.toggleMic()
-                    else if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) state.toggleMic()
-                    else micPerm.launch(Manifest.permission.RECORD_AUDIO)
+                    else if (micPerm.granted) state.toggleMic()
+                    else micPerm.ask()
                 }, small = true, on = state.micOn, onColor = C.Riot, tag = "mic")
             }
         }
@@ -212,8 +206,8 @@ fun SoundRow(state: AppState, s: Library.Sound, target: Int, picking: Boolean) {
                 val info = listOfNotNull(
                     if (onPad >= 0) "on pad ${onPad + 1}" else null,
                     // a loop says its tempo and length; a mic take the tempo it was recorded at; and the key when it is sure
-                    if (s.bpm > 0) "${s.beats} beats at ${Math.round(s.bpm)} bpm"
-                    else (if (s.cab == "mine") state.bench.item(s.key)?.bpm ?: 0.0 else 0.0).takeIf { it > 0 }?.let { "made at ${Math.round(it)} bpm" },
+                    if (s.bpm > 0) "${s.beats} beats at ${jround(s.bpm)} bpm"
+                    else (if (s.cab == "mine") state.bench.item(s.key)?.bpm ?: 0.0 else 0.0).takeIf { it > 0 }?.let { "made at ${jround(it)} bpm" },
                     com.tideclock.messmachine.engine.KeyFinder.both(s.mkey).takeIf { it.isNotEmpty() },
                     state.lib.cab(s.cab).name.takeIf { it.isNotEmpty() },
                     if (s.cab == "mine") state.vaultLine(s.key) else null,

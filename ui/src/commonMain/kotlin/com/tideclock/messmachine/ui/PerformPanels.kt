@@ -305,7 +305,7 @@ fun PianoKeyboard(state: AppState, pad: Int, keysHeight: Dp = 132.dp, filter: Bo
         }
         GlideRow(state, pad)
         if (showSet) PadianoSettings(state)
-        if (slots) ChordSlots(state, pad, col, Math.floorDiv(base, 12))
+        if (slots) ChordSlots(state, pad, col, base.floorDiv(12))
         else if (squares) PadianoSquares(state, pad, col, base)
         else PadianoKeys(state, pad, col, if (keysHeight != 132.dp) keysHeight else listOf(96.dp, 132.dp, 176.dp, 236.dp, 300.dp)[state.padianoSize])
         if (showXy) PadXy(state, pad, Modifier.padding(top = 8.dp))

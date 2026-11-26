@@ -1,7 +1,5 @@
 package com.tideclock.messmachine.ui
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
@@ -51,7 +49,7 @@ fun FilesScreen(state: AppState) {
     var sureNew by remember { mutableStateOf(false) }
     var sureDel by remember { mutableStateOf<String?>(null) }
     var sureOff by remember { mutableStateOf<String?>(null) }
-    val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) state.importUri(uri.toString()) }
+    val pick = rememberPicker(false) { uris -> state.importUri(uris.first()) }
     ScrollPane(hPad = 14.dp, vPad = 0.dp) {
         // accounts: only on a build with a server (state.store is null otherwise, and the sheet is as it was)
         if (state.store != null) AccountRow(state)
@@ -101,7 +99,7 @@ fun FilesScreen(state: AppState) {
                 T("SITE AND PHONE", size = 12.sp, color = C.Yellow, spacing = .1.em)
                 androidx.compose.foundation.layout.Spacer(Modifier.size(1.dp, 6.dp))
                 Wrap(Modifier) {
-                    Btn("Open a mess file", { pick.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }, small = true, color = C.Teal)
+                    Btn("Open a mess file", { pick(arrayOf("application/json", "text/plain", "application/octet-stream")) }, small = true, color = C.Teal)
                     Btn("Share this mess", { state.shareMess() }, small = true)
                 }
             }
@@ -173,7 +171,7 @@ fun SettingsScreen(state: AppState) {
     // Nov 23 (Tyler: "tapping Click isn't working most of the time"): the live settings are not Compose state; reading
     // liveV makes this redraw when one changes (Click toggled, but its key only showed it on the next redraw)
     @Suppress("UNUSED_VARIABLE") val lvBump = state.liveV
-    val wide = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 560
+    val wide = screenWidthDp() >= 560
     ScrollPane(hPad = 14.dp, vPad = 0.dp) {
         // update from inside the app (Tyler, Nov 17), as one line
         Row(Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -272,15 +270,13 @@ fun LookSettings(state: AppState) {
 
 @Composable
 fun PlaySettings(state: AppState) {
-    val ctx = androidx.compose.ui.platform.LocalContext.current
     // Android 13 and up ask before an app shows notifications; without it the music still plays, the Stop notification just stays hidden
-    val notif = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
+    val notif = rememberAsk(Perm.NOTIFICATIONS) { }
     SetGroup("PLAYING") {
         SwitchLine("Keep playing when I leave", state.bgPlay, {
             val on = !state.bgPlay
             state.switchBgPlay(on)
-            if (on && android.os.Build.VERSION.SDK_INT >= 33 && androidx.core.content.ContextCompat.checkSelfPermission(ctx, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED)
-                notif.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            if (on && !notif.granted) notif.ask()
         }, "set-bgplay")
         SwitchLine("Pad buzz", state.buzz, { state.switchBuzz(!state.buzz) }, "set-buzz")
         // Nov 18: the finer time grid lets live hits record exactly where they were played

@@ -90,6 +90,13 @@ test green before the next starts.
    All 128 unit tests passed here before the push.
 6. **Screens, a few files per step:** Widgets and Icons first, then the pages (Pads, Synth, Steps, Roll, Song, Perform,
    Sounds), then the sheets and overlays (Doctor, Settings, Files, Share, Cloud, Notes, FAQ, Tutor).
+   Done Nov 26 in one push: the screens call each other too much to move in parts. Every file in the app's `ui/`
+   folder is in `ui/src/commonMain`. What only a phone can do goes through `ui/PlatformUi.kt` (expect/actual):
+   permission asks, file pickers, speech to text, the tap buzz, Back, the window (bar icons, frame rate, pinning), the
+   screen height, test tags as ids, and a note's date. The Android versions (`ui/src/androidMain`) are the calls the
+   screens made before; the iPhone versions (`ui/src/iosMain`) answer through `IosHooks`, which the iOS app sets.
+   Opening a web page uses Compose's own `LocalUriHandler`. All 128 unit tests passed here; locally every screen
+   matched the reference except the ones that show the build number.
 7. **iOS entry point** (`MainViewController`) and the `MessMachine` framework; the iOS chat hosts it.
 8. **Cloud:** Ktor in common if it builds for iOS and Android with the same behaviour, otherwise behind `Cloud`.
 

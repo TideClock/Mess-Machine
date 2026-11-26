@@ -31,7 +31,7 @@ import com.tideclock.messmachine.cloud.CloudStore
  */
 
 /** A person's colour: made by the server from their id, eight of them. */
-fun personColor(colour: Int): Color = when (Math.floorMod(colour, 8)) {
+fun personColor(colour: Int): Color = when (colour.mod(8)) {
     0 -> Color(0xFFFF5C8A); 1 -> Color(0xFF35C9B5); 2 -> Color(0xFFFFD23F); 3 -> Color(0xFF7FB2E0)
     4 -> Color(0xFFB58CFF); 5 -> Color(0xFF3DDC84); 6 -> Color(0xFFFF9F45); else -> Color(0xFFE8E0D0)
 }

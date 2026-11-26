@@ -1,5 +1,7 @@
 package com.tideclock.messmachine.ui
 
+import com.tideclock.messmachine.platform.fmt
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -291,11 +293,11 @@ fun XyEditor(state: AppState, pad: Int) {
                 }, modifier = Modifier.tagged("xy-dir-$i"))
             }
             // min and max (Nov 18): squeeze the whole square into the part of the range you perform with
-            if (d.target >= 0) SliderRow("At the start", d.from, t.lo..t.hi, { v -> "%.2f ${t.unit}".format(v).trim() }, { v -> // format-ok: units are letters only (Xy.kt)
+            if (d.target >= 0) SliderRow("At the start", d.from, t.lo..t.hi, { v -> "${fmt(v.toDouble(), 2)} ${t.unit}".trim() }, { v -> // format-ok: units are letters only (Xy.kt)
                 val nd = x.dirs.toMutableList(); nd[i] = d.copy(from = v)
                 state.setXy(pad, x.copy(dirs = nd, name = "Custom"))
             }, {}, accent = C.Teal)
-            if (d.target >= 0) SliderRow("At the edge", d.to, t.lo..t.hi, { v -> "%.2f ${t.unit}".format(v).trim() }, { v -> // format-ok: units are letters only (Xy.kt)
+            if (d.target >= 0) SliderRow("At the edge", d.to, t.lo..t.hi, { v -> "${fmt(v.toDouble(), 2)} ${t.unit}".trim() }, { v -> // format-ok: units are letters only (Xy.kt)
                 val nd = x.dirs.toMutableList(); nd[i] = d.copy(to = v)
                 state.setXy(pad, x.copy(dirs = nd, name = "Custom"))
             }, {}, accent = C.Teal)

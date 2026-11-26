@@ -1,5 +1,7 @@
 package com.tideclock.messmachine.ui
 
+import com.tideclock.messmachine.platform.jround
+
 import com.tideclock.messmachine.ui.res.*
 
 import androidx.compose.foundation.Canvas
@@ -16,7 +18,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.res.imageResource
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -49,7 +50,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun FaqGuy(says: Any?, size: androidx.compose.ui.unit.Dp = 48.dp, modifier: Modifier = Modifier) {
     val dens = androidx.compose.ui.platform.LocalDensity.current
-    val k = maxOf(1, Math.round(with(dens) { size.toPx() } / 40f))
+    val k = maxOf(1, jround(with(dens) { size.toPx() } / 40f))
     val side = with(dens) { (40f * k).toDp() }
     val hop = remember { androidx.compose.animation.core.Animatable(0f) }
     LaunchedEffect(says) {

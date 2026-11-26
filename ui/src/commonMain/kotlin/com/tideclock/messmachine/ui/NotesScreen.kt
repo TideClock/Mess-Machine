@@ -1,11 +1,7 @@
 package com.tideclock.messmachine.ui
 
-import android.content.ActivityNotFoundException
-import android.app.Activity
-import android.content.Intent
-import android.speech.RecognizerIntent
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import com.tideclock.messmachine.platform.fmt
+
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -36,9 +32,6 @@ import com.tideclock.messmachine.AppState
 import com.tideclock.messmachine.NOTE_CATS
 import com.tideclock.messmachine.catLabel
 import com.tideclock.messmachine.engine.Json
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 private val catColor get() = mapOf("bug" to C.Riot, "tuning" to C.Yellow, "feature" to C.Teal, "question" to C.Purple, "discuss" to C.Pink, "wishlist" to C.Lime)
 
@@ -48,11 +41,8 @@ fun NotesScreen(state: AppState) {
     var topic by remember { mutableStateOf("") }
     var text by remember { mutableStateOf(if (state.crash != null) "The app crashed. I was " else "") }
     var sureDel by remember { mutableStateOf<String?>(null) }
-    val speak = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
-        if (r.resultCode == Activity.RESULT_OK) {
-            val said = r.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
-            if (!said.isNullOrBlank()) text = if (text.isBlank()) said else text.trimEnd() + " " + said
-        }
+    val speak = rememberSpeechAsk("Say your note", { said -> text = if (text.isBlank()) said else text.trimEnd() + " " + said }) {
+        state.say("No speech app on this phone. The keyboard's mic key works too.")
     }
     val fieldColors = OutlinedTextFieldDefaults.colors(focusedBorderColor = C.Pink, unfocusedBorderColor = C.Card2, cursorColor = C.Pink)
     ScrollPane(hPad = 14.dp, vPad = 0.dp) {
@@ -99,10 +89,7 @@ fun NotesScreen(state: AppState) {
                 )
                 Wrap(Modifier.padding(top = 10.dp)) {
                     Btn("🎤 Speak", {
-                        val i = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
-                            .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                            .putExtra(RecognizerIntent.EXTRA_PROMPT, "Say your note")
-                        try { speak.launch(i) } catch (e: ActivityNotFoundException) { state.say("No speech app on this phone. The keyboard's mic key works too.") }
+                        speak()
                     }, small = true, color = C.Teal)
                     Btn("Send to Claude", { state.saveNote(cat, topic, text, true); text = ""; topic = "" }, small = true, color = C.Pink)
                     Btn("Keep on phone", { state.saveNote(cat, topic, text, false); text = ""; topic = "" }, small = true)
@@ -127,13 +114,12 @@ fun NotesScreen(state: AppState) {
         }
         if (state.notes.lastCheck.isNotEmpty()) Note(state.notes.lastCheck, modifier = Modifier.padding(bottom = 8.dp))
         if (state.notes.notes.isEmpty()) T("No notes yet.", size = 13.sp, color = C.Dim, weight = FontWeight.Medium)
-        val fmt = remember { SimpleDateFormat("MMM d, h:mm a", Locale.US) }
         for (n in state.notes.notes) {
             Card(Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
                 Column {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         T(catLabel(n.cat) + if (n.cat == "discuss" && n.topic.isNotEmpty()) ": ${n.topic}" else "", size = 12.sp, color = catColor[n.cat] ?: C.Yellow)
-                        Note(fmt.format(Date(n.at)))
+                        Note(shortDate(n.at))
                     }
                     T(n.text.ifEmpty { "(crash report)" }, size = 14.sp, weight = FontWeight.Medium, modifier = Modifier.padding(vertical = 4.dp))
                     T(
@@ -192,7 +178,7 @@ fun SpeedCard(state: AppState) {
     LaunchedEffect(Unit) {
         do {
             text = "Screen: ${state.uiPerf}\nSound engine: ${state.audio.loadText()}\nAudio buffer: ${state.audio.bufferFrames} frames at ${state.rate} Hz, dropouts ${state.audio.underruns}" +
-                (if (state.audio.outputMs >= 0) "\nOutput: %.0f ms by Android's clock".format(state.audio.outputMs) else "")
+                (if (state.audio.outputMs >= 0) "\nOutput: ${fmt(state.audio.outputMs, 0)} ms by Android's clock" else "")
             if (!UiFlags.testing) delay(1000)
         } while (!UiFlags.testing)
     }

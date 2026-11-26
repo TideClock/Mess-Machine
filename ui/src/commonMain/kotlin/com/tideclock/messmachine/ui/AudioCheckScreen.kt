@@ -1,9 +1,7 @@
 package com.tideclock.messmachine.ui
 
-import android.Manifest
-import android.content.pm.PackageManager
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import com.tideclock.messmachine.platform.fmt
+
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
@@ -21,13 +19,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import com.tideclock.messmachine.AppState
 import com.tideclock.messmachine.Overlay
 import kotlinx.coroutines.delay
@@ -44,8 +40,8 @@ fun AudioCheckScreen(state: AppState) {
     LaunchedEffect(Unit) {
         do {
             val a = state.audio
-            live = "Buffer: ${a.bufferFrames} frames, %.1f ms at ${state.rate} Hz\n".format(a.ms(a.bufferFrames)) + // format-ok: numbers only
-                "Output (Android's clock): " + (if (a.outputMs >= 0) "%.0f ms".format(a.outputMs) else "measuring") + "\n" +
+            live = "Buffer: ${a.bufferFrames} frames, ${fmt(a.ms(a.bufferFrames), 1)} ms at ${state.rate} Hz\n" + // format-ok: numbers only
+                "Output (Android's clock): " + (if (a.outputMs >= 0) "${fmt(a.outputMs, 0)} ms" else "measuring") + "\n" +
                 "Sound engine: ${a.loadText()}\n" +
                 "Dropouts: ${a.underruns}, buffer grown ${a.grown}, given back ${a.shrunk}\n" +
                 "Steady CPU: ${a.cpuHint}\n" +
@@ -56,8 +52,7 @@ fun AudioCheckScreen(state: AppState) {
             if (!UiFlags.testing) delay(500)
         } while (!UiFlags.testing)
     }
-    val ctx = LocalContext.current
-    val mic = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+    val mic = rememberAsk(Perm.MIC) { ok ->
         if (ok) state.runSpeakerTest() else state.say("The speaker test needs the mic. You can allow it in the phone's settings for Mess Machine.")
     }
     ScrollPane(hPad = 14.dp, vPad = 0.dp) {
@@ -84,7 +79,7 @@ fun AudioCheckScreen(state: AppState) {
                     contentAlignment = Alignment.Center,
                 ) { T(if (taps == 0) "TAP HERE" else "$taps", size = 20.sp, color = C.Cream) }
                 val t = state.touchMs()
-                if (taps > 0) T("Touch to app: ${if (t >= 0) "$t ms" else "no taps yet"}. Last click waited %.1f ms for the next block.".format(state.engine.lastHitWaitNanos / 1e6),
+                if (taps > 0) T("Touch to app: ${if (t >= 0) "$t ms" else "no taps yet"}. Last click waited ${fmt(state.engine.lastHitWaitNanos / 1e6, 1)} ms for the next block.",
                     size = 13.sp, weight = FontWeight.Medium, modifier = Modifier.padding(top = 8.dp))
             }
         }
@@ -92,8 +87,8 @@ fun AudioCheckScreen(state: AppState) {
             Column {
                 T("2. SPEAKER TEST", size = 12.sp, color = C.Yellow, spacing = .1.em)
                 Btn("Run the speaker test", {
-                    if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) state.runSpeakerTest()
-                    else mic.launch(Manifest.permission.RECORD_AUDIO)
+                    if (mic.granted) state.runSpeakerTest()
+                    else mic.ask()
                 }, small = true, tag = "check-speaker", enabled = state.speakerNote != "Listening...")
                 if (state.speakerNote.isNotEmpty()) T(state.speakerNote, size = 13.sp, weight = FontWeight.Medium, modifier = Modifier.padding(top = 8.dp))
                 val t = state.touchMs()

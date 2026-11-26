@@ -1,5 +1,7 @@
 package com.tideclock.messmachine.ui
 
+import kotlin.math.pow
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -382,7 +384,7 @@ fun LfoStrip(state: AppState, pad: Int, col: Color) {
         val ft = com.tideclock.messmachine.engine.Engine.T_FILTER
         val rt = com.tideclock.messmachine.engine.Engine.T_RES
         if (o.lfoTarget == ft || o.lfoTarget == rt) {
-            SliderRow("Cutoff", 1f - (state.fxSend["$pad:$ft"] ?: 0f), 0f..1f, { "${(90 * Math.pow(20000.0 / 90, it.toDouble())).toInt()} Hz" }, { v -> state.fxSendTo(pad, ft, 1f - v, true) }, { state.fxSendTo(pad, ft, 1f - (state.fxSend["$pad:$ft"] ?: 0f), false) }, accent = C.Teal)
+            SliderRow("Cutoff", 1f - (state.fxSend["$pad:$ft"] ?: 0f), 0f..1f, { "${(90 * (20000.0 / 90).pow(it.toDouble())).toInt()} Hz" }, { v -> state.fxSendTo(pad, ft, 1f - v, true) }, { state.fxSendTo(pad, ft, 1f - (state.fxSend["$pad:$ft"] ?: 0f), false) }, accent = C.Teal)
             SliderRow("Res", state.fxSend["$pad:$rt"] ?: 0f, 0f..1f, { "${(it * 100).toInt()}%" }, { v -> state.fxSendTo(pad, rt, v, true) }, { state.fxSendTo(pad, rt, state.fxSend["$pad:$rt"] ?: 0f, false) }, accent = C.Pink)
         }
     }

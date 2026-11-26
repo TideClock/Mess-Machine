@@ -1,5 +1,11 @@
 package com.tideclock.messmachine.ui
 
+import kotlin.math.pow
+
+import com.tideclock.messmachine.platform.jround
+
+import com.tideclock.messmachine.platform.fmt
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -58,7 +64,7 @@ fun DoctorScreen(state: AppState, key: String) {
     // the sample's settings in five tabs under a waveform that always stays on screen; Play first (how it plays when held and pitched)
     var dtab by remember { mutableStateOf(state.doctorTab ?: "play").also { state.doctorTab = null } }
     LaunchedEffect(key) {
-        if (smp == null) smp = withContext(Dispatchers.IO) { try { state.lib.load(key) } catch (_: Exception) { null } }
+        if (smp == null) smp = withContext(Dispatchers.Default) { try { state.lib.load(key) } catch (_: Exception) { null } }
     }
     DisposableEffect(key) { onDispose { state.engine.stopPreviews() } }
     val wave = remember(smp, v0, v1) { smp?.overview(v0, v1, 260) }
@@ -87,11 +93,11 @@ fun DoctorScreen(state: AppState, key: String) {
         val info = state.lib.sound(key)
         val madeAt = state.bench.item(key)?.bpm ?: 0.0
         val facts = listOfNotNull(
-            if (info != null && info.bpm > 0) "${info.beats} beats at ${Math.round(info.bpm)} bpm" else if (madeAt > 0) "made at ${Math.round(madeAt)} bpm" else null,
+            if (info != null && info.bpm > 0) "${info.beats} beats at ${jround(info.bpm)} bpm" else if (madeAt > 0) "made at ${jround(madeAt)} bpm" else null,
             com.tideclock.messmachine.engine.KeyFinder.both(info?.mkey).takeIf { it.isNotEmpty() },
         ).joinToString("") { " · $it" }
         T(
-            "%.2f s · plays %.2f s".format(seconds, seconds * (e.en - e.st) / (if (e.pitch == "grain") 1.0 else Math.pow(2.0, (e.tune + e.fine / 100) / 12))) + facts,
+            "${fmt(seconds, 2)} s · plays ${fmt(seconds * (e.en - e.st) / (if (e.pitch == "grain") 1.0 else 2.0.pow((e.tune + e.fine / 100) / 12)), 2)} s" + facts,
             size = 12.sp, color = C.Dim, weight = FontWeight.Medium, modifier = Modifier.padding(bottom = 8.dp),
         )
         var dragging by remember { mutableStateOf(0) }
@@ -172,11 +178,11 @@ fun DoctorScreen(state: AppState, key: String) {
                 "auto" -> SliderRow("Sensitivity", sens, 0f..1f, { "${(it * 100).roundToInt()}" }, { sens = it }, { refreshCuts() }, accent = C.Teal)
                 "tap" -> Help("Tap the waveform to add a cut; tap a cut to take it away. Zoom in for fine work.", modifier = Modifier.padding(top = 8.dp))
                 else -> Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Btn("Play", { cuts = emptyList(); looping = false; state.engine.stopPreviews(); state.preview(key); lazyT0 = System.nanoTime() }, small = true, color = C.Teal)
+                    Btn("Play", { cuts = emptyList(); looping = false; state.engine.stopPreviews(); state.preview(key); lazyT0 = state.nanoTime() }, small = true, color = C.Teal)
                     Btn("Chop here", {
                         if (lazyT0 == 0L) state.say("Tap Play first, then Chop here at each spot you want a cut.")
                         else {
-                            val el = (System.nanoTime() - lazyT0) / 1e9 * Math.pow(2.0, (e.tune + e.fine / 100) / 12) / maxOf(.001, seconds)
+                            val el = (state.nanoTime() - lazyT0) / 1e9 * 2.0.pow((e.tune + e.fine / 100) / 12) / maxOf(.001, seconds)
                             val f = e.st + el
                             if (f > e.st + .002 && f < e.en - .002) cuts = (cuts + f).sorted()
                         }
@@ -286,7 +292,7 @@ fun DoctorScreen(state: AppState, key: String) {
         }
         fxRow("Wobble", "dfx-wob", e.wob, { upd(true) { wob = if (wob > 0) 0.0 else .5 } }) {
             SliderRow("Depth", e.wob.toFloat(), 0f..1f, pct, { v -> upd(false) { wob = v.toDouble() } }, { upd(true) {} }, accent = C.Pink)
-            SliderRow("Speed", e.wobRate.toFloat(), 0f..1f, { "%.1f Hz".format(.3f + it * 5.7f) }, { v -> upd(false) { wobRate = v.toDouble() } }, { upd(true) {} }, accent = C.Pink)
+            SliderRow("Speed", e.wobRate.toFloat(), 0f..1f, { "${fmt((.3f + it * 5.7f).toDouble(), 1)} Hz" }, { v -> upd(false) { wobRate = v.toDouble() } }, { upd(true) {} }, accent = C.Pink)
         }
         }
         if (dtab == "tools") {

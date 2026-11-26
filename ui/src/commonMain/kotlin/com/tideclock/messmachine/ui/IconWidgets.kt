@@ -2,7 +2,6 @@ package com.tideclock.messmachine.ui
 
 import com.tideclock.messmachine.ui.res.*
 
-import com.tideclock.messmachine.R
 import androidx.compose.foundation.background
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp

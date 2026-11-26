@@ -157,6 +157,10 @@ class AppState(
 ) {
     // CMP step 4: the phone itself (assets, speaker, clock, share sheet, mic, screen, network, clipboard)
     private val device: com.tideclock.messmachine.platform.Device = plat.device
+    /** the timing clock, for screens that time things (the Sample sheet's lazy cuts) */
+    fun nanoTime(): Long = device.nanoTime()
+    /** the wall clock, for screens that stamp things */
+    fun nowMillis(): Long = device.nowMillis()
     init { File.store = plat.files }
     val lib = Library({ path -> if (path.startsWith("/")) File(path).readBytes() else device.readAsset(path) }, "sounds/")
     val rate: Int = device.outputRate ?: 48000
