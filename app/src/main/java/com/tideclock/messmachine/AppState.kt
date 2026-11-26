@@ -166,7 +166,7 @@ class AppState(
     val rate: Int = device.outputRate ?: 48000
     private val burst: Int = device.outputBurst ?: 256
     val engine = Engine(rate)
-    val audio = AudioOut(engine, rate, burst, app)
+    val audio: com.tideclock.messmachine.platform.AudioOut = AndroidAudioOut(engine, rate, burst, app)
     val live = Engine.Live()
     // CMP step 4: the screen's thread and the one background thread, through common interfaces
     private val main: com.tideclock.messmachine.platform.MainThread = AndroidMainThread()

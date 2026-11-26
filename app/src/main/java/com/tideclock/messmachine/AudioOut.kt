@@ -17,49 +17,49 @@ import com.tideclock.messmachine.engine.Library
  * quiet minute (MM-2). It also measures itself for the Audio check (MM-1, MM-3) and asks Android to
  * keep the audio thread's CPU fast enough for each block (MM-6).
  */
-class AudioOut(private val engine: Engine, private val rate: Int, framesPerBurst: Int, private val ctx: Context? = null) {
+class AndroidAudioOut(private val engine: Engine, private val rate: Int, framesPerBurst: Int, private val ctx: Context? = null) : com.tideclock.messmachine.platform.AudioOut {
     private val burst = framesPerBurst.coerceIn(64, 1024)
     @Volatile private var running = false
     private var thread: Thread? = null
 
-    @Volatile var bufferFrames = 0
+    @Volatile override var bufferFrames = 0
         private set
-    @Volatile var underruns = 0
+    @Volatile override var underruns = 0
         private set
     @Volatile private var loadAvg = 0.0
     @Volatile private var loadPeak = 0.0
 
     /** Time from a block being written to it leaving the speaker, from Android's own clock (MM-1). -1 until known. */
-    @Volatile var outputMs = -1.0
+    @Volatile override var outputMs = -1.0
         private set
     /** Nov 21 (lag): did Android give this track its fast (low latency) path, or put it through the slower mixer. */
-    @Volatile var fastPath = "not known yet"
+    @Volatile override var fastPath = "not known yet"
         private set
     /** Steady CPU (MM-6): "on", "not on this phone" or "off" before audio starts. */
-    @Volatile var cpuHint = "off"
+    @Volatile override var cpuHint = "off"
         private set
     /** Buffer changes this session, for the notes: grown and given back. */
-    @Volatile var grown = 0
+    @Volatile override var grown = 0
     /** The most voices sounding at any growth this session: says whether a pile-up caused it. */
-    @Volatile var growVoices = 0
+    @Volatile override var growVoices = 0
         private set
-    @Volatile var shrunk = 0
+    @Volatile override var shrunk = 0
         private set
     /**
      * Nov 21 (L5): how many bursts the buffer may grow past where it started. Tight (3, about 12 ms more) keeps lag low and
      * lets a rare click through; Steady (8) rides out a busy phone at the cost of lag.
      */
-    @Volatile var growCap = 3
+    @Volatile override var growCap = 3
     /** Nov 21 (L7): when the last clicks happened, for "clicks this minute" on the BPM readout. */
     private val clickAt = LongArray(64)
     @Volatile private var clickN = 0
-    fun clicksLastMinute(): Int {
+    override fun clicksLastMinute(): Int {
         val now = System.nanoTime(); var c = 0
         for (k in 0 until minOf(clickN, 64)) if (now - clickAt[k] < 60_000_000_000L) c++
         return c
     }
     /** Set by the screen when a frame took over 50 ms, so a long audio block can say the screen was busy too. */
-    @Volatile var lastSlowFrameNanos = 0L
+    @Volatile override var lastSlowFrameNanos = 0L
 
     // MM-3: the last 16 blocks that took over 150% of their time, kept as plain numbers (nothing allocated on the audio thread)
     private val lbAt = LongArray(16)
@@ -70,15 +70,15 @@ class AudioOut(private val engine: Engine, private val rate: Int, framesPerBurst
     private var startedNanos = 0L
 
     /** Share of each buffer's time the engine spends making sound. Over 100% means dropouts. */
-    fun loadText(): String = "%.0f%% average, %.0f%% peak".format(loadAvg * 100, loadPeak * 100)
+    override fun loadText(): String = "%.0f%% average, %.0f%% peak".format(loadAvg * 100, loadPeak * 100)
 
-    fun ms(frames: Int): Double = frames * 1000.0 / rate
+    override fun ms(frames: Int): Double = frames * 1000.0 / rate
 
     /** The running average share of each block's time spent making sound (1.0 = all of it). */
-    fun load(): Double = loadAvg
+    override fun load(): Double = loadAvg
 
     /** One line per recent long block: when, how long, voices playing, and what else was going on. */
-    fun longBlocksText(max: Int = 6): String {
+    override fun longBlocksText(max: Int): String {
         val n = lbCount
         if (n == 0) return "none"
         val now = System.nanoTime()
@@ -98,25 +98,25 @@ class AudioOut(private val engine: Engine, private val rate: Int, framesPerBurst
         return out.toString()
     }
 
-    fun start() {
+    override fun start() {
         if (running) return
         running = true
         thread = Thread({ loop() }, "mess-audio").also { it.start() }
     }
 
     /** Start again (after switching the AAudio setting), only if it was running. */
-    fun restart() { if (running) { stop(); start() } }
+    override fun restart() { if (running) { stop(); start() } }
 
-    fun stop() {
+    override fun stop() {
         running = false
         thread?.join(600)
         thread = null
     }
 
     /** Nov 21 (L4): go out through AAudio (Android's fast path) when the phone allows it; off uses the older AudioTrack. */
-    @Volatile var useAAudio = true
+    @Volatile override var useAAudio = true
     /** Which way the sound leaves, for the notes and Settings: "AAudio (exclusive, low latency)", "AudioTrack", ... */
-    @Volatile var path = "not started"
+    @Volatile override var path = "not started"
         private set
 
     private fun loop() {
