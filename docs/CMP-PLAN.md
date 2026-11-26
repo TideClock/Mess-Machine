@@ -50,9 +50,13 @@ test green before the next starts.
    in a commit message accepts a change and resets the reference), 1b the module. Compose Multiplatform 1.7.0 asks
    for Android Compose 1.7.1; `app/build.gradle.kts` holds every Compose library at the tested 1.7.0. Moved files
    keep their package (`com.tideclock.messmachine.ui`), so a move changes folders, not code.
-2. **Resources.** Fonts, icons and art into `shared/composeResources`; `R.drawable` and `R.font` uses go through one
+2. **Resources.** Fonts, icons and art into `ui/composeResources`; `R.drawable` and `R.font` uses go through one
    lookup. Screenshots must match pixel for pixel.
+   Done Nov 25 (run 203): all 482 screens identical. Fonts are `@Composable` getters now, so a Canvas draw reads its
+   font in the composable around it. Robolectric starts no content providers, so `TestMessApp` starts Compose
+   Multiplatform's resources provider for the tests.
 3. **Pure logic.** Faq, Tutorials, BarPlan, Icons' tables, the skins and colours, Theory helpers used by the UI.
+   3a (Nov 25): Faq, BarPlan, UiLook and the Icons table. Tutorials reads AppState, so it waits for step 5.
 4. **The Platform interfaces** in common, the Android implementations wrapping today's classes. AppState still in app/,
    now calling the interfaces instead of Android directly.
 5. **AppState to commonMain.** `java.io.File`, `Handler`, executors and `SharedPreferences` are gone from it by then.
