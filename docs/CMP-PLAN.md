@@ -75,7 +75,11 @@ test green before the next starts.
    (`importUri`, `importSounds`, `Bench.decode`), and `Device` reads them (`readUri`, `displayName`).
    4h: the Java-only arithmetic and text in AppState: `jround` (Math.round), `fmt` ("%.Nf".format; JavaMathTest checks
    both against Java on 20,000 numbers), `mod`, `floorDiv`, kotlin.math, and the clocks through `Device`. One visible
-   difference: decimals always show a dot, where Java used the phone's language (a comma on a German phone).
+   difference: decimals always show a dot, where Java used the phone's language (a comma on a German phone). Run 217 green.
+   4i: the rest of the phone through `Device` (build number and commit, the phone's description, the speaker check,
+   zips, a thread, the low-priority baking worker, the account's sign-in store and cache), and one `Platform` that
+   bundles them all. AppState now takes a Platform and imports nothing from Android or Java; `AppState(context, ...)`
+   is a function in AndroidPlatform.kt, so the activity and the tests did not change.
 4. **The Platform interfaces** in common, the Android implementations wrapping today's classes. AppState still in app/,
    now calling the interfaces instead of Android directly.
 5. **AppState to commonMain.** `java.io.File`, `Handler`, executors and `SharedPreferences` are gone from it by then.

@@ -37,3 +37,6 @@ interface NoteBook {
     fun openBundle(waiting: List<MNote>, details: String): Int
     fun checkReplies(done: (String) -> Unit)
 }
+
+/** A new note's id: the time in base 36 and three random digits (as NotesBook.newId always made them). */
+fun newNoteId(nowMillis: Long): String = nowMillis.toString(36) + (100..999).random()

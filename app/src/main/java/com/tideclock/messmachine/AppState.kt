@@ -1,11 +1,5 @@
 package com.tideclock.messmachine
 
-import android.content.Context
-import android.content.Intent
-import android.media.AudioManager
-import android.net.Uri
-import android.os.Handler
-import android.os.Looper
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -13,7 +7,6 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.core.content.FileProvider
 import com.tideclock.messmachine.engine.Bake
 import com.tideclock.messmachine.engine.Engine
 import com.tideclock.messmachine.engine.Json
@@ -27,8 +20,6 @@ import com.tideclock.messmachine.engine.Wav
 import com.tideclock.messmachine.platform.MFile as File
 import com.tideclock.messmachine.platform.fmt
 import com.tideclock.messmachine.platform.jround
-import java.io.FileOutputStream
-import java.util.concurrent.Executors
 
 enum class Tab(val label: String) { Pads("Pads"), Console("Console"), Synth("Synth"), Steps("Steps"), Roll("Roll"), Song("Song"), Perform("Perform"), Sounds("Sounds") }
 
@@ -155,35 +146,36 @@ data class MessFile(
  * rebuilds what the engine plays, records an undo step and autosaves.
  */
 class AppState(
-    private val app: Context,
+    /** the phone (CMP step 4): Android passes AndroidPlatform, made by AppState(context) in AndroidPlatform.kt */
+    private val plat: com.tideclock.messmachine.platform.Platform,
     /** Accounts (docs/ACCOUNTS-API.md s5): the server, or null for a build without one. Tests pass a FakeCloud phone. */
     cloudApi: com.tideclock.messmachine.cloud.CloudApi? = null,
     /** The store's clock; tests pass FakeCloud's, so the phone and the pretend server move together. */
     cloudClock: com.tideclock.messmachine.cloud.Clock? = null,
 ) {
     // CMP step 4: the phone itself (assets, speaker, clock, share sheet, mic, screen, network, clipboard)
-    private val device: com.tideclock.messmachine.platform.Device = AndroidDevice(app)
-    init { File.store = JavaFileStore }
+    private val device: com.tideclock.messmachine.platform.Device = plat.device
+    init { File.store = plat.files }
     val lib = Library({ path -> if (path.startsWith("/")) File(path).readBytes() else device.readAsset(path) }, "sounds/")
     val rate: Int = device.outputRate ?: 48000
     private val burst: Int = device.outputBurst ?: 256
     val engine = Engine(rate)
-    val audio: com.tideclock.messmachine.platform.AudioOut = AndroidAudioOut(engine, rate, burst, app)
+    val audio: com.tideclock.messmachine.platform.AudioOut = plat.audioOut(engine, rate, burst)
     val live = Engine.Live()
     // CMP step 4: the screen's thread and the one background thread, through common interfaces
-    private val main: com.tideclock.messmachine.platform.MainThread = AndroidMainThread()
-    private val worker: com.tideclock.messmachine.platform.Worker = AndroidWorker()
+    private val main: com.tideclock.messmachine.platform.MainThread = plat.main
+    private val worker: com.tideclock.messmachine.platform.Worker = plat.worker
     // CMP step 4: through the common Settings interface; on Android it is the same SharedPreferences file
-    private val prefs: com.tideclock.messmachine.platform.Settings = AndroidSettings(app.getSharedPreferences("mess", Context.MODE_PRIVATE))
+    private val prefs: com.tideclock.messmachine.platform.Settings = plat.settings
     // the metronome is on out of the box (Tyler, Nov 22) and remembered
     init { live.click = prefs.getBoolean("click", true) }
     // CMP step 4: files go through MFile (imported as File); Android's store is java.io.File underneath (set above)
-    private val filesDir = File(app.filesDir.path)
-    private val cacheDir = File(app.cacheDir.path)
+    private val filesDir = File(plat.filesDir)
+    private val cacheDir = File(plat.cacheDir)
     private val messDir = File(filesDir, "messes").also { it.mkdirs() }
     private val currentFile = File(filesDir, "current.json")
     /** Built before the mess loads, so pads that use your own sounds find them. */
-    val bench: Bench = Workbench(app, lib)
+    val bench: Bench = plat.bench(lib)
 
     var project: Project = loadCurrent()
         private set
@@ -204,7 +196,7 @@ class AppState(
     var liveV by mutableIntStateOf(0)
         private set
 
-    val notes: NoteBook = NotesBook(app)
+    val notes: NoteBook = plat.notes()
     var favs by mutableStateOf(prefs.getStringSet("favs", emptySet())!!.toSet())
         private set
     /** Piano keyboards dropped below the pads, by pad number, oldest first. Up to four. */
@@ -501,7 +493,7 @@ class AppState(
 
     /* ---------------- packs (SE-17) ---------------- */
 
-    val packs: Packs = AndroidPacks(app.filesDir, lib)
+    val packs: Packs = plat.packs(lib)
     /** What the packs release offers, once fetched; null until asked. */
     var packOffers by mutableStateOf<List<Packs.Offer>?>(null)
     var packNote by mutableStateOf("")
@@ -546,8 +538,8 @@ class AppState(
         val newInstall = seen == 0 && !currentFile.exists() && !File(currentFile.path + ".bak").exists()
         if (crash != null) overlay = Overlay.Notes
         else if (newInstall) overlay = Overlay.Start
-        else if (guideOn && seen != BuildConfig.VERSION_CODE && guide.isNotEmpty()) overlay = Overlay.Notes
-        prefs.edit().putInt("guideSeen", BuildConfig.VERSION_CODE).apply()
+        else if (guideOn && seen != device.buildCode && guide.isNotEmpty()) overlay = Overlay.Notes
+        prefs.edit().putInt("guideSeen", device.buildCode).apply()
         commitUndo()
         rebuild()
         // the saved FX faders go back on once every field below this block exists
@@ -759,7 +751,7 @@ class AppState(
     /* ---------------- bake (SE-3) ---------------- */
 
     // its own low-priority thread, so a bake never holds up loading a sound or the audio
-    private val baker = Executors.newSingleThreadExecutor { r -> Thread({ android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND); r.run() }, "mess-bake") }
+    private val baker = device.lowWorker("mess-bake")
     /** Sounds being baked right now. */
     var baking by mutableStateOf<Set<String>>(emptySet())
         private set
@@ -2140,17 +2132,14 @@ class AppState(
                 val stems = Engine.bounceStems(p, lib, 44100, song, loops)
                 if (stems.isEmpty()) { main.post { busy = null; say("Nothing to bounce: every sound is muted or silent.") }; return@execute }
                 val f = File(sharedDir(), slug(name) + (if (song) "-song" else "-loop-" + Project.LETTERS[p.cur].lowercase()) + "-stems.zip")
-                java.util.zip.ZipOutputStream(FileOutputStream(f.java()).buffered()).use { z ->
-                    val used = HashSet<String>()
-                    for ((k, w) in stems) {
-                        val pad = p.kit.indexOf(k)
-                        var n = (pad + 1).toString().padStart(2, '0') + "-" + slug(lib.titleOf(k).ifEmpty { "sound" })
-                        while (!used.add(n)) n += "-2"
-                        z.putNextEntry(java.util.zip.ZipEntry("$n.wav"))
-                        z.write(Wav.writeStereo16(w, 44100))
-                        z.closeEntry()
-                    }
+                val used = HashSet<String>()
+                val entries = stems.map { (k, w) ->
+                    val pad = p.kit.indexOf(k)
+                    var n = (pad + 1).toString().padStart(2, '0') + "-" + slug(lib.titleOf(k).ifEmpty { "sound" })
+                    while (!used.add(n)) n += "-2"
+                    "$n.wav" to Wav.writeStereo16(w, 44100)
                 }
+                device.writeZip(f, entries)
                 main.post { busy = null; share(f, "application/zip", "Share the stems") }
             } catch (e: Exception) {
                 main.post { busy = null; say("The stems failed: ${e.message}") }
@@ -2174,7 +2163,7 @@ class AppState(
 
     /* ---------------- notes for Claude ---------------- */
 
-    val buildName: String get() = "${BuildConfig.VERSION_NAME} (${BuildConfig.GIT_SHA})"
+    val buildName: String get() = "${device.buildVersion} (${device.gitSha})"
 
     fun screenName(): String = tab.label + (overlay?.let { " > " + overlayName(it) } ?: "")
 
@@ -2237,14 +2226,14 @@ class AppState(
     fun runSpeakerTest() {
         if (speakerNote == "Listening...") return
         speakerNote = "Listening..."
-        Thread({
-            val r = SpeakerTest.run(engine, rate, clickSample)
+        device.thread("speaker-test") {
+            val r = device.speakerTest(engine, rate, clickSample)
             main.post {
                 speakerMs = r.first
                 speakerNote = r.second
                 notes.trail("speaker test ${r.second}")
             }
-        }, "speaker-test").start()
+        }
     }
 
     fun audioCheckSummary(): String = "Audio check on build $buildName. ${lagText()}. Long blocks: ${audio.longBlocksText()}. Engine ${audio.loadText()}, ${audio.underruns} underruns."
@@ -2260,7 +2249,7 @@ class AppState(
         val loops = (0 until Project.NSLOTS).count { p.pats[it].used() }
         val (wDp, hDp) = device.screenDp()
         val shape = "$wDp x $hDp dp, view size ${(uiScale * 100).toInt()}%, dock ${if (dockOpen) "open" else "folded"}"
-        return "**Device:** ${NotesBook.device()}, screen $shape\n" +
+        return "**Device:** ${device.describe()}, screen $shape\n" +
             "**Audio:** ${rate} Hz, buffer ${audio.bufferFrames} frames, burst ${burst}, underruns ${audio.underruns}, engine load ${audio.loadText()}\n" +
             "**Lag:** ${lagText()}\n" +
             "**Long audio blocks:** ${audio.longBlocksText()}\n" +
@@ -2273,7 +2262,7 @@ class AppState(
     fun saveNote(cat: String, topic: String, text: String, send: Boolean) {
         val (c, tp, tx) = notes.parsePrefix(text, cat, topic)
         if (tx.isBlank() && crash == null) { say("Write or say something first."); return }
-        val n = MNote(NotesBook.newId(), c, tp.trim(), tx, device.nowMillis(), buildName, screenName(), extra = crash ?: "")
+        val n = MNote(newNoteId(device.nowMillis()), c, tp.trim(), tx, device.nowMillis(), buildName, screenName(), extra = crash ?: "")
         crash = null
         notes.add(n)
         notes.trail("note ${catLabel(c)}")
@@ -2309,7 +2298,7 @@ class AppState(
     private var quickScreen = ""
     /** For the tests: what the quick note "hears" (no recognizer under Robolectric). */
     var fakeVoice: String? = null
-    private val voice: com.tideclock.messmachine.platform.SpeechIn = VoiceNote(app, { t -> if (quickText != null) quickText = t }) { t, problem -> quickDone(t, problem) }
+    private val voice: com.tideclock.messmachine.platform.SpeechIn = plat.speech({ t -> if (quickText != null) quickText = t }) { t, problem -> quickDone(t, problem) }
 
     fun bugTap() {
         if (crash != null) { overlay = Overlay.Notes; return }
@@ -2349,7 +2338,7 @@ class AppState(
         quickText = null
         if (t.isBlank()) { say(problem ?: "Heard nothing, so no note was kept."); return }
         val (c, tp, tx) = notes.parsePrefix(t, noteCat, "")
-        notes.add(MNote(NotesBook.newId(), c, tp.trim(), tx, device.nowMillis(), buildName, quickScreen, ctx = quickCtx, ctxTrail = quickTrail))
+        notes.add(MNote(newNoteId(device.nowMillis()), c, tp.trim(), tx, device.nowMillis(), buildName, quickScreen, ctx = quickCtx, ctxTrail = quickTrail))
         notes.trail("quick note ${catLabel(c)}")
         if (quickSendNow && notes.hasKey) { notes.notes.firstOrNull()?.let { sendNote(it) }; return }
         say("${catLabel(c)} note kept (${waitingNotes.size} waiting). Send them from Notes in the ☰ menu." + (problem?.let { " $it" } ?: ""))
@@ -2357,7 +2346,7 @@ class AppState(
 
     /* ---------------- update from inside the app ---------------- */
 
-    val updater: com.tideclock.messmachine.platform.AppUpdater = Updater(app).also { Updater.live = it }
+    val updater: com.tideclock.messmachine.platform.AppUpdater = plat.updater()
 
     fun installUpdate() {
         if (!updater.ready) { updater.check(false); return }
@@ -2723,7 +2712,7 @@ class AppState(
 
     /* ---------------- mouth control: the mic as a hands-free XY ---------------- */
 
-    val mouthMic: com.tideclock.messmachine.platform.MouthIn = MouthMic()
+    val mouthMic: com.tideclock.messmachine.platform.MouthIn = plat.mouthIn()
     /** Mouth control is listening. */
     var mouthOn by mutableStateOf(false)
         private set
@@ -3872,7 +3861,7 @@ class AppState(
     private val cloudClk: com.tideclock.messmachine.cloud.Clock = cloudClock ?: com.tideclock.messmachine.cloud.Clock { device.nowMillis() }
     /** My messes online: account, list and whole-mess sync. Built only when cloud is not null. */
     val store: com.tideclock.messmachine.cloud.CloudStore? = cloud?.let {
-        com.tideclock.messmachine.cloud.CloudStore(StoreApi(it), AndroidTokens(app), AndroidCache(app), cloudClk, CloudHost(this))
+        com.tideclock.messmachine.cloud.CloudStore(StoreApi(it), device.cloudTokens(), device.cloudCache(), cloudClk, CloudHost(this))
     }
     /** Bumped whenever the account, the online list or a cloud mark changes, so the sheets redraw. */
     var cloudV by mutableIntStateOf(0)
@@ -3908,7 +3897,7 @@ class AppState(
     /** Tests: whether the phone is on Wi-Fi (null: ask Android). */
     var wifiOverride: Boolean? = null
     /** The site that holds the terms and privacy pages, "" when this build has none. */
-    val siteHost: String get() = BuildConfig.SITE_HOST
+    val siteHost: String get() = device.siteHost
     /** Asked once on this phone: the name others see, and "Put your messes online?". */
     var nameAsked by mutableStateOf(prefs.getBoolean("cloudNameAsked", false))
         private set
@@ -4167,7 +4156,7 @@ class AppState(
     // every change goes up as it is made, and other people's changes come in at the top of the next loop while
     // playing, at once when stopped. Everything here is a no-op without a server.
 
-    private val cloudCache by lazy { AndroidCache(app) }
+    private val cloudCache by lazy { device.cloudCache() }
     private var armToken = 0
     private val armRevs = HashMap<Int, Long>()
     private var seenSwap = 0

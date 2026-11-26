@@ -63,4 +63,28 @@ class AndroidDevice(private val app: Context) : Device {
     override fun displayName(uri: String): String =
         app.contentResolver.query(android.net.Uri.parse(uri), arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
             ?.use { c -> if (c.moveToFirst()) c.getString(0) else "" } ?: ""
+
+    override val buildCode: Int get() = BuildConfig.VERSION_CODE
+    override val buildVersion: String get() = BuildConfig.VERSION_NAME
+    override val gitSha: String get() = BuildConfig.GIT_SHA
+    override val siteHost: String get() = BuildConfig.SITE_HOST
+    override fun describe(): String = NotesBook.device()
+    override fun speakerTest(engine: com.tideclock.messmachine.engine.Engine, rate: Int, click: com.tideclock.messmachine.engine.Sample) =
+        SpeakerTest.run(engine, rate, click)
+
+    override fun writeZip(f: MFile, entries: List<Pair<String, ByteArray>>) {
+        java.util.zip.ZipOutputStream(java.io.FileOutputStream(f.java()).buffered()).use { z ->
+            for ((n, b) in entries) { z.putNextEntry(java.util.zip.ZipEntry(n)); z.write(b); z.closeEntry() }
+        }
+    }
+
+    override fun thread(name: String, f: () -> Unit) { Thread({ f() }, name).start() }
+
+    override fun lowWorker(name: String): com.tideclock.messmachine.platform.Worker {
+        val e = java.util.concurrent.Executors.newSingleThreadExecutor { r -> Thread({ android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND); r.run() }, name) }
+        return object : com.tideclock.messmachine.platform.Worker { override fun execute(f: () -> Unit) { e.execute { f() } } }
+    }
+
+    override fun cloudTokens(): com.tideclock.messmachine.cloud.TokenStore = AndroidTokens(app)
+    override fun cloudCache(): com.tideclock.messmachine.cloud.CloudCache = AndroidCache(app)
 }

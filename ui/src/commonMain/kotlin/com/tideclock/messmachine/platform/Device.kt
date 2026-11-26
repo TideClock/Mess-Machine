@@ -36,4 +36,22 @@ interface Device {
     fun readUri(uri: String): ByteArray?
     /** a picked file's own name, or "" */
     fun displayName(uri: String): String
+    /** this build's number, its name ("0.1.204"), its commit, and the web host for links */
+    val buildCode: Int
+    val buildVersion: String
+    val gitSha: String
+    val siteHost: String
+    /** the phone in a line for the notes ("samsung SM-F956U, Android 17 (API 37)") */
+    fun describe(): String
+    /** the speaker check: play [click] and hear it through the mic; the time in ms and a line about it */
+    fun speakerTest(engine: com.tideclock.messmachine.engine.Engine, rate: Int, click: com.tideclock.messmachine.engine.Sample): Pair<Double, String>
+    /** write a zip of named files (the stems) */
+    fun writeZip(f: MFile, entries: List<Pair<String, ByteArray>>)
+    /** run [f] on a thread of its own */
+    fun thread(name: String, f: () -> Unit)
+    /** a second worker at low priority, so its jobs (baking) never hold up sound or loading */
+    fun lowWorker(name: String): Worker
+    /** where the account keeps its sign-in, and its cached lists */
+    fun cloudTokens(): com.tideclock.messmachine.cloud.TokenStore
+    fun cloudCache(): com.tideclock.messmachine.cloud.CloudCache
 }
