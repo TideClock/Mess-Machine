@@ -128,8 +128,8 @@ object Tutorials {
             TutStep("Tap SYNTH.", t("tab-Synth")) { s, _ -> s.tab == Tab.Synth },
             TutStep("Under Put it on a pad, tap Empty pad: the synth you see lands there.", t("synth-new-empty")) { s, c -> (s.synthOn(s.project.sel) != null).also { if (it) c.num0 = cut(s) } },
             TutStep("Play the keyboard under the knobs.", { s -> "piano-keys-${s.project.sel}" }) { s, c -> played(s, c, 2) },
-            TutStep("Drag the Cutoff knob up or down. Hold a key while you do it.", t("knob-cut")) { s, c -> Math.abs(cut(s) - c.num0) > c.num0 * .15 },
-            TutStep("Double tap the knob to put it back.", t("knob-cut")) { s, _ -> Math.abs(cut(s) - 2400) < 1 },
+            TutStep("Drag the Cutoff knob up or down. Hold a key while you do it.", t("knob-cut")) { s, c -> kotlin.math.abs(cut(s) - c.num0) > c.num0 * .15 },
+            TutStep("Double tap the knob to put it back.", t("knob-cut")) { s, _ -> kotlin.math.abs(cut(s) - 2400) < 1 },
             TutStep("Pick Acid, then play the keys: one voice that slides.", t("synthmode-2")) { s, c -> s.synthOn(s.project.sel)?.get("mode") == 2.0 && played(s, c, 1) },
             TutStep("Try three other kinds at the top (FM, Wavetable, Granular, Drums, Pluck).", t("synthkind-chips")) { s, c ->
                 s.synthOn(s.project.sel)?.kind?.id?.let { c.seen.add(it) }; c.seen.count { it != "analog" } >= 3
@@ -225,7 +225,7 @@ object Tutorials {
             TutStep("Tap On empty pad.", t("synth-new-empty")) { s, _ -> s.synthOn(s.project.sel) != null },
             TutStep("Tap Granular at the top.", t("synthkind-grain")) { s, c -> (s.synthOn(s.project.sel)?.kind == Synth.GRAIN).also { if (it) { c.num0 = s.synthOn(s.project.sel)!!.get("pos"); c.xy0 = s.synthOn(s.project.sel)!!.src } } },
             TutStep("Under Grains of, pick a different sound to read.", t("grain-src")) { s, c -> (s.synthOn(s.project.sel)?.src ?: c.xy0) != c.xy0 },
-            TutStep("Hold a key and drag Position: you move through the sound.", t("knob-pos")) { s, c -> Math.abs((s.synthOn(s.project.sel)?.get("pos") ?: 0.0) - c.num0) > .05 },
+            TutStep("Hold a key and drag Position: you move through the sound.", t("knob-pos")) { s, c -> kotlin.math.abs((s.synthOn(s.project.sel)?.get("pos") ?: 0.0) - c.num0) > .05 },
         )),
         Tutorial("acid", "Synths", "Acid slides", "Notes that touch in Roll slide into each other on an Acid synth.", listOf(
             TutStep("Tap SYNTH, then On empty pad.", t("tab-Synth")) { s, _ -> s.synthOn(s.project.sel) != null },

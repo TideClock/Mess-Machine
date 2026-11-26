@@ -1,5 +1,7 @@
 package com.tideclock.messmachine
 
+import kotlin.jvm.JvmField
+
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -1906,7 +1908,7 @@ class AppState(
     fun clearSlot() { sync?.hint(com.tideclock.messmachine.cloud.Ops.loopClear(project.cur)); edit { pat().clear() }; sayUndo("Loop ${Project.LETTERS[project.cur]} cleared.") }
 
     /** Random drums' dice. Under the big test (Robolectric) it is seeded, so the same taps draw the same beat every run. */
-    internal var dice: kotlin.random.Random =
+    var dice: kotlin.random.Random =
         if (device.isTestRun) kotlin.random.Random(25) else kotlin.random.Random.Default
 
     /** The site's Random drums: fresh steps for every pad in this bank, busier on the first row. */
@@ -3532,7 +3534,7 @@ class AppState(
 
     /** A fader move lands in the mess once the hand settles: one undo step per gesture, not one per frame. */
     private val keepFxRun: () -> Unit = { keepFx() }
-    internal fun keepFxSoon() { main.cancel(keepFxRun); main.postDelayed(keepFxRun, 450) }
+    fun keepFxSoon() { main.cancel(keepFxRun); main.postDelayed(keepFxRun, 450) }
 
     private fun keepFx() {
         val want = HashMap<Int, Map<Int, Double>>()
@@ -3885,7 +3887,7 @@ class AppState(
         })
     }
     /** The copy that was not kept: its file goes, and if it was on screen, the main one opens. */
-    internal fun cloudDropLocal(id: String) {
+    fun cloudDropLocal(id: String) {
         try { File(messDir, "$id.json").delete() } catch (_: Exception) {}
         val main = twoMain
         if (fileId == id) { if (main != null) openMess(main) else fileId = null }
@@ -3904,8 +3906,8 @@ class AppState(
     var moveAsked by mutableStateOf(prefs.getBoolean("cloudMoveAsked", false))
         private set
 
-    internal fun cloudRedraw() { cloudV++ }
-    internal fun cloudSay(text: String) { cloudNotice = text; say(text) }
+    fun cloudRedraw() { cloudV++ }
+    fun cloudSay(text: String) { cloudNotice = text; say(text) }
 
     private val cloudTimer: () -> Unit = object : () -> Unit {
         override fun invoke() { cloudTick(); main.postDelayed(this, 1000) }
@@ -4033,17 +4035,17 @@ class AppState(
 
     /* the StoreHost side (CloudHost.kt): the store never touches the mess files itself */
 
-    internal fun messFile(id: String) = File(messDir, "$id.json")
-    internal fun localMessDoc(id: String): String? = try { messFile(id).takeIf { it.isFile }?.readText() } catch (_: Exception) { null }
+    fun messFile(id: String) = File(messDir, "$id.json")
+    fun localMessDoc(id: String): String? = try { messFile(id).takeIf { it.isFile }?.readText() } catch (_: Exception) { null }
 
-    internal fun newMessId(): String {
+    fun newMessId(): String {
         var t = device.nowMillis()
         while (messFile(t.toString(36)).exists()) t++
         return t.toString(36)
     }
 
     /** The doc with its name set to name (as it is when the name already matches). */
-    internal fun withMessName(doc: String, name: String): String {
+    fun withMessName(doc: String, name: String): String {
         if (name.isEmpty()) return doc
         return try {
             val m = Json.map(Json.parse(doc))
@@ -4052,7 +4054,7 @@ class AppState(
     }
 
     /** The bn: keys a saved mess plays: pads, granular sources, and the sounds its chops cut from. */
-    internal fun cloudNeeds(id: String): List<String> {
+    fun cloudNeeds(id: String): List<String> {
         // a mess open in a session: the screen is the mess (its file follows a moment later)
         val p = if (sync != null && syncLocal == id) project else {
             val doc = localMessDoc(id) ?: return emptyList()
@@ -4066,7 +4068,7 @@ class AppState(
         return out.toList()
     }
 
-    internal fun cloudAdopt(name: String, doc: String): String {
+    fun cloudAdopt(name: String, doc: String): String {
         val id = newMessId()
         try { writeSafe(messFile(id), withMessName(doc, name)) } catch (_: Exception) {}
         refreshFiles()
@@ -4074,7 +4076,7 @@ class AppState(
     }
 
     /** The server's doc replaces the file, and the screen when this mess is open. Unsaved work on screen is never lost. */
-    internal fun cloudTakeServer(id: String, name: String, doc: String) {
+    fun cloudTakeServer(id: String, name: String, doc: String) {
         if (sync != null && syncLocal == id) return      // the session owns this mess
         val f = messFile(id)
         val text = withMessName(doc, name)
@@ -4101,7 +4103,7 @@ class AppState(
     }
 
     /** A clash: my file goes to a new mess named copyName (the screen follows it), the server's doc goes into id. */
-    internal fun cloudKeepBoth(id: String, copyName: String, serverName: String, serverDoc: String): String {
+    fun cloudKeepBoth(id: String, copyName: String, serverName: String, serverDoc: String): String {
         val mine = localMessDoc(id) ?: project.toJson()
         val copy = newMessId()
         try { writeSafe(messFile(copy), withMessName(mine, copyName)) } catch (_: Exception) {}
@@ -4116,7 +4118,7 @@ class AppState(
         return copy
     }
 
-    internal fun cloudSoundArrived(s: com.tideclock.messmachine.cloud.Sound, path: String) {
+    fun cloudSoundArrived(s: com.tideclock.messmachine.cloud.Sound, path: String) {
         val have = lib.sound(s.key)
         if (have != null && have.cab != "shared") { cloudSoundsChanged(); return }   // on this phone already
         val mine = s.owner.isNotEmpty() && s.owner == store?.userId()
@@ -4137,13 +4139,13 @@ class AppState(
         cloudSoundsChanged()
     }
 
-    internal fun cloudSoundGone(s: com.tideclock.messmachine.cloud.Sound) {
+    fun cloudSoundGone(s: com.tideclock.messmachine.cloud.Sound) {
         if (lib.sound(s.key)?.cab != "shared") return
         lib.removeUser(s.key)
         rebuild(); version++
     }
 
-    internal fun cloudSoundInfo(key: String): com.tideclock.messmachine.cloud.Sound? {
+    fun cloudSoundInfo(key: String): com.tideclock.messmachine.cloud.Sound? {
         val b = bench.item(key) ?: return null
         return com.tideclock.messmachine.cloud.Sound(key, "", "user", "", "wav", 0L, 0.0, 0, b.kind, b.title, b.bpm, b.beats, b.mkey ?: "", "ready")
     }
@@ -4178,7 +4180,7 @@ class AppState(
     var syncPeople by mutableStateOf<List<com.tideclock.messmachine.cloud.Member>>(emptyList())
         private set
 
-    internal fun cloudByOps(cid: String): Boolean {
+    fun cloudByOps(cid: String): Boolean {
         if (goneIds.contains(cid)) return false
         if (opsIds.contains(cid)) return true
         val st = store ?: return false

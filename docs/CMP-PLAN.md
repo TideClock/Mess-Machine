@@ -83,6 +83,11 @@ test green before the next starts.
 4. **The Platform interfaces** in common, the Android implementations wrapping today's classes. AppState still in app/,
    now calling the interfaces instead of Android directly.
 5. **AppState to commonMain.** `java.io.File`, `Handler`, executors and `SharedPreferences` are gone from it by then.
+   Done Nov 26: AppState, CloudHost, Tutorials and the XY setups are in `ui/src/commonMain` (with the LFO stops and the
+   mic constants they use). `screenWidthDp()` is the first expect/actual (Android's Configuration, iOS's window). Members
+   that were `internal` are public, since the app module reads them. Linux checks the common and iOS metadata
+   compiles (`:ui:compileCommonMainKotlinMetadata :ui:compileIosMainKotlinMetadata -Pmm.ios`), now a CI step on cmp.
+   All 128 unit tests passed here before the push.
 6. **Screens, a few files per step:** Widgets and Icons first, then the pages (Pads, Synth, Steps, Roll, Song, Perform,
    Sounds), then the sheets and overlays (Doctor, Settings, Files, Share, Cloud, Notes, FAQ, Tutor).
 7. **iOS entry point** (`MainViewController`) and the `MessMachine` framework; the iOS chat hosts it.

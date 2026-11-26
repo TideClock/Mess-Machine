@@ -91,3 +91,8 @@ data class XySetup(
         )
     }
 }
+
+/** Asked for the mic for mouth control (askMicFor), rather than for a pad to record onto. */
+const val MIC_FOR_MOUTH = -2
+/** askMicFor: the quick note (bug button) wants the mic. */
+const val MIC_FOR_NOTE = -3

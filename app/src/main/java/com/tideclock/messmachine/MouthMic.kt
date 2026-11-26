@@ -7,10 +7,6 @@ import android.media.MediaRecorder
 import android.media.audiofx.AcousticEchoCanceler
 import com.tideclock.messmachine.engine.MouthTracker
 
-/** Asked for the mic for mouth control (askMicFor), rather than for a pad to record onto. */
-const val MIC_FOR_MOUTH = -2
-/** askMicFor: the quick note (bug button) wants the mic. */
-const val MIC_FOR_NOTE = -3
 
 /**
  * The mic for mouth control: 16 kHz, read 8 ms at a time on its own thread into a [MouthTracker]. It keeps nothing:

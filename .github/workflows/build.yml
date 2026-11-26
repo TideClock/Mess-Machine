@@ -45,6 +45,12 @@ jobs:
       - name: Engine tests (the Kotlin engine in core/ on the JVM, no phone needed)
         run: ./gradlew :core:engineTest :core:roundTrip --stacktrace
 
+      # CMP step 5 (docs/CMP-PLAN.md): the shared module's common code (AppState, the widgets) must stay common, so it
+      # is compiled the way the iPhone sees it, without Android or Java. Linux can do this check; linking needs a Mac.
+      - name: Shared code compiles for the iPhone too (common and iOS metadata)
+        if: github.ref == 'refs/heads/cmp'
+        run: ./gradlew :ui:compileCommonMainKotlinMetadata :ui:compileIosMainKotlinMetadata -Pmm.ios --stacktrace
+
       # Nov 25: run 201 lost its whole big test to one refused download of Robolectric's Android. Fetch it first, with
       # retries, into the local Maven folder Robolectric reads before it tries the network.
       - name: Fetch Robolectric's Android (with retries)

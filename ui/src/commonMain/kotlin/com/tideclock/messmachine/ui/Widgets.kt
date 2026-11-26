@@ -1,5 +1,7 @@
 package com.tideclock.messmachine.ui
 
+import kotlin.jvm.JvmField
+
 import com.tideclock.messmachine.ui.res.*
 
 import androidx.compose.foundation.Canvas
@@ -68,7 +70,6 @@ import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.res.imageResource
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.graphics.Color
@@ -78,7 +79,6 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.TileMode
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
@@ -406,7 +406,7 @@ fun T(
         // instead of ending in "..."; only past that does it cut. It is drawn once it fits, so it never flickers big.
         // the scale is kept while the words change (a readout ticking never blinks) and starts over when the screen's
         // width changes (a Fold opening, a turn), so it grows back where there is room again
-        val wide = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
+        val wide = screenWidthDp()
         var scale by remember(size, wide) { mutableFloatStateOf(1f) }
         var fits by remember(size, wide) { mutableStateOf(false) }
         Text(

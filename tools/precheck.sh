@@ -56,7 +56,7 @@ for f in (glob.glob('app/src/main/**/*.kt', recursive=True) + glob.glob('ui/src/
             print(f"PRECHECK format over inserted text (a % in it would crash): {f}:{n}"); bad = 1
 # 7. every control a lesson points at must exist in the app (MM-T)
 alltext = ''.join(open(f, encoding='utf-8').read() for f in (glob.glob('app/src/main/java/**/ui/*.kt', recursive=True) + glob.glob('ui/src/**/ui/*.kt', recursive=True)))
-for n, line in enumerate(open('app/src/main/java/com/tideclock/messmachine/Tutorials.kt', encoding='utf-8'), 1):
+for n, line in enumerate(open('ui/src/commonMain/kotlin/com/tideclock/messmachine/Tutorials.kt', encoding='utf-8'), 1):
     for tag in re.findall(r'\bt\("([a-z0-9-]+)"\)', line):
         base = re.sub(r'-[a-z0-9]+$', '-', tag)
         if ('"' + tag + '"') not in alltext and ('"' + base) not in alltext and ('"' + tag.rsplit('-', 1)[0] + '-$') not in alltext:
