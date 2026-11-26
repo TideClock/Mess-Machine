@@ -183,7 +183,7 @@ private fun isBlack(p: Int) = Theory.pcOf(p) in BLACK_PC
 
 /** What the Padiano shows on each note: pressed, held, chord tones, scale, root. */
 /** Chord tones to light: each at its own spot when visible, else moved by octaves to the nearest visible copy. */
-internal fun chordOnScreen(tones: Iterable<Int>, down: Set<Int>, visible: Collection<Int>): Set<Int> {
+fun chordOnScreen(tones: Iterable<Int>, down: Set<Int>, visible: Collection<Int>): Set<Int> {
     val c = HashSet<Int>()
     for (x in tones) {
         val y = if (visible.isEmpty() || x in visible) x else visible.filter { Theory.pcOf(it - x) == 0 }.minByOrNull { kotlin.math.abs(it - x) } ?: x

@@ -316,7 +316,7 @@ private fun Terms(state: AppState, s: CloudStore) {
 
 /** The name others see: asked once after the first sign-in (name-ask), and on the Account page (acct-name). */
 @Composable
-internal fun NameCard(state: AppState, s: CloudStore, asking: Boolean) {
+fun NameCard(state: AppState, s: CloudStore, asking: Boolean) {
     var name by remember { mutableStateOf(s.me?.display_name ?: "") }
     var err by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
