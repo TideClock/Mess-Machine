@@ -62,7 +62,9 @@ test green before the next starts.
    the same sequence (JavaRandomTest checks 100,000 draws), so the speckle is unchanged. Run 208 green.
 4. (progress) 4a, Nov 26: `platform/Settings` (AppState's prefs; Android wraps SharedPreferences call for call),
    `platform/MainThread` and `platform/Worker` (the Handler and the executor). A posted function is its own cancel
-   handle (`cancel(f)`), so the old Runnables became function vals.
+   handle (`cancel(f)`), so the old Runnables became function vals. Run 209 green.
+   4b: `platform/MFile` and `FileStore`. AppState imports MFile as `File`, so its file code reads as before; Android's
+   store is java.io.File (`JavaFileStore`), and `.java()` hands a real File to sharing, zips and the Workbench.
 4. **The Platform interfaces** in common, the Android implementations wrapping today's classes. AppState still in app/,
    now calling the interfaces instead of Android directly.
 5. **AppState to commonMain.** `java.io.File`, `Handler`, executors and `SharedPreferences` are gone from it by then.

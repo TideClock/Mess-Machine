@@ -24,7 +24,7 @@ import com.tideclock.messmachine.engine.SoundEdit
 import com.tideclock.messmachine.engine.Synth
 import com.tideclock.messmachine.engine.Theory
 import com.tideclock.messmachine.engine.Wav
-import java.io.File
+import com.tideclock.messmachine.platform.MFile as File
 import java.io.FileOutputStream
 import java.util.concurrent.Executors
 
@@ -173,8 +173,12 @@ class AppState(
     private val prefs: com.tideclock.messmachine.platform.Settings = AndroidSettings(app.getSharedPreferences("mess", Context.MODE_PRIVATE))
     // the metronome is on out of the box (Tyler, Nov 22) and remembered
     init { live.click = prefs.getBoolean("click", true) }
-    private val messDir = File(app.filesDir, "messes").also { it.mkdirs() }
-    private val currentFile = File(app.filesDir, "current.json")
+    // CMP step 4: files go through MFile (imported as File); Android's store is java.io.File underneath
+    init { File.store = JavaFileStore }
+    private val filesDir = File(app.filesDir.path)
+    private val cacheDir = File(app.cacheDir.path)
+    private val messDir = File(filesDir, "messes").also { it.mkdirs() }
+    private val currentFile = File(filesDir, "current.json")
     /** Built before the mess loads, so pads that use your own sounds find them. */
     val bench = Workbench(app, lib)
 
@@ -388,7 +392,7 @@ class AppState(
     private var tutChord: String? = null
     /** After Back, the step waits for you to do it again, even if what it asks for is already so (note #19). */
     private var tutWaitFresh = false
-    private val tutFile get() = File(app.filesDir, "before-lesson.json")
+    private val tutFile get() = File(filesDir, "before-lesson.json")
 
     /** Start a lesson on a practice mess. Your mess is kept in a file until the lesson ends (even if the app is closed). */
     fun startTutorial(t: Tutorial) {
@@ -396,7 +400,7 @@ class AppState(
             val j = project.toJson()
             tutBackup = j
             tutBackupFile = fileId
-            try { tutFile.writeText(j); File(app.filesDir, "before-lesson.id").writeText(fileId.orEmpty()) } catch (_: Exception) {}
+            try { tutFile.writeText(j); File(filesDir, "before-lesson.id").writeText(fileId.orEmpty()) } catch (_: Exception) {}
         }
         if (playing) togglePlay()
         if (holdOn) switchHold()
@@ -464,10 +468,10 @@ class AppState(
 
     private fun restoreAfterLesson() {
         val j = tutBackup ?: (if (tutFile.exists()) tutFile.readText() else null) ?: return
-        val id = tutBackupFile ?: File(app.filesDir, "before-lesson.id").takeIf { it.exists() }?.readText()?.ifEmpty { null }
+        val id = tutBackupFile ?: File(filesDir, "before-lesson.id").takeIf { it.exists() }?.readText()?.ifEmpty { null }
         replaceProject(Project.fromJson(j, lib::has).project, id)
         tutBackup = null; tutBackupFile = null
-        tutFile.delete(); File(app.filesDir, "before-lesson.id").delete()
+        tutFile.delete(); File(filesDir, "before-lesson.id").delete()
     }
 
     private fun markStep() {
@@ -531,7 +535,7 @@ class AppState(
         // the app closed in the middle of a lesson: put the mess from before it back
         if (tutFile.exists()) main.post { try { restoreAfterLesson(); say("Your mess from before the lesson is back.") } catch (_: Exception) {} }
         try {
-            val f = File(app.filesDir, "last_crash.txt")
+            val f = File(filesDir, "last_crash.txt")
             if (f.exists()) { crash = f.readText(); f.delete() }
         } catch (_: Exception) {}
         try { guide = Json.map(Json.parse(app.assets.open("guide.json").use { String(it.readBytes()) })) } catch (_: Exception) {}
@@ -559,7 +563,7 @@ class AppState(
     private fun keepOldMesses() {
         if (prefs.getInt("fmtKept", 0) >= 106) return
         try {
-            val keep = File(app.filesDir, "kept-before-106").also { it.mkdirs() }
+            val keep = File(filesDir, "kept-before-106").also { it.mkdirs() }
             if (currentFile.exists()) currentFile.copyTo(File(keep, "current.json"), overwrite = true)
             val md = File(keep, "messes").also { it.mkdirs() }
             messDir.listFiles()?.filter { it.isFile && it.name.endsWith(".json") }?.forEach { it.copyTo(File(md, it.name), overwrite = true) }
@@ -2089,7 +2093,7 @@ class AppState(
     private fun slug(s: String) = s.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-').ifEmpty { "mess" }
 
     private fun share(file: File, mime: String, title: String) {
-        val uri = FileProvider.getUriForFile(app, app.packageName + ".files", file)
+        val uri = FileProvider.getUriForFile(app, app.packageName + ".files", file.java())
         val send = Intent(Intent.ACTION_SEND).apply {
             type = mime
             putExtra(Intent.EXTRA_STREAM, uri)
@@ -2099,7 +2103,7 @@ class AppState(
         app.startActivity(Intent.createChooser(send, title).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION))
     }
 
-    private fun sharedDir() = File(app.cacheDir, "shared").also { it.mkdirs() }
+    private fun sharedDir() = File(cacheDir, "shared").also { it.mkdirs() }
 
     fun shareMess() {
         val name = project.name.ifEmpty { "Untitled mess" }
@@ -2142,7 +2146,7 @@ class AppState(
                 val stems = Engine.bounceStems(p, lib, 44100, song, loops)
                 if (stems.isEmpty()) { main.post { busy = null; say("Nothing to bounce: every sound is muted or silent.") }; return@execute }
                 val f = File(sharedDir(), slug(name) + (if (song) "-song" else "-loop-" + Project.LETTERS[p.cur].lowercase()) + "-stems.zip")
-                java.util.zip.ZipOutputStream(FileOutputStream(f).buffered()).use { z ->
+                java.util.zip.ZipOutputStream(FileOutputStream(f.java()).buffered()).use { z ->
                     val used = HashSet<String>()
                     for ((k, w) in stems) {
                         val pad = p.kit.indexOf(k)
@@ -3813,7 +3817,7 @@ class AppState(
         val e = project.edit(key).copy()
         worker.execute {
             val r = Engine.renderOne("take", s, e)
-            val f = File(File(app.cacheDir, "shared").also { it.mkdirs() }, lib.titleOf(key).lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-').ifEmpty { "sound" } + ".wav")
+            val f = File(File(cacheDir, "shared").also { it.mkdirs() }, lib.titleOf(key).lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-').ifEmpty { "sound" } + ".wav")
             f.writeBytes(Wav.writeMono16(r.data, r.rate))
             main.post { shareFile(f, "audio/wav", "Share the sound") }
         }
@@ -3864,7 +3868,7 @@ class AppState(
     }
 
     private fun shareFile(f: File, mime: String, title: String) {
-        val uri = FileProvider.getUriForFile(app, app.packageName + ".files", f)
+        val uri = FileProvider.getUriForFile(app, app.packageName + ".files", f.java())
         val send = Intent(Intent.ACTION_SEND).apply { type = mime; putExtra(Intent.EXTRA_STREAM, uri); addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION) }
         app.startActivity(Intent.createChooser(send, title).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION))
     }
@@ -4143,7 +4147,7 @@ class AppState(
         if (mine && s.key.startsWith("bn:")) {
             // one of your own, made on your other phone: into the Workbench, under the same key
             worker.execute {
-                try { bench.adoptCloud(s.key.substring(3), s.kind, s.title, File(path), s.bpm, s.beats, s.mkey) } catch (_: Exception) {}
+                try { bench.adoptCloud(s.key.substring(3), s.kind, s.title, java.io.File(path), s.bpm, s.beats, s.mkey) } catch (_: Exception) {}
                 main.post { cloudSoundsChanged() }
             }
             return
