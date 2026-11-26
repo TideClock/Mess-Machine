@@ -70,7 +70,9 @@ test green before the next starts.
    4d: `platform/AudioOut` (AndroidAudioOut inside is unchanged). Runs 211 and 212 green.
    4e: `SpeechIn` (VoiceNote), `MouthIn` (MouthMic) and `AppUpdater` (Updater; iOS's will find nothing, the App Store
    updates it). The shared module now depends on `core` (`api`). Run 213 green.
-   4f: `Packs` (AndroidPacks) and `NoteBook` (NotesBook); MNote, the note categories and REPO moved to shared code.
+   4f: `Packs` (AndroidPacks) and `NoteBook` (NotesBook); MNote, the note categories and REPO moved to shared code. Run 214 green.
+   4g: `Bench` (Workbench) with BenchItem in shared code. Picked files travel as the platform's address in a String
+   (`importUri`, `importSounds`, `Bench.decode`), and `Device` reads them (`readUri`, `displayName`).
 4. **The Platform interfaces** in common, the Android implementations wrapping today's classes. AppState still in app/,
    now calling the interfaces instead of Android directly.
 5. **AppState to commonMain.** `java.io.File`, `Handler`, executors and `SharedPreferences` are gone from it by then.

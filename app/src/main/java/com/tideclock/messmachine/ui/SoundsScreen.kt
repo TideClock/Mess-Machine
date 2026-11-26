@@ -70,7 +70,7 @@ fun SoundsScreen(state: AppState, pickFor: Int?) {
     val target = pickFor ?: P.sel
     @Suppress("UNUSED_VARIABLE") val bv = state.bench.items.size
     val ctx = LocalContext.current
-    val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris -> state.importSounds(uris) }
+    val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris -> state.importSounds(uris.map { it.toString() }) }
     val micPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         if (ok) state.toggleMic() else state.say("The mic needs permission. You can allow it in the phone's settings for Mess Machine.")
     }

@@ -51,7 +51,7 @@ fun FilesScreen(state: AppState) {
     var sureNew by remember { mutableStateOf(false) }
     var sureDel by remember { mutableStateOf<String?>(null) }
     var sureOff by remember { mutableStateOf<String?>(null) }
-    val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) state.importUri(uri) }
+    val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) state.importUri(uri.toString()) }
     ScrollPane(hPad = 14.dp, vPad = 0.dp) {
         // accounts: only on a build with a server (state.store is null otherwise, and the sheet is as it was)
         if (state.store != null) AccountRow(state)

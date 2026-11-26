@@ -18,22 +18,12 @@ import com.tideclock.messmachine.engine.Wav
 import java.io.File
 import java.nio.ByteOrder
 
-/**
- * Your Workbench, like the site's: imports, mic takes, resampled loops, saved edits and chops.
- * Sound files live in the app's own storage; chops are a region of another sound, no new file.
- */
-data class BenchItem(
-    val id: String, val kind: String, val title: String, val at: Long, val base: String = "", val st: Double = 0.0, val en: Double = 1.0,
-    /** The mess's tempo when this was made (0 when unknown), and for a resampled loop its length in beats. */
-    val bpm: Double = 0.0, val beats: Int = 0,
-    /** The measured key, like "A# minor"; empty when it could not be told for sure; null when never measured. */
-    val mkey: String? = null,
-)
 
-class Workbench(app: Context, private val lib: Library) {
+class Workbench(app: Context, private val lib: Library) : Bench {
+    private val ctx0 = app.applicationContext ?: app
     private val dir = File(app.filesDir, "bench").also { it.mkdirs() }
     private val index = File(dir, "bench.json")
-    val items = mutableStateListOf<BenchItem>()
+    override val items = mutableStateListOf<BenchItem>()
 
     init {
         try {
@@ -70,8 +60,8 @@ class Workbench(app: Context, private val lib: Library) {
         }.also { it.isDaemon = true; it.priority = Thread.MIN_PRIORITY }.start()
     }
 
-    fun keyOf(b: BenchItem) = if (b.kind == "chop") "chop:" + b.id else "bn:" + b.id
-    fun item(key: String): BenchItem? = items.firstOrNull { keyOf(it) == key }
+    override fun keyOf(b: BenchItem) = if (b.kind == "chop") "chop:" + b.id else "bn:" + b.id
+    override fun item(key: String): BenchItem? = items.firstOrNull { keyOf(it) == key }
 
     private fun group(kind: String) = when (kind) {
         "imp" -> "Imports"; "mic" -> "Mic takes"; "rs" -> "Resampled loops"; "take" -> "Saved edits"; else -> "Chops"
@@ -104,7 +94,7 @@ class Workbench(app: Context, private val lib: Library) {
      * Its key is measured here (KeyFinder), and it remembers the tempo it was made at: bpm, plus beats for a
      * resampled loop, which then follows the mess's tempo the way the built-in loops do.
      */
-    fun addSample(kind: String, title: String, s: Sample, bpm: Double = 0.0, beats: Int = 0): String {
+    override fun addSample(kind: String, title: String, s: Sample, bpm: Double, beats: Int): String {
         val mk = try { KeyFinder.find(s.data, s.rate) } catch (_: Throwable) { "" }
         val b = BenchItem(newId(), kind, title.take(40), System.currentTimeMillis(), bpm = bpm, beats = beats, mkey = mk)
         File(dir, b.id + ".wav").writeBytes(Wav.writeMono16(s.data, s.rate))
@@ -118,6 +108,9 @@ class Workbench(app: Context, private val lib: Library) {
      * the Workbench under the same key it has there, so the pads that use it play and it can go up again from here.
      * Call off the main thread. false: it is here already, or the file could not be copied.
      */
+    override fun adoptCloud(id: String, kind: String, title: String, from: com.tideclock.messmachine.platform.MFile, bpm: Double, beats: Int, mkey: String) =
+        adoptCloud(id, kind, title, from.java(), bpm, beats, mkey)
+
     fun adoptCloud(id: String, kind: String, title: String, from: File, bpm: Double, beats: Int, mkey: String): Boolean {
         if (id.isEmpty() || item("bn:$id") != null) return false
         val f = File(dir, "$id.wav")
@@ -128,13 +121,13 @@ class Workbench(app: Context, private val lib: Library) {
         return true
     }
 
-    fun addChop(base: String, title: String, st: Double, en: Double): String {
+    override fun addChop(base: String, title: String, st: Double, en: Double): String {
         val b = BenchItem(newId(), "chop", title.take(40), System.currentTimeMillis(), base, st, en)
         synchronized(items) { items.add(b); register(b); save() }
         return keyOf(b)
     }
 
-    fun remove(key: String) {
+    override fun remove(key: String) {
         val b = item(key) ?: return
         items.remove(b)
         if (b.kind != "chop") File(dir, b.id + ".wav").delete()
@@ -144,11 +137,13 @@ class Workbench(app: Context, private val lib: Library) {
         save()
     }
 
-    fun count(kind: String) = items.count { it.kind == kind }
+    override fun count(kind: String) = items.count { it.kind == kind }
 
     /* ---------------- importing any audio file ---------------- */
 
     /** WAV through our own reader, anything else (MP3, M4A, OGG, FLAC) through Android's decoders. Mono, max 60 s. */
+    override fun decode(uri: String): Sample = decode(ctx0, Uri.parse(uri))
+
     fun decode(ctx: Context, uri: Uri): Sample {
         val head = ByteArray(12)
         val got = ctx.contentResolver.openInputStream(uri)?.use { it.read(head) } ?: throw IllegalStateException("Could not open the file")
@@ -223,7 +218,7 @@ class Workbench(app: Context, private val lib: Library) {
      * auto (Nov 24, Tyler's video): Auto sample. The mic listens and keeps only the last half second until a sound
      * comes, then records it, and stops by itself once it has been quiet for a third of a second.
      */
-    fun startMic(trim: Boolean = true, auto: Boolean = false, done: (Sample?) -> Unit) {
+    override fun startMic(trim: Boolean, auto: Boolean, done: (Sample?) -> Unit) {
         if (recording) return
         val rate = 44100
         val min = AudioRecord.getMinBufferSize(rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
@@ -268,8 +263,8 @@ class Workbench(app: Context, private val lib: Library) {
         }, "mess-mic").also { it.start() }
     }
 
-    fun stopMic() { recording = false }
-    fun isRecording() = recording
+    override fun stopMic() { recording = false }
+    override fun isRecording() = recording
 
     /**
      * Cut the quiet off both ends (Auto trim). Nov 24 (Tyler's video: takes still started with a gap): the quiet is
@@ -277,7 +272,7 @@ class Workbench(app: Context, private val lib: Library) {
      * the sound starts at the first window clearly over both that and 3% of the peak. 5 ms before it stays, and the tail
      * keeps 50 ms after the last loud window with a short fade, so nothing clicks.
      */
-    fun trimSilence(s: Sample): Sample? {
+    override fun trimSilence(s: Sample): Sample? {
         val d = s.data
         if (d.isEmpty()) return null
         var peak = 0f

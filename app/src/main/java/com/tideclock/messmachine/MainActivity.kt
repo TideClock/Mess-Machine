@@ -104,7 +104,7 @@ class MainActivity : ComponentActivity() {
                 val uri: Uri? = if (Build.VERSION.SDK_INT >= 33) i.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
                 else @Suppress("DEPRECATION") i.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
                 val text = i.getStringExtra(Intent.EXTRA_TEXT)
-                if (uri != null) state.importUri(uri)
+                if (uri != null) state.importUri(uri.toString())
                 else if (text != null && text.trimStart().startsWith("{")) state.importText(text)
                 else if (text != null) state.say("That share was not a Mess Machine file.")
             }
@@ -113,7 +113,7 @@ class MainActivity : ComponentActivity() {
             Intent.ACTION_VIEW -> i.data?.let { u ->
                 val sch = u.scheme ?: ""
                 if (sch == "messmachine" || sch == "https" || sch == "http") { if (!state.cloudLink(u.toString())) state.say("That link is not one this app opens.") }
-                else state.importUri(u)
+                else state.importUri(u.toString())
             }
         }
     }

@@ -28,4 +28,8 @@ interface Device {
     fun unmeteredNetwork(): Boolean
     /** the text on the clipboard, or "" */
     fun clipboardText(): String
+    /** the bytes of a file the person picked (the platform's address for it), or null */
+    fun readUri(uri: String): ByteArray?
+    /** a picked file's own name, or "" */
+    fun displayName(uri: String): String
 }

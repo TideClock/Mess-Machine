@@ -181,7 +181,7 @@ class AppState(
     private val messDir = File(filesDir, "messes").also { it.mkdirs() }
     private val currentFile = File(filesDir, "current.json")
     /** Built before the mess loads, so pads that use your own sounds find them. */
-    val bench = Workbench(app, lib)
+    val bench: Bench = Workbench(app, lib)
 
     var project: Project = loadCurrent()
         private set
@@ -2083,9 +2083,10 @@ class AppState(
         }
     }
 
-    fun importUri(uri: Uri) {
+    /** a mess file the person picked (the platform's address for it) */
+    fun importUri(uri: String) {
         worker.execute {
-            val text = try { app.contentResolver.openInputStream(uri)?.use { String(it.readBytes()) } } catch (_: Exception) { null }
+            val text = try { device.readUri(uri)?.decodeToString() } catch (_: Exception) { null }
             main.post { if (text != null) importText(text) else say("Could not read that file.") }
         }
     }
@@ -3189,7 +3190,7 @@ class AppState(
         say(msg + " It is on pad ${pad + 1} and in Your Workbench.")
     }
 
-    fun importSounds(uris: List<Uri>) {
+    fun importSounds(uris: List<String>) {
         if (uris.isEmpty()) return
         busy = "Bringing it in…"
         notes.trail("import ${uris.size} sound(s)")
@@ -3199,7 +3200,7 @@ class AppState(
             var err = ""
             for (u in uris.take(16)) {
                 try {
-                    val s = bench.decode(app, u)
+                    val s = bench.decode(u)
                     val name = queryName(u).substringBeforeLast('.').ifEmpty { "Import ${bench.count("imp") + 1}" }
                     keys.add(bench.addSample("imp", name, s)); ok++
                 } catch (e: Exception) { err = e.message ?: "unknown" }
@@ -3220,9 +3221,7 @@ class AppState(
         }
     }
 
-    private fun queryName(u: Uri): String = try {
-        app.contentResolver.query(u, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c -> if (c.moveToFirst()) c.getString(0) else "" } ?: ""
-    } catch (_: Exception) { "" }
+    private fun queryName(u: String): String = try { device.displayName(u) } catch (_: Exception) { "" }
 
     /** Lock also pins the screen through Android (it asks each time). */
     var lockPin by mutableStateOf(prefs.getBoolean("lockPin", true))
@@ -4133,7 +4132,7 @@ class AppState(
         if (mine && s.key.startsWith("bn:")) {
             // one of your own, made on your other phone: into the Workbench, under the same key
             worker.execute {
-                try { bench.adoptCloud(s.key.substring(3), s.kind, s.title, java.io.File(path), s.bpm, s.beats, s.mkey) } catch (_: Exception) {}
+                try { bench.adoptCloud(s.key.substring(3), s.kind, s.title, File(path), s.bpm, s.beats, s.mkey) } catch (_: Exception) {}
                 main.post { cloudSoundsChanged() }
             }
             return

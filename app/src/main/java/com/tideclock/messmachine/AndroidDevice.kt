@@ -55,4 +55,10 @@ class AndroidDevice(private val app: Context) : Device {
 
     override fun clipboardText(): String =
         (app.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager).primaryClip?.getItemAt(0)?.coerceToText(app)?.toString() ?: ""
+
+    override fun readUri(uri: String): ByteArray? = app.contentResolver.openInputStream(android.net.Uri.parse(uri))?.use { it.readBytes() }
+
+    override fun displayName(uri: String): String =
+        app.contentResolver.query(android.net.Uri.parse(uri), arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
+            ?.use { c -> if (c.moveToFirst()) c.getString(0) else "" } ?: ""
 }
