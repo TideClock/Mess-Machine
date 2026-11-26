@@ -23,29 +23,15 @@ import java.util.concurrent.Executors
  * the issue comments. Categories match the bug-testing skill: Bug, Tuning, Feature, Question,
  * Discuss (Note and discuss, grouped by topic) and Wishlist.
  */
-/** A note whose GitHub page was opened, not yet seen on GitHub (Submit may not have been tapped). */
-const val OPENED = "opened on GitHub, not seen there yet"
 
-data class MNote(
-    val id: String, val cat: String, val topic: String, val text: String, val at: Long, val build: String, val screen: String,
-    val extra: String = "", val sent: Boolean = false, val issue: Int = 0, val status: String = "", val replies: List<String> = emptyList(),
-    /** A quick note keeps the phone's state and last taps from the moment you spoke, not from when it is sent. */
-    val ctx: String = "", val ctxTrail: String = "",
-)
-
-val NOTE_CATS = listOf("bug" to "Bug", "tuning" to "Tuning", "feature" to "Feature", "question" to "Question", "discuss" to "Discuss", "wishlist" to "Wishlist")
-fun catLabel(c: String) = NOTE_CATS.firstOrNull { it.first == c }?.second ?: "Note"
-
-const val REPO = "hubbub0/Mess-Machine"
-
-class NotesBook(private val app: Context) {
+class NotesBook(private val app: Context) : NoteBook {
     private val file = File(app.filesDir, "notes.json")
     private val main = Handler(Looper.getMainLooper())
     private val io = Executors.newSingleThreadExecutor()
-    val notes = mutableStateListOf<MNote>()
-    var checking by mutableStateOf(false)
+    override val notes = mutableStateListOf<MNote>()
+    override var checking by mutableStateOf(false)
         private set
-    var lastCheck by mutableStateOf("")
+    override var lastCheck by mutableStateOf("")
         private set
 
     /** What happened lately, newest last, for the issue body. */
@@ -54,7 +40,7 @@ class NotesBook(private val app: Context) {
 
     init { load() }
 
-    fun trail(what: String) {
+    override fun trail(what: String) {
         val s = (System.currentTimeMillis() - t0) / 1000
         val stamp = "%d:%02d".format(s / 60, s % 60)
         val last = trail.lastOrNull()
@@ -66,7 +52,7 @@ class NotesBook(private val app: Context) {
         while (trail.size > 60) trail.removeFirst()
     }
 
-    fun trailText(): String = trail.joinToString("\n")
+    override fun trailText(): String = trail.joinToString("\n")
 
     private fun load() {
         try {
@@ -97,9 +83,9 @@ class NotesBook(private val app: Context) {
         io.execute { try { file.writeText(json) } catch (_: Exception) {} }
     }
 
-    fun add(n: MNote) { notes.add(0, n); save() }
+    override fun add(n: MNote) { notes.add(0, n); save() }
 
-    fun remove(id: String) { notes.removeAll { it.id == id }; save() }
+    override fun remove(id: String) { notes.removeAll { it.id == id }; save() }
 
     private fun replace(n: MNote) {
         val i = notes.indexOfFirst { it.id == n.id }
@@ -108,7 +94,7 @@ class NotesBook(private val app: Context) {
     }
 
     /** Voice or typed prefixes pick the category: "wishlist: ...", "discuss jumping: ...", "tuning: ...". */
-    fun parsePrefix(text: String, cat: String, topic: String): Triple<String, String, String> {
+    override fun parsePrefix(text: String, cat: String, topic: String): Triple<String, String, String> {
         val t = text.trim()
         val low = t.lowercase()
         for ((c, _) in NOTE_CATS) {
@@ -127,15 +113,15 @@ class NotesBook(private val app: Context) {
      * Option A (note #16, Tyler's pick Nov 16): a GitHub key that can only write issues on this one repo, pasted in
      * once. With it, Send posts the note from inside the app; without it, Send opens the filled-in GitHub page.
      */
-    var hasKey by mutableStateOf(keyPrefs.getString("key", "").orEmpty().isNotEmpty())
+    override var hasKey by mutableStateOf(keyPrefs.getString("key", "").orEmpty().isNotEmpty())
         private set
 
-    fun saveKey(k: String) { keyPrefs.edit().putString("key", k.trim()).apply(); hasKey = k.isNotBlank() }
+    override fun saveKey(k: String) { keyPrefs.edit().putString("key", k.trim()).apply(); hasKey = k.isNotBlank() }
 
-    fun forgetKey() { keyPrefs.edit().remove("key").apply(); hasKey = false }
+    override fun forgetKey() { keyPrefs.edit().remove("key").apply(); hasKey = false }
 
     /** Send: post it with the key when there is one, else open GitHub's new-issue page (you tap Submit there). */
-    fun send(n: MNote, details: String, done: (String) -> Unit = {}) {
+    override fun send(n: MNote, details: String, done: (String) -> Unit) {
         val key = keyPrefs.getString("key", "").orEmpty()
         if (key.isNotEmpty()) { post(n, details, key, done); return }
         openPage(n, details)
@@ -210,7 +196,7 @@ class NotesBook(private val app: Context) {
     }
 
     /** Notes that waited for a connection go out now (with the key only). */
-    fun sendWaiting(details: (MNote) -> String, done: (String) -> Unit) {
+    override fun sendWaiting(details: (MNote) -> String, done: (String) -> Unit) {
         val key = keyPrefs.getString("key", "").orEmpty()
         if (key.isEmpty()) return
         for (n in notes.filter { it.status == "waiting to send" && it.issue == 0 }) post(n, details(n), key, done)
@@ -237,7 +223,7 @@ class NotesBook(private val app: Context) {
      * Send all without the key (Nov 21 fix): every waiting note on ONE GitHub page, newest first, each with when it
      * was written, so one Submit sends them all. Notes that don't fit the page wait for the next Send all.
      */
-    fun openBundle(waiting: List<MNote>, details: String): Int {
+    override fun openBundle(waiting: List<MNote>, details: String): Int {
         if (waiting.isEmpty()) return 0
         val list = waiting.sortedByDescending { it.at }
         fun bodyFor(k: Int): String = buildString {
@@ -264,7 +250,7 @@ class NotesBook(private val app: Context) {
     private fun enc(s: String) = URLEncoder.encode(s, "UTF-8").replace("+", "%20")
 
     /** Read Claude's replies from the issues. Public repo, so no sign-in needed to read. */
-    fun checkReplies(done: (String) -> Unit) {
+    override fun checkReplies(done: (String) -> Unit) {
         if (checking) return
         checking = true
         io.execute {

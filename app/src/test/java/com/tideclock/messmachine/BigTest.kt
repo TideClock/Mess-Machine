@@ -1487,11 +1487,11 @@ class BigTest {
         }
         val wav = com.tideclock.messmachine.engine.Wav.writeStereo16(FloatArray(8820) { i -> (.4 * Math.sin(i * .05)).toFloat() }, 44100)
         val json = """{"id":"test-pack","name":"Test Pack","version":1,"clips":[{"id":"beep","file":"clips/beep.wav","title":"Beep","type":"perc"}]}"""
-        state.packs.installZip(zipOf("pack.json" to json.toByteArray(), "clips/beep.wav" to wav), "test-pack")
+        state.packs.installZip(zipOf("pack.json" to json.toByteArray(), "clips/beep.wav" to wav).m(), "test-pack")
         assertTrue("the pack's sound is in the library", state.lib.has("pack:test-pack:beep") && state.lib.load("pack:test-pack:beep") != null)
         assertEquals("in its own jar", "Test Pack", state.lib.cab("pack:test-pack").name)
         var refused = false
-        try { state.packs.installZip(zipOf("pack.json" to json.toByteArray(), "../evil.txt" to "x".toByteArray()), "test-pack") } catch (e: SecurityException) { refused = true }
+        try { state.packs.installZip(zipOf("pack.json" to json.toByteArray(), "../evil.txt" to "x".toByteArray()).m(), "test-pack") } catch (e: SecurityException) { refused = true }
         assertTrue("a zip entry outside the pack's folder is refused", refused)
         assertTrue("and the installed pack is untouched", state.lib.has("pack:test-pack:beep"))
         state.packOffers = listOf(Packs.Offer("test-pack", "Test Pack", "Made by the big test.", 2, 1, 9000, ""))

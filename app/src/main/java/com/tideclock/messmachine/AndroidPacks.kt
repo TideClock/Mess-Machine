@@ -12,23 +12,20 @@ import java.util.zip.ZipInputStream
  * (pack.json plus a clips folder of FLAC files), listed in that release's packs.json. Installed packs live in the app's own
  * storage and show up as a jar in Sounds; their keys ("pack:<id>:<clip>") save in messes like any sound.
  */
-class Packs(private val root: File, private val lib: Library) {
-
-    /** One pack on offer: from packs.json on the release. */
-    data class Offer(val id: String, val name: String, val blurb: String, val version: Int, val clips: Int, val bytes: Long, val url: String)
+class AndroidPacks(private val root: File, private val lib: Library) : Packs {
 
     private val dir = File(root, "packs").also { it.mkdirs() }
 
     /** Installed packs: id to version. */
-    val installed: MutableMap<String, Int> = LinkedHashMap()
+    override val installed: MutableMap<String, Int> = LinkedHashMap()
 
     /** Register every pack already on the phone (at start). */
-    fun loadInstalled() {
+    override fun loadInstalled() {
         for (d in dir.listFiles().orEmpty().filter { it.isDirectory }) try { register(d) } catch (_: Exception) {}
     }
 
     /** What the packs release offers right now. Network: call off the main thread. */
-    fun fetchOffers(): List<Offer> {
+    override fun fetchOffers(): List<Packs.Offer> {
         val rel = Json.map(Json.parse(get("https://api.github.com/repos/$REPO/releases/tags/packs")))
         val assets = Json.list(rel["assets"]).map { Json.map(it) }
         val index = assets.firstOrNull { Json.str(it["name"], "") == "packs.json" } ?: return emptyList()
@@ -36,13 +33,13 @@ class Packs(private val root: File, private val lib: Library) {
         return list.map { Json.map(it) }.mapNotNull { m ->
             val file = Json.str(m["file"], "")
             val asset = assets.firstOrNull { Json.str(it["name"], "") == file } ?: return@mapNotNull null
-            Offer(Json.str(m["id"], ""), Json.str(m["name"], ""), Json.str(m["blurb"], ""), Json.num(m["version"], 1.0).toInt(),
+            Packs.Offer(Json.str(m["id"], ""), Json.str(m["name"], ""), Json.str(m["blurb"], ""), Json.num(m["version"], 1.0).toInt(),
                 Json.num(m["clips"], 0.0).toInt(), Json.num(asset["size"], 0.0).toLong(), Json.str(asset["browser_download_url"], ""))
         }.filter { it.id.isNotEmpty() && SAFE.matches(it.id) }
     }
 
     /** Download a pack and install it. Network: call off the main thread. */
-    fun install(o: Offer) {
+    override fun install(o: Packs.Offer) {
         val tmp = File(root, "pack-${o.id}.zip")
         try {
             val c = URL(o.url).openConnection() as HttpURLConnection
@@ -58,6 +55,8 @@ class Packs(private val root: File, private val lib: Library) {
     }
 
     /** Unpack a pack's zip into its own folder and register it. Every entry must stay inside that folder. */
+    override fun installZip(zip: com.tideclock.messmachine.platform.MFile, id: String) = installZip(zip.java(), id)
+
     fun installZip(zip: File, id: String) {
         require(SAFE.matches(id)) { "bad pack id" }
         val into = File(dir, id)
@@ -82,7 +81,7 @@ class Packs(private val root: File, private val lib: Library) {
     }
 
     /** Take a pack off the phone. Messes that use its sounds keep their keys; those pads go quiet until it is back. */
-    fun remove(id: String) {
+    override fun remove(id: String) {
         lib.removeCab("pack:$id")
         installed.remove(id)
         File(dir, id).deleteRecursively()

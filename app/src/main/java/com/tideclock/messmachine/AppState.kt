@@ -202,7 +202,7 @@ class AppState(
     var liveV by mutableIntStateOf(0)
         private set
 
-    val notes = NotesBook(app)
+    val notes: NoteBook = NotesBook(app)
     var favs by mutableStateOf(prefs.getStringSet("favs", emptySet())!!.toSet())
         private set
     /** Piano keyboards dropped below the pads, by pad number, oldest first. Up to four. */
@@ -499,7 +499,7 @@ class AppState(
 
     /* ---------------- packs (SE-17) ---------------- */
 
-    val packs = Packs(app.filesDir, lib)
+    val packs: Packs = AndroidPacks(app.filesDir, lib)
     /** What the packs release offers, once fetched; null until asked. */
     var packOffers by mutableStateOf<List<Packs.Offer>?>(null)
     var packNote by mutableStateOf("")
