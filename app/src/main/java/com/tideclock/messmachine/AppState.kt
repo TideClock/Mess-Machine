@@ -166,9 +166,11 @@ class AppState(
     val engine = Engine(rate)
     val audio = AudioOut(engine, rate, burst, app)
     val live = Engine.Live()
-    private val main = Handler(Looper.getMainLooper())
-    private val worker = Executors.newSingleThreadExecutor()
-    private val prefs = app.getSharedPreferences("mess", Context.MODE_PRIVATE)
+    // CMP step 4: the screen's thread and the one background thread, through common interfaces
+    private val main: com.tideclock.messmachine.platform.MainThread = AndroidMainThread()
+    private val worker: com.tideclock.messmachine.platform.Worker = AndroidWorker()
+    // CMP step 4: through the common Settings interface; on Android it is the same SharedPreferences file
+    private val prefs: com.tideclock.messmachine.platform.Settings = AndroidSettings(app.getSharedPreferences("mess", Context.MODE_PRIVATE))
     // the metronome is on out of the box (Tyler, Nov 22) and remembered
     init { live.click = prefs.getBoolean("click", true) }
     private val messDir = File(app.filesDir, "messes").also { it.mkdirs() }
@@ -584,15 +586,15 @@ class AppState(
         if (!tmp.renameTo(f)) { tmp.copyTo(f, overwrite = true); tmp.delete() }
     }
 
-    private val saveRun = Runnable { saveNow() }
+    private val saveRun: () -> Unit = { saveNow() }
 
     private fun scheduleSave() {
-        main.removeCallbacks(saveRun)
+        main.cancel(saveRun)
         main.postDelayed(saveRun, 700)
     }
 
     fun saveNow() {
-        main.removeCallbacks(saveRun)
+        main.cancel(saveRun)
         // a lesson's practice mess is never saved over yours
         if (tut != null) return
         val json = project.toJson()
@@ -3544,8 +3546,8 @@ class AppState(
     }
 
     /** A fader move lands in the mess once the hand settles: one undo step per gesture, not one per frame. */
-    private val keepFxRun = Runnable { keepFx() }
-    internal fun keepFxSoon() { main.removeCallbacks(keepFxRun); main.postDelayed(keepFxRun, 450) }
+    private val keepFxRun: () -> Unit = { keepFx() }
+    internal fun keepFxSoon() { main.cancel(keepFxRun); main.postDelayed(keepFxRun, 450) }
 
     private fun keepFx() {
         val want = HashMap<Int, Map<Int, Double>>()
@@ -3922,8 +3924,8 @@ class AppState(
     internal fun cloudRedraw() { cloudV++ }
     internal fun cloudSay(text: String) { cloudNotice = text; say(text) }
 
-    private val cloudTimer = object : Runnable {
-        override fun run() { cloudTick(); main.postDelayed(this, 1000) }
+    private val cloudTimer: () -> Unit = object : () -> Unit {
+        override fun invoke() { cloudTick(); main.postDelayed(this, 1000) }
     }
 
     init {

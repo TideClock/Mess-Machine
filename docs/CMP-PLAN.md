@@ -59,7 +59,10 @@ test green before the next starts.
    3a (Nov 25, run 207 green): Faq, BarPlan, UiLook and the Icons table. Tutorials reads AppState, so it waits for step 5.
    3b: Widgets (the skins, colours, fonts, keys, cards and text), the tag machinery (`tagged`, TutHi) and tileColor.
    Android's Bitmap and java.util.Random drew the grit; it is now drawn through Compose's own canvas with JavaRandom,
-   the same sequence (JavaRandomTest checks 100,000 draws), so the speckle is unchanged.
+   the same sequence (JavaRandomTest checks 100,000 draws), so the speckle is unchanged. Run 208 green.
+4. (progress) 4a, Nov 26: `platform/Settings` (AppState's prefs; Android wraps SharedPreferences call for call),
+   `platform/MainThread` and `platform/Worker` (the Handler and the executor). A posted function is its own cancel
+   handle (`cancel(f)`), so the old Runnables became function vals.
 4. **The Platform interfaces** in common, the Android implementations wrapping today's classes. AppState still in app/,
    now calling the interfaces instead of Android directly.
 5. **AppState to commonMain.** `java.io.File`, `Handler`, executors and `SharedPreferences` are gone from it by then.
