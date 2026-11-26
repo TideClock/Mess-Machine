@@ -15,6 +15,8 @@ class AndroidDevice(private val app: Context) : Device {
     override val outputRate: Int? get() = am.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)?.toIntOrNull()
     override val outputBurst: Int? get() = am.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER)?.toIntOrNull()
     override fun uptimeMillis() = android.os.SystemClock.uptimeMillis()
+    override fun nowMillis() = System.currentTimeMillis()
+    override fun nanoTime() = System.nanoTime()
     override val isTestRun: Boolean get() = android.os.Build.FINGERPRINT == "robolectric"
 
     override fun backgroundPlay(on: Boolean): Boolean {

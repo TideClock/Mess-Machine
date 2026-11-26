@@ -25,6 +25,8 @@ import com.tideclock.messmachine.engine.Synth
 import com.tideclock.messmachine.engine.Theory
 import com.tideclock.messmachine.engine.Wav
 import com.tideclock.messmachine.platform.MFile as File
+import com.tideclock.messmachine.platform.fmt
+import com.tideclock.messmachine.platform.jround
 import java.io.FileOutputStream
 import java.util.concurrent.Executors
 
@@ -783,9 +785,9 @@ class AppState(
             if (s.baked != null || k in baking || s.seconds() > Bake.MAX_SECONDS || bakedBytes() + bakeBytes(s) > BAKE_BUDGET) continue
             baking = baking + k
             baker.execute {
-                val t0 = System.nanoTime()
+                val t0 = device.nanoTime()
                 val out = try { Bake.all(s.data, null) } catch (_: Throwable) { null }
-                val ms = (System.nanoTime() - t0) / 1_000_000
+                val ms = (device.nanoTime() - t0) / 1_000_000
                 main.post {
                     baking = baking - k
                     if (out != null && project.edit(k).bake) { s.baked = out; notes.trail("baked ${lib.titleOf(k)} in $ms ms") }
@@ -927,7 +929,7 @@ class AppState(
             val dt = now - lastFrame
             frames++
             if (dt > 33_000_000L) slow++
-            if (dt > 50_000_000L) audio.lastSlowFrameNanos = System.nanoTime()
+            if (dt > 50_000_000L) audio.lastSlowFrameNanos = device.nanoTime()
             if (dt > worst) worst = dt
         }
         lastFrame = now
@@ -936,7 +938,7 @@ class AppState(
         if (winStart == 0L) winStart = now
         if (now - winStart > 10_000_000_000L) {
             val secs = (now - winStart) / 1e9
-            uiPerf = "%.0f fps, %d slow frames, worst %d ms".format(frames / secs, slow, worst / 1_000_000)
+            uiPerf = "${fmt(frames / secs, 0)} fps, $slow slow frames, worst ${worst / 1_000_000} ms"
             // the CPU pop-up: over 70% of each block's time for 20 seconds, with live grain playing and pads to bake
             if (audio.load() > .7 && engine.grainVoices() > 0) { if (busySince == 0L) busySince = now } else busySince = 0L
             if (!cpuAsked && busySince != 0L && now - busySince >= 20_000_000_000L && grainPadsToBake().isNotEmpty()) { cpuAsked = true; cpuAsk = true; notes.trail("cpu pop-up at ${(audio.load() * 100).toInt()}%") }
@@ -965,13 +967,13 @@ class AppState(
                 P.setStep(ev.key, ev.step, true); P.setStrength(ev.key, ev.step, ev.strength())
             }
             else if (ev.type == Engine.RecEvent.OFF) {
-                val t = Math.floorMod(ev.step, P.len * Project.TICKS)
+                val t = ev.step.mod(P.len * Project.TICKS)
                 if (ev.hit != 0) hitNew[ev.hit] = !(if (t % Project.TICKS == 0) P.step(ev.key, t / Project.TICKS) else P.hasOff(ev.key, ev.step))
                 P.addOff(ev.key, ev.step)
             }
             else if (ev.type == Engine.RecEvent.CANCEL) {
                 if (hitNew.remove(ev.hit) == true) {
-                    if (ev.len == 1) { val t = Math.floorMod(ev.step, P.len * Project.TICKS); if (t % Project.TICKS == 0) P.setStep(ev.key, t / Project.TICKS, false) else P.removeOff(ev.key, ev.step) }
+                    if (ev.len == 1) { val t = ev.step.mod(P.len * Project.TICKS); if (t % Project.TICKS == 0) P.setStep(ev.key, t / Project.TICKS, false) else P.removeOff(ev.key, ev.step) }
                     else P.setStep(ev.key, ev.step, false)
                 }
             }
@@ -1026,13 +1028,13 @@ class AppState(
 
     private val taps = ArrayList<Long>()
     fun tapTempo() {
-        val now = System.currentTimeMillis()
+        val now = device.nowMillis()
         if (taps.isNotEmpty() && now - taps.last() > 2000) taps.clear()
         taps.add(now)
         if (taps.size > 5) taps.removeAt(0)
         if (taps.size >= 2) {
             val avg = (taps.last() - taps.first()) / (taps.size - 1).toDouble()
-            setBpm(Math.round(60000 / avg).toInt())
+            setBpm(jround(60000 / avg).toInt())
         }
     }
 
@@ -1230,7 +1232,7 @@ class AppState(
         when (t.kind) {
             "pad" -> if (midiPadSounds(t.a)) { midiHeldT[note] = t; padDown(t.a) }
             "key" -> if (project.kit.getOrNull(t.a).orEmpty().isNotEmpty()) { midiHeldT[note] = t; pianoDown(t.a, t.b) }
-            "slot" -> if (project.kit.getOrNull(t.a).orEmpty().isNotEmpty()) { midiHeldT[note] = t; slotDown(t.a, t.b, Math.floorDiv(padianoBase[t.a] ?: 0, 12)) }
+            "slot" -> if (project.kit.getOrNull(t.a).orEmpty().isNotEmpty()) { midiHeldT[note] = t; slotDown(t.a, t.b, (padianoBase[t.a] ?: 0).floorDiv(12)) }
             "act" -> { midiHeldT[note] = t; midiAct(t.id) }
         }
     }
@@ -1470,7 +1472,7 @@ class AppState(
                 val feel = com.tideclock.messmachine.ui.lfoParts(project.opt(t.a).lfoRate).second
                 setPadOpt(t.a, false) { lfoRate = st * feel; lfoOn = true }
             } else setPadOpt(t.a, false) { lfoDepth = v.toDouble() }
-            "tempo" -> edit(false) { bpm = 60 + Math.round(v * 120) }
+            "tempo" -> edit(false) { bpm = 60 + jround(v * 120) }
             "xy" -> {
                 val four = xyOf(t.a).four
                 val a = if (four) v * 2f - 1f else v
@@ -1842,7 +1844,7 @@ class AppState(
     fun dropBar() { val n = project.pat().len; if (n <= 16) say("One bar is the least.") else setLen(n - 16) }
     fun doubleLoop() { val n = project.pat().len; if (n * 2 > 128) say("Doubled it would pass 8 bars.") else setLen(n * 2) }
     /** Swipe the loop readout: the next or previous loop, waiting for the bar line like a tap in the strip. */
-    fun stepLoop(by: Int) { val n = com.tideclock.messmachine.engine.Project.NSLOTS; pickLoop(Math.floorMod((if (pendingSlot >= 0) pendingSlot else project.cur) + by, n)) }
+    fun stepLoop(by: Int) { val n = com.tideclock.messmachine.engine.Project.NSLOTS; pickLoop(((if (pendingSlot >= 0) pendingSlot else project.cur) + by).mod(n)) }
     /** The song painter lives in the loop strip now (Nov 22); this opens it there. */
     var songOpen by mutableStateOf(false)
     /** Nov 22 sizing: the bottom dock's keys that don't fit sit behind ⋯ (set by the dock as it lays out). */
@@ -1977,7 +1979,7 @@ class AppState(
 
     fun paintSong(i: Int) = edit { song[i] = if (song[i] == brush) -1 else brush }
 
-    fun clearSong() { edit { java.util.Arrays.fill(song, -1); songMode = false }; sayUndo("Song cleared.") }
+    fun clearSong() { edit { song.fill(-1); songMode = false }; sayUndo("Song cleared.") }
 
     /** Chain every loop that has something in it, in order. */
     fun songFromLoops() {
@@ -1985,7 +1987,7 @@ class AppState(
         if (used.isEmpty()) { say("Make a loop first."); return }
         // like the site's Rough it in: every used loop twice, in order
         edit {
-            java.util.Arrays.fill(song, -1)
+            song.fill(-1)
             for (i in 0 until minOf(Project.MAXSONG, used.size * 2)) song[i] = used[i / 2]
         }
     }
@@ -2028,7 +2030,7 @@ class AppState(
         if (asNew) syncClose()
         project.name = nm
         if (!asNew) syncChanged(true)
-        val id = if (asNew || fileId == null) System.currentTimeMillis().toString(36) else fileId!!
+        val id = if (asNew || fileId == null) device.nowMillis().toString(36) else fileId!!
         val json = project.toJson()
         fileId = id
         prefs.edit().putString("fileId", id).apply()
@@ -2142,7 +2144,7 @@ class AppState(
                     val used = HashSet<String>()
                     for ((k, w) in stems) {
                         val pad = p.kit.indexOf(k)
-                        var n = String.format(java.util.Locale.US, "%02d", pad + 1) + "-" + slug(lib.titleOf(k).ifEmpty { "sound" })
+                        var n = (pad + 1).toString().padStart(2, '0') + "-" + slug(lib.titleOf(k).ifEmpty { "sound" })
                         while (!used.add(n)) n += "-2"
                         z.putNextEntry(java.util.zip.ZipEntry("$n.wav"))
                         z.write(Wav.writeStereo16(w, 44100))
@@ -2215,18 +2217,18 @@ class AppState(
     }
 
     fun lagText(): String {
-        val out = if (audio.outputMs >= 0) "%.0f ms".format(audio.outputMs) else "not known yet"
-        val wait = if (engine.hits > 0) "%.1f ms".format(engine.lastHitWaitNanos / 1e6) else "no hits yet"
+        val out = if (audio.outputMs >= 0) "${fmt(audio.outputMs, 0)} ms" else "not known yet"
+        val wait = if (engine.hits > 0) "${fmt(engine.lastHitWaitNanos / 1e6, 1)} ms" else "no hits yet"
         val touch = touchMs().let { if (it >= 0) "$it ms (${minOf(touchN, 32)} taps)" else "no taps yet" }
-        val spk = if (speakerMs >= 0) "%.0f ms".format(speakerMs) else "not run"
-        val buf = "%.1f".format(audio.ms(audio.bufferFrames))
+        val spk = if (speakerMs >= 0) "${fmt(speakerMs, 0)} ms" else "not run"
+        val buf = fmt(audio.ms(audio.bufferFrames), 1)
         return "output $out by Android's clock, buffer $buf ms, last hit waited $wait for a block, touch to app $touch, speaker test $spk, buffer grown ${audio.grown} and given back ${audio.shrunk}" + (if (audio.grown > 0) " (up to ${audio.growVoices} voices sounding at a growth)" else "") + ", voices cut at the limit ${engine.stolen}, steady CPU ${audio.cpuHint}, out through ${audio.path}, fast path ${audio.fastPath}, screen ${if (smoothScreen) "smooth" else "60"}"
     }
 
     /** A short click for the tap pad and the speaker test: 3 ms of 2 kHz, loud enough for the mic. */
     val clickSample: com.tideclock.messmachine.engine.Sample by lazy {
         val n = rate * 3 / 1000
-        val d = FloatArray(n) { k -> (Math.sin(2 * Math.PI * 2000.0 * k / rate) * .9 * (1 - k.toDouble() / n)).toFloat() }
+        val d = FloatArray(n) { k -> (kotlin.math.sin(2 * kotlin.math.PI * 2000.0 * k / rate) * .9 * (1 - k.toDouble() / n)).toFloat() }
         com.tideclock.messmachine.engine.Sample("check-click", d, rate)
     }
 
@@ -2271,7 +2273,7 @@ class AppState(
     fun saveNote(cat: String, topic: String, text: String, send: Boolean) {
         val (c, tp, tx) = notes.parsePrefix(text, cat, topic)
         if (tx.isBlank() && crash == null) { say("Write or say something first."); return }
-        val n = MNote(NotesBook.newId(), c, tp.trim(), tx, System.currentTimeMillis(), buildName, screenName(), extra = crash ?: "")
+        val n = MNote(NotesBook.newId(), c, tp.trim(), tx, device.nowMillis(), buildName, screenName(), extra = crash ?: "")
         crash = null
         notes.add(n)
         notes.trail("note ${catLabel(c)}")
@@ -2347,7 +2349,7 @@ class AppState(
         quickText = null
         if (t.isBlank()) { say(problem ?: "Heard nothing, so no note was kept."); return }
         val (c, tp, tx) = notes.parsePrefix(t, noteCat, "")
-        notes.add(MNote(NotesBook.newId(), c, tp.trim(), tx, System.currentTimeMillis(), buildName, quickScreen, ctx = quickCtx, ctxTrail = quickTrail))
+        notes.add(MNote(NotesBook.newId(), c, tp.trim(), tx, device.nowMillis(), buildName, quickScreen, ctx = quickCtx, ctxTrail = quickTrail))
         notes.trail("quick note ${catLabel(c)}")
         if (quickSendNow && notes.hasKey) { notes.notes.firstOrNull()?.let { sendNote(it) }; return }
         say("${catLabel(c)} note kept (${waitingNotes.size} waiting). Send them from Notes in the ☰ menu." + (problem?.let { " $it" } ?: ""))
@@ -3449,7 +3451,7 @@ class AppState(
 
     /** Round a bend to the nearest step of the scale (counted from the root). */
     private fun snapToScale(semis: Float): Float {
-        if (project.scale == "Chromatic") return Math.round(semis).toFloat()
+        if (project.scale == "Chromatic") return jround(semis).toFloat()
         var best = 0; var bd = 99f
         for (c in -36..36) if (Theory.inScale(c + project.root, project.scale, project.root)) { val d = kotlin.math.abs(c - semis); if (d < bd) { bd = d; best = c } }
         return best.toFloat()
@@ -3750,8 +3752,8 @@ class AppState(
                 busy = null
                 if (pad >= 0) {
                     putOnPad(pad, key)
-                    say("Got it, %.1f seconds. It is on pad ${pad + 1} and in Your Workbench.".format(take.seconds())) // format-ok: only a pad number goes in
-                } else placeNew(key, "Got it, %.1f seconds.".format(take.seconds()))
+                    say("Got it, ${fmt(take.seconds(), 1)} seconds. It is on pad ${pad + 1} and in Your Workbench.") // format-ok: only a pad number goes in
+                } else placeNew(key, "Got it, ${fmt(take.seconds(), 1)} seconds.")
             }
         }
     }
@@ -3819,12 +3821,12 @@ class AppState(
         val e = project.edit(key).copy()
         val len = (e.en - e.st) * s.seconds()
         val target = bars * 16 * 60.0 / project.bpm / 4
-        val semis = 12 * Math.log(len / target) / Math.log(2.0)
-        if (Math.abs(semis) > 24.5) { say("That would take more than two octaves of re-pitching. Trim closer to the length first."); return }
-        e.tune = Math.round(semis).toDouble()
-        e.fine = Math.round((semis - e.tune) * 100).toDouble()
+        val semis = 12 * kotlin.math.ln(len / target) / kotlin.math.ln(2.0)
+        if (kotlin.math.abs(semis) > 24.5) { say("That would take more than two octaves of re-pitching. Trim closer to the length first."); return }
+        e.tune = jround(semis).toDouble()
+        e.fine = jround((semis - e.tune) * 100).toDouble()
         setEdit(key, e, true)
-        say("Re-pitched ${if (semis > 0) "up" else "down"} ${"%.2f".format(Math.abs(semis))} semitones to fill it at ${project.bpm} BPM.")
+        say("Re-pitched ${if (semis > 0) "up" else "down"} ${fmt(kotlin.math.abs(semis), 2)} semitones to fill it at ${project.bpm} BPM.")
     }
 
     /** Slice a sound at the cuts and put each slice on an empty pad. */
@@ -3867,7 +3869,7 @@ class AppState(
 
     /** The server, when this build has one. */
     @JvmField val cloud: com.tideclock.messmachine.cloud.CloudApi? = cloudApi?.takeIf { it.configured() }
-    private val cloudClk: com.tideclock.messmachine.cloud.Clock = cloudClock ?: com.tideclock.messmachine.cloud.Clock { System.currentTimeMillis() }
+    private val cloudClk: com.tideclock.messmachine.cloud.Clock = cloudClock ?: com.tideclock.messmachine.cloud.Clock { device.nowMillis() }
     /** My messes online: account, list and whole-mess sync. Built only when cloud is not null. */
     val store: com.tideclock.messmachine.cloud.CloudStore? = cloud?.let {
         com.tideclock.messmachine.cloud.CloudStore(StoreApi(it), AndroidTokens(app), AndroidCache(app), cloudClk, CloudHost(this))
@@ -4046,7 +4048,7 @@ class AppState(
     internal fun localMessDoc(id: String): String? = try { messFile(id).takeIf { it.isFile }?.readText() } catch (_: Exception) { null }
 
     internal fun newMessId(): String {
-        var t = System.currentTimeMillis()
+        var t = device.nowMillis()
         while (messFile(t.toString(36)).exists()) t++
         return t.toString(36)
     }

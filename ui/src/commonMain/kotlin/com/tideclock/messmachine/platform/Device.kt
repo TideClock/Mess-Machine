@@ -13,6 +13,10 @@ interface Device {
     val outputBurst: Int?
     /** milliseconds since boot, on the same clock touch events use */
     fun uptimeMillis(): Long
+    /** the wall clock in milliseconds (Java's currentTimeMillis) */
+    fun nowMillis(): Long
+    /** a nanosecond clock for timing, the same one the sound thread uses */
+    fun nanoTime(): Long
     /** true under the big test (Robolectric), where randomness is seeded */
     val isTestRun: Boolean
     /** start or stop playing with the screen off and a Stop control; false when the phone refused */

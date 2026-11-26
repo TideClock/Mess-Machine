@@ -73,6 +73,9 @@ test green before the next starts.
    4f: `Packs` (AndroidPacks) and `NoteBook` (NotesBook); MNote, the note categories and REPO moved to shared code. Run 214 green.
    4g: `Bench` (Workbench) with BenchItem in shared code. Picked files travel as the platform's address in a String
    (`importUri`, `importSounds`, `Bench.decode`), and `Device` reads them (`readUri`, `displayName`).
+   4h: the Java-only arithmetic and text in AppState: `jround` (Math.round), `fmt` ("%.Nf".format; JavaMathTest checks
+   both against Java on 20,000 numbers), `mod`, `floorDiv`, kotlin.math, and the clocks through `Device`. One visible
+   difference: decimals always show a dot, where Java used the phone's language (a comma on a German phone).
 4. **The Platform interfaces** in common, the Android implementations wrapping today's classes. AppState still in app/,
    now calling the interfaces instead of Android directly.
 5. **AppState to commonMain.** `java.io.File`, `Handler`, executors and `SharedPreferences` are gone from it by then.
