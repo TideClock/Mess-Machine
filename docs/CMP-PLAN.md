@@ -64,7 +64,9 @@ test green before the next starts.
    `platform/MainThread` and `platform/Worker` (the Handler and the executor). A posted function is its own cancel
    handle (`cancel(f)`), so the old Runnables became function vals. Run 209 green.
    4b: `platform/MFile` and `FileStore`. AppState imports MFile as `File`, so its file code reads as before; Android's
-   store is java.io.File (`JavaFileStore`), and `.java()` hands a real File to sharing, zips and the Workbench.
+   store is java.io.File (`JavaFileStore`), and `.java()` hands a real File to sharing, zips and the Workbench. Run 210 green.
+   4c: `platform/Device` (assets, the speaker's rate and burst, the uptime clock, background play, the share sheet,
+   the mic permission, the screen size, the network, the clipboard), AndroidDevice making the same calls as before.
 4. **The Platform interfaces** in common, the Android implementations wrapping today's classes. AppState still in app/,
    now calling the interfaces instead of Android directly.
 5. **AppState to commonMain.** `java.io.File`, `Handler`, executors and `SharedPreferences` are gone from it by then.

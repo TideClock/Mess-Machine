@@ -159,10 +159,12 @@ class AppState(
     /** The store's clock; tests pass FakeCloud's, so the phone and the pretend server move together. */
     cloudClock: com.tideclock.messmachine.cloud.Clock? = null,
 ) {
-    val lib = Library({ path -> if (path.startsWith("/")) java.io.File(path).readBytes() else app.assets.open(path).use { it.readBytes() } }, "sounds/")
-    private val am = app.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-    val rate: Int = am.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)?.toIntOrNull() ?: 48000
-    private val burst: Int = am.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER)?.toIntOrNull() ?: 256
+    // CMP step 4: the phone itself (assets, speaker, clock, share sheet, mic, screen, network, clipboard)
+    private val device: com.tideclock.messmachine.platform.Device = AndroidDevice(app)
+    init { File.store = JavaFileStore }
+    val lib = Library({ path -> if (path.startsWith("/")) File(path).readBytes() else device.readAsset(path) }, "sounds/")
+    val rate: Int = device.outputRate ?: 48000
+    private val burst: Int = device.outputBurst ?: 256
     val engine = Engine(rate)
     val audio = AudioOut(engine, rate, burst, app)
     val live = Engine.Live()
@@ -173,8 +175,7 @@ class AppState(
     private val prefs: com.tideclock.messmachine.platform.Settings = AndroidSettings(app.getSharedPreferences("mess", Context.MODE_PRIVATE))
     // the metronome is on out of the box (Tyler, Nov 22) and remembered
     init { live.click = prefs.getBoolean("click", true) }
-    // CMP step 4: files go through MFile (imported as File); Android's store is java.io.File underneath
-    init { File.store = JavaFileStore }
+    // CMP step 4: files go through MFile (imported as File); Android's store is java.io.File underneath (set above)
     private val filesDir = File(app.filesDir.path)
     private val cacheDir = File(app.cacheDir.path)
     private val messDir = File(filesDir, "messes").also { it.mkdirs() }
@@ -331,8 +332,7 @@ class AppState(
         val want = on && bgPlay
         if (want == fgOn) return
         fgOn = want
-        val i = android.content.Intent(app, PlaybackService::class.java)
-        try { if (want) androidx.core.content.ContextCompat.startForegroundService(app, i) else app.stopService(i) } catch (_: Exception) { fgOn = false }
+        if (!device.backgroundPlay(want)) fgOn = false
     }
     /** What the notification says: the loop or the song, and the tempo. */
     fun playingLine(): String = (if (project.songMode) "Song, ${project.songLen()} bars" else "Loop ${Project.LETTERS[project.cur]}") + " at ${project.bpm} BPM"
@@ -538,7 +538,7 @@ class AppState(
             val f = File(filesDir, "last_crash.txt")
             if (f.exists()) { crash = f.readText(); f.delete() }
         } catch (_: Exception) {}
-        try { guide = Json.map(Json.parse(app.assets.open("guide.json").use { String(it.readBytes()) })) } catch (_: Exception) {}
+        try { guide = Json.map(Json.parse(device.readAsset("guide.json").decodeToString())) } catch (_: Exception) {}
         val seen = prefs.getInt("guideSeen", 0)
         // a brand new install (never saw a guide, no working mess yet) gets the start card; people updating get the build notes
         val newInstall = seen == 0 && !currentFile.exists() && !File(currentFile.path + ".bak").exists()
@@ -648,13 +648,13 @@ class AppState(
     /** A second tap counts only after half a second, so a quick double tap can't overwrite the pad. */
     fun replaceReady(): Boolean = guardClock() - armedAt >= 500
     /** The clock the replace guard reads (a test sets its own). */
-    var guardClock: () -> Long = { android.os.SystemClock.uptimeMillis() }
+    var guardClock: () -> Long = { device.uptimeMillis() }
     fun armReplace(pad: Int) {
         replaceArmed = pad; armedAt = guardClock()
         val token = armedAt
         say("Tap again to replace ${lib.titleOf(project.kit.getOrNull(pad).orEmpty()).ifEmpty { "pad ${pad + 1}" }} with this synth.")
         val me = pad
-        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ if (replaceArmed == me && armedAt == token) replaceArmed = -1 }, 4000)
+        main.postDelayed({ if (replaceArmed == me && armedAt == token) replaceArmed = -1 }, 4000)
     }
 
     /*
@@ -1913,7 +1913,7 @@ class AppState(
 
     /** Random drums' dice. Under the big test (Robolectric) it is seeded, so the same taps draw the same beat every run. */
     internal var dice: kotlin.random.Random =
-        if (android.os.Build.FINGERPRINT == "robolectric") kotlin.random.Random(25) else kotlin.random.Random.Default
+        if (device.isTestRun) kotlin.random.Random(25) else kotlin.random.Random.Default
 
     /** The site's Random drums: fresh steps for every pad in this bank, busier on the first row. */
     fun randomDrums() {
@@ -2092,16 +2092,7 @@ class AppState(
 
     private fun slug(s: String) = s.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-').ifEmpty { "mess" }
 
-    private fun share(file: File, mime: String, title: String) {
-        val uri = FileProvider.getUriForFile(app, app.packageName + ".files", file.java())
-        val send = Intent(Intent.ACTION_SEND).apply {
-            type = mime
-            putExtra(Intent.EXTRA_STREAM, uri)
-            putExtra(Intent.EXTRA_SUBJECT, title)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        app.startActivity(Intent.createChooser(send, title).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION))
-    }
+    private fun share(file: File, mime: String, title: String) = device.shareFile(file, mime, title, subject = true)
 
     private fun sharedDir() = File(cacheDir, "shared").also { it.mkdirs() }
 
@@ -2211,7 +2202,7 @@ class AppState(
 
     /** A pad or the check's tap pad was touched: how long the touch took to reach the app. */
     fun noteTouch(eventUptimeMs: Long) {
-        val d = android.os.SystemClock.uptimeMillis() - eventUptimeMs
+        val d = device.uptimeMillis() - eventUptimeMs
         if (d in 0..1000) { touchLags[touchN and 31] = d.toInt(); touchN++ }
     }
 
@@ -2264,8 +2255,8 @@ class AppState(
     fun noteDetails(cat: String = "bug", crashed: Boolean = false): String {
         val p = project
         val loops = (0 until Project.NSLOTS).count { p.pats[it].used() }
-        val dm = app.resources.displayMetrics
-        val shape = "${(dm.widthPixels / dm.density).toInt()} x ${(dm.heightPixels / dm.density).toInt()} dp, view size ${(uiScale * 100).toInt()}%, dock ${if (dockOpen) "open" else "folded"}"
+        val (wDp, hDp) = device.screenDp()
+        val shape = "$wDp x $hDp dp, view size ${(uiScale * 100).toInt()}%, dock ${if (dockOpen) "open" else "folded"}"
         return "**Device:** ${NotesBook.device()}, screen $shape\n" +
             "**Audio:** ${rate} Hz, buffer ${audio.bufferFrames} frames, burst ${burst}, underruns ${audio.underruns}, engine load ${audio.loadText()}\n" +
             "**Lag:** ${lagText()}\n" +
@@ -2324,7 +2315,7 @@ class AppState(
         // no speech service on this phone: the note box, as before
         if (!fake && !voice.available()) { overlay = Overlay.Notes; notes.trail("quick note: no speech service"); say("The phone's speech service is not reachable, so the note box opened. The keyboard's mic key works in it."); return }
         if (micOn || mouthOn) { say("The mic is busy. Stop the recording or mouth control first."); return }
-        val ok = fake || androidx.core.content.ContextCompat.checkSelfPermission(app, android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        val ok = fake || device.hasMicPermission()
         if (!ok) { askMicFor = MIC_FOR_NOTE; return }
         // what was on screen and what you just did, from the moment you started talking
         quickScreen = screenName()
@@ -2772,7 +2763,7 @@ class AppState(
             return
         }
         if (micOn) { say("The mic is recording onto a pad. Stop that first."); return }
-        val ok = androidx.core.content.ContextCompat.checkSelfPermission(app, android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        val ok = device.hasMicPermission()
         if (!ok) { askMicFor = MIC_FOR_MOUTH; return }
         mouthMic.tracker.gateDb = mouthGate
         if (!mouthMic.start()) { say("The mic would not open. Another app may be using it."); return }
@@ -3699,7 +3690,7 @@ class AppState(
     fun askRecord(pad: Int) {
         padMenu = -1
         if (micOn) { bench.stopMic(); return }
-        val ok = androidx.core.content.ContextCompat.checkSelfPermission(app, android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        val ok = device.hasMicPermission()
         if (ok) recordToPad(pad) else askMicFor = pad
     }
 
@@ -3717,7 +3708,7 @@ class AppState(
     fun askAutoSample(pad: Int) {
         padMenu = -1
         if (micOn) { bench.stopMic(); return }
-        val ok = androidx.core.content.ContextCompat.checkSelfPermission(app, android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        val ok = device.hasMicPermission()
         if (!ok) { askMicFor = pad; autoAfterAsk = true; return }
         autoSampleTo(pad)
     }
@@ -3868,9 +3859,7 @@ class AppState(
     }
 
     private fun shareFile(f: File, mime: String, title: String) {
-        val uri = FileProvider.getUriForFile(app, app.packageName + ".files", f.java())
-        val send = Intent(Intent.ACTION_SEND).apply { type = mime; putExtra(Intent.EXTRA_STREAM, uri); addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION) }
-        app.startActivity(Intent.createChooser(send, title).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION))
+        device.shareFile(f, mime, title, subject = false)
     }
 
     /* ---------------- accounts, Slice A (docs/ACCOUNTS-API.md s4.4 and s5) ---------------- */
@@ -3961,10 +3950,7 @@ class AppState(
     private fun onWifi(): Boolean {
         wifiOverride?.let { return it }
         return try {
-            val cm = app.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
-            val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
-            caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) || caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET) ||
-                caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+            device.unmeteredNetwork()
         } catch (_: Exception) { false }
     }
 
@@ -4508,8 +4494,7 @@ class AppState(
     fun shareText(text: String, title: String) {
         lastShared = text
         try {
-            val send = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, text) }
-            app.startActivity(Intent.createChooser(send, title).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            device.shareText(text, title)
         } catch (_: Exception) { say("No app on this phone took the link. It is shown here to copy.") }
     }
 
@@ -4598,7 +4583,7 @@ class AppState(
     /** link-paste: the link on the phone's clipboard. */
     fun pasteLink() {
         val text = try {
-            (app.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager).primaryClip?.getItemAt(0)?.coerceToText(app)?.toString() ?: ""
+            device.clipboardText()
         } catch (_: Exception) { "" }
         if (!cloudLink(text)) say("No Mess Machine link is on the clipboard. Copy the link first.")
     }
