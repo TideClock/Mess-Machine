@@ -67,6 +67,9 @@ test green before the next starts.
    store is java.io.File (`JavaFileStore`), and `.java()` hands a real File to sharing, zips and the Workbench. Run 210 green.
    4c: `platform/Device` (assets, the speaker's rate and burst, the uptime clock, background play, the share sheet,
    the mic permission, the screen size, the network, the clipboard), AndroidDevice making the same calls as before.
+   4d: `platform/AudioOut` (AndroidAudioOut inside is unchanged). Runs 211 and 212 green.
+   4e: `SpeechIn` (VoiceNote), `MouthIn` (MouthMic) and `AppUpdater` (Updater; iOS's will find nothing, the App Store
+   updates it). The shared module now depends on `core` (`api`).
 4. **The Platform interfaces** in common, the Android implementations wrapping today's classes. AppState still in app/,
    now calling the interfaces instead of Android directly.
 5. **AppState to commonMain.** `java.io.File`, `Handler`, executors and `SharedPreferences` are gone from it by then.

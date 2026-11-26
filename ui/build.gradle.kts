@@ -22,6 +22,8 @@ kotlin {
     }
     sourceSets {
         commonMain.dependencies {
+            // the engine (MouthTracker, Project, ...) for the platform interfaces and, later, AppState
+            api(project(":core"))
             implementation(compose.runtime)
             implementation(compose.foundation)
             // Text, DropdownMenu and the rest the widgets use: Compose Multiplatform 1.7.0 maps to Material 3 1.3.0 on

@@ -32,28 +32,28 @@ import java.util.concurrent.Executors
  * update itself without the Install tap (Android 12 and up allow that for an app updating itself); if Android asks
  * anyway, its Install sheet opens straight away.
  */
-class Updater(private val app: Context) {
+class Updater(private val app: Context) : com.tideclock.messmachine.platform.AppUpdater {
     private val main = Handler(Looper.getMainLooper())
     private val io = Executors.newSingleThreadExecutor()
 
     /** The newest build on GitHub, 0 until checked. */
-    var latest by mutableIntStateOf(0)
+    override var latest by mutableIntStateOf(0)
         private set
-    var status by mutableStateOf("")
+    override var status by mutableStateOf("")
         private set
-    var busy by mutableStateOf(false)
+    override var busy by mutableStateOf(false)
         private set
-    var later by mutableStateOf(false)
+    override var later by mutableStateOf(false)
     private var apkUrl = ""
     private var apkSize = 0L
 
-    val current get() = BuildConfig.VERSION_CODE
-    val ready get() = latest > current && apkUrl.isNotEmpty()
+    override val current get() = BuildConfig.VERSION_CODE
+    override val ready get() = latest > current && apkUrl.isNotEmpty()
 
     /** For the tests: what a check would find. */
-    fun found(build: Int, url: String, size: Long) { latest = build; apkUrl = url; apkSize = size }
+    override fun found(build: Int, url: String, size: Long) { latest = build; apkUrl = url; apkSize = size }
 
-    fun check(quiet: Boolean, done: (String) -> Unit = {}) {
+    override fun check(quiet: Boolean, done: (String) -> Unit) {
         if (busy) return
         if (!quiet) status = "Checking…"
         io.execute {
@@ -75,7 +75,7 @@ class Updater(private val app: Context) {
     }
 
     /** Step 1 of Update: Android must allow installs from Mess Machine. Returns false after sending you there. */
-    fun allowed(): Boolean {
+    override fun allowed(): Boolean {
         if (Build.VERSION.SDK_INT < 26 || app.packageManager.canRequestPackageInstalls()) return true
         try {
             app.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${app.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -84,7 +84,7 @@ class Updater(private val app: Context) {
     }
 
     /** Download the APK, then hand it to the installer. The app closes when Android swaps it. */
-    fun download(before: () -> Unit) {
+    override fun download(before: () -> Unit) {
         if (busy || !ready) return
         busy = true
         val build = latest

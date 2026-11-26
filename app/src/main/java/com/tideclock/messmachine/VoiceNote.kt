@@ -13,7 +13,7 @@ import android.speech.SpeechRecognizer
  * The quick note (note #20): tap the bug, talk, tap it again. Android's recognizer stops by itself after a pause, so
  * this starts it again until the second tap and joins what it heard. Nothing is sent: the note waits on the phone.
  */
-class VoiceNote(private val app: Context, private val heard: (String) -> Unit, private val done: (text: String, problem: String?) -> Unit) {
+class VoiceNote(private val app: Context, private val heard: (String) -> Unit, private val done: (text: String, problem: String?) -> Unit) : com.tideclock.messmachine.platform.SpeechIn {
     private val main = Handler(Looper.getMainLooper())
     private var sr: SpeechRecognizer? = null
     private val said = StringBuilder()
@@ -28,9 +28,9 @@ class VoiceNote(private val app: Context, private val heard: (String) -> Unit, p
     /** The phone's own speech service, or Android 13's on-device one when that is all there is (or the first one fails). */
     private var onDevice = false
 
-    fun available() = defaultOk() || onDeviceOk()
+    override fun available() = defaultOk() || onDeviceOk()
 
-    fun start(): Boolean {
+    override fun start(): Boolean {
         if (!available()) return false
         said.clear(); partial = ""; on = true; finished = false
         onDevice = !defaultOk()
@@ -39,14 +39,14 @@ class VoiceNote(private val app: Context, private val heard: (String) -> Unit, p
     }
 
     /** The second tap: let the recognizer hand over its last words, then finish. */
-    fun stop() {
+    override fun stop() {
         if (finished) return
         on = false
         try { sr?.stopListening() } catch (_: Exception) {}
         main.postDelayed({ finish(null) }, 1800)
     }
 
-    fun cancel() {
+    override fun cancel() {
         on = false; finished = true
         main.removeCallbacksAndMessages(null)
         try { sr?.destroy() } catch (_: Exception) {}

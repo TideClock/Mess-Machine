@@ -2306,7 +2306,7 @@ class AppState(
     private var quickScreen = ""
     /** For the tests: what the quick note "hears" (no recognizer under Robolectric). */
     var fakeVoice: String? = null
-    private val voice = VoiceNote(app, { t -> if (quickText != null) quickText = t }) { t, problem -> quickDone(t, problem) }
+    private val voice: com.tideclock.messmachine.platform.SpeechIn = VoiceNote(app, { t -> if (quickText != null) quickText = t }) { t, problem -> quickDone(t, problem) }
 
     fun bugTap() {
         if (crash != null) { overlay = Overlay.Notes; return }
@@ -2354,7 +2354,7 @@ class AppState(
 
     /* ---------------- update from inside the app ---------------- */
 
-    val updater = Updater(app).also { Updater.live = it }
+    val updater: com.tideclock.messmachine.platform.AppUpdater = Updater(app).also { Updater.live = it }
 
     fun installUpdate() {
         if (!updater.ready) { updater.check(false); return }
@@ -2720,7 +2720,7 @@ class AppState(
 
     /* ---------------- mouth control: the mic as a hands-free XY ---------------- */
 
-    val mouthMic = MouthMic()
+    val mouthMic: com.tideclock.messmachine.platform.MouthIn = MouthMic()
     /** Mouth control is listening. */
     var mouthOn by mutableStateOf(false)
         private set

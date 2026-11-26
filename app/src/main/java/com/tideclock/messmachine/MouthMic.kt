@@ -16,15 +16,15 @@ const val MIC_FOR_NOTE = -3
  * The mic for mouth control: 16 kHz, read 8 ms at a time on its own thread into a [MouthTracker]. It keeps nothing:
  * no audio is stored or sent anywhere, only the two numbers the tracker makes.
  */
-class MouthMic {
-    val tracker = MouthTracker(16000)
-    @Volatile var running = false
+class MouthMic : com.tideclock.messmachine.platform.MouthIn {
+    override val tracker = MouthTracker(16000)
+    @Volatile override var running = false
         private set
     private var th: Thread? = null
 
     /** Open the mic (permission already granted); false when it would not open. */
     @SuppressLint("MissingPermission")
-    fun start(): Boolean {
+    override fun start(): Boolean {
         if (running) return true
         val rate = tracker.rate
         val min = AudioRecord.getMinBufferSize(rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
@@ -58,5 +58,5 @@ class MouthMic {
         return true
     }
 
-    fun stop() { running = false }
+    override fun stop() { running = false }
 }
