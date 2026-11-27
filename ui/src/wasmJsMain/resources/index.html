@@ -58,9 +58,9 @@ window.mm = (() => {
   mm.info = () => 'Web ' + mm.build + ' on ' + navigator.userAgent;
   // the sound out: blocks rendered by the engine, played by an AudioWorklet
   const WORKLET = `class MMOut extends AudioWorkletProcessor {
-    constructor() { super(); this.q = []; this.at = 0; this.under = 0; this.port.onmessage = e => { this.q.push(e.data); let n = 0; for (const b of this.q) n += b.length / 2; while (n > sampleRate / 2 && this.q.length > 1) { n -= this.q.shift().length / 2; this.at = 0; } }; }
+    constructor() { super(); this.q = []; this.at = 0; this.under = 0; this.on = false; this.port.onmessage = e => { this.on = true; this.q.push(e.data); let n = 0; for (const b of this.q) n += b.length / 2; while (n > sampleRate / 2 && this.q.length > 1) { n -= this.q.shift().length / 2; this.at = 0; } }; }
     process(_, outs) { const L = outs[0][0], R = outs[0][1] || outs[0][0]; let i = 0;
-      while (i < L.length) { const b = this.q[0]; if (!b) { if (i === 0) { this.under++; if (this.under % 50 === 1) this.port.postMessage(this.under); } for (; i < L.length; i++) { L[i] = 0; R[i] = 0; } break; }
+      while (i < L.length) { const b = this.q[0]; if (!b) { if (i === 0 && this.on) { this.under++; if (this.under % 50 === 1) this.port.postMessage(this.under); } for (; i < L.length; i++) { L[i] = 0; R[i] = 0; } break; }
         while (i < L.length && this.at < b.length) { L[i] = b[this.at]; R[i] = b[this.at + 1]; this.at += 2; i++; }
         if (this.at >= b.length) { this.q.shift(); this.at = 0; } }
       return true; } }
@@ -97,7 +97,13 @@ window.mm = (() => {
       r.onsuccess = () => { const c = r.result; if (!c) return res(); files.set(c.key, c.value.b); times.set(c.key, c.value.t); parents(c.key); c.continue(); }; r.onerror = () => res(); } catch (e) { res(); } });
     const list = await (await fetch('assets/index.json')).json();
     let done = 0; const line = document.getElementById('waitline');
-    await Promise.all(list.map(async p => { const r = await fetch('assets/' + p); files.set('asset:' + p, new Uint8Array(await r.arrayBuffer())); done++; line.textContent = 'Loading the sounds... ' + done + ' of ' + list.length; }));
+    const b64 = s => { const t = atob(s), u = new Uint8Array(t.length); for (let i = 0; i < t.length; i++) u[i] = t.charCodeAt(i); return u; };
+    if (Array.isArray(list)) {
+      await Promise.all(list.map(async p => { const r = await fetch('assets/' + p); files.set('asset:' + p, new Uint8Array(await r.arrayBuffer())); done++; line.textContent = 'Loading the sounds... ' + done + ' of ' + list.length; }));
+    } else {
+      // a claude.ai artifact will not serve every file type, so there the assets come as base64 packs (tools/web-pack.py)
+      await Promise.all(list.packs.map(async p => { const o = await (await fetch('assets/' + p)).json(); for (const k in o) files.set('asset:' + k, b64(o[k])); done++; line.textContent = 'Loading the sounds... ' + done + ' of ' + list.packs.length; }));
+    }
     loaded = true;
     if (go) { document.getElementById('wait').remove(); go(); }
   })().catch(e => { document.getElementById('waitline').textContent = 'The sounds did not load: ' + e.message; });
