@@ -596,10 +596,13 @@ class TapeRender {
         at(40); swipe("pad-1", "down")
         at(90); swipe("pad-5", "down")
         println("DEMO x11 keyboards=${state.keyboards.toList()}")
-        at(120); tap("chords-toggle", hold = 3)
-        val bass = listOf(0, 0, 12, 0, 3, 3, 15, 3, 7, 7, 19, 7, 5, 5, 17, 5)
-        for ((i, n) in bass.withIndex()) { at(150 + i * 15); key(1, n, 6) }
-        for ((i, j) in listOf(0, 3, 4, 5).withIndex()) { at(152 + i * 60); slot(5, j, 40) }
+        println("DEMO x11 chord=${state.chordMode}")
+        // chords are on for every Padiano: the mono bass plays one note of each chord, the keys play all of it
+        val prog = listOf(0, 3, 4, 5)
+        for ((i, j) in prog.withIndex()) {
+            for (e in 0 until 4) { at(150 + i * 60 + e * 15); slot(1, j, 6) }
+            at(152 + i * 60); slot(5, j, 40)
+        }
         at(420)
     }
 
@@ -628,7 +631,12 @@ class TapeRender {
         state.selectPad(5, false)
         state.overlay = Overlay.Mouth
         roll()
-        at(20); if (has("mouth-toggle")) tap("mouth-toggle", hold = 3) else state.switchMouth(true)
+        at(20); tap("mouth-toggle", hold = 3)
+        if (!state.mouthOn) {
+            // no microphone in the renderer: switch the listener on by hand so the meter draws the scripted readings
+            AppState::class.java.getDeclaredMethod("setMouthOn", Boolean::class.javaPrimitiveType).apply { isAccessible = true }.invoke(state, true)
+        }
+        at(30); state.midiDown(60, 100)
         println("DEMO x13 mouthOn=${state.mouthOn} to=${state.mouthVowelTo}")
         // "wow, wow, wow wow": each word opens dark and swings bright, then lets go
         val words = listOf(60, 105, 150, 172, 210, 255)
@@ -639,6 +647,7 @@ class TapeRender {
             state.mouthApply(vw, lv, heard)
         }
         state.mouthApply(.5f, 0f, false)
+        at(330); state.midiUp(60)
         at(360)
     }
 
