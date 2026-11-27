@@ -4,7 +4,7 @@ name: Web (the shared app in a browser)
 # logs can still see what happened.
 on:
   push:
-    branches: [web-cmp]
+    branches: [main, web-cmp]
     paths-ignore: ['site/**', 'library/**', 'docs/**']
   workflow_dispatch:
 permissions:
