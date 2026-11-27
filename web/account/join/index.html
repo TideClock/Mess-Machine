@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>You are invited · Mess Machine</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="/mm.css">
+<script src="/config.js" defer></script>
+<script src="/mm.js" defer></script>
+<script src="/join.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to the page</a>
+<header class="rail"><a class="brand" href="/">Mess Machine</a><span class="rail-sub">Invite</span></header>
+<main id="main">
+  <h1>You are invited</h1>
+
+  <section class="tray" data-mm-needs-server hidden>
+    <p class="lcd">Not set up yet</p>
+    <p>Playing together is not switched on yet, so this invite has nothing to open. Nothing is wrong on your side.</p>
+    <p class="msg bad" data-mm-problem hidden></p>
+  </section>
+
+  <div data-mm-flow hidden>
+    <p class="lcd" id="state" role="status" aria-live="polite">Looking for the invite</p>
+
+    <section id="gone" class="tray" hidden>
+      <p class="lead" id="gone-words">This invite does not work.</p>
+      <p class="quiet">An invite works once and for a few days. Ask the person who sent it for a new one.</p>
+    </section>
+
+    <section id="found" hidden>
+      <div class="nameplate">
+        <span class="by"><span id="owner-name"></span> asks you to make a mess together</span>
+        <span class="name" id="mess-name"></span>
+      </div>
+      <div class="tray">
+        <div class="keys stack">
+          <a class="key go wide" id="open" href="/">Open in Mess Machine</a>
+        </div>
+        <p class="quiet small">Nothing happened? The app has to be on this phone first. Then open this link again.</p>
+        <div data-mm-play></div>
+      </div>
+      <p class="quiet">You join in the app, after you sign in there. Everyone in the mess can change it and will see your name.</p>
+    </section>
+  </div>
+  <noscript><p class="msg bad">This page needs JavaScript to show the invite.</p></noscript>
+</main>
+<footer><div class="in">
+  <nav aria-label="Pages"><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="/delete/">Delete your account</a></nav>
+  <p>Mess Machine by <span data-mm-developer></span>. Help: <span data-mm-support></span></p>
+</div></footer>
+</body>
+</html>

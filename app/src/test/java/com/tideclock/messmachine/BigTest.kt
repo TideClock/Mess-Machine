@@ -21,6 +21,7 @@ import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -1486,11 +1487,11 @@ class BigTest {
         }
         val wav = com.tideclock.messmachine.engine.Wav.writeStereo16(FloatArray(8820) { i -> (.4 * Math.sin(i * .05)).toFloat() }, 44100)
         val json = """{"id":"test-pack","name":"Test Pack","version":1,"clips":[{"id":"beep","file":"clips/beep.wav","title":"Beep","type":"perc"}]}"""
-        state.packs.installZip(zipOf("pack.json" to json.toByteArray(), "clips/beep.wav" to wav), "test-pack")
+        state.packs.installZip(zipOf("pack.json" to json.toByteArray(), "clips/beep.wav" to wav).m(), "test-pack")
         assertTrue("the pack's sound is in the library", state.lib.has("pack:test-pack:beep") && state.lib.load("pack:test-pack:beep") != null)
         assertEquals("in its own jar", "Test Pack", state.lib.cab("pack:test-pack").name)
         var refused = false
-        try { state.packs.installZip(zipOf("pack.json" to json.toByteArray(), "../evil.txt" to "x".toByteArray()), "test-pack") } catch (e: SecurityException) { refused = true }
+        try { state.packs.installZip(zipOf("pack.json" to json.toByteArray(), "../evil.txt" to "x".toByteArray()).m(), "test-pack") } catch (e: SecurityException) { refused = true }
         assertTrue("a zip entry outside the pack's folder is refused", refused)
         assertTrue("and the installed pack is untouched", state.lib.has("pack:test-pack:beep"))
         state.packOffers = listOf(Packs.Offer("test-pack", "Test Pack", "Made by the big test.", 2, 1, 9000, ""))
@@ -2224,6 +2225,8 @@ class BigTest {
         assertEquals("the tap explains Play", "play", state.faqTag)
         assertFalse("and does not press it", state.playing)
         rule.onNodeWithTag("faq-text").assertExists()
+        // Nov 24: the FAQ guy (Tyler's drawing) is the one talking, inside the card
+        rule.onNodeWithContentDescription("FAQ guy").assertExists()
         shot("72-what-the-faq")
         rule.onNodeWithTag("faq-done").performClick(); settle()
         assertFalse(state.faqOn)
@@ -3182,6 +3185,104 @@ class BigTest {
         assertEquals("no Edit tray opened under the sheet", tray0, state.tray)
         assertEquals("no Padiano opened under the sheet", kb0, state.keyboards.toList())
         state.overlay = null; settle()
+    }
+
+    /** Nov 26 (Tyler): Re-pitch on the Sample sheet, Undo, and the Auto-pitch setting keeping a loop in the mess's key. */
+    @Test fun nov26Repitch() {
+        state.setScale("Minor"); state.setRoot(0); settle()
+        val k = "loop:give-me-throne-1"   // D minor (MM-K)
+        state.putOnPad(state.project.sel, k); settle()
+        state.overlay = Overlay.Doctor(k); settle()
+        at("repitch").performScrollTo().performClick()
+        waitFor("Re-pitch listens") { state.project.edit(k).apKind.isNotEmpty() }
+        settle()
+        val e = state.project.edit(k)
+        assertEquals("a loop goes by its key", "key", e.apKind)
+        assertTrue("D minor moves down about 2 into C minor (${e.ap})", kotlin.math.abs(e.ap + 2) < .5)
+        assertEquals("Tune is left alone", 0.0, e.tune, 0.0)
+        shot("nov26-repitch")
+        state.toast = null; settle()   // the message about the move sits over the bottom of the sheet for a few seconds
+        at("unpitch").performClick(); settle()
+        assertTrue("Undo takes it off", state.project.edit(k).apKind.isEmpty())
+        state.overlay = null; settle()
+        // Auto-pitch: a new sound on a pad is re-pitched by itself, and a key change moves it along
+        state.overlay = Overlay.Settings; settle()
+        val was = state.autoPitch
+        at("set-autopitch").performScrollTo().performClick(); settle()
+        assertEquals("Auto-pitch switches", !was, state.autoPitch)
+        if (!state.autoPitch) { at("set-autopitch").performClick(); settle() }
+        state.overlay = null; settle()
+        state.putOnPad((state.project.sel + 1) % com.tideclock.messmachine.engine.Project.BANK, k); settle()
+        waitFor("Auto-pitch listens to the new sound") { state.project.edit(k).apKind == "key" }
+        state.setRoot(2); settle()
+        assertTrue("in D minor it sits where it was recorded (${state.project.edit(k).ap})", kotlin.math.abs(state.project.edit(k).ap) < .5)
+        state.switchAutoPitch(false); state.setRoot(0); settle()
+    }
+
+    /** Nov 24 (Tyler's bug video): the settings, the loop strip, Tempo, the synth's row, the Mixer, Auto trim, the stutter. */
+    @Test fun nov24VideoNotes() {
+        // Settings: switches on one line each; Auto trim is one of them, and hold-to-record is gone
+        state.overlay = Overlay.Settings; settle()
+        val trim = state.autoTrim
+        at("set-autotrim").performClick(); settle()
+        assertEquals("Auto trim switches", !trim, state.autoTrim)
+        assertFalse("tap start, tap stop always (no hold-to-record)", state.recordHold)
+        val line = rule.onNodeWithTag("set-buzz").fetchSemanticsNode().boundsInRoot.height
+        assertTrue("an on/off setting is one short line ($line)", line < 140f)
+        shot("nov24-settings")
+        state.overlay = null; settle()
+        // Tempo drops down under the top bar, with Click and Count-in in it
+        state.overlay = Overlay.Tempo; settle()
+        val sheetH = rule.onNodeWithTag("sheet").fetchSemanticsNode().boundsInRoot.height
+        val screenH = rule.onRoot().fetchSemanticsNode().boundsInRoot.height
+        assertTrue("Tempo is not a whole screen ($sheetH of $screenH)", sheetH < screenH * .8f)
+        val clickWas = state.live.click
+        at("tempo-click").performClick(); settle()
+        assertEquals("Click from Tempo", !clickWas, state.live.click)
+        at("tempo-click").performClick(); settle()
+        shot("nov24-tempo-drop")
+        at("done").performClick(); settle()
+        assertEquals(null, state.overlay)
+        // the loop strip goes away on another page, and on a tap under it
+        tab("Pads"); strip()
+        assertTrue(state.loopStripOpen)
+        shot("nov24-loop-strip")
+        tab("Synth")
+        assertFalse("another page puts the strip away", state.loopStripOpen)
+        tab("Pads"); strip()
+        rule.onNodeWithTag("pad-0").performTouchInput { down(center); up() }; settle()
+        assertFalse("a tap under it puts it away", state.loopStripOpen)
+        // the stutter's rate follows the vial: bottom slow, top 32nd notes
+        assertEquals(4f, state.stutterSteps(.05f)); assertEquals(2f, state.stutterSteps(.3f)); assertEquals(1f, state.stutterSteps(.6f)); assertEquals(.5f, state.stutterSteps(.95f)); assertEquals(2f, state.stutterSteps(null))
+        assertEquals("1/32", state.stutterName(.95f))
+        // Auto trim: a take that starts with room hiss starts on the sound
+        val rate = 44100
+        val data = FloatArray(rate) { i -> if (i < rate / 2) (if (i % 2 == 0) .01f else -.01f) else (if (i % 40 < 20) .6f else -.6f) * kotlin.math.exp(-(i - rate / 2) / 4000f) }
+        val cut = state.bench.trimSilence(com.tideclock.messmachine.engine.Sample("mic", data, rate))!!
+        assertTrue("the hiss before the sound is cut (kept ${cut.data.size} of ${data.size})", cut.data.size < rate / 2 + rate / 10)
+        assertTrue("and it starts right on the sound", cut.data.take(rate / 100).any { kotlin.math.abs(it) > .3f })
+        // the Mixer: the Seq tab's third view, a fader per pad and one for the bank
+        tab("Steps")
+        at("seq-mixer").performClick(); settle()
+        assertTrue(state.mixerOn)
+        at("mixer-pads").assertExists(); at("mixer-bank").assertExists()
+        val k0 = state.project.kit[0]
+        val v0 = state.project.edit(k0).vol
+        rule.onNodeWithTag("mixer-0").performTouchInput { down(Offset(center.x, height * .9f)); up() }; settle()
+        assertTrue("a pad's fader sets its level (${state.project.edit(k0).vol} was $v0)", state.project.edit(k0).vol < v0)
+        shot("nov24-mixer")
+        at("seq-steps").performClick(); settle()
+        assertFalse(state.mixerOn)
+        // the pad menu offers Auto sample
+        rule.runOnUiThread { state.padMenu = 0 }; settle()
+        assertTrue("Auto sample is in the pad menu", rule.onAllNodesWithTag("menu-autosample").fetchSemanticsNodes().isNotEmpty())
+        rule.runOnUiThread { state.padMenu = -1 }; settle()
+        // Tyler's answer 7: a mess changed on two of his phones asks what to keep
+        rule.runOnUiThread { state.twoPhones = com.tideclock.messmachine.cloud.TwoPhones("m1", "m2", "Duet", true) }; settle()
+        for (t in listOf("two-banner", "two-merge", "two-this", "two-both")) at(t).assertExists()
+        shot("nov24-two-phones")
+        at("two-both").performClick(); settle()
+        assertEquals("answered", null, state.twoPhones)
     }
 
     /** Nov 23 (Tyler: "tapping Click isn't working most of the time"): the key shows its new state on every tap. */

@@ -1,0 +1,4 @@
+# Screens that change between runs with no code change (timing in the big test). The screen gate lists them but does
+# not fail on them. Each line: the screen, then why. Fix the test and remove the line when you can.
+112-large-keys.png      the Stop key is caught mid-press in some runs (runs 199 and 206)
+12-workbench-with-resample.png  the resample row lands a moment later in some runs (runs 199 and 206)

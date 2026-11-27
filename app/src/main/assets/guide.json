@@ -1,14 +1,16 @@
 {
-  "title": "The sound engine was rebuilt to share with iPhone",
+  "title": "A new face: the teardrop eye",
   "thisBuild": [
-    "The engine that makes every sound was rewritten in a language the iPhone and web versions can share. It should sound exactly the same: the old and new engines were checked against each other and give identical audio.",
-    "Nothing else changed: same keys, sounds and layout as the last build."
+    "New app icon: the teardrop eye from your painting, drawn in the app's own icon style (flat colours, thick ink lines). It fits every launcher shape, circle or rounded square.",
+    "Still new from the last build: Re-pitch on the Sample sheet's Play tab. One clear note moves to C so keys and chords play the notes they say; a melody or loop moves into the mess's key and keeps its length.",
+    "Settings, Playing: Auto-pitch new sounds re-pitches every new sound on a pad, and key-matched loops follow the mess's key."
   ],
   "watch": [
-    "Play a few loops, a synth and a chord: does anything sound different, late or crackly?",
-    "Bounce a loop, share a mess and import a sound from your files: do they all still work?"
+    "Look at the icon on your home screen and in the app drawer: does it read at that size, on your wallpaper?",
+    "Sample something melodic, tap Re-pitch, and play it on the keys: do the notes match the key names?"
   ],
   "limits": [
-    "If anything sounds or acts differently from the last build, send a bug note right away. That points straight at this change."
+    "Some launchers keep the old icon until the phone restarts or the launcher's cache clears.",
+    "Drums and noise have no note, so Re-pitch leaves them as they are."
   ]
 }

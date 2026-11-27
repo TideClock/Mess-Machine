@@ -406,5 +406,45 @@
  "Full": [
   "ic_full",
   "synthview"
+ ],
+ "Loop A": [
+  "ic_loop_a",
+  "loop"
+ ],
+ "Loop B": [
+  "ic_loop_b",
+  "loop"
+ ],
+ "Loop C": [
+  "ic_loop_c",
+  "loop"
+ ],
+ "Loop D": [
+  "ic_loop_d",
+  "loop"
+ ],
+ "Loop E": [
+  "ic_loop_e",
+  "loop"
+ ],
+ "Loop F": [
+  "ic_loop_f",
+  "loop"
+ ],
+ "Loop G": [
+  "ic_loop_g",
+  "loop"
+ ],
+ "Loop H": [
+  "ic_loop_h",
+  "loop"
+ ],
+ "Rest": [
+  "ic_rest",
+  "loop"
+ ],
+ "Drop": [
+  "ic_drop",
+  "tool"
  ]
 }

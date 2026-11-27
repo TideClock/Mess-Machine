@@ -4,6 +4,27 @@
 
 Rewritten at the end of every session and at each step of a long job (BT-2). Read this first.
 
+- **Accounts, Slices B to F on Android (2026-11-24, branch `accounts`, not on main):** two people in one mess
+  (invite link, join, members, remove with "and block", leave, people you blocked; a `SyncSession` runs the open shared
+  mess, with other people's edits coming in at the top of the next loop while playing), live feel (the Realtime
+  websocket over OkHttp behind the 2 s poll, who-is-here chips in the Messes sheet's "This mess" card, "Mia is shaping
+  this too" in the Edit tray), share links and History on the Share sheet, report, delete account, the reviewer
+  sign-in, and "Give it to the Vault" on a Workbench sound. Files: ui/ShareScreens.kt, Realtime.kt, the Slice B to F
+  sections at the end of AppState.kt. Core changed in two small places for it: `CloudStore.byOps` and `soundsChanged`
+  (contract s4.4 rule 8), `SyncSession.nudge`, `socketJoined`, `memberCount`. Tests: app/src/test/.../TogetherTest.kt
+  (two people on FakeCloudAll, the test-side server of Slices C to F) and RealtimeTest.kt (the socket's protocol against
+  a scripted socket). Left out on purpose: taking a Vault submission back (`vault_withdraw` is not in `CloudApi`, and
+  the rulings cut `vault-mine`), sealing the token with the Keystore (still plain private prefs, as Slice A left it).
+  Never tested against a real server: the live socket and every call here have only met the fakes.
+
+- **Accounts, Slice A on Android (2026-11-24, branch `accounts`, not on main):** sign in with an email code, terms,
+  the name asked once, the Account page (no usage bar, cut), and on the Messes sheet the account row, a cloud mark per
+  mess, the lamp on the open one, Keep off the cloud, online messes not on this phone, Get N sounds now. Files:
+  SupabaseApi.kt, CloudPlat.kt, CloudHost.kt, ui/CloudScreens.kt, the accounts section at the end of AppState.kt.
+  With no server in the build (`mm.cloudUrl`, `mm.cloudKey` empty, the default) none of it exists. Tests:
+  app/src/test/.../CloudTest.kt (two phones on FakeCloud). A failed accounts run puts its log on the `accounts-log`
+  release.
+
 - **In progress (2026-11-21): the overhaul**, Tyler's go on Nov 21 for all builds with rollback built in. Plan and
   review: https://claude.ai/artifact/PjAnmWrBStAqX9wNEc6ZHf ; skin mockups: https://claude.ai/artifact/WBbiA2MqRCDftPaEuayoVV .
   Rollback: build 104's code is commit f704a4c (also release build-104); every green build from 105 on keeps its own

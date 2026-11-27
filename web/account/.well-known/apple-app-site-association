@@ -1,0 +1,14 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["REPLACE_TEAM_ID.REPLACE_IOS_BUNDLE_ID"],
+        "components": [
+          { "/": "/m/*", "comment": "share links" },
+          { "/": "/join/*", "comment": "invite links" },
+          { "/": "/j/*", "comment": "invite links, short form" }
+        ]
+      }
+    ]
+  }
+}

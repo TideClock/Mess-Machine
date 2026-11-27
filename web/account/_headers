@@ -1,0 +1,34 @@
+# Netlify headers for the Mess Machine account site.
+# ONE BLANK: put your Supabase address in place of https://YOUR-PROJECT.supabase.co (web/README.md, step 4).
+# The pages may load only their own files and talk only to that one server. No inline script or style.
+
+/*
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src 'self' https://YOUR-PROJECT.supabase.co; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()
+  Strict-Transport-Security: max-age=63072000; includeSubDomains
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-origin
+
+/config.js
+  Cache-Control: no-cache
+
+/m/*
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-store
+
+/join/*
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-store
+
+/j/*
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-store
+
+/.well-known/assetlinks.json
+  Content-Type: application/json
+
+/.well-known/apple-app-site-association
+  Content-Type: application/json

@@ -33,7 +33,7 @@ All in `app/src/main/res/font/`, all OFL, from Google Fonts. Which UI uses which
 
 | File | Family |
 |---|---|
-| `archivo_medium.ttf`, `archivo_extrabold.ttf`, `archivo_black.ttf` | Archivo 500, 800, 900 (also the Block word plates) |
+| `archivo_medium.ttf`, `archivo_extrabold.ttf`, `archivo_black.ttf` | Archivo 500, 800, 900 (also the Block word plates) PostScript names `Archivo-Medium`, `Archivo-ExtraBold`, `Archivo-Black` (each file had `ArchivoSemiBold-Regular`, so iOS could register only one; Android loads by file and is unaffected) |
 | `bungee.ttf` | Bungee |
 | `plexmono_400.ttf`, `plexmono_700.ttf` | IBM Plex Mono |
 | `rubik_distressed.ttf` | Rubik Distressed (Worn: panel key words) |

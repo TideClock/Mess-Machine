@@ -328,6 +328,39 @@ public class EngineTest {
         check(KeyFinder.find(hiss, ksr).isEmpty(), "Key: noise gets no key");
         check(KeyFinder.find(java.util.Arrays.copyOf(tune.apply(major, 0.0), ksr / 5), ksr).isEmpty(), "Key: a sound shorter than 0.4 s gets no key");
         check(KeyFinder.find(new float[ksr * 2], ksr).isEmpty(), "Key: silence gets no key");
+        // ---- Re-pitch (Nov 26, Tyler: "a button that sets it to C for C"): one note goes to C, a key goes into the mess's key
+        java.util.function.BiFunction<Double, Double, float[]> note = (midi, sec) -> {
+          float[] x = new float[(int) (ksr * sec)];
+          double f = 440 * Math.pow(2, (midi - 69) / 12.0);
+          for (int i = 0; i < x.length; i++) {
+            double t = i / (double) ksr, env = Math.min(1, i / 200.0) * Math.exp(-t * 3);
+            x[i] = (float) (env * (.5 * Math.sin(2 * Math.PI * f * t) + .3 * Math.sin(4 * Math.PI * f * t) + .15 * Math.sin(6 * Math.PI * f * t)));
+          }
+          return x;
+        };
+        AutoPitch.Found pl = AutoPitch.detect(note.apply(67.2, .15), ksr, 0, 1);
+        check(pl != null && "note".equals(pl.kind) && Math.abs(pl.midi - 67.2) < .1 && "G, 20 cents sharp".equals(pl.label()),
+          "Re-pitch: a 0.15 s pluck reads as its note: " + (pl == null ? "nothing" : pl.label() + " " + pl.midi));
+        check(pl != null && Math.abs(AutoPitch.shift(pl, 9, "Minor") - 4.8) < .1, "Re-pitch: the G pluck 20 cents sharp moves up 4.8 semitones to C, whatever the mess's key");
+        AutoPitch.Found bass = AutoPitch.detect(note.apply(33.0, .6), ksr, 0, 1);
+        check(bass != null && "note".equals(bass.kind) && Math.abs(AutoPitch.shift(bass, 0, "Major") - 3) < .1, "Re-pitch: a low A bass note (55 Hz) moves up 3 to C: " + (bass == null ? "nothing" : bass.label()));
+        AutoPitch.Found fs = AutoPitch.detect(tune.apply(up6, 35.0), ksr, 0, 1);
+        check(fs != null && "key".equals(fs.kind) && Math.abs(Math.abs(AutoPitch.shift(fs, 0, "Major")) - 5.65) < .1,
+          "Re-pitch: an F# major tune a third sharp moves 6 semitones less the drift into C major: " + (fs == null ? "nothing" : fs.kind + " " + AutoPitch.shift(fs, 0, "Major")));
+        AutoPitch.Found cm = AutoPitch.detect(tune.apply(major, 0.0), ksr, 0, 1);
+        check(cm != null && "key".equals(cm.kind) && Math.abs(AutoPitch.shift(cm, 9, "Minor")) < .1, "Re-pitch: a C major tune stays put in A minor (the same notes)");
+        check(cm != null && Math.abs(AutoPitch.shift(cm, 2, "Major") - 2) < .1, "Re-pitch: a C major tune moves up 2 for D major");
+        check(AutoPitch.detect(hiss, ksr, 0, 1) == null, "Re-pitch: noise gets nothing");
+        check(AutoPitch.detect(note.apply(60.0, .05), ksr, 0, 1) == null, "Re-pitch: a sound under 0.1 s gets nothing");
+        check(AutoPitch.detect(new float[ksr], ksr, 0, 1) == null, "Re-pitch: silence gets nothing");
+        SoundEdit ape = new SoundEdit(); ape.ap = 4.8; ape.apKind = "note";
+        SoundEdit apb = SoundEdit.fromMap(ape.toMap());
+        check(!ape.isDefault() && apb.ap == 4.8 && "note".equals(apb.apKind) && SoundEdit.fromMap(new SoundEdit().toMap()).apKind.isEmpty(), "Re-pitch: saved and loaded with the mess");
+        Sample tone = new Sample("t", note.apply(60.0, 1.0), ksr);
+        SoundEdit byKey = new SoundEdit(); byKey.ap = 4; byKey.apKind = "key";
+        SoundEdit byNote = new SoundEdit(); byNote.ap = 4; byNote.apKind = "note";
+        double lk = Engine.renderOne("t", tone, byKey).seconds(), ln = Engine.renderOne("t", tone, byNote).seconds();
+        check(Math.abs(lk - 1.0) < .08 && ln < .85, "Re-pitch: a key move keeps the length, a note move plays like tape: " + lk + " s, " + ln + " s");
       }
       // ---- SE-4, SE-9, SE-10: loops at the mess's tempo, hits, and old chop keys still playing
       {
@@ -586,6 +619,27 @@ public class EngineTest {
       for (int i = 0; i < 400; i++) { fe.render(b, 256); Engine.Position ps = fe.heard(); if (ps.step >= 0) seen.add(ps.step); }
       check(seen.size() <= 3, "stutter holds the loop on two steps: " + seen);
       fe.fx("stutter", false);
+      // Nov 24 (Tyler's video): the stutter holds the length it is set to and never speeds up on its own
+      Project fullP = new Project(); fullP.kit[0] = "imp"; fullP.bpm = 100; for (int st = 0; st < 16; st++) fullP.pats[0].setStep("imp", st, true);
+      for (float sL : new float[]{8f, 4f, 1f}) {
+        Engine le = new Engine(rate); le.setSnapshot(Engine.Snapshot.build(tp, k -> k.equals("imp") ? is : null, new Engine.Live()));
+        le.play(); for (int i = 0; i < 30; i++) le.render(b, 256);
+        le.stutterLength(sL); le.fx("stutter", true);
+        java.util.Set<Integer> s2 = new java.util.TreeSet<>();
+        for (int i = 0; i < 1200; i++) { le.render(b, 256); Engine.Position ps = le.heard(); if (i > 40 && ps.step >= 0) s2.add(ps.step); }
+        check(s2.size() <= (int) sL + 1 && s2.size() >= Math.min((int) sL, 2), "stutter at " + sL + " sixteenths loops that many steps: " + s2);
+      }
+      {
+        // 32nd notes: twice the hits of a one-step stutter over the same time
+        int[] hits = new int[2]; float[] lens = {1f, .5f};
+        for (int sq = 0; sq < 2; sq++) {
+          Engine le = new Engine(rate); le.setSnapshot(Engine.Snapshot.build(fullP, k -> k.equals("imp") ? is : null, new Engine.Live()));
+          le.play(); for (int i = 0; i < 30; i++) le.render(b, 256);
+          le.stutterLength(lens[sq]); le.fx("stutter", true);
+          int st0 = le.triggers; for (int i = 0; i < 1200; i++) le.render(b, 256); hits[sq] = le.triggers - st0;
+        }
+        check(hits[1] > hits[0] * 1.6, "32nd-note stutter plays about twice as often as sixteenths: " + hits[0] + " vs " + hits[1]);
+      }
       // tape stop: the clock slows and then stops making sound
       Engine te = new Engine(rate); te.setSnapshot(Engine.Snapshot.build(p, lib, new Engine.Live())); te.play();
       for (int i = 0; i < 20; i++) te.render(b, 256);
@@ -994,6 +1048,8 @@ public class EngineTest {
     double z = hat.snapZero(.3);
     int zi = (int) Math.round(z * hat.data.length);
     check(zi > 0 && (hat.data[zi - 1] <= 0) != (hat.data[zi] <= 0), "snap lands on a zero crossing");
+    wrapTests(rate, p, lib);
+    timingTest(p, lib);
     System.out.println(failures == 0 ? "ALL GOOD" : failures + " FAILED");
     repeatPatternTests(rate);
     mouthTests();
@@ -1166,6 +1222,150 @@ public class EngineTest {
     }
   }
 
+  /** One engine rendered in blocks of one size: the left channel of everything it has played, and how often swapToken changed. */
+  static class WrapRun {
+    final Engine e; final int block; final float[] buf; float[] out = new float[1 << 16]; int n = 0, changes = 0, last;
+    WrapRun(int rate, int block, Engine.Snapshot s) { e = new Engine(rate); this.block = block; buf = new float[block * 2]; e.setSnapshot(s); last = e.swapToken; }
+    /** Render whole blocks until at least this many frames have been played. */
+    WrapRun to(long frame) {
+      while (n < frame) {
+        e.render(buf, block);
+        if (n + block > out.length) out = Arrays.copyOf(out, Math.max(out.length * 2, n + block));
+        for (int i = 0; i < block; i++) out[n + i] = buf[i * 2];
+        n += block;
+        if (e.swapToken != last) { changes++; last = e.swapToken; }
+      }
+      return this;
+    }
+    /** The first frame that is not exactly silent, or -1. */
+    int first() { for (int i = 0; i < n; i++) if (out[i] != 0f) return i; return -1; }
+    /** Where each hit starts, in frames. */
+    List<Integer> onsets() { List<Integer> o = new ArrayList<>(); for (int i = 0; i < n; i++) if (Math.abs(out[i]) > .01f && (i == 0 || Math.abs(out[i - 1]) <= .01f)) o.add(i); return o; }
+  }
+
+  /** Accounts, Review B M2 and S10 (5): a snapshot armed with setSnapshotAtWrap is heard from the exact frame the loop comes round. */
+  static void wrapTests(int rate, Project demo, Engine.SampleSource lib) {
+    float[] imp = new float[400]; imp[0] = 1f; imp[1] = 1f;
+    Sample is = new Sample("imp", imp, rate);
+    Engine.SampleSource src = k -> k.equals("imp") ? is : null;
+    // 120 BPM at 48 kHz: a step is 6000 frames, a 16 step pass 96000. "quiet" has the pad and no hits; "hit0" adds step 0.
+    Project quiet = new Project(); quiet.kit[0] = "imp"; quiet.bpm = 120;
+    Project hit0 = quiet.copy(); hit0.pats[0].setStep("imp", 0, true);
+    int step = (int) Math.round(rate * 60.0 / quiet.bpm / 4), pass = 16 * step;
+    java.util.function.BiFunction<Project, Integer, Engine.Snapshot> snapOf = (pr, seq) -> { Engine.Snapshot sn = Engine.Snapshot.build(pr, src, new Engine.Live()); sn.seq = seq; return sn; };
+    // the yardstick: a phone that had the hit all along. Its first frame of sound is F0 (Play's 4 ms lead and nothing else).
+    WrapRun ref = new WrapRun(rate, 480, snapOf.apply(hit0, 0)); ref.e.play(); ref.to(2 * pass);
+    int F0 = ref.first();
+    check(F0 == (int) Math.ceil(.004 * rate) && ref.onsets().equals(Arrays.asList(F0, F0 + pass)), "wrap swap yardstick: step 0 of each pass starts on frame " + F0 + " + a pass: " + ref.onsets());
+    // 1. blocks of 64, 480 and 8192 frames: silent to the last frame of the pass, the hit on the first frame of the next
+    for (int block : new int[]{64, 480, 8192}) {
+      WrapRun r = new WrapRun(rate, block, snapOf.apply(quiet, 0)); r.e.play(); r.to(10000);
+      r.e.setSnapshotAtWrap(snapOf.apply(hit0, 0), 7);
+      r.to(pass / 2); int tokBefore = r.e.swapToken;
+      r.to(3 * pass - step);
+      boolean same = true;  // from the wrap on it is sample for sample what the yardstick played from its own start
+      if (pass % block == 0) for (int i = 0; i < pass && same; i++) same = r.out[F0 + pass + i] == ref.out[F0 + i];
+      check(r.first() == F0 + pass && r.onsets().equals(Arrays.asList(F0 + pass, F0 + 2 * pass)) && same,
+          "wrap swap, blocks of " + block + ": silent until the loop comes round, then heard from frame " + r.first() + " (wanted " + (F0 + pass) + ")" + (pass % block == 0 ? ", sample for sample" : ""));
+      check(tokBefore == 0 && r.e.swapToken == 7 && r.changes == 1, "wrap swap, blocks of " + block + ": swapToken changes once, at the swap (" + tokBefore + " then " + r.e.swapToken + ", " + r.changes + " change)");
+    }
+    // 2. nothing armed, or armed and taken back: not one sample differs from an engine without the hook in use
+    {
+      Engine.Snapshot ds = Engine.Snapshot.build(demo, lib, new Engine.Live());
+      WrapRun plain = new WrapRun(rate, 480, ds); plain.e.play(); plain.to(3 * 16 * (int) (rate * 60.0 / demo.bpm / 4));
+      WrapRun off = new WrapRun(rate, 480, ds); off.e.play(); off.to(10000);
+      off.e.setSnapshotAtWrap(snapOf.apply(hit0, 0), 3); off.to(20000); off.e.setSnapshotAtWrap(null, 4); off.to(plain.n);
+      check(Arrays.equals(Arrays.copyOf(plain.out, plain.n), Arrays.copyOf(off.out, off.n)) && off.e.swapToken == 0 && off.changes == 0, "wrap swap: armed then taken back (null) changes nothing, token " + off.e.swapToken);
+      // and a snapshot equal to the one playing goes in without a click: ringing voices carry on over the swap
+      WrapRun eq = new WrapRun(rate, 480, ds); eq.e.play(); eq.to(10000);
+      eq.e.setSnapshotAtWrap(Engine.Snapshot.build(demo, lib, new Engine.Live()), 9); eq.to(plain.n);
+      check(Arrays.equals(Arrays.copyOf(plain.out, plain.n), Arrays.copyOf(eq.out, eq.n)) && eq.e.swapToken == 9 && eq.changes == 1, "wrap swap: an equal snapshot going in is not heard at all (demo loop, 3 passes, sample for sample)");
+    }
+    // 3. song mode: armed in slot 1 of A B, it goes in where the song changes loop, and the song carries on by the new song
+    {
+      Project sq = quiet.copy(); sq.song[0] = 0; sq.song[1] = 1; sq.songMode = true;
+      Project sn = sq.copy(); sn.song[2] = 1; sn.pats[1].setStep("imp", 0, true); sn.pats[0].setStep("imp", 4, true);
+      WrapRun r = new WrapRun(rate, 480, snapOf.apply(sq, 0)); r.e.play(); r.to(10000);
+      r.e.setSnapshotAtWrap(snapOf.apply(sn, 0), 1); r.to(4 * pass);
+      // A (old, silent) | B step 0 | B step 0 (the new third slot) | A step 4
+      check(r.onsets().equals(Arrays.asList(F0 + pass, F0 + 2 * pass, F0 + 3 * pass + 4 * step)) && r.e.swapToken == 1 && r.changes == 1,
+          "wrap swap in song mode: heard from the first frame of the next song slot, and the song runs A B B A by the new song: " + r.onsets());
+      // armed in the old song's last slot: the song goes on into the slot the new song added, it does not start again
+      WrapRun t = new WrapRun(rate, 480, snapOf.apply(sq, 0)); t.e.play(); t.to(pass + pass / 2);
+      t.e.setSnapshotAtWrap(snapOf.apply(sn, 0), 2); t.to(4 * pass);
+      check(t.onsets().equals(Arrays.asList(F0 + 2 * pass, F0 + 3 * pass + 4 * step)) && t.e.swapToken == 2 && t.changes == 1,
+          "wrap swap in song mode: armed in the last slot of A B, the song plays on into the new third slot (A B | B A): " + t.onsets());
+    }
+    // 4. a shorter loop arriving: 32 steps playing, 16 armed. It waits for the end of the 32, then comes round every 16.
+    {
+      Project lq = quiet.copy(); lq.pats[0].len = 32;
+      Project sh = hit0.copy(); sh.pats[0].setStep("imp", 8, true);
+      WrapRun r = new WrapRun(rate, 480, snapOf.apply(lq, 0)); r.e.play(); r.to(10000);
+      r.e.setSnapshotAtWrap(snapOf.apply(sh, 0), 1); r.to(4 * pass - step);
+      check(r.onsets().equals(Arrays.asList(F0 + 2 * pass, F0 + 2 * pass + 8 * step, F0 + 3 * pass, F0 + 3 * pass + 8 * step)) && r.changes == 1,
+          "wrap swap, a shorter loop arriving: the 32 steps play out, then the 16 step loop from its exact top: " + r.onsets());
+      // the reset path: the player's own loop gets shorter under the playhead (step 20 of 32, now 16 long), which
+      // sends it to the top at once; the snapshot armed with it goes in there and that very step plays from it
+      WrapRun q = new WrapRun(rate, 480, snapOf.apply(lq, 0)); q.e.play(); q.to(F0 + 19 * step + 2000);
+      q.e.setSnapshot(snapOf.apply(quiet, 1)); q.e.setSnapshotAtWrap(snapOf.apply(hit0, 1), 2); q.to(F0 + 20 * step + pass + step);
+      check(q.onsets().equals(Arrays.asList(F0 + 20 * step, F0 + 20 * step + pass)) && q.e.swapToken == 2 && q.changes == 1,
+          "wrap swap, the reset path: a loop cut short under the playhead goes to its top and the armed snapshot is heard on that step: " + q.onsets());
+    }
+    // 5. a phone nobody touches: Play once, then nothing but two snapshots armed a pass apart. Each lands on the next top.
+    {
+      Project two = hit0.copy(); two.pats[0].setStep("imp", 2, true);
+      WrapRun r = new WrapRun(rate, 480, snapOf.apply(quiet, 0)); r.e.play(); r.to(pass / 2);
+      r.e.setSnapshotAtWrap(snapOf.apply(hit0, 0), 1); r.to(pass + pass / 2); int tok1 = r.e.swapToken, ch1 = r.changes;
+      r.e.setSnapshotAtWrap(snapOf.apply(two, 0), 2); r.to(3 * pass - step);
+      check(r.onsets().equals(Arrays.asList(F0 + pass, F0 + 2 * pass, F0 + 2 * pass + 2 * step)) && tok1 == 1 && ch1 == 1 && r.e.swapToken == 2 && r.changes == 2,
+          "wrap swap on a phone nobody touches: two armed snapshots land on the next two tops, tokens 1 then 2: " + r.onsets());
+    }
+    // 6. Stop then Play, and Pause then Play: a snapshot armed before must not turn up later
+    for (boolean pause : new boolean[]{false, true}) {
+      WrapRun r = new WrapRun(rate, 480, snapOf.apply(quiet, 0)); r.e.play(); r.to(10000);
+      r.e.setSnapshotAtWrap(snapOf.apply(hit0, 0), 5); r.to(20000);
+      if (pause) r.e.pause(); else r.e.stop();
+      r.to(30000); r.e.play(); r.to(30000 + 3 * pass);
+      check(r.first() == -1 && r.e.swapToken == 0 && r.changes == 0, "wrap swap: armed, then " + (pause ? "Pause" : "Stop") + ", then Play for 3 passes: the old armed snapshot never plays (first sound at " + r.first() + ", token " + r.e.swapToken + ")");
+    }
+    // 7. the seq rule: the player changes something (seq 1, a hit on step 4) while a snapshot built before it (seq 0)
+    // is armed. That one must not go in: the pass after plays the player's hit. The one armed next (seq 1) does.
+    {
+      Project mine = quiet.copy(); mine.pats[0].setStep("imp", 4, true);
+      Project both = mine.copy(); both.pats[0].setStep("imp", 0, true);
+      WrapRun r = new WrapRun(rate, 480, snapOf.apply(quiet, 0)); r.e.play(); r.to(10000);
+      r.e.setSnapshotAtWrap(snapOf.apply(hit0, 0), 1); r.to(8 * step);
+      r.e.setSnapshot(snapOf.apply(mine, 1)); r.to(pass + 8 * step); int tokMid = r.e.swapToken;
+      List<Integer> mid = r.onsets();
+      r.e.setSnapshotAtWrap(snapOf.apply(both, 1), 2); r.to(3 * pass - step);
+      check(mid.equals(Arrays.asList(F0 + pass + 4 * step)) && tokMid == 0, "wrap swap, seq rule: a snapshot built before the player's last change stays out, and the player's own hit plays: " + mid + ", token " + tokMid);
+      check(r.onsets().equals(Arrays.asList(F0 + pass + 4 * step, F0 + 2 * pass, F0 + 2 * pass + 4 * step)) && r.e.swapToken == 2 && r.changes == 1, "wrap swap, seq rule: the one armed after it (same seq) goes in at the next top with both hits: " + r.onsets());
+      // waiting is not dropping: armed one count ahead of the snapshot playing, it sits out a top, and goes in at
+      // the first top after the playing snapshot's seq catches up, with nothing armed again
+      WrapRun w = new WrapRun(rate, 480, snapOf.apply(quiet, 0)); w.e.play(); w.to(10000);
+      w.e.setSnapshotAtWrap(snapOf.apply(both, 1), 6); w.to(pass + 8 * step); int tokW = w.e.swapToken; int firstW = w.first();
+      w.e.setSnapshot(snapOf.apply(quiet, 1)); w.to(3 * pass - step);
+      check(firstW == -1 && tokW == 0 && w.onsets().equals(Arrays.asList(F0 + 2 * pass, F0 + 2 * pass + 4 * step)) && w.e.swapToken == 6 && w.changes == 1,
+          "wrap swap, seq rule: a mismatch waits a pass with the snapshot still armed, then goes in once the seqs match: " + w.onsets());
+    }
+    // 8. armed twice before the wrap: the latest wins and the first one's token is never seen; after the swap nothing
+    // is armed, so a plain setSnapshot later is not undone at the next top
+    {
+      Project late = quiet.copy(); late.pats[0].setStep("imp", 2, true);
+      WrapRun r = new WrapRun(rate, 480, snapOf.apply(quiet, 0)); r.e.play(); r.to(10000);
+      r.e.setSnapshotAtWrap(snapOf.apply(hit0, 0), 1); r.to(20000); r.e.setSnapshotAtWrap(snapOf.apply(late, 0), 2);
+      r.to(2 * pass - step);
+      List<Integer> on = r.onsets(); int ch = r.changes, tok = r.e.swapToken;
+      r.e.setSnapshot(snapOf.apply(quiet, 0)); r.to(4 * pass);
+      check(on.equals(Arrays.asList(F0 + pass + 2 * step)) && tok == 2 && ch == 1, "wrap swap: armed twice before the wrap, the latest is the one heard (step 2, not step 0), token " + tok + " in " + ch + " change");
+      check(r.onsets().equals(on) && r.e.swapToken == 2 && r.changes == 1, "wrap swap: after a swap nothing is armed, so later tops change nothing: " + r.onsets());
+      // the swap is made as the last step of a pass fires, so one armed inside that last step waits for the top after
+      WrapRun l = new WrapRun(rate, 480, snapOf.apply(quiet, 0)); l.e.play(); l.to(F0 + 15 * step + step / 2);
+      l.e.setSnapshotAtWrap(snapOf.apply(hit0, 0), 1); l.to(3 * pass - step);
+      check(l.onsets().equals(Arrays.asList(F0 + 2 * pass)) && l.changes == 1, "wrap swap: armed inside the last step of a pass, it lands on the top after that one, never part way through a loop: " + l.onsets());
+    }
+  }
+
   static void mouthTests() {
     // ---- mouth control: vowels into a number (dark "ooo" low, bright "eee" high), loudness, a gate
     {
@@ -1198,5 +1398,31 @@ public class EngineTest {
       mf.feed(hush, 0, hush.length);
       check(!mf.on, "Mouth: stop making the sound and it goes off");
     }
+  }
+
+  /**
+   * Issue #25 (Tyler: does sharing code cost speed?): the time the Kotlin engine takes per audio block, the demo mess
+   * playing with Repeat on and a held chord. A 256-frame block at 48 kHz has 5.33 ms; the build fails when the
+   * average block takes over 20% of that or the slowest 1 in 100 over 60%, so a slowdown shows up as a red build.
+   */
+  static void timingTest(Project p, Library lib) {
+    int rate = 48000, n = 256;
+    Engine e = new Engine(rate);
+    e.setSnapshot(Engine.Snapshot.build(p, lib, new Engine.Live()));
+    e.play();
+    float[] b = new float[n * 2];
+    for (int i = 0; i < 2000; i++) e.render(b, n);           // warm up (the JIT, the caches)
+    for (int k = 0; k < 4; k++) e.down(100 + k, k, new int[]{0, 4, 7}, false);
+    int blocks = 3750;                                       // 20 seconds of sound
+    long[] t = new long[blocks];
+    for (int i = 0; i < blocks; i++) { long a = System.nanoTime(); e.render(b, n); t[i] = System.nanoTime() - a; }
+    long sum = 0; for (long v : t) sum += v;
+    long[] s = t.clone(); java.util.Arrays.sort(s);
+    double budget = n * 1e9 / rate;
+    double avg = sum / (double) blocks, p99 = s[(int) (blocks * .99)];
+    System.out.println(String.format(java.util.Locale.US, "ENGINE TIMING: %.0f us average, %.0f us p99, %.0f us worst per %d-frame block (budget %.0f us): %.1f%% of real time",
+      avg / 1000, p99 / 1000, s[blocks - 1] / 1000.0, n, budget / 1000, avg / budget * 100));
+    check(avg < budget * .05, "engine: the average block takes under 5% of its time (" + Math.round(avg / budget * 100) + "%)");
+    check(p99 < budget * .25, "engine: 99 blocks in 100 take under 25% of their time (" + Math.round(p99 / budget * 100) + "%)");
   }
 }

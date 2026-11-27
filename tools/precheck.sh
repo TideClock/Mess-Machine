@@ -16,7 +16,7 @@ bad = 0
 TOK = re.compile(r'"""[\s\S]*?"""|"(?:\\.|[^"\\\n])*"|\'(?:\\.|[^\'\\\n])+\'|//[^\n]*|/\*[\s\S]*?\*/')
 def strip(s):
     return TOK.sub(lambda m: '' if m.group(0).startswith('/') else '""', s)
-src = glob.glob('app/src/**/*.kt', recursive=True) + glob.glob('core/src/**/*.kt', recursive=True) + glob.glob('app/src/**/*.java', recursive=True) + glob.glob('tools/*.java')
+src = glob.glob('app/src/**/*.kt', recursive=True) + glob.glob('ui/src/**/*.kt', recursive=True) + glob.glob('core/src/**/*.kt', recursive=True) + glob.glob('app/src/**/*.java', recursive=True) + glob.glob('tools/*.java')
 for f in src:
     s = strip(open(f, encoding='utf-8').read())
     for o, c in ('{}', '()', '[]'):
@@ -25,11 +25,11 @@ for f in src:
 
 # 2. tags the tests ask for by name
 # only strings on lines that set a tag count (tag =, testTag(, menu items), so a word used elsewhere can't hide a stale tag
-taglines = [l for f in glob.glob('app/src/main/**/*.kt', recursive=True) for l in open(f, encoding='utf-8')
+taglines = [l for f in (glob.glob('app/src/main/**/*.kt', recursive=True) + glob.glob('ui/src/**/*.kt', recursive=True)) for l in open(f, encoding='utf-8')
             if re.search(r'\btag\s*=|testTag\(|tagged\(|Triple\(|\bitem\(', l)]
 lits = set(x for l in taglines for x in re.findall(r'"([^"\\\n]*)"', l))
 # plus tag-shaped strings handed to helpers, like fxRow("Reverb", "dfx-rvb")
-lits |= set(x for f in glob.glob('app/src/main/**/*.kt', recursive=True)
+lits |= set(x for f in (glob.glob('app/src/main/**/*.kt', recursive=True) + glob.glob('ui/src/**/*.kt', recursive=True))
             for x in re.findall(r'"([a-z0-9]+(?:-[a-z0-9.${}+ ]+)+)"', open(f, encoding='utf-8').read()))
 pats = [re.compile('^' + re.sub(r'\\\$\\\{[^}]*\\\}|\\\$[A-Za-z_][A-Za-z0-9_]*', '.+', re.escape(l)) + '$') for l in lits if '$' in l
         and len(re.sub(r'\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*', '', l)) >= 2]  # a bare "$x" would match anything
@@ -43,20 +43,20 @@ for f in glob.glob('app/src/test/**/*.kt', recursive=True):
 for f in ['app/src/main/assets/guide.json', 'DESIGN.md', 'CLAUDE.md', 'README.md']:
     if os.path.exists(f) and '—' in open(f, encoding='utf-8').read():
         print(f"PRECHECK em dash in {f}"); bad = 1
-for f in glob.glob('app/src/main/**/*.kt', recursive=True):
+for f in (glob.glob('app/src/main/**/*.kt', recursive=True) + glob.glob('ui/src/**/*.kt', recursive=True)):
     for n, line in enumerate(open(f, encoding='utf-8'), 1):
         for lit in re.findall(r'"([^"\n]*)"', line):
             if '—' in lit: print(f"PRECHECK em dash in app text: {f}:{n}"); bad = 1
 # 5. format() over a string with ${...} in it: any "%" in the inserted text is read as a format code and throws
 #    (build 58: the audio thread crashed every 20 seconds on "0% average"). Format the number alone, or mark the line // format-ok
-for f in glob.glob('app/src/main/**/*.kt', recursive=True):
+for f in (glob.glob('app/src/main/**/*.kt', recursive=True) + glob.glob('ui/src/**/*.kt', recursive=True)):
     for n, line in enumerate(open(f, encoding='utf-8'), 1):
         if 'format-ok' in line: continue
         if re.search(r'"[^"\n]*\$\{[^"\n]*"\s*\)?\s*\.format\(', line):
             print(f"PRECHECK format over inserted text (a % in it would crash): {f}:{n}"); bad = 1
 # 7. every control a lesson points at must exist in the app (MM-T)
-alltext = ''.join(open(f, encoding='utf-8').read() for f in glob.glob('app/src/main/java/**/ui/*.kt', recursive=True))
-for n, line in enumerate(open('app/src/main/java/com/tideclock/messmachine/Tutorials.kt', encoding='utf-8'), 1):
+alltext = ''.join(open(f, encoding='utf-8').read() for f in (glob.glob('app/src/main/java/**/ui/*.kt', recursive=True) + glob.glob('ui/src/**/ui/*.kt', recursive=True)))
+for n, line in enumerate(open('ui/src/commonMain/kotlin/com/tideclock/messmachine/Tutorials.kt', encoding='utf-8'), 1):
     for tag in re.findall(r'\bt\("([a-z0-9-]+)"\)', line):
         base = re.sub(r'-[a-z0-9]+$', '-', tag)
         if ('"' + tag + '"') not in alltext and ('"' + base) not in alltext and ('"' + tag.rsplit('-', 1)[0] + '-$') not in alltext:
@@ -70,7 +70,7 @@ for f in glob.glob('app/src/**/*.kt', recursive=True):
             print(f"PRECHECK /* inside a comment opens a nested comment in Kotlin: {f}:{n}"); bad = 1
 # 8. a fun named setX next to a var x (or getX next to a val x) has the same JVM name as the property's setter
 #    (build 76: setMouthGate next to var mouthGate). Name the function something else (change, pick, switch)
-for f in glob.glob('app/src/main/**/*.kt', recursive=True):
+for f in (glob.glob('app/src/main/**/*.kt', recursive=True) + glob.glob('ui/src/**/*.kt', recursive=True)):
     t = open(f, encoding='utf-8').read()
     vars_ = set(re.findall(r'^    (?:private |internal )?var ([a-z][A-Za-z0-9]*)\b', t, re.M))
     vals_ = set(re.findall(r'^    (?:private |internal )?val ([a-z][A-Za-z0-9]*)\b', t, re.M))
@@ -82,10 +82,13 @@ sys.exit(bad)
 EOF
 
 # 4. the guide changes when the app changes (against the commit of the build Tyler last got)
-if command -v gh >/dev/null 2>&1; then
+# the cmp branch (docs/CMP-PLAN.md) never publishes, so Tyler gets no guide from it; main checks it when cmp lands
+br=${GITHUB_REF_NAME:-$(git rev-parse --abbrev-ref HEAD 2>/dev/null)}
+if [ "$br" = cmp ]; then echo "precheck: cmp branch, guide check skipped (it never publishes)"
+elif command -v gh >/dev/null 2>&1; then
   sha=$(gh api repos/hubbub0/Mess-Machine/releases/tags/latest --jq .body 2>/dev/null | sed -n 's/.* from \([0-9a-f]\{7,\}\)\..*/\1/p' | head -1)
   if [ -n "$sha" ] && git cat-file -e "$sha^{commit}" 2>/dev/null; then
-    if ! git diff --quiet "$sha" -- app/src/main ':!app/src/main/assets/guide.json' && git diff --quiet "$sha" -- app/src/main/assets/guide.json; then
+    if ! git diff --quiet "$sha" -- app/src/main ui/src ':!app/src/main/assets/guide.json' && git diff --quiet "$sha" -- app/src/main/assets/guide.json; then
       echo "PRECHECK the app changed since build $sha but app/src/main/assets/guide.json did not: rewrite thisBuild, watch and limits"; fail=1
     fi
   else echo "precheck: last published build not found here, guide check skipped"; fi

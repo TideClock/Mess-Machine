@@ -2,7 +2,8 @@ name: Build the app
 
 on:
   push:
-    branches: [main]
+    # accounts: the side branch for accounts and playing together builds and tests, but never publishes the phone download
+    branches: [main, accounts, cmp]
     paths-ignore: ['site/**', 'library/**']
   pull_request:
     paths-ignore: ['site/**', 'library/**']
@@ -36,14 +37,38 @@ jobs:
           java-version: "17"
 
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          # the cmp branch keeps its own cache too: it needs Compose Multiplatform's libraries, which main's cache
+          # lacks, and run 215 lost its build when Maven Central refused those downloads (429)
+          cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/cmp' }}
 
       - name: Engine tests (the Kotlin engine in core/ on the JVM, no phone needed)
         run: ./gradlew :core:engineTest :core:roundTrip --stacktrace
 
+      # CMP step 5 (docs/CMP-PLAN.md): the shared module's common code (AppState, the widgets) must stay common, so it
+      # is compiled the way the iPhone sees it, without Android or Java. Linux can do this check; linking needs a Mac.
+      - name: Shared code compiles for the iPhone too (common and iOS metadata)
+        if: github.ref == 'refs/heads/cmp'
+        run: ./gradlew :ui:compileCommonMainKotlinMetadata :ui:compileIosMainKotlinMetadata -Pmm.ios --stacktrace
+
+      # Nov 25: run 201 lost its whole big test to one refused download of Robolectric's Android. Fetch it first, with
+      # retries, into the local Maven folder Robolectric reads before it tries the network.
+      - name: Fetch Robolectric's Android (with retries)
+        run: |
+          v=14-robolectric-10818077-i6; d=~/.m2/repository/org/robolectric/android-all-instrumented/$v; mkdir -p $d
+          u=https://repo1.maven.org/maven2/org/robolectric/android-all-instrumented/$v/android-all-instrumented-$v
+          for i in 1 2 3 4 5; do curl -fsSL --retry 3 -o $d/android-all-instrumented-$v.pom $u.pom && curl -fsSL --retry 3 -o $d/android-all-instrumented-$v.jar $u.jar && break; echo "try $i failed"; sleep 30; done
+          ls -la $d
+
       - name: The big test (every screen, with screenshots)
         id: bigtest
         continue-on-error: true
-        run: ./gradlew testDebugUnitTest --stacktrace
+        env:
+          # the cmp branch compares screens run to run, so the build number and commit shown on screen are pinned there
+          MM_BUILD_NUMBER: ${{ github.ref == 'refs/heads/cmp' && '1' || '' }}
+          MM_BUILD_SHA: ${{ github.ref == 'refs/heads/cmp' && 'cmpfixed' || '' }}
+        # the output is also kept in gradle.log, which an accounts run that fails publishes (last step of this job)
+        run: set -o pipefail; ./gradlew testDebugUnitTest --stacktrace 2>&1 | tee -a gradle.log
 
       - name: Publish the test screenshots
         if: always()
@@ -58,12 +83,43 @@ jobs:
             bash tools/release.sh test-screens "Test screenshots" "Screens from build ${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7}). Test outcome: ${{ steps.bigtest.outcome }}." test-screens.zip || true
           fi
 
+      # The Compose Multiplatform move (docs/CMP-PLAN.md) runs on the cmp branch: every screen must match the reference
+      # taken before the move. The first run seeds the reference. "[screens-ok]" in the commit message accepts a change
+      # on purpose and makes this run's screens the new reference.
+      - name: Compare the screens with the reference (cmp branch)
+        if: github.ref == 'refs/heads/cmp' && steps.bigtest.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MSG: ${{ github.event.head_commit.message }}
+        run: |
+          # the output also goes to gradle.log, which a failed cmp run publishes on accounts-log
+          exec > >(tee -a gradle.log) 2>&1
+          # its own Python folder: the runner's system Python refuses pip installs (PEP 668)
+          python3 -m venv "$RUNNER_TEMP/sd" && "$RUNNER_TEMP/sd/bin/pip" install -q pillow numpy
+          mkdir -p ref diff
+          (cd app/build/screens && zip -q "$GITHUB_WORKSPACE/ref-new.zip" *.png)
+          if ! gh release download cmp-ref -p screens.zip -D ref -R ${{ github.repository }}; then
+            cp ref-new.zip screens.zip
+            bash tools/release.sh cmp-ref "Screens before the move" "Reference screens from build ${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7})." screens.zip
+            echo "reference seeded"; exit 0
+          fi
+          (cd ref && unzip -q screens.zip)
+          rc=0; "$RUNNER_TEMP/sd/bin/python" tools/screen-diff.py ref app/build/screens diff || rc=$?
+          (cd diff && zip -q ../screen-diff.zip *) || true
+          bash tools/release.sh cmp-diff "Screens against the reference" "Build ${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7}), result ${rc}." screen-diff.zip || true
+          if [ $rc != 0 ] && echo "$MSG" | grep -q '\[screens-ok\]'; then
+            cp ref-new.zip screens.zip
+            bash tools/release.sh cmp-ref "Screens before the move" "Reference screens from build ${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7}), accepted with [screens-ok]." screens.zip
+            exit 0
+          fi
+          exit $rc
+
       - name: Stop here if the big test failed
         if: steps.bigtest.outcome == 'failure'
         run: exit 1
 
       - name: Build the APK
-        run: ./gradlew assembleRelease --stacktrace
+        run: set -o pipefail; ./gradlew assembleRelease --stacktrace 2>&1 | tee -a gradle.log
 
       - name: Keep the APK and its symbol map with this run
         uses: actions/upload-artifact@v4
@@ -72,6 +128,20 @@ jobs:
           path: |
             app/build/outputs/apk/release/app-release.apk
             app/build/outputs/mapping/release/mapping.txt
+
+      # Accounts (Nov 24): the accounts builders cannot read run logs, so a failed accounts run puts its Gradle output
+      # and test reports on the accounts-log release. latest and the phone download are never touched from here.
+      - name: Publish the build log (accounts branch, failed runs)
+        if: failure() && (github.ref == 'refs/heads/accounts' || github.ref == 'refs/heads/cmp')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p alog
+          echo "run ${GITHUB_RUN_NUMBER} ${GITHUB_SHA::7} build failed" > alog/run.txt
+          cp gradle.log alog/gradle.log 2>/dev/null || echo "no gradle output (failed before Gradle ran)" > alog/gradle.log
+          bash tools/precheck.sh > alog/precheck.txt 2>&1 || true
+          (cd app/build && zip -q -r ../../alog/test-reports.zip test-results reports/tests) 2>/dev/null || true
+          bash tools/release.sh accounts-log "Accounts branch log" "Run ${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7}) failed." alog/* || true
 
   core-other-platforms:
     # Nov 23: the shared engine must also build for iOS (on a Mac) and the web. It does not hold up the phone build.
@@ -87,6 +157,21 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Build the engine for the iPhone simulator, iPhones and the web
         run: ./gradlew :core:compileKotlinIosSimulatorArm64 :core:compileKotlinIosArm64 :core:linkReleaseFrameworkIosSimulatorArm64 :core:compileKotlinJs -Pmm.ios -Pmm.js -Pmm.coreOnly --stacktrace
+
+      # CMP step 7 (docs/CMP-PLAN.md): the whole app (AppState and every screen) as the MessMachine framework for the
+      # iPhone simulator. The log goes to the cmp-ios-log release, since this job never stops the phone build.
+      - name: Build the MessMachine framework (the shared screens, cmp branch)
+        if: github.ref == 'refs/heads/cmp'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          rc=0
+          ./gradlew :ui:linkDebugFrameworkIosSimulatorArm64 -Pmm.ios --stacktrace > ios.log 2>&1 || rc=$?
+          tail -60 ios.log
+          echo "run ${GITHUB_RUN_NUMBER} ${GITHUB_SHA::7} MessMachine framework rc=$rc" > ios-run.txt
+          ls -la ui/build/bin/iosSimulatorArm64/debugFramework 2>/dev/null >> ios-run.txt || true
+          bash tools/release.sh cmp-ios-log "MessMachine framework log" "Run ${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7}), result ${rc}." ios-run.txt ios.log || true
+          exit $rc
 
   phone:
     # the release APK on a real Android emulator: fresh launch, every tab, gestures, long random runs
@@ -135,6 +220,16 @@ jobs:
           if [ -f phone-screens.zip ]; then
             bash tools/release.sh phone-screens "Phone test" "Emulator run for build ${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7})." phone-screens.zip || true
           fi
+
+      - name: Say how the run ended (accounts branch)
+        if: always() && (github.ref == 'refs/heads/accounts' || github.ref == 'refs/heads/cmp')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p alog
+          echo "run ${GITHUB_RUN_NUMBER} ${GITHUB_SHA::7} phone test ${{ steps.phone.outcome }}" > alog/run.txt
+          tail -200 phone-out/logcat.txt > alog/logcat-tail.txt 2>/dev/null || true
+          bash tools/release.sh accounts-log "Accounts branch log" "Run ${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7}): phone test ${{ steps.phone.outcome }}." alog/* || true
 
   publish:
     needs: [apk, phone]
@@ -189,3 +284,71 @@ jobs:
           gh release create build-104 MessMachine-104.apk mapping-104.txt -R ${{ github.repository }} \
             --target f704a4caf3ba1d8ffd04a90292b9f5e0a0747794 --title "Build 104 (kept, before the overhaul)" \
             --notes "The last build before the overhaul (commit f704a4c)." --prerelease || true
+
+  accounts-server:
+    # Accounts (Nov 24): the server on a real local Supabase (Docker works on GitHub's runners): the SQL tests on its
+    # Postgres, then the live checklist (spec 8e) through its API with its mail catcher. It holds up nothing.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install the test tools
+        working-directory: server/tests
+        run: npm ci
+
+      - name: A sweep secret for the local functions
+        run: echo "MM_SWEEP_SECRET=ci-$(openssl rand -hex 16)" | tee supabase/functions/.env >> "$GITHUB_ENV"
+
+      - name: Start a local Supabase (the migrations apply as it starts)
+        run: npx --yes supabase@2 start -x studio,logflare,vector
+
+      - name: Apply the migrations again from nothing
+        run: npx --yes supabase@2 db reset
+
+      - name: Read the local URL and keys
+        run: |
+          npx --yes supabase@2 status -o env > "$RUNNER_TEMP/sb.env"
+          set -a; . "$RUNNER_TEMP/sb.env"; set +a
+          {
+            echo "SUPABASE_URL=${API_URL}"
+            echo "SUPABASE_KEY=${PUBLISHABLE_KEY:-$ANON_KEY}"
+            echo "SUPABASE_SERVICE_KEY=${SECRET_KEY:-$SERVICE_ROLE_KEY}"
+            echo "DB_URL=${DB_URL}"
+            echo "MAIL_URL=${MAILPIT_URL:-${INBUCKET_URL:-http://127.0.0.1:54324}}"
+          } >> "$GITHUB_ENV"
+
+      - name: Serve the Edge Functions
+        run: |
+          (npx --yes supabase@2 functions serve --env-file supabase/functions/.env > "$RUNNER_TEMP/functions.log" 2>&1 &)
+          for i in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -X OPTIONS "$SUPABASE_URL/functions/v1/sound-urls" || true)
+            if [ "$code" -ge 200 ] && [ "$code" -lt 300 ]; then echo "functions answer ($code)"; exit 0; fi
+            sleep 2
+          done
+          echo "the functions did not come up; the live run will skip them"; cat "$RUNNER_TEMP/functions.log" || true
+
+      - name: The server tests on the local stack's Postgres
+        working-directory: server/tests
+        env:
+          DATABASE_URL: postgresql://supabase_admin:postgres@127.0.0.1:54322/postgres
+        run: npm test
+
+      - name: The live checklist against the local stack
+        if: always()
+        working-directory: server/tests
+        run: node live.mjs
+
+      - name: What the containers said, when something failed
+        if: failure()
+        run: |
+          cat "$RUNNER_TEMP/functions.log" 2>/dev/null | tail -80 || true
+          for c in $(docker ps -a --format '{{.Names}}' | grep -i supabase); do echo "== $c"; docker logs --tail 60 "$c" 2>&1; done

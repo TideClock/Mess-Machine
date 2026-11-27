@@ -1,0 +1,7 @@
+# Netlify rewrites for the Mess Machine account site.
+# A share link is /m/<token>, an invite link is /join/<token> (the short form /j/<token> works too).
+/m/*      /m/index.html      200
+/join/*   /join/index.html   200
+/j/*      /join/index.html   200
+# The test folder is for builders, not visitors.
+/test/*   /404.html          404!

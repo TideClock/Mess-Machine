@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Delete your Mess Machine account</title>
+<meta name="description" content="Delete your Mess Machine account and the things it keeps online.">
+<link rel="stylesheet" href="/mm.css">
+<script src="/config.js" defer></script>
+<script src="/mm.js" defer></script>
+<script src="/delete.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to the page</a>
+<header class="rail"><a class="brand" href="/">Mess Machine</a><span class="rail-sub">Account</span></header>
+<main id="main">
+  <h1>Delete your account</h1>
+  <p class="lead">This page deletes your account for the Mess Machine app by <span data-mm-developer></span>. You do not need the app to do it.</p>
+
+  <section aria-labelledby="what-h">
+    <h2 id="what-h">What deleting does</h2>
+    <div class="two">
+      <div class="card goes">
+        <h3><span class="lamp bad" aria-hidden="true"></span>This goes</h3>
+        <ul class="dots">
+          <li>Your online messes and their history. A mess you own is deleted for everyone in it.</li>
+          <li>Your online sounds. They also go out of other people's messes.</li>
+          <li>Your share links and invites.</li>
+          <li>Your place in other people's messes.</li>
+          <li>Any sound you sent to the Vault that is still waiting.</li>
+          <li>Your name, your email and your sign-in.</li>
+        </ul>
+      </div>
+      <div class="card stays">
+        <h3><span class="lamp ok" aria-hidden="true"></span>This stays</h3>
+        <ul class="dots">
+          <li>The messes and sounds on your phone. The app keeps working without an account.</li>
+          <li>Any sound the Vault already accepted, with your credit name.</li>
+          <li>The words of reports, so we can keep acting on them.</li>
+        </ul>
+      </div>
+    </div>
+    <p class="quiet">It happens right away and cannot be undone. Our backups keep deleted data for up to 7 days, then it is gone from those too.</p>
+  </section>
+
+  <section class="tray" id="setup" data-mm-needs-server hidden>
+    <p class="lcd">Not set up yet</p>
+    <p>Online accounts are not switched on yet, so there is nothing to delete here. Nothing is wrong on your side.</p>
+    <p class="msg bad" data-mm-problem hidden></p>
+  </section>
+
+  <div data-mm-flow hidden>
+    <section class="tray" id="step-in" aria-labelledby="in-h">
+      <h2 id="in-h">Step 1 of 2. Sign in</h2>
+      <p>Use the email your account is under.</p>
+      <div id="signin"></div>
+    </section>
+
+    <section class="tray" id="step-go" aria-labelledby="go-h" hidden>
+      <h2 id="go-h" tabindex="-1">Step 2 of 2. Delete</h2>
+      <p class="lcd plain" id="who"></p>
+      <ul class="facts" id="facts"></ul>
+      <div id="sure">
+        <label class="check"><input type="checkbox" id="agree"><span>I have read what goes. Delete it all.</span></label>
+        <div class="keys stack">
+          <button class="key danger wide" type="button" id="go" disabled>Delete my account</button>
+          <button class="linkish" type="button" id="out">Keep my account and sign out</button>
+        </div>
+      </div>
+      <div id="fresh" hidden>
+        <p><strong>One more code.</strong> It has been a while since you signed in, so we check it is still you.</p>
+        <div id="fresh-form"></div>
+      </div>
+      <p class="msg" id="go-msg" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="tray" id="done" aria-labelledby="done-h" hidden>
+      <h2 id="done-h" class="sr" tabindex="-1">Done</h2>
+      <p class="lcd">Account deleted</p>
+      <p class="lead">Your account is deleted.</p>
+      <p>The messes and sounds on your phone are still there, and the app keeps working without an account. You can close this page.</p>
+    </section>
+  </div>
+
+  <section aria-labelledby="help-h">
+    <h2 id="help-h">Cannot sign in?</h2>
+    <p>Write to <span data-mm-support></span> from the email your account is under and ask us to delete it. We answer within a few days.</p>
+    <p>You can also delete your account inside the app: Messes, your name, Delete account.</p>
+  </section>
+  <noscript><p class="msg bad">This page needs JavaScript to sign you in. You can also write to the support email.</p></noscript>
+</main>
+<footer><div class="in">
+  <nav aria-label="Pages"><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="/delete/">Delete your account</a></nav>
+  <p>Mess Machine by <span data-mm-developer></span>. Help: <span data-mm-support></span></p>
+</div></footer>
+</body>
+</html>

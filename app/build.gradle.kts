@@ -9,13 +9,22 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.tideclock.messmachine"
+        applicationId = "app.shotgunstudio.messmachine"   // Nov 24 2026: the permanent store ID (the code keeps its com.tideclock package)
         minSdk = 26
         targetSdk = 36
         // CI passes the run number so every build installs over the last one
-        versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
-        versionName = "0.1." + (System.getenv("GITHUB_RUN_NUMBER") ?: "0")
-        buildConfigField("String", "GIT_SHA", "\"" + (System.getenv("GITHUB_SHA") ?: "local").take(7) + "\"")
+        // MM_BUILD_NUMBER / MM_BUILD_SHA: the cmp branch's big test pins both, so its screens can be compared run to run
+        fun env(vararg names: String) = names.firstNotNullOfOrNull { n -> System.getenv(n)?.takeIf { it.isNotBlank() } }
+        versionCode = (env("MM_BUILD_NUMBER", "GITHUB_RUN_NUMBER") ?: "1").toInt()
+        versionName = "0.1." + (env("MM_BUILD_NUMBER", "GITHUB_RUN_NUMBER") ?: "0")
+        buildConfigField("String", "GIT_SHA", "\"" + (env("MM_BUILD_SHA", "GITHUB_SHA") ?: "local").take(7) + "\"")
+        // accounts (docs/ACCOUNTS-API.md s5): empty by default, and then the app shows no account feature at all
+        fun cloudSetting(env: String, prop: String): String =
+            (System.getenv(env)?.takeIf { it.isNotBlank() } ?: (project.findProperty(prop) as String?) ?: "").trim()
+        buildConfigField("String", "CLOUD_URL", "\"" + cloudSetting("MM_CLOUD_URL", "mm.cloudUrl") + "\"")
+        buildConfigField("String", "CLOUD_KEY", "\"" + cloudSetting("MM_CLOUD_KEY", "mm.cloudKey") + "\"")
+        buildConfigField("String", "SITE_HOST", "\"" + cloudSetting("MM_SITE_HOST", "mm.siteHost") + "\"")
+        manifestPlaceholders["siteHost"] = cloudSetting("MM_SITE_HOST", "mm.siteHost").ifEmpty { "unset.invalid" }
         // Nov 21 (L4): the AAudio output is a small C library; phones (arm) and the phone test's emulator (x86_64)
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
     }
@@ -97,14 +106,27 @@ composeCompiler {
     enableStrongSkippingMode.set(false)
 }
 
+// Nov 24 (CMP step 1): Compose Multiplatform 1.7.0 asks for Android Compose 1.7.1. Hold every Compose library at the
+// 1.7.0 the app was tested on (BOM 2024.09.00), so the shared module changes nothing on the phone. Material 3 has
+// its own numbers and is left alone.
+configurations.configureEach {
+    resolutionStrategy.eachDependency {
+        if (requested.group.startsWith("androidx.compose.") && requested.group != "androidx.compose.material3" &&
+            requested.version?.startsWith("1.7.") == true) useVersion("1.7.0")
+    }
+}
+
 dependencies {
     implementation(project(":core"))
+    implementation(project(":ui"))
     implementation(platform("androidx.compose:compose-bom:2024.09.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.activity:activity-compose:1.9.2")
     implementation("androidx.core:core-ktx:1.13.1")
+    // accounts, Slice C: only for the live websocket to the server (SupabaseApi); everything else is HttpURLConnection
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     // installs the Baseline Profile (MM-4) when the APK is sideloaded, not only from the Play Store
     implementation("androidx.profileinstaller:profileinstaller:1.3.1")
 

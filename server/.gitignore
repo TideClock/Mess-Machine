@@ -1,0 +1,6 @@
+# secrets for the local Edge Functions; the CI job writes its own
+supabase/functions/.env
+supabase/functions/.env.*
+# made by the Supabase command line tool
+supabase/.temp/
+supabase/.branches/
