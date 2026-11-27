@@ -54,6 +54,8 @@ package com.tideclock.messmachine.platform
 @JsFun("() => window.mm.audioInfo()") external fun jsAudioInfo(): String
 @JsFun("() => window.mm.underruns") external fun jsUnderruns(): Int
 @JsFun("() => window.mm.outMs()") external fun jsOutMs(): Double
+@JsFun("() => window.mm.lead") external fun jsLead(): Int
+@JsFun("(v) => { window.mm.ahead = v }") external fun jsAheadNow(v: Int)
 // the mic for sampling: the page records, this side pulls floats in blocks
 @JsFun("(cb) => window.mm.micStart(cb)") external fun jsMicStart(cb: (Boolean) -> Unit)
 @JsFun("() => window.mm.micPull()") external fun jsMicPull(): Int

@@ -19,6 +19,8 @@
    notes, and the sound out. The Kotlin side (ui/src/wasmJsMain/.../platform/Web.kt) calls these through window.mm. */
 window.mm = (() => {
   const mm = { build: 0, sha: '', micOk: false, underruns: 0, cur: null, blk: null, store: 'memory' };
+  // ?lead=40 starts the sound lead at 40 ms (a test knob; the app's Steady buffer setting doubles it)
+  try { const q = new URLSearchParams(location.search).get('lead'); mm.lead = q ? Math.max(10, Math.min(300, +q || 0)) : 0; } catch (e) { mm.lead = 0; }
   try { const v = document.querySelector('meta[name=mm-build]'); if (v) { mm.build = +v.content.split(' ')[0] || 0; mm.sha = v.content.split(' ')[1] || ''; } } catch (e) {}
   const files = new Map(), times = new Map(), dirs = new Set(['/', '/files', '/cache']);
   let fresh = null;
@@ -93,9 +95,9 @@ window.mm = (() => {
     fetch(url, { method, headers: h, body: body || undefined }).then(async r => done(r.status, await r.text()), () => done(0, '')); };
   // the sound out (blocks rendered by the engine) and the mic in (blocks for the engine), one AudioWorklet module
   const WORKLET = `class MMOut extends AudioWorkletProcessor {
-    constructor() { super(); this.q = []; this.at = 0; this.under = 0; this.on = false; this.port.onmessage = e => { this.on = true; this.q.push(e.data); let n = 0; for (const b of this.q) n += b.length / 2; while (n > sampleRate / 2 && this.q.length > 1) { n -= this.q.shift().length / 2; this.at = 0; } }; }
+    constructor() { super(); this.q = []; this.at = 0; this.under = 0; this.told = -1e9; this.on = false; this.port.onmessage = e => { this.on = true; this.q.push(e.data); let n = 0; for (const b of this.q) n += b.length / 2; while (n > sampleRate / 2 && this.q.length > 1) { n -= this.q.shift().length / 2; this.at = 0; } }; }
     process(_, outs) { const L = outs[0][0], R = outs[0][1] || outs[0][0]; let i = 0;
-      while (i < L.length) { const b = this.q[0]; if (!b) { if (i === 0 && this.on) { this.under++; if (this.under % 10 === 1) this.port.postMessage(this.under); } for (; i < L.length; i++) { L[i] = 0; R[i] = 0; } break; }
+      while (i < L.length) { const b = this.q[0]; if (!b) { if (i === 0 && this.on) { this.under++; if (currentFrame - this.told > sampleRate / 20) { this.told = currentFrame; this.port.postMessage(this.under); } } for (; i < L.length; i++) { L[i] = 0; R[i] = 0; } break; }
         while (i < L.length && this.at < b.length) { L[i] = b[this.at]; R[i] = b[this.at + 1]; this.at += 2; i++; }
         if (this.at >= b.length) { this.q.shift(); this.at = 0; } }
       return true; } }

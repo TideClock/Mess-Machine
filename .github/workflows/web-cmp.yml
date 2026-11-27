@@ -44,6 +44,7 @@ jobs:
             sed -i "s#<meta charset=\"utf-8\">#<meta charset=\"utf-8\">\n<meta name=\"mm-build\" content=\"${{ github.run_number }} ${GITHUB_SHA::7}\">#" out/page/index.html
             # one page for every host: the engine and fonts in parts, the sounds in packs (tools/web-pack.py), and a zip
             # of it that Hubbub imports (raw.githubusercontent.com/<repo>/web-cmp-dist/mm-web.zip)
+            rm -f out/page/*.map
             python3 tools/web-pack.py out/page
             (cd out/page && zip -qr -X ../mm-web.zip .)
             ls -la out/page > out/files.txt; du -sh out/page/* out/mm-web.zip >> out/files.txt

@@ -166,18 +166,23 @@ object StoredZip {
 /**
  * The sound out: a timer renders the engine a little ahead of the speaker and hands each block to the page's
  * AudioWorklet. The browser decides its own buffer; this keeps [aheadMs] more queued, which is what a tap waits for.
- * Tight (the default) starts at 30 ms, Steady buffer at 60; each new gap adds 15 ms (up to growCap steps), and after
- * 20 s with no gap it gives 5 ms back, never below the start.
+ * Tight (the default) starts at 30 ms and may grow to 180; Steady buffer starts at 60 and may grow to 300. A gap adds
+ * 15 ms (at most one step a quarter second); 20 s without one gives 5 ms back, never below the start. Gaps in the
+ * first 3 s are not counted (the page is still drawing its first screens).
  */
 class WebAudioOut(private val engine: Engine, private val rate: Int, burst: Int) : AudioOut {
     private val block = 128
     private val buf = FloatArray(block * 2)
     private var timer = -1
     private var made = 0.0
-    private val startMs get() = if (growCap > 3) 60 else 30
+    private val steady get() = growCap > 3
+    private val startMs get() = (jsLead().takeIf { it > 0 } ?: 30) * (if (steady) 2 else 1)
+    private val maxMs get() = if (steady) 300 else 180
     private var aheadMs = 30
     private var lastUnder = 0
     private var lastGapAt = 0.0
+    private var lastGrowAt = 0.0
+    private var startedAt = 0.0
     private var grownN = 0
     private var shrunkN = 0
     override var useAAudio = false
@@ -198,16 +203,18 @@ class WebAudioOut(private val engine: Engine, private val rate: Int, burst: Int)
         if (timer >= 0) return
         jsAudioOpen(rate)
         made = 0.0
-        lastGapAt = jsNow()
+        aheadMs = maxOf(aheadMs, startMs)
+        startedAt = jsNow(); lastGapAt = startedAt; lastUnder = jsUnderruns()
         timer = jsInterval({ pump() }, 5)
     }
     private fun pump() {
         val now = jsNow()
         val u = jsUnderruns()
         if (u > lastUnder) {
-            if (aheadMs < startMs + 15 * maxOf(growCap, 1)) { aheadMs += 15; grownN++ }
+            if (now - startedAt > 3000 && now - lastGrowAt > 250 && aheadMs < maxMs) { aheadMs = minOf(maxMs, aheadMs + 15); grownN++; lastGrowAt = now }
             lastUnder = u; lastGapAt = now
-        } else if (now - lastGapAt > 20_000 && aheadMs > startMs) { aheadMs -= 5; shrunkN++; lastGapAt = now }
+        } else if (now - lastGapAt > 20_000 && aheadMs > startMs) { aheadMs = maxOf(startMs, aheadMs - 5); shrunkN++; lastGapAt = now }
+        jsAheadNow(aheadMs)
         val heard = jsAudioFrames()
         if (made < heard) made = heard // fell behind (a hidden tab): skip ahead, do not catch up with old sound
         val want = heard + aheadMs * rate / 1000.0
