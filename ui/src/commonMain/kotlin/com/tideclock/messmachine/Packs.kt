@@ -4,7 +4,8 @@ import com.tideclock.messmachine.platform.MFile
 
 /**
  * Sound packs from the packs release (CMP step 4): the offers, and installing, unpacking and removing them. Android's
- * is AndroidPacks (HttpURLConnection and java.util.zip); the zip and the network are the platform's.
+ * is AndroidPacks (HttpURLConnection and java.util.zip); the zip and the network are the platform's. @Throws lets the iPhone's
+ * Swift side report a failure the way Android's throws do (AppState shows the message).
  */
 interface Packs {
     /** One pack on offer: from packs.json on the release. */
@@ -15,10 +16,13 @@ interface Packs {
     /** Register every pack already on the phone (at start). */
     fun loadInstalled()
     /** What the packs release offers right now. Network: call off the main thread. */
+    @Throws(Exception::class)
     fun fetchOffers(): List<Offer>
     /** Download a pack and install it. Network: call off the main thread. */
+    @Throws(Exception::class)
     fun install(o: Offer)
     /** Unpack a pack's zip into its own folder and register it. Every entry must stay inside that folder. */
+    @Throws(Exception::class)
     fun installZip(zip: MFile, id: String)
     /** Take a pack off the phone. */
     fun remove(id: String)
