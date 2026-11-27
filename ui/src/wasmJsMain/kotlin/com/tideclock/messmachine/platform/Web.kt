@@ -53,6 +53,20 @@ package com.tideclock.messmachine.platform
 @JsFun("() => window.mm.blockSend()") external fun jsBlockSend()
 @JsFun("() => window.mm.audioInfo()") external fun jsAudioInfo(): String
 @JsFun("() => window.mm.underruns") external fun jsUnderruns(): Int
+@JsFun("() => window.mm.outMs()") external fun jsOutMs(): Double
+// the mic for sampling: the page records, this side pulls floats in blocks
+@JsFun("(cb) => window.mm.micStart(cb)") external fun jsMicStart(cb: (Boolean) -> Unit)
+@JsFun("() => window.mm.micPull()") external fun jsMicPull(): Int
+@JsFun("(i) => window.mm.cur.getFloat32(i * 4, true)") external fun jsF32(i: Int): Float
+@JsFun("() => window.mm.micRate()") external fun jsMicRate(): Int
+@JsFun("() => window.mm.micStop()") external fun jsMicStop()
+// MIDI in, links, the network (notes to GitHub), and where saved files last
+@JsFun("(on, say) => window.mm.midiStart(on, say)") external fun jsMidiStart(on: (Int, Int, Int) -> Unit, say: (String) -> Unit): Boolean
+@JsFun("(u) => window.mm.open(u)") external fun jsOpen(u: String)
+@JsFun("(m, u, a, b, done) => window.mm.http(m, u, a, b, done)") external fun jsHttp(method: String, url: String, auth: String?, body: String?, done: (Int, String) -> Unit)
+@JsFun("() => window.mm.store") external fun jsStore(): String
+@JsFun("(s) => encodeURIComponent(s)") external fun jsEnc(s: String): String
+@JsFun("(ms, f) => new Date(ms).toLocaleString('en-US', f === 1 ? {month:'short', day:'numeric'} : {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'})") external fun jsDateText(ms: Double, f: Int): String
 
 /** Small helpers the platform classes share. */
 object Web {

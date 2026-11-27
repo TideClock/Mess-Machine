@@ -15,19 +15,37 @@
 <div id="wait"><div><b>Mess Machine</b><span id="waitline">Loading the sounds...</span></div></div>
 <div id="app"></div>
 <script>
-/* The page side of the web build (docs/WEB-CMP.md): files, assets, Back, the picker, the mic and the sound out.
-   The Kotlin side (ui/src/wasmJsMain/.../platform/Web.kt) calls these through window.mm. */
+/* The page side of the web build (docs/WEB-CMP.md): files, assets, Back, the picker, the mic, MIDI, the network for
+   notes, and the sound out. The Kotlin side (ui/src/wasmJsMain/.../platform/Web.kt) calls these through window.mm. */
 window.mm = (() => {
-  const mm = { build: 0, sha: '', micOk: false, underruns: 0, cur: null, blk: null };
+  const mm = { build: 0, sha: '', micOk: false, underruns: 0, cur: null, blk: null, store: 'memory' };
   try { const v = document.querySelector('meta[name=mm-build]'); if (v) { mm.build = +v.content.split(' ')[0] || 0; mm.sha = v.content.split(' ')[1] || ''; } } catch (e) {}
   const files = new Map(), times = new Map(), dirs = new Set(['/', '/files', '/cache']);
   let fresh = null;
   const norm = k => k.length > 1 ? k.replace(/\/+$/, '') : k;
   const parents = k => { let p = k; while ((p = p.slice(0, p.lastIndexOf('/'))) && p.length) dirs.add(p); };
-  // saved files last in IndexedDB; assets (asset:...) and picked files (pick:...) stay in memory
+  const b64 = s => { const t = atob(s), u = new Uint8Array(t.length); for (let i = 0; i < t.length; i++) u[i] = t.charCodeAt(i); return u; };
+  const unb64 = u => { let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
+  // Saved files (under /files) last in IndexedDB. Where a page may not have IndexedDB (Hubbub plays games in a
+  // locked frame), small saved files go in localStorage instead, which Hubbub keeps for each player; big ones (mic
+  // takes, imports) then last only until the page closes. Assets (asset:...) and picked files (pick:...) stay in memory.
   let db = null;
+  const LS_ONE = 96 * 1024, LS_ALL = 1536 * 1024;
   const idb = () => new Promise(res => { try { const r = indexedDB.open('messmachine-web', 1); r.onupgradeneeded = () => r.result.createObjectStore('files'); r.onsuccess = () => res(r.result); r.onerror = () => res(null); } catch (e) { res(null); } });
-  const put = (k, v) => { if (!db) return; try { const t = db.transaction('files', 'readwrite'); v ? t.objectStore('files').put(v, k) : t.objectStore('files').delete(k); } catch (e) {} };
+  const lsKeys = () => { const out = []; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('mmf:')) out.push(k); } } catch (e) {} return out; };
+  const lsUsed = () => { let n = 0; for (const k of lsKeys()) { try { n += (localStorage.getItem(k) || '').length; } catch (e) {} } return n; };
+  const put = (k, v) => {
+    if (db) { try { const t = db.transaction('files', 'readwrite'); v ? t.objectStore('files').put(v, k) : t.objectStore('files').delete(k); } catch (e) {} return; }
+    if (mm.store !== 'local' || !k.startsWith('/files')) return;
+    try {
+      if (!v) { localStorage.removeItem('mmf:' + k); return; }
+      if (v.b.length > LS_ONE) { localStorage.removeItem('mmf:' + k); return; }
+      const s = JSON.stringify({ t: v.t, b: unb64(v.b) });
+      const was = (localStorage.getItem('mmf:' + k) || '').length;
+      if (lsUsed() - was + s.length > LS_ALL) return;
+      localStorage.setItem('mmf:' + k, s);
+    } catch (e) {}
+  };
   mm.sel = k => { const b = files.get(k); if (!b) return -1; mm.cur = new DataView(b.buffer, b.byteOffset, b.byteLength); return b.length; };
   mm.fresh = n => { fresh = new Uint8Array(n); mm.cur = new DataView(fresh.buffer); };
   mm.keep = k => { files.set(k, fresh); times.set(k, Date.now()); parents(k); if (k.startsWith('/')) put(k, { b: fresh, t: Date.now() }); };
@@ -43,34 +61,55 @@ window.mm = (() => {
   mm.mtime = k => times.get(k) || 0;
   // Back: each open sheet holds one history step; Back runs the newest one
   const backs = []; let backId = 0, skip = 0;
-  mm.backPush = cb => { const id = ++backId; backs.push({ id, cb }); history.pushState({ mmb: id }, ''); return id; };
-  mm.backDrop = id => { const i = backs.findIndex(b => b.id === id); if (i < 0) return; backs.splice(i, 1); if (history.state && history.state.mmb === id) { skip++; history.back(); } };
+  mm.backPush = cb => { const id = ++backId; backs.push({ id, cb }); try { history.pushState({ mmb: id }, ''); } catch (e) {} return id; };
+  mm.backDrop = id => { const i = backs.findIndex(b => b.id === id); if (i < 0) return; backs.splice(i, 1); try { if (history.state && history.state.mmb === id) { skip++; history.back(); } } catch (e) {} };
   addEventListener('popstate', () => { if (skip) { skip--; return; } const top = backs.pop(); if (top) top.cb(); });
-  // files from the phone or computer
+  addEventListener('keydown', e => { if (e.key === 'Escape' && backs.length) { e.preventDefault(); const top = backs[backs.length - 1]; mm.backDrop(top.id); top.cb(); } });
+  // Files from the phone or computer. Sound files are turned into a mono 16-bit WAV here (the browser decodes MP3,
+  // M4A, OGG, FLAC and WAV), at most 60 seconds, so the app's own WAV reader takes every one of them.
   let picks = 0;
+  const wav16 = (f, rate) => { const n = f.length, o = new DataView(new ArrayBuffer(44 + n * 2)); const s = (i, t) => { for (let k = 0; k < t.length; k++) o.setUint8(i + k, t.charCodeAt(k)); };
+    s(0, 'RIFF'); o.setUint32(4, 36 + n * 2, true); s(8, 'WAVE'); s(12, 'fmt '); o.setUint32(16, 16, true); o.setUint16(20, 1, true); o.setUint16(22, 1, true);
+    o.setUint32(24, rate, true); o.setUint32(28, rate * 2, true); o.setUint16(32, 2, true); o.setUint16(34, 16, true); s(36, 'data'); o.setUint32(40, n * 2, true);
+    for (let i = 0; i < n; i++) o.setInt16(44 + i * 2, Math.max(-1, Math.min(1, f[i])) * 32767, true); return new Uint8Array(o.buffer); };
+  const looksAudio = f => /^audio\//.test(f.type) || /\.(wav|mp3|m4a|aac|ogg|oga|opus|flac|aif|aiff|webm)$/i.test(f.name);
+  const decode = async bytes => { const C = window.OfflineAudioContext || window.webkitOfflineAudioContext; const c = new C(1, 1, 48000);
+    const ab = await c.decodeAudioData(bytes.buffer.slice(0)); const n = Math.min(ab.length, ab.sampleRate * 60), out = new Float32Array(n);
+    for (let ch = 0; ch < ab.numberOfChannels; ch++) { const d = ab.getChannelData(ch); for (let i = 0; i < n; i++) out[i] += d[i] / ab.numberOfChannels; }
+    return wav16(out, ab.sampleRate); };
   mm.pick = (types, multi, cb) => { const i = document.createElement('input'); i.type = 'file'; i.multiple = multi;
-    i.accept = types.split(',').map(t => t.trim()).filter(Boolean).join(',');
-    i.onchange = async () => { const out = []; for (const f of i.files) { const k = 'pick:' + (++picks) + '/' + f.name; files.set(k, new Uint8Array(await f.arrayBuffer())); out.push(k); } cb(out.join('\n')); };
+    const acc = types.split(',').map(t => t.trim()).filter(Boolean); i.accept = acc.join(',');
+    const wantsSound = acc.some(t => t.startsWith('audio'));
+    i.onchange = async () => { const out = []; for (const f of i.files) { const k = 'pick:' + (++picks) + '/' + f.name; let b = new Uint8Array(await f.arrayBuffer());
+        if (wantsSound && looksAudio(f)) { try { b = await decode(b); } catch (e) {} }
+        files.set(k, b); out.push(k); } cb(out.join('\n')); };
     i.click(); };
-  mm.askMic = cb => { if (!navigator.mediaDevices) return cb(false); navigator.mediaDevices.getUserMedia({ audio: true }).then(s => { s.getTracks().forEach(t => t.stop()); mm.micOk = true; cb(true); }, () => cb(false)); };
+  mm.open = u => { try { window.open(u, '_blank', 'noopener'); } catch (e) {} };
   mm.download = (path, mime, name) => { const b = files.get(path); if (!b) return; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([b], { type: mime })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000); };
   mm.shareText = t => { try { navigator.clipboard.writeText(t); } catch (e) {} };
   mm.info = () => 'Web ' + mm.build + ' on ' + navigator.userAgent;
-  // the sound out: blocks rendered by the engine, played by an AudioWorklet
+  // the network, for notes to GitHub: done(status, text); status 0 means no connection (or the page may not reach it)
+  mm.http = (method, url, auth, body, done) => { const h = { Accept: 'application/vnd.github+json' }; if (auth) h.Authorization = 'Bearer ' + auth; if (body) h['Content-Type'] = 'application/json';
+    fetch(url, { method, headers: h, body: body || undefined }).then(async r => done(r.status, await r.text()), () => done(0, '')); };
+  // the sound out (blocks rendered by the engine) and the mic in (blocks for the engine), one AudioWorklet module
   const WORKLET = `class MMOut extends AudioWorkletProcessor {
     constructor() { super(); this.q = []; this.at = 0; this.under = 0; this.on = false; this.port.onmessage = e => { this.on = true; this.q.push(e.data); let n = 0; for (const b of this.q) n += b.length / 2; while (n > sampleRate / 2 && this.q.length > 1) { n -= this.q.shift().length / 2; this.at = 0; } }; }
     process(_, outs) { const L = outs[0][0], R = outs[0][1] || outs[0][0]; let i = 0;
-      while (i < L.length) { const b = this.q[0]; if (!b) { if (i === 0 && this.on) { this.under++; if (this.under % 50 === 1) this.port.postMessage(this.under); } for (; i < L.length; i++) { L[i] = 0; R[i] = 0; } break; }
+      while (i < L.length) { const b = this.q[0]; if (!b) { if (i === 0 && this.on) { this.under++; if (this.under % 10 === 1) this.port.postMessage(this.under); } for (; i < L.length; i++) { L[i] = 0; R[i] = 0; } break; }
         while (i < L.length && this.at < b.length) { L[i] = b[this.at]; R[i] = b[this.at + 1]; this.at += 2; i++; }
         if (this.at >= b.length) { this.q.shift(); this.at = 0; } }
       return true; } }
-  registerProcessor('mm-out', MMOut);`;
-  let ctx = null, node = null, waiting = [], base = 0;
+  registerProcessor('mm-out', MMOut);
+  class MMIn extends AudioWorkletProcessor {
+    constructor() { super(); this.buf = new Float32Array(2048); this.n = 0; this.live = true; this.port.onmessage = () => { this.live = false; }; }
+    process(ins) { const c = ins[0] && ins[0][0]; if (c) for (let i = 0; i < c.length; i++) { this.buf[this.n++] = c[i]; if (this.n === this.buf.length) { this.port.postMessage(this.buf); this.buf = new Float32Array(2048); this.n = 0; } } return this.live; } }
+  registerProcessor('mm-in', MMIn);`;
+  let ctx = null, node = null, waiting = [], ready = null;
   mm.audioOpen = rate => {
     if (ctx) { ctx.resume && ctx.resume(); return 0; }
     try { ctx = new AudioContext({ sampleRate: rate, latencyHint: 'interactive' }); } catch (e) { ctx = new AudioContext(); }
     const url = URL.createObjectURL(new Blob([WORKLET], { type: 'text/javascript' }));
-    ctx.audioWorklet.addModule(url).then(() => {
+    ready = ctx.audioWorklet.addModule(url).then(() => {
       node = new AudioWorkletNode(ctx, 'mm-out', { numberOfInputs: 0, outputChannelCount: [2] });
       node.port.onmessage = e => { mm.underruns = e.data; };
       node.connect(ctx.destination);
@@ -82,22 +121,53 @@ window.mm = (() => {
   };
   mm.audioClose = () => { if (ctx) ctx.suspend(); };
   mm.audioFrames = () => ctx ? ctx.currentTime * ctx.sampleRate : 0;
-  mm.audioInfo = () => ctx ? 'AudioWorklet ' + ctx.sampleRate + ' Hz, ' + Math.round((ctx.baseLatency || 0) * 1000) + ' ms base, ' + ctx.state : 'no sound yet';
+  mm.outMs = () => ctx ? ((ctx.baseLatency || 0) + (ctx.outputLatency || 0)) * 1000 : 0;
+  mm.audioInfo = () => ctx ? 'AudioWorklet ' + ctx.sampleRate + ' Hz, ' + Math.round(mm.outMs()) + ' ms in the browser, ' + ctx.state : 'no sound yet';
   mm.blockStart = n => { mm.blk = new Float32Array(n * 2); };
   mm.blockSend = () => { const b = mm.blk; if (node) node.port.postMessage(b, [b.buffer]); else { waiting.push(b); if (waiting.length > 40) waiting.shift(); } };
+  // the mic, for sampling: mono at the sound out's rate; the app pulls what came in since the last pull
+  let mic = null, micQ = [];
+  mm.askMic = cb => { if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return cb(false); navigator.mediaDevices.getUserMedia({ audio: true }).then(s => { s.getTracks().forEach(t => t.stop()); mm.micOk = true; cb(true); }, () => cb(false)); };
+  mm.micStart = cb => {
+    if (mic || !navigator.mediaDevices || !ctx) return cb(false);
+    micQ = [];
+    navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }).then(async s => {
+      await ready; mm.micOk = true;
+      const src = ctx.createMediaStreamSource(s), w = new AudioWorkletNode(ctx, 'mm-in', { numberOfInputs: 1, numberOfOutputs: 0 });
+      w.port.onmessage = e => micQ.push(e.data); src.connect(w);
+      mic = { s, src, w }; cb(true);
+    }, () => cb(false));
+  };
+  mm.micRate = () => ctx ? ctx.sampleRate : 48000;
+  mm.micPull = () => { let n = 0; for (const b of micQ) n += b.length; const out = new Float32Array(n); let at = 0; for (const b of micQ) { out.set(b, at); at += b.length; } micQ = []; mm.cur = new DataView(out.buffer); return n; };
+  mm.micStop = () => { if (!mic) return; try { mic.w.port.postMessage(0); mic.src.disconnect(); mic.s.getTracks().forEach(t => t.stop()); } catch (e) {} mic = null; };
+  // MIDI in: each message as (status, data1, data2); say(text) when a device comes or goes
+  mm.midiStart = (on, say) => {
+    if (!navigator.requestMIDIAccess) return false;
+    navigator.requestMIDIAccess().then(a => {
+      const hook = p => { if (p.type !== 'input' || p.state !== 'connected' || p.onmidimessage) return; p.onmidimessage = e => { const d = e.data; if (d.length >= 2 && d[0] < 0xF0) on(d[0], d[1], d.length > 2 ? d[2] : 0); }; say(p.name || 'a MIDI device'); };
+      a.inputs.forEach(hook); a.onstatechange = e => { if (e.port.state === 'connected') hook(e.port); else e.port.onmidimessage = null; };
+    }, () => {});
+    return true;
+  };
   // pause and come back
   mm.onHide = f => document.addEventListener('visibilitychange', () => { if (document.hidden) f(); });
   mm.onShow = f => document.addEventListener('visibilitychange', () => { if (!document.hidden) f(); });
-  // start: the app's sounds and the saved files load first
+  // start: the app's sounds, its fallback fonts and the saved files load first
   let go = null, loaded = false;
   mm.ready = f => { go = f; if (loaded) { document.getElementById('wait').remove(); f(); } };
   (async () => {
     db = await idb();
     if (db) await new Promise(res => { try { const t = db.transaction('files', 'readonly'); const r = t.objectStore('files').openCursor();
-      r.onsuccess = () => { const c = r.result; if (!c) return res(); files.set(c.key, c.value.b); times.set(c.key, c.value.t); parents(c.key); c.continue(); }; r.onerror = () => res(); } catch (e) { res(); } });
+      r.onsuccess = () => { const c = r.result; if (!c) return res(); files.set(c.key, c.value.b); times.set(c.key, c.value.t); parents(c.key); c.continue(); }; r.onerror = () => res(); } catch (e) { db = null; res(); } });
+    if (db) mm.store = 'indexeddb';
+    else {
+      try { localStorage.setItem('mmf:?', '1'); localStorage.removeItem('mmf:?'); mm.store = 'local'; } catch (e) {}
+      for (const k of lsKeys()) { try { const o = JSON.parse(localStorage.getItem(k)); const p = k.slice(4); files.set(p, b64(o.b)); times.set(p, o.t); parents(p); } catch (e) {} }
+    }
+    await Promise.all(['mm_symbols.ttf', 'mm_emoji.ttf'].map(async n => { try { const r = await fetch(n); if (r.ok) files.set('font:' + n, new Uint8Array(await r.arrayBuffer())); } catch (e) {} }));
     const list = await (await fetch('assets/index.json')).json();
     let done = 0; const line = document.getElementById('waitline');
-    const b64 = s => { const t = atob(s), u = new Uint8Array(t.length); for (let i = 0; i < t.length; i++) u[i] = t.charCodeAt(i); return u; };
     if (Array.isArray(list)) {
       await Promise.all(list.map(async p => { const r = await fetch('assets/' + p); files.set('asset:' + p, new Uint8Array(await r.arrayBuffer())); done++; line.textContent = 'Loading the sounds... ' + done + ' of ' + list.length; }));
     } else {

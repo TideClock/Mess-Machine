@@ -19,22 +19,33 @@ flush()
 json.dump({'packs': packs}, open(os.path.join(A, 'index.json'), 'w'))
 for root, dirs, files in os.walk(A, topdown=False):
     if not os.listdir(root): os.rmdir(root)
-# the .wasm files too: an artifact will not take them as they are, so each becomes wasm/<name>.json and a small
-# fetch shim in index.html answers mm.js's request for the .wasm with the bytes from that file
-wasms = [f for f in os.listdir(page) if f.endswith('.wasm')]
+# the .wasm files and the fonts too: an artifact will not take them as they are, and a host that serves through a
+# function (Hubbub) caps one answer at a few MB, so each becomes wasm/<name>.<k>.json parts of at most 1.5 MB, and a
+# small fetch shim in index.html answers the page's request for the file with the parts joined back together
+PART = 1_500_000
+big = sorted(f for f in os.listdir(page) if f.endswith('.wasm') or f.endswith('.ttf'))
 os.makedirs(os.path.join(page, 'wasm'), exist_ok=True)
-for w in wasms:
-    json.dump(base64.b64encode(open(os.path.join(page, w), 'rb').read()).decode(), open(os.path.join(page, 'wasm', w + '.json'), 'w'))
+parts = {}
+for w in big:
+    t = base64.b64encode(open(os.path.join(page, w), 'rb').read()).decode()
+    n = 0
+    for k in range(0, len(t), PART):
+        json.dump(t[k:k + PART], open(os.path.join(page, 'wasm', f'{w}.{n}.json'), 'w')); n += 1
+    parts[w] = n
     os.remove(os.path.join(page, w))
 shim = """<script>
 (() => { const real = window.fetch.bind(window), packed = %s;
   window.fetch = async (u, o) => { const s = String(u && u.url || u), n = s.split('/').pop().split('?')[0];
-    if (packed.includes(n)) { const t = await (await real('wasm/' + n + '.json')).json(); const b = Uint8Array.from(atob(t), c => c.charCodeAt(0));
-      return new Response(b, { headers: { 'Content-Type': 'application/wasm' } }); }
+    if (packed[n]) { const ps = await Promise.all([...Array(packed[n]).keys()].map(async k => (await real('wasm/' + n + '.' + k + '.json')).json()));
+      const t = atob(ps.join('')), b = new Uint8Array(t.length); for (let i = 0; i < t.length; i++) b[i] = t.charCodeAt(i);
+      return new Response(b, { headers: { 'Content-Type': n.endsWith('.wasm') ? 'application/wasm' : 'font/ttf' } }); }
     return real(u, o); }; })();
 </script>
-<script src="mm.js"></script>""" % json.dumps(wasms)
+<script src="mm.js"></script>""" % json.dumps(parts)
 ix = os.path.join(page, 'index.html'); h = open(ix).read()
 if '<script src="mm.js"></script>' not in h: raise SystemExit('mm.js tag not found')
-open(ix, 'w').write(h.replace('<script src="mm.js"></script>', shim, 1))
-print(len(packs), 'packs,', len(wasms), 'wasm')
+# the shim goes first, before the page's own script fetches the fonts
+i = h.index('<script>')
+h = h[:i] + shim.replace('<script src="mm.js"></script>', '') + h[i:]
+open(ix, 'w').write(h)
+print(len(packs), 'packs,', len(big), 'big files in', sum(parts.values()), 'parts')

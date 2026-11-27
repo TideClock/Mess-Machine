@@ -1,8 +1,6 @@
 package com.tideclock.messmachine.platform
 
 import com.tideclock.messmachine.Bench
-import com.tideclock.messmachine.BenchItem
-import com.tideclock.messmachine.MNote
 import com.tideclock.messmachine.NoteBook
 import com.tideclock.messmachine.Packs
 import com.tideclock.messmachine.cloud.CloudCache
@@ -15,7 +13,7 @@ import com.tideclock.messmachine.engine.Sample
 /*
  * The browser as a Platform (docs/WEB-CMP.md): the same AppState and screens as Android and the iPhone. Files live in
  * the page (IndexedDB behind it), settings in localStorage, the sound in an AudioWorklet fed from here.
- * First version (the web spike): the Workbench, notes, packs, speech, the updater and the mouth mic are placeholders.
+ * Not on the web yet: speech to text, the updater (a page is always the newest), the mouth mic and packs (none sent yet).
  */
 class WebPlatform : Platform {
     override val device: Device = WebDevice
@@ -26,7 +24,7 @@ class WebPlatform : Platform {
     override val filesDir = "/files"
     override val cacheDir = "/cache"
     override fun audioOut(engine: Engine, rate: Int, burst: Int): AudioOut = WebAudioOut(engine, rate, burst)
-    override fun bench(lib: Library): Bench = WebBench()
+    override fun bench(lib: Library): Bench = WebBench(lib)
     override fun notes(): NoteBook = WebNotes()
     override fun packs(lib: Library): Packs = WebPacks()
     override fun speech(heard: (String) -> Unit, done: (text: String, problem: String?) -> Unit): SpeechIn = object : SpeechIn {
@@ -128,7 +126,7 @@ object WebDevice : Device {
     override val buildVersion get() = "web ${jsBuild()}"
     override val gitSha get() = jsSha()
     override val siteHost = ""
-    override fun describe() = jsInfo()
+    override fun describe() = jsInfo() + ", saves in " + jsStore()
     override fun speakerTest(engine: Engine, rate: Int, click: Sample): Pair<Double, String> = 0.0 to "The web build has no speaker test yet."
     override fun writeZip(f: MFile, entries: List<Pair<String, ByteArray>>) = f.writeBytes(StoredZip.of(entries))
     override fun thread(name: String, f: () -> Unit) { jsTimeout(f, 0) }
@@ -167,25 +165,31 @@ object StoredZip {
 
 /**
  * The sound out: a timer renders the engine a little ahead of the speaker and hands each block to the page's
- * AudioWorklet. The browser decides the real buffer; this keeps about [aheadMs] of sound queued.
+ * AudioWorklet. The browser decides its own buffer; this keeps [aheadMs] more queued, which is what a tap waits for.
+ * Tight (the default) starts at 30 ms, Steady buffer at 60; each new gap adds 15 ms (up to growCap steps), and after
+ * 20 s with no gap it gives 5 ms back, never below the start.
  */
 class WebAudioOut(private val engine: Engine, private val rate: Int, burst: Int) : AudioOut {
-    private val block = 256
+    private val block = 128
     private val buf = FloatArray(block * 2)
     private var timer = -1
     private var made = 0.0
-    private var aheadMs = 80
+    private val startMs get() = if (growCap > 3) 60 else 30
+    private var aheadMs = 30
     private var lastUnder = 0
+    private var lastGapAt = 0.0
     private var grownN = 0
+    private var shrunkN = 0
     override var useAAudio = false
-    override var growCap = 0
+    override var growCap = 3
+        set(v) { field = v; aheadMs = startMs }
     override val bufferFrames get() = aheadMs * rate / 1000
     override val underruns get() = jsUnderruns()
-    override val outputMs get() = aheadMs.toDouble()
+    override val outputMs get() = aheadMs + jsOutMs()
     override val fastPath = "AudioWorklet"
     override val cpuHint = ""
     override val grown get() = grownN
-    override val shrunk = 0
+    override val shrunk get() = shrunkN
     override val growVoices = 0
     override var lastSlowFrameNanos = 0L
     override val path get() = jsAudioInfo()
@@ -194,12 +198,16 @@ class WebAudioOut(private val engine: Engine, private val rate: Int, burst: Int)
         if (timer >= 0) return
         jsAudioOpen(rate)
         made = 0.0
-        timer = jsInterval({ pump() }, 10)
+        lastGapAt = jsNow()
+        timer = jsInterval({ pump() }, 5)
     }
     private fun pump() {
-        // a gap in the sound: keep more queued (up to 240 ms), as the phone grows its buffer after underruns
+        val now = jsNow()
         val u = jsUnderruns()
-        if (u > lastUnder) { if (aheadMs < 240) { aheadMs += 20; grownN++ }; lastUnder = u }
+        if (u > lastUnder) {
+            if (aheadMs < startMs + 15 * maxOf(growCap, 1)) { aheadMs += 15; grownN++ }
+            lastUnder = u; lastGapAt = now
+        } else if (now - lastGapAt > 20_000 && aheadMs > startMs) { aheadMs -= 5; shrunkN++; lastGapAt = now }
         val heard = jsAudioFrames()
         if (made < heard) made = heard // fell behind (a hidden tab): skip ahead, do not catch up with old sound
         val want = heard + aheadMs * rate / 1000.0
@@ -223,42 +231,7 @@ class WebAudioOut(private val engine: Engine, private val rate: Int, burst: Int)
     override fun longBlocksText(max: Int) = slow.takeLast(max).joinToString(", ") { ((it * 10).toInt() / 10.0).toString() + " ms" }
 }
 
-/** Placeholders for the spike: the Workbench, notes and packs come next (docs/WEB-CMP.md). */
-class WebBench : Bench {
-    override val items: MutableList<BenchItem> = ArrayList()
-    override fun keyOf(b: BenchItem) = "bench:" + b.id
-    override fun item(key: String): BenchItem? = items.firstOrNull { keyOf(it) == key }
-    override fun addSample(kind: String, title: String, s: Sample, bpm: Double, beats: Int): String = ""
-    override fun adoptCloud(id: String, kind: String, title: String, from: MFile, bpm: Double, beats: Int, mkey: String) = false
-    override fun addChop(base: String, title: String, st: Double, en: Double) = ""
-    override fun remove(key: String) {}
-    override fun count(kind: String) = 0
-    override fun decode(uri: String): Sample = throw IllegalStateException("The web build cannot import sounds yet.")
-    override fun startMic(trim: Boolean, auto: Boolean, done: (Sample?) -> Unit) { done(null) }
-    override fun stopMic() {}
-    override fun isRecording() = false
-    override fun trimSilence(s: Sample): Sample? = s
-}
-
-class WebNotes : NoteBook {
-    override val notes: MutableList<MNote> = ArrayList()
-    override val checking = false
-    override val lastCheck = ""
-    override val hasKey = false
-    private val trailLines = ArrayDeque<String>()
-    override fun trail(what: String) { trailLines.addLast(what); if (trailLines.size > 40) trailLines.removeFirst() }
-    override fun trailText() = trailLines.joinToString("\n")
-    override fun add(n: MNote) { notes += n }
-    override fun remove(id: String) { notes.removeAll { it.id == id } }
-    override fun parsePrefix(text: String, cat: String, topic: String) = Triple(text, cat, topic)
-    override fun saveKey(k: String) {}
-    override fun forgetKey() {}
-    override fun send(n: MNote, details: String, done: (String) -> Unit) { done("Notes are not sent from the web yet.") }
-    override fun sendWaiting(details: (MNote) -> String, done: (String) -> Unit) { done("") }
-    override fun openBundle(waiting: List<MNote>, details: String) = 0
-    override fun checkReplies(done: (String) -> Unit) { done("") }
-}
-
+/** Packs: the packs release has none yet, so the web build offers none (docs/WEB-CMP.md). */
 class WebPacks : Packs {
     override val installed: MutableMap<String, Int> = HashMap()
     override fun loadInstalled() {}
