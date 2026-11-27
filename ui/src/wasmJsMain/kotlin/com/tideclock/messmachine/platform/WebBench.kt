@@ -120,10 +120,11 @@ class WebBench(private val lib: Library) : Bench {
      */
     override fun startMic(trim: Boolean, auto: Boolean, done: (Sample?) -> Unit) {
         if (recording) return
+        if (jsMicBlocked()) { withPhone(trim, done); return }
         recording = true
         n = 0
         jsMicStart { ok ->
-            if (!ok) { recording = false; done(null); return@jsMicStart }
+            if (!ok) { recording = false; withPhone(trim, done); return@jsMicStart }
             val rate = jsMicRate()
             var floor = 1f; var started = false; var quietFor = 0; var heardFor = 0
             fun finish() {
@@ -152,6 +153,26 @@ class WebBench(private val lib: Library) : Bench {
                 }
                 if (stop) finish()
             }, 40)
+        }
+    }
+
+    /**
+     * Where the page may not use the mic (a claude.ai artifact, Hubbub's game frame): the phone's own recorder.
+     * The take comes back like an import (the page decodes it), trimmed the same way. A recorder can only open inside
+     * the tap; when the tap is too long ago, a notice asks for one more tap.
+     */
+    private fun withPhone(trim: Boolean, done: (Sample?) -> Unit) {
+        recording = true
+        val opened = jsRecordWithPhone { key ->
+            recording = false
+            if (key.isEmpty()) { done(null); return@jsRecordWithPhone }
+            val s = try { decode(key) } catch (_: Exception) { null }
+            done(if (s == null) null else if (trim) trimSilence(s) ?: s else s)
+        }
+        if (!opened) {
+            recording = false
+            jsToast("This page cannot use the mic, so it records with your phone's recorder. Tap record again to open it.")
+            done(null)
         }
     }
 

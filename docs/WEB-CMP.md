@@ -28,6 +28,9 @@ web app on the `web-engine` branch, which can no longer follow the app (its engi
   notes to GitHub (key or the new-issue page), Web MIDI, speech for quick notes, fallback fonts for the symbols and
   emoji (`mm_symbols.ttf` from DejaVu Sans, `mm_emoji.ttf` from Noto Emoji, both subset), the sound lead (Tight
   30 ms up to 180, Steady 60 up to 300; `?lead=` sets the start for tests).
+- Where the page may not use the mic (Hubbub's frame, claude.ai), recording opens the phone's own recorder (a file
+  input with `capture`) and the take comes back like an import; a blocked mic counts as allowed so quick notes reach
+  dictation. The recorder only opens inside the tap; past that a notice asks for one more tap.
 - Not built: the updater (a page is always the newest), the mouth mic, packs (the release has none), accounts and
   sharing (no cloud API on web yet), the speaker test.
 - Headless Chromium on a cloud box (software drawing) settles at a 165 to 180 ms lead while playing; a phone with a

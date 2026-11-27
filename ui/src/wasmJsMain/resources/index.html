@@ -19,6 +19,10 @@
    notes, and the sound out. The Kotlin side (ui/src/wasmJsMain/.../platform/Web.kt) calls these through window.mm. */
 window.mm = (() => {
   const mm = { build: 0, sha: '', micOk: false, underruns: 0, cur: null, blk: null, store: 'memory' };
+  // The mic: a page in a frame that may not use it (a claude.ai artifact, Hubbub's game frame) is refused every time,
+  // so the app records with the phone's own recorder instead (mm.recordWithPhone). Known up front where the frame
+  // says so; otherwise learned from the first refusal.
+  try { const fp = document.permissionsPolicy || document.featurePolicy; mm.micBlocked = self.origin === 'null' || !!(fp && fp.allowsFeature && !fp.allowsFeature('microphone')) || !navigator.mediaDevices; } catch (e) { mm.micBlocked = false; }
   // ?lead=40 starts the sound lead at 40 ms (a test knob; the app's Steady buffer setting doubles it)
   try { const q = new URLSearchParams(location.search).get('lead'); mm.lead = q ? Math.max(10, Math.min(300, +q || 0)) : 0; } catch (e) { mm.lead = 0; }
   try { const v = document.querySelector('meta[name=mm-build]'); if (v) { mm.build = +v.content.split(' ')[0] || 0; mm.sha = v.content.split(' ')[1] || ''; } } catch (e) {}
@@ -86,6 +90,24 @@ window.mm = (() => {
         if (wantsSound && looksAudio(f)) { try { b = await decode(b); } catch (e) {} }
         files.set(k, b); out.push(k); } cb(out.join('\n')); };
     i.click(); };
+  // Record with the phone's own recorder (a file input with capture: iPhone opens its recorder, Android offers its
+  // recorder apps, a computer asks for a file). It has to open inside the tap: false when the tap is too long ago.
+  let recs = 0;
+  mm.recordWithPhone = cb => {
+    if (navigator.userActivation && !navigator.userActivation.isActive) return false;
+    const i = document.createElement('input'); i.type = 'file'; i.accept = 'audio/*'; i.setAttribute('capture', '');
+    let done = false; const end = k => { if (!done) { done = true; cb(k); } };
+    i.onchange = async () => { const f = i.files && i.files[0]; if (!f) return end('');
+      let b = new Uint8Array(await f.arrayBuffer()); try { b = await decode(b); } catch (e) { mm.toast('The phone gave a recording this browser cannot read (' + (f.type || f.name) + ').'); return end(''); }
+      const k = 'rec:' + (++recs); files.set(k, b); end(k); };
+    i.addEventListener('cancel', () => end(''));
+    i.click(); return true;
+  };
+  let toastT = 0;
+  mm.toast = t => { let el = document.getElementById('mmtoast'); if (!el) { el = document.createElement('div'); el.id = 'mmtoast';
+      el.style.cssText = 'position:fixed;left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:9;padding:12px 14px;border-radius:10px;background:#2a2326;color:#fff4e2;font:600 15px/1.35 system-ui,sans-serif;box-shadow:0 4px 18px #0008;text-align:center;pointer-events:none';
+      document.body.appendChild(el); }
+    el.textContent = t; el.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(() => { el.style.display = 'none'; }, 4500); };
   mm.open = u => { try { window.open(u, '_blank', 'noopener'); } catch (e) {} };
   // Inside a claude.ai artifact a page may only save files through its downloads capability, and only some types
   // (not WAV, MIDI or a .mess): those go out inside a zip. Elsewhere it is a plain download link.
@@ -166,7 +188,7 @@ window.mm = (() => {
   mm.blockSend = () => { const b = mm.blk; if (node) node.port.postMessage(b, [b.buffer]); else { waiting.push(b); if (waiting.length > 40) waiting.shift(); } };
   // the mic, for sampling: mono at the sound out's rate; the app pulls what came in since the last pull
   let mic = null, micQ = [];
-  mm.askMic = cb => { if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return cb(false); navigator.mediaDevices.getUserMedia({ audio: true }).then(s => { s.getTracks().forEach(t => t.stop()); mm.micOk = true; cb(true); }, () => cb(false)); };
+  mm.askMic = cb => { if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return cb(false); navigator.mediaDevices.getUserMedia({ audio: true }).then(s => { s.getTracks().forEach(t => t.stop()); mm.micOk = true; cb(true); }, () => { mm.micBlocked = true; cb(false); }); };
   mm.micStart = cb => {
     if (mic || !navigator.mediaDevices || !ctx) return cb(false);
     micQ = [];
@@ -175,7 +197,7 @@ window.mm = (() => {
       const src = ctx.createMediaStreamSource(s), w = new AudioWorkletNode(ctx, 'mm-in', { numberOfInputs: 1, numberOfOutputs: 0 });
       w.port.onmessage = e => micQ.push(e.data); src.connect(w);
       mic = { s, src, w }; cb(true);
-    }, () => cb(false));
+    }, () => { mm.micBlocked = true; cb(false); });
   };
   mm.micRate = () => ctx ? ctx.sampleRate : 48000;
   mm.micPull = () => { let n = 0; for (const b of micQ) n += b.length; const out = new Float32Array(n); let at = 0; for (const b of micQ) { out.set(b, at); at += b.length; } micQ = []; mm.cur = new DataView(out.buffer); return n; };

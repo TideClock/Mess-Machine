@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import com.tideclock.messmachine.platform.Web
+import com.tideclock.messmachine.platform.jsMicBlocked
 
 /*
  * The browser's side of PlatformUi (docs/WEB-CMP.md). The mic and the file picker go through the page (index.html),
@@ -17,7 +18,8 @@ import com.tideclock.messmachine.platform.Web
 @Composable
 actual fun rememberAsk(p: Perm, onResult: (Boolean) -> Unit): Asker = object : Asker {
     override val granted: Boolean get() = p == Perm.NOTIFICATIONS || Web.micGranted()
-    override fun ask() { if (p == Perm.MIC) Web.askMic { onResult(it) } else onResult(true) }
+    // a refusal from a page that may not use the mic is not a no: the recorder and dictation take over
+    override fun ask() { if (p == Perm.MIC) Web.askMic { onResult(it || jsMicBlocked()) } else onResult(true) }
 }
 
 @Composable

@@ -117,7 +117,8 @@ object WebDevice : Device {
     override fun backgroundPlay(on: Boolean) = false
     override fun shareFile(f: MFile, mime: String, title: String, subject: Boolean) = jsDownload(f.path, mime, f.name)
     override fun shareText(text: String, title: String) = jsShareText(text)
-    override fun hasMicPermission() = jsMicOk()
+    /** A blocked mic counts as yes: the Workbench records with the phone's recorder, quick notes use dictation. */
+    override fun hasMicPermission() = jsMicOk() || jsMicBlocked()
     override fun screenDp(): Pair<Int, Int> = jsW() to jsH()
     override fun unmeteredNetwork() = true
     override fun clipboardText() = ""

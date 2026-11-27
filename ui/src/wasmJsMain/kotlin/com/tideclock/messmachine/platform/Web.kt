@@ -62,6 +62,9 @@ package com.tideclock.messmachine.platform
 @JsFun("(i) => window.mm.cur.getFloat32(i * 4, true)") external fun jsF32(i: Int): Float
 @JsFun("() => window.mm.micRate()") external fun jsMicRate(): Int
 @JsFun("() => window.mm.micStop()") external fun jsMicStop()
+@JsFun("() => window.mm.micBlocked") external fun jsMicBlocked(): Boolean
+@JsFun("(cb) => window.mm.recordWithPhone(cb)") external fun jsRecordWithPhone(cb: (String) -> Unit): Boolean
+@JsFun("(t) => window.mm.toast(t)") external fun jsToast(t: String)
 // MIDI in, links, the network (notes to GitHub), and where saved files last
 @JsFun("(on, say) => window.mm.midiStart(on, say)") external fun jsMidiStart(on: (Int, Int, Int) -> Unit, say: (String) -> Unit): Boolean
 @JsFun("(u) => window.mm.open(u)") external fun jsOpen(u: String)
@@ -102,7 +105,7 @@ object Web {
         while (i < n) { jsSetU8(i, b[i].toInt() and 0xff); i++ }
         jsKeep(key)
     }
-    fun micGranted() = jsMicOk()
+    fun micGranted() = jsMicOk() || jsMicBlocked()
     fun askMic(done: (Boolean) -> Unit) = jsAskMic(done)
     fun pick(types: String, multiple: Boolean, done: (List<String>) -> Unit) =
         jsPick(types, multiple) { s -> done(if (s.isEmpty()) emptyList() else s.split('\n')) }
