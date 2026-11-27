@@ -623,31 +623,53 @@ class TapeRender {
         at(300)
     }
 
-    /** Horror v3, chapter 07: mouth control moving a synth's filter. The readings are fed by script, not a real mic. */
+    /** Horror v3, chapter 07: mouth control. No microphone in the renderer, so a stand-in mic feeds a made-up
+     *  voice ("wow", vowels ooo to aah and back) into the app's real mouth tracker; the screen says so. */
+    private class ScriptMouth : com.tideclock.messmachine.platform.MouthIn {
+        override val tracker = com.tideclock.messmachine.engine.MouthTracker(16000)
+        @Volatile override var running = false
+        override fun start(): Boolean { tracker.reset(); running = true; return true }
+        override fun stop() { running = false }
+    }
+    private var vPhase = 0.0
+    /** One frame (1/30 s) of a sung vowel at 16 kHz: harmonics of 140 Hz shaped by two formants. */
+    private fun vowel(f1: Double, f2: Double, amp: Double): FloatArray {
+        val n = 16000 / 30; val out = FloatArray(n)
+        for (i in 0 until n) {
+            var v = 0.0
+            for (h in 1..28) {
+                val f = 140.0 * h
+                val g = Math.exp(-Math.pow((f - f1) / 110.0, 2.0)) + .7 * Math.exp(-Math.pow((f - f2) / 160.0, 2.0)) + .02
+                v += g * Math.sin(vPhase * h) / h
+            }
+            vPhase += 2 * Math.PI * 140.0 / 16000; out[i] = (v * amp).toFloat()
+        }
+        return out
+    }
     @Test fun x13() = shoot("x13") {
         mess { steps(kit[0], 0, 4, 8, 12); steps(kit[2], 2, 6, 10, 14) }
         state.newSynth(5, analog("Wobble"))
-        state.edit { pat().setStep(kit[5], 0, true); pat().setStep(kit[5], 8, true) }
         state.selectPad(5, false)
+        val fake = ScriptMouth()
+        AppState::class.java.getDeclaredField("mouthMic").apply { isAccessible = true }.set(state, fake)
+        state.switchMouthStay(false)
         state.overlay = Overlay.Mouth
         roll()
         at(20); tap("mouth-toggle", hold = 3)
-        if (!state.mouthOn) {
-            // no microphone in the renderer: switch the listener on by hand so the meter draws the scripted readings
-            AppState::class.java.getDeclaredMethod("setMouthOn", Boolean::class.javaPrimitiveType).apply { isAccessible = true }.invoke(state, true)
-        }
-        at(30); state.midiDown(60, 100)
-        println("DEMO x13 mouthOn=${state.mouthOn} to=${state.mouthVowelTo}")
-        // "wow, wow, wow wow": each word opens dark and swings bright, then lets go
+        println("DEMO x13 mouthOn=${state.mouthOn} running=${fake.running}")
+        at(30); state.midiDown(48, 100)
+        // "wow" at each of these frames: ooo, open to aah, close to ooo, over 15 frames
         val words = listOf(60, 105, 150, 172, 210, 255)
-        for (f in 40 until 330) {
+        for (f in 31 until 330) {
             at(f)
-            var vw = 0f; var lv = 0f; var heard = false
-            for (w in words) { val t = f - w; if (t in 0..16) { heard = true; vw = .1f + .85f * kotlin.math.sin(t / 16f * Math.PI.toFloat()).coerceAtLeast(0f); lv = .7f } }
-            state.mouthApply(vw, lv, heard)
+            var f1 = 300.0; var f2 = 800.0; var amp = 0.0
+            for (w in words) {
+                val t = f - w
+                if (t in 0..15) { val k = Math.sin(t / 15.0 * Math.PI); f1 = 300 + 450 * k; f2 = 800 + 1400 * k; amp = .35 }
+            }
+            fake.tracker.feed(vowel(f1, f2, amp), 0, 16000 / 30)
         }
-        state.mouthApply(.5f, 0f, false)
-        at(330); state.midiUp(60)
+        at(330); state.midiUp(48)
         at(360)
     }
 
