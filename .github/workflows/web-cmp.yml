@@ -1,0 +1,56 @@
+name: Web (the shared app in a browser)
+# docs/WEB-CMP.md: builds the whole app (ui/ and core/, Compose for Web on WebAssembly) for the browser and pushes the
+# page, pass or fail, to the web-cmp-dist branch (log.txt and status.txt always), so a chat that cannot read Actions
+# logs can still see what happened.
+on:
+  push:
+    branches: [web-cmp]
+    paths-ignore: ['site/**', 'library/**', 'docs/**']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: web-cmp
+  cancel-in-progress: true
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+      - name: Build the web page
+        run: |
+          mkdir -p out
+          set +e
+          ./gradlew -Pmm.web :ui:wasmJsBrowserDistribution --stacktrace > out/log.txt 2>&1
+          echo $? > out/status.txt
+          grep -E "^e: |error:|FAILED|BUILD" out/log.txt | head -80
+          tail -30 out/log.txt
+      - name: Put the page together (the app's sounds go in assets/)
+        run: |
+          D=ui/build/dist/wasmJs/productionExecutable
+          mkdir -p out/page
+          if [ "$(cat out/status.txt)" = "0" ] && [ -d "$D" ]; then
+            cp -r "$D"/. out/page/
+            mkdir -p out/page/assets && cp -r app/src/main/assets/. out/page/assets/
+            (cd out/page/assets && find . -type f ! -name index.json | sed 's#^\./##' | sort | python3 -c "import sys,json; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))" > index.json)
+            sed -i "s#<meta charset=\"utf-8\">#<meta charset=\"utf-8\">\n<meta name=\"mm-build\" content=\"${{ github.run_number }} ${GITHUB_SHA::7}\">#" out/page/index.html
+            ls -la out/page > out/files.txt; du -sh out/page/* >> out/files.txt
+          fi
+          echo "run ${{ github.run_number }} from ${GITHUB_SHA::7}" > out/run.txt
+      - name: Push to web-cmp-dist (one commit, replaced each run)
+        run: |
+          cd out
+          git init -q -b web-cmp-dist
+          git config user.name "web build"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Web build ${{ github.run_number }}: status $(cat status.txt) [skip ci]"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" web-cmp-dist
