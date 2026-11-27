@@ -1,0 +1,3 @@
+115:    DEMO x2 chord=set:Haunted scale=Harmonic minor
+116:    DEMO done x2 frames=480 audio=768000 samples
+152:BUILD SUCCESSFUL in 3m 33s

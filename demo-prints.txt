@@ -1,0 +1,2 @@
+  <system-out><![CDATA[DEMO x2 chord=set:Haunted scale=Harmonic minor
+DEMO done x2 frames=480 audio=768000 samples

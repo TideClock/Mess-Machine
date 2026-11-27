@@ -1,0 +1,33 @@
+frame,type,x,y,note
+60,down,452,905,swipe-down
+61,move,452,982,swipe-down
+62,move,452,1048,swipe-down
+63,move,452,1120,swipe-down
+64,move,452,1192,swipe-down
+65,up,0,0,swipe-down
+135,down,78,1329,key 0
+142,up,78,1329,key 0
+150,down,332,1329,key 3
+157,up,332,1329,key 3
+165,down,671,1329,key 7
+172,up,671,1329,key 7
+180,down,1094,1329,key 12
+187,up,1094,1329,key 12
+195,down,671,1329,key 7
+202,up,671,1329,key 7
+210,down,332,1329,key 3
+217,up,332,1329,key 3
+225,down,78,1329,key 0
+232,up,78,1329,key 0
+240,down,525,2314,chords-toggle
+243,up,525,2314,chords-toggle
+330,down,127,1335,chord 0
+354,up,127,1335,chord 0
+360,down,678,1335,chord 3
+384,up,678,1335,chord 3
+390,down,861,1335,chord 4
+414,up,861,1335,chord 4
+420,down,1045,1335,chord 5
+444,up,1045,1335,chord 5
+450,down,127,1335,chord 0
+476,up,127,1335,chord 0
