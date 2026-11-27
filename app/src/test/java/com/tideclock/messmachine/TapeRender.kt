@@ -648,7 +648,8 @@ class TapeRender {
     }
     @Test fun x13() = shoot("x13") {
         mess { steps(kit[0], 0, 4, 8, 12); steps(kit[2], 2, 6, 10, 14) }
-        state.newSynth(5, analog("Sync lead"))
+        state.putOnPad(5, dance); load(dance)
+        state.edit { pat().setStep(dance, 0, true) }
         state.selectPad(5, false)
         org.robolectric.Shadows.shadowOf(org.robolectric.RuntimeEnvironment.getApplication()).grantPermissions(android.Manifest.permission.RECORD_AUDIO)
         val fake = ScriptMouth()
@@ -658,7 +659,7 @@ class TapeRender {
         roll()
         at(20); tap("mouth-toggle", hold = 3)
         println("DEMO x13 mouthOn=${state.mouthOn} running=${fake.running}")
-        at(30); state.midiDown(57, 100)
+        at(30)
         // "wow" at each of these frames: ooo, open to aah, close to ooo, over 15 frames
         val words = listOf(60, 105, 150, 172, 210, 255)
         for (f in 31 until 330) {
@@ -670,7 +671,7 @@ class TapeRender {
             }
             fake.tracker.feed(vowel(f1, f2, amp), 0, 16000 / 30)
         }
-        at(330); state.midiUp(57)
+        at(330)
         at(360)
     }
 
