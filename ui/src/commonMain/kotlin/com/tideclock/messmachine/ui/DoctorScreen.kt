@@ -97,7 +97,7 @@ fun DoctorScreen(state: AppState, key: String) {
             com.tideclock.messmachine.engine.KeyFinder.both(info?.mkey).takeIf { it.isNotEmpty() },
         ).joinToString("") { " · $it" }
         T(
-            "${fmt(seconds, 2)} s · plays ${fmt(seconds * (e.en - e.st) / (if (e.pitch == "grain") 1.0 else 2.0.pow((e.tune + e.fine / 100) / 12)), 2)} s" + facts,
+            "${fmt(seconds, 2)} s · plays ${fmt(seconds * (e.en - e.st) / (if (e.pitch == "grain") 1.0 else 2.0.pow(tapeSemis(e) / 12)), 2)} s" + facts,
             size = 12.sp, color = C.Dim, weight = FontWeight.Medium, modifier = Modifier.padding(bottom = 8.dp),
         )
         var dragging by remember { mutableStateOf(0) }
@@ -182,7 +182,7 @@ fun DoctorScreen(state: AppState, key: String) {
                     Btn("Chop here", {
                         if (lazyT0 == 0L) state.say("Tap Play first, then Chop here at each spot you want a cut.")
                         else {
-                            val el = (state.nanoTime() - lazyT0) / 1e9 * 2.0.pow((e.tune + e.fine / 100) / 12) / maxOf(.001, seconds)
+                            val el = (state.nanoTime() - lazyT0) / 1e9 * 2.0.pow(tapeSemis(e) / 12) / maxOf(.001, seconds)
                             val f = e.st + el
                             if (f > e.st + .002 && f < e.en - .002) cuts = (cuts + f).sorted()
                         }
@@ -204,6 +204,19 @@ fun DoctorScreen(state: AppState, key: String) {
         if (dtab == "play") {
         chopSection()
         T(" ", size = 6.sp)
+        // Nov 26 (Tyler): Re-pitch, the sound's one note to C (keys then play the notes they say) or its key into the mess's key
+        T("RE-PITCH", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(bottom = 4.dp))
+        Row(Modifier.fillMaxWidth().padding(bottom = 4.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            Btn(if (e.apKind.isEmpty()) "Re-pitch" else "Again", { state.repitch(key) { e = state.project.edit(key).copy() } }, color = C.Pink, small = true, tag = "repitch")
+            if (e.apKind.isNotEmpty()) Btn("Undo", { state.unpitch(key); e = state.project.edit(key).copy() }, small = true, tag = "unpitch")
+        }
+        val heard = state.pitchHeard(key)
+        T(when {
+            e.apKind.isNotEmpty() -> (heard ?: if (e.apKind == "note") "Its note" else "Its key") + " · moved ${if (e.ap > 0) "+" else ""}${fmt(e.ap, 2)} st" +
+                (if (e.apKind == "note") " to C" else " into the mess's key") + if (state.autoPitch && e.apKind == "key") " · follows the key" else ""
+            heard != null -> "Heard: $heard"
+            else -> "Moves its note to C, or its key into the mess's key."
+        }, size = 12.sp, color = C.Dim, modifier = Modifier.padding(bottom = 14.dp))
         // SE-1: Stretch or Grain
         T("PITCH", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(bottom = 4.dp))
         Row(Modifier.fillMaxWidth().padding(bottom = 14.dp, end = 4.dp).tagged("pitch-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -329,3 +342,6 @@ fun DoctorScreen(state: AppState, key: String) {
 private fun Section(title: String) {
     T(title, size = 15.sp, color = C.Yellow, modifier = Modifier.padding(top = 18.dp, bottom = 8.dp))
 }
+
+/** The semitones that change a sound's speed in auto mode: Tune, Fine and a Re-pitch by note (a Re-pitch by key keeps the length). */
+private fun tapeSemis(e: SoundEdit): Double = e.tune + e.fine / 100 + if (e.apKind == "key") 0.0 else e.ap

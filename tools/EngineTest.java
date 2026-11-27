@@ -328,6 +328,39 @@ public class EngineTest {
         check(KeyFinder.find(hiss, ksr).isEmpty(), "Key: noise gets no key");
         check(KeyFinder.find(java.util.Arrays.copyOf(tune.apply(major, 0.0), ksr / 5), ksr).isEmpty(), "Key: a sound shorter than 0.4 s gets no key");
         check(KeyFinder.find(new float[ksr * 2], ksr).isEmpty(), "Key: silence gets no key");
+        // ---- Re-pitch (Nov 26, Tyler: "a button that sets it to C for C"): one note goes to C, a key goes into the mess's key
+        java.util.function.BiFunction<Double, Double, float[]> note = (midi, sec) -> {
+          float[] x = new float[(int) (ksr * sec)];
+          double f = 440 * Math.pow(2, (midi - 69) / 12.0);
+          for (int i = 0; i < x.length; i++) {
+            double t = i / (double) ksr, env = Math.min(1, i / 200.0) * Math.exp(-t * 3);
+            x[i] = (float) (env * (.5 * Math.sin(2 * Math.PI * f * t) + .3 * Math.sin(4 * Math.PI * f * t) + .15 * Math.sin(6 * Math.PI * f * t)));
+          }
+          return x;
+        };
+        AutoPitch.Found pl = AutoPitch.detect(note.apply(67.2, .15), ksr, 0, 1);
+        check(pl != null && "note".equals(pl.kind) && Math.abs(pl.midi - 67.2) < .1 && "G, 20 cents sharp".equals(pl.label()),
+          "Re-pitch: a 0.15 s pluck reads as its note: " + (pl == null ? "nothing" : pl.label() + " " + pl.midi));
+        check(pl != null && Math.abs(AutoPitch.shift(pl, 9, "Minor") - 4.8) < .1, "Re-pitch: the G pluck 20 cents sharp moves up 4.8 semitones to C, whatever the mess's key");
+        AutoPitch.Found bass = AutoPitch.detect(note.apply(33.0, .6), ksr, 0, 1);
+        check(bass != null && "note".equals(bass.kind) && Math.abs(AutoPitch.shift(bass, 0, "Major") - 3) < .1, "Re-pitch: a low A bass note (55 Hz) moves up 3 to C: " + (bass == null ? "nothing" : bass.label()));
+        AutoPitch.Found fs = AutoPitch.detect(tune.apply(up6, 35.0), ksr, 0, 1);
+        check(fs != null && "key".equals(fs.kind) && Math.abs(Math.abs(AutoPitch.shift(fs, 0, "Major")) - 5.65) < .1,
+          "Re-pitch: an F# major tune a third sharp moves 6 semitones less the drift into C major: " + (fs == null ? "nothing" : fs.kind + " " + AutoPitch.shift(fs, 0, "Major")));
+        AutoPitch.Found cm = AutoPitch.detect(tune.apply(major, 0.0), ksr, 0, 1);
+        check(cm != null && "key".equals(cm.kind) && Math.abs(AutoPitch.shift(cm, 9, "Minor")) < .1, "Re-pitch: a C major tune stays put in A minor (the same notes)");
+        check(cm != null && Math.abs(AutoPitch.shift(cm, 2, "Major") - 2) < .1, "Re-pitch: a C major tune moves up 2 for D major");
+        check(AutoPitch.detect(hiss, ksr, 0, 1) == null, "Re-pitch: noise gets nothing");
+        check(AutoPitch.detect(note.apply(60.0, .05), ksr, 0, 1) == null, "Re-pitch: a sound under 0.1 s gets nothing");
+        check(AutoPitch.detect(new float[ksr], ksr, 0, 1) == null, "Re-pitch: silence gets nothing");
+        SoundEdit ape = new SoundEdit(); ape.ap = 4.8; ape.apKind = "note";
+        SoundEdit apb = SoundEdit.fromMap(ape.toMap());
+        check(!ape.isDefault() && apb.ap == 4.8 && "note".equals(apb.apKind) && SoundEdit.fromMap(new SoundEdit().toMap()).apKind.isEmpty(), "Re-pitch: saved and loaded with the mess");
+        Sample tone = new Sample("t", note.apply(60.0, 1.0), ksr);
+        SoundEdit byKey = new SoundEdit(); byKey.ap = 4; byKey.apKind = "key";
+        SoundEdit byNote = new SoundEdit(); byNote.ap = 4; byNote.apKind = "note";
+        double lk = Engine.renderOne("t", tone, byKey).seconds(), ln = Engine.renderOne("t", tone, byNote).seconds();
+        check(Math.abs(lk - 1.0) < .08 && ln < .85, "Re-pitch: a key move keeps the length, a note move plays like tape: " + lk + " s, " + ln + " s");
       }
       // ---- SE-4, SE-9, SE-10: loops at the mess's tempo, hits, and old chop keys still playing
       {

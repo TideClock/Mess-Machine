@@ -1,15 +1,19 @@
 {
-  "title": "Under the hood: one app for Android and iPhone",
+  "title": "Re-pitch: samples land in key",
   "thisBuild": [
-    "Nothing should look or work differently. The screens and the app's logic moved into shared code that the iPhone version will use too.",
-    "Every screen was checked against the build before the move: 482 test screenshots, the same pixel for pixel.",
-    "Numbers with decimals always use a dot now (a phone set to German used to show a comma)."
+    "Sample sheet, Play tab: a Re-pitch key. A sound with one clear note (a pluck, a hum, a bass hit) moves so that note is a C, so keys, chords and the Roll play the notes they say. A melody or loop moves into the mess's key by the fewest steps and keeps its length.",
+    "It takes out the sound's own tuning drift too, so a sample a little sharp or flat lands on the note.",
+    "Works on sounds as short as a tenth of a second. A line under the key says what it heard and how far it moved it. Undo puts it back; Tune and Fine stay yours.",
+    "Settings, Playing: Auto-pitch new sounds. Every new mic take, import or sound you put on a pad is re-pitched by itself, and loops moved by their key follow the mess when you change its key."
   ],
   "watch": [
-    "Play a mess for a few minutes and use every tab: anything that looks or sounds off, send a note.",
-    "Import a sound, sample the mic and open a mess file: those now go through new code paths."
+    "Sample something melodic, tap Re-pitch, and play it on the keys: do the notes match the key names?",
+    "Try a loop, then change the mess's key with Auto-pitch on: does it follow?",
+    "Tell me about any sound it reads wrong (the line under Re-pitch shows what it heard)."
   ],
   "limits": [
-    "The iPhone app is not on TestFlight yet: that needs your Apple Developer account."
+    "Drums and noise have no note, so they stay as they are.",
+    "A tapped one-shot plays its C. Play it from the keys to hear other notes.",
+    "Moves are never more than 6 semitones, so a far-off sound can still change character a little."
   ]
 }

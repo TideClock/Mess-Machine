@@ -199,7 +199,7 @@ to `p`. Keys and scopes are worked out after that. An op for an empty pad does n
 | `note.set` | `l, p, k, s, n, len` (`n` -36 to 24; `len` 0 removes) | `n/<l>/<p>/<s>/<n>` | same op, old `len` |
 | `lock.set` | `l, p, k, g, s, v` (number or null) | `k/<l>/<p>/<g>/<s>` | same op, old value |
 | `lane.set` | `l, p, k, g, s, v` (number or null) | `m/<l>/<p>/<g>/<s>` | same op, old value |
-| `edit.set` | `p, k, f, v`; `f` one of `att rel rev loop mode tune fine vol pan tone norm choke held beatN pitch bake fx.rvb fx.rvbSize fx.echo fx.echoT fx.dirt fx.crush fx.chorus fx.wob fx.wobRate` | `e/<p>/<f>` | same op, old value |
+| `edit.set` | `p, k, f, v`; `f` one of `att rel rev loop mode tune fine vol pan tone norm choke held beatN pitch bake fx.rvb fx.rvbSize fx.echo fx.echoT fx.dirt fx.crush fx.chorus fx.wob fx.wobRate ap apKind` | `e/<p>/<f>` | same op, old value |
 | `edit.trim` | `p, k, st, en` (both ends as one op; replaces `edit.set` of `st` or `en`) | `e/<p>/trim` | `edit.trim` with the old pair |
 | `opt.set` | `p, k, f, v`; `f` one of `glide glideT legato route ftype xy pack lfo.on lfo.wave lfo.rate lfo.target lfo.depth lfo.retrig`, or `fx.<g>` (0 removes) | `q/<p>/<f>` | same op, old value |
 | `synth.set` | `p, k, id, v`; `id` a parameter id of the patch's kind, `@name` or `@src` | `y/<p>/<id>` | same op, old value |

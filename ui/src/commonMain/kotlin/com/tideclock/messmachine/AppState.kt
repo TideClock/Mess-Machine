@@ -1544,6 +1544,7 @@ class AppState(
         sync?.hint(com.tideclock.messmachine.cloud.Ops.padPut(pad))
         edit { this.assign(pad, key) }
         cloudSoundUsed(key)
+        if (autoPitch) autoRepitch(key)
         bank = pad / Project.BANK
         preview(key)
         say("${lib.titleOf(key)} is on pad ${pad + 1}.")
@@ -1810,8 +1811,8 @@ class AppState(
         if (!playing) audition(ps)
     }
 
-    fun setScale(name: String) = edit { scale = name }
-    fun setRoot(r: Int) = edit { root = r }
+    fun setScale(name: String) { edit { scale = name }; refitKeys() }
+    fun setRoot(r: Int) { edit { root = r }; refitKeys() }
 
     /* ---------------- loops and the song ---------------- */
 
@@ -3207,6 +3208,7 @@ class AppState(
                 for ((i, k) in keys.withIndex()) {
                     val pad = freePads().firstOrNull() ?: project.sel
                     edit { this.assign(pad, k) }
+                    if (autoPitch) autoRepitch(k)
                     if (i == 0) bank = pad / Project.BANK
                 }
                 say(when {
@@ -3808,6 +3810,82 @@ class AppState(
             f.writeBytes(Wav.writeMono16(r.data, r.rate))
             main.post { shareFile(f, "audio/wav", "Share the sound") }
         }
+    }
+
+    /**
+     * Re-pitch (Nov 26, Tyler: "a button that sets it to C for C"). A sound with one clear note moves so the note is a C,
+     * the note keys, chords and the Roll treat as home; a sound with a key moves into the mess's key by the fewest
+     * semitones. Either way its own tuning drift comes out. It sits on top of Tune and Fine (SoundEdit.ap), so it can be
+     * undone without touching them. Auto-pitch (a setting) does it to every new sound on a pad and keeps key-matched
+     * sounds in the mess's key when the key changes.
+     */
+    var autoPitch by mutableStateOf(prefs.getBoolean("autoPitch", false))
+    fun switchAutoPitch(v: Boolean) {
+        autoPitch = v; prefs.edit().putBoolean("autoPitch", v).apply(); notes.trail("auto-pitch ${if (v) "on" else "off"}")
+        if (v) refitKeys()
+    }
+    /** What Re-pitch heard in each sound (null: nothing clear), so a key change refits without listening again. */
+    private val pitchFound = HashMap<String, com.tideclock.messmachine.engine.AutoPitch.Found?>()
+    /** What the Sample sheet shows under Re-pitch: what the sound plays, or null before it was listened to. */
+    fun pitchHeard(key: String): String? = if (!pitchFound.containsKey(key)) null else pitchFound[key]?.label() ?: "no clear note or key"
+
+    fun repitch(key: String, done: () -> Unit = {}) = listenPitch(key, false, done)
+    fun unpitch(key: String) {
+        val e = project.edit(key).copy(); e.ap = 0.0; e.apKind = ""
+        setEdit(key, e, true)
+        notes.trail("re-pitch undone on ${lib.titleOf(key)}")
+        say("Back to how it was recorded.")
+    }
+
+    /** Auto-pitch on a new sound: only one nobody has tuned yet, and quietly. */
+    private fun autoRepitch(key: String) {
+        val e = project.edit(key)
+        if (e.apKind.isEmpty() && e.tune == 0.0 && e.fine == 0.0 && !key.startsWith("syn:")) listenPitch(key, true) {}
+    }
+
+    private fun listenPitch(key: String, quiet: Boolean, done: () -> Unit) {
+        val e0 = project.edit(key)
+        val st = e0.st; val en = e0.en
+        val known = lib.sound(key)?.mkey ?: ""
+        if (!quiet) busy = "Listening for its note…"
+        worker.execute {
+            val f = try {
+                val s = lib.get(key) ?: lib.load(key)
+                if (s == null) null else com.tideclock.messmachine.engine.AutoPitch.detect(s.data, s.rate, st, en, known)
+            } catch (_: Exception) { null }
+            main.post {
+                if (!quiet) busy = null
+                pitchFound[key] = f
+                if (f == null) {
+                    if (!quiet) say("No clear note or key in that sound (drums and noise have none), so it stays as it is.")
+                    done(); return@post
+                }
+                val e = project.edit(key).copy()
+                e.ap = kotlin.math.round(com.tideclock.messmachine.engine.AutoPitch.shift(f, project.root, project.scale) * 100) / 100
+                e.apKind = f.kind
+                setEdit(key, e, true)
+                notes.trail("re-pitch ${lib.titleOf(key)}: ${f.label()} ${fmt(e.ap, 2)}")
+                val move = if (kotlin.math.abs(e.ap) < .005) "It was already there" else "Moved it ${if (e.ap > 0) "up" else "down"} ${fmt(kotlin.math.abs(e.ap), 2)} semitones"
+                if (!quiet) say(if (f.kind == "note") "It plays ${f.label()}. $move to C, so keys and chords play the notes they say."
+                    else "It is in ${f.label()}. $move into ${Theory.NN[project.root]} ${project.scale.lowercase()}.")
+                done()
+            }
+        }
+    }
+
+    /** Auto-pitch: sounds re-pitched by key follow the mess's key. Ones not listened to since the app opened are listened to again. */
+    private fun refitKeys() {
+        if (!autoPitch) return
+        val keys = project.kit.filter { it.isNotEmpty() && project.edit(it).apKind == "key" }.distinct()
+        val moved = ArrayList<Pair<String, SoundEdit>>()
+        for (k in keys) {
+            if (!pitchFound.containsKey(k)) { listenPitch(k, true) {}; continue }
+            val f = pitchFound[k] ?: continue
+            val e = project.edit(k).copy()
+            e.ap = kotlin.math.round(com.tideclock.messmachine.engine.AutoPitch.shift(f, project.root, project.scale) * 100) / 100
+            if (e.ap != project.edit(k).ap) moved.add(k to e)
+        }
+        if (moved.isNotEmpty()) edit { for ((k, e) in moved) this.setEdit(k, e) }
     }
 
     /** Re-pitch so the trimmed sound fills a length at the current tempo. */

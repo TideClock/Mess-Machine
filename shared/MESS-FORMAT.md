@@ -311,6 +311,8 @@ then the rest only when not default.
 | `beatN` | number | 1 | 1, 2 or 4 | App only. With `held: "beat"`, restart every N beats. Anything else is 1. |
 | `pitch` | string | `"auto"` | `auto`, `stretch`, `grain` | App only. How a pitch change plays. |
 | `bake` | boolean | false | | App only. Keep baked pitch versions. Written only when true. |
+| `ap` | number | 0 | -12..12 | App only (Nov 26, Re-pitch). Semitones with cents added on top of `tune` and `fine`. Written only with `apKind`. |
+| `apKind` | string | `""` | `note` or `key` | App only. What Re-pitch went by: `note` (the sound's note moved to C; plays like Tune), `key` (its key moved into the mess's key; in `auto` pitch mode this part keeps the length). Anything else is `""` and `ap` is ignored. Written only when set. |
 | `fx` | object | | | App only. Written when any effect is on or a size/time/rate is not default. Fields below. |
 
 `fx` fields: `rvb` 0..1 (0), `rvbSize` 0..1 (0.5), `echo` 0..1 (0), `echoT` 0..3 whole (1; picks 1/16, 1/8,

@@ -283,6 +283,8 @@ fun PlaySettings(state: AppState) {
         SwitchLine("Record exactly where I hit (off: snap to 16ths)", state.live.recExact, { state.switchRecExact() }, "set-recexact")
         // Nov 24 (Tyler's video): trim the quiet off both ends of a new recording
         SwitchLine("Auto trim new recordings", state.autoTrim, { state.switchAutoTrim(!state.autoTrim) }, "set-autotrim")
+        // Nov 26 (Tyler): every new sound on a pad re-pitched (one note to C, a key into the mess's key), key ones following the key
+        SwitchLine("Auto-pitch new sounds", state.autoPitch, { state.switchAutoPitch(!state.autoPitch) }, "set-autopitch")
         // Nov 18 / 21: a quick flick up off a button opens its settings
         SwitchLine("Flick up off a button for its settings", state.flickOn, { state.switchFlick() }, "set-flick")
     }

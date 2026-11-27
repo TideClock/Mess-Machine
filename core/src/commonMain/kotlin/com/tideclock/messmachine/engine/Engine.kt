@@ -788,7 +788,7 @@ class Engine(private val rate: Int) {
                 var back: Held? = null
                 for (o in held.values) if (o.pad.index == h.pad.index && o.voices.contains(v)) back = o
                 if (back != null && back.pitches.size > 0) {
-                    v.sv.noteOn(h.pad.synth!!, 261.6256 * oct() * 2.0.pow(back.pitches[0] / 12.0) * 2.0.pow((h.pad.edit.tune + h.pad.edit.fine / 100.0) / 12.0), v.sv.velocity(), rate, true)
+                    v.sv.noteOn(h.pad.synth!!, 261.6256 * oct() * 2.0.pow(back.pitches[0] / 12.0) * 2.0.pow(h.pad.edit.semis() / 12.0), v.sv.velocity(), rate, true)
                     continue
                 }
             }
@@ -1096,7 +1096,9 @@ class Engine(private val rate: Int) {
         if (pm != null && pm[T_START] > 0) a = minOf(z - .005 * s.rate, a + (z - a) * minOf(.95, pm[T_START].toDouble()))
         if (rev) { val a2 = N - z; z = N - a; a = a2 }
         val len = maxOf(.005 * s.rate, z - a)
-        val tuneR = 2.0.pow((e.tune + e.fine / 100.0) / 12.0)
+        val tuneR = 2.0.pow(e.semis() / 12.0)
+        // Re-pitch by key keeps the length in auto mode, so a re-pitched loop stays the length it was
+        val tapeR = if ("key" == e.apKind) 2.0.pow((e.tune + e.fine / 100.0) / 12.0) else tuneR
         var r = maxOf(.05, rateMul * tuneR)
         val lvl = gain * e.vol * (if (e.norm) minOf(10.0, .95 / s.regionPeak(e.st, e.en)) else 1.0)
         // SE-1: Stretch (tape) moves time at the pitch's speed; Grain keeps time at 1; auto keeps the length of notes
@@ -1105,7 +1107,7 @@ class Engine(private val rate: Int) {
         var timeR: Double
         if (tapeNow || "stretch" == e.pitch) timeR = r
         else if ("grain" == e.pitch) timeR = 1.0
-        else timeR = if (abs(rateMul - 1) > .0006) maxOf(.05, tuneR) else r
+        else timeR = if (abs(rateMul - 1) > .0006) maxOf(.05, tapeR) else maxOf(.05, rateMul * tapeR)
         // SE-4: a loop plays at the mess's tempo; Grain keeps its pitch (Stretch and tape stop change it, like tape)
         if (s.bpm > 0 && spbNow > 0) {
             val fit = rate * 15.0 / spbNow / s.bpm
@@ -1169,7 +1171,7 @@ class Engine(private val rate: Int) {
     private fun synthTrigger(ps: PadSlot, rateMul: Double, durSec: Double, gate: Boolean, gain: Float, delay: Long, hold: Boolean): Voice {
         val e = ps.edit
         val sp = ps.synth!!
-        val hz = 261.6256 * rateMul * 2.0.pow((e.tune + e.fine / 100.0) / 12.0)
+        val hz = 261.6256 * rateMul * 2.0.pow(e.semis() / 12.0)
         val mode = sp.get("mode").toInt()
         val spbSec = spbNow / rate
         // how long the gate stays open: held notes until let go; Roll notes their length (acid a hair longer, so

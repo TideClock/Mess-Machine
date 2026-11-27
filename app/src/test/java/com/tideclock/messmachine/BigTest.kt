@@ -3187,6 +3187,38 @@ class BigTest {
         state.overlay = null; settle()
     }
 
+    /** Nov 26 (Tyler): Re-pitch on the Sample sheet, Undo, and the Auto-pitch setting keeping a loop in the mess's key. */
+    @Test fun nov26Repitch() {
+        state.setScale("Minor"); state.setRoot(0); settle()
+        val k = "loop:give-me-throne-1"   // D minor (MM-K)
+        state.putOnPad(state.project.sel, k); settle()
+        state.overlay = Overlay.Doctor(k); settle()
+        at("repitch").performScrollTo().performClick()
+        waitFor("Re-pitch listens") { state.project.edit(k).apKind.isNotEmpty() }
+        settle()
+        val e = state.project.edit(k)
+        assertEquals("a loop goes by its key", "key", e.apKind)
+        assertTrue("D minor moves down about 2 into C minor (${e.ap})", kotlin.math.abs(e.ap + 2) < .5)
+        assertEquals("Tune is left alone", 0.0, e.tune, 0.0)
+        shot("nov26-repitch")
+        state.toast = null; settle()   // the message about the move sits over the bottom of the sheet for a few seconds
+        at("unpitch").performClick(); settle()
+        assertTrue("Undo takes it off", state.project.edit(k).apKind.isEmpty())
+        state.overlay = null; settle()
+        // Auto-pitch: a new sound on a pad is re-pitched by itself, and a key change moves it along
+        state.overlay = Overlay.Settings; settle()
+        val was = state.autoPitch
+        at("set-autopitch").performScrollTo().performClick(); settle()
+        assertEquals("Auto-pitch switches", !was, state.autoPitch)
+        if (!state.autoPitch) { at("set-autopitch").performClick(); settle() }
+        state.overlay = null; settle()
+        state.putOnPad((state.project.sel + 1) % com.tideclock.messmachine.engine.Project.BANK, k); settle()
+        waitFor("Auto-pitch listens to the new sound") { state.project.edit(k).apKind == "key" }
+        state.setRoot(2); settle()
+        assertTrue("in D minor it sits where it was recorded (${state.project.edit(k).ap})", kotlin.math.abs(state.project.edit(k).ap) < .5)
+        state.switchAutoPitch(false); state.setRoot(0); settle()
+    }
+
     /** Nov 24 (Tyler's bug video): the settings, the loop strip, Tempo, the synth's row, the Mixer, Auto trim, the stutter. */
     @Test fun nov24VideoNotes() {
         // Settings: switches on one line each; Auto trim is one of them, and hold-to-record is gone

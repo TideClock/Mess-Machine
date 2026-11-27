@@ -666,7 +666,7 @@ is the same op carrying the value the field had before.
 | `note.set` | `l, p, s, n, len` (`n` pitch -36 to 24; `len` 0 removes) | one note, named by step and pitch | `n/<l>/<p>/<s>/<n>` | `notes` |
 | `lock.set` | `l, p, g, s, v` (number, or null for none) | one step lock | `k/<l>/<p>/<g>/<s>` | `locks` |
 | `lane.set` | `l, p, g, s, v` (number or null) | one motion lane value | `m/<l>/<p>/<g>/<s>` | `motion` |
-| `edit.set` | `p, f, v` | one doctor's table field of the pad's sound. `f` is one of `st en att rel rev loop mode tune fine vol pan tone norm choke held beatN pitch bake fx.rvb fx.rvbSize fx.echo fx.echoT fx.dirt fx.crush fx.chorus fx.wob fx.wobRate` | `e/<p>/<f>` | `edits` |
+| `edit.set` | `p, f, v` | one doctor's table field of the pad's sound. `f` is one of `st en att rel rev loop mode tune fine vol pan tone norm choke held beatN pitch bake fx.rvb fx.rvbSize fx.echo fx.echoT fx.dirt fx.crush fx.chorus fx.wob fx.wobRate ap apKind` | `e/<p>/<f>` | `edits` |
 | `opt.set` | `p, f, v` | one pad option. `f` is one of `glide glideT legato route ftype xy pack lfo.on lfo.wave lfo.rate lfo.target lfo.depth lfo.retrig`, or `fx.<g>` (where that FX fader rests, 0 removes) | `q/<p>/<f>` | `padOpts` |
 | `synth.set` | `p, id, v` | one knob of the synth on the pad. `id` is a parameter id of its kind (MESS-FORMAT s8.3), or `@name`, or `@src` | `y/<p>/<id>` | `synths` |
 | `song.set` | `b, v` (`b` bar 0 to 63; `v` -1 rest, 0 to 7 a loop) | one bar of the song lane | `g/<b>` | `song` |

@@ -39,6 +39,8 @@ object KeyFinder {
         @JvmField val chroma = DoubleArray(12)
         @JvmField var tonal = 0.0
         @JvmField var frames = 0
+        /** How far the sound's notes sit from the nearest semitone, in semitones (-0.5..0.5); + is sharp. */
+        @JvmField var drift = 0.0
     }
 
     /** One candidate key with how well it matches, and how far it leads the best key that has other notes. */
@@ -81,6 +83,27 @@ object KeyFinder {
     fun both(name: String?): String {
         val r = relative(name)
         return if (r.isEmpty()) (if (name == null) "" else name) else name + " / " + r
+    }
+
+    /** A key from its name ("D minor"), or null. */
+    @JvmStatic
+    fun parse(name: String?): Key? {
+        if (name == null) return null
+        val sp = name.indexOf(' ')
+        if (sp < 0) return null
+        val root = NAMES.indexOf(name.substring(0, sp))
+        val mode = name.substring(sp + 1)
+        if (root < 0 || (mode != "major" && mode != "minor")) return null
+        return Key(root, mode == "minor", 1.0)
+    }
+
+    /** A key's usual weight on each pitch class (its shape turned to its root), summing to 1. */
+    @JvmStatic
+    fun shape(k: Key): DoubleArray {
+        val sh = if (k.minor) MIN else MAJ
+        var all = 0.0
+        for (v in sh) all += v
+        return DoubleArray(12) { sh[((it - k.root) % 12 + 12) % 12] / all }
     }
 
     @JvmStatic fun sure(k: Key, tonal: Double): Boolean { return k.match >= MATCH && k.ahead >= AHEAD && tonal >= TONAL }
@@ -194,6 +217,7 @@ object KeyFinder {
         for (i in 0 until 12) c[i] /= all
         out.tonal = tonal / counted
         out.frames = counted
+        out.drift = tune
         return out
     }
 

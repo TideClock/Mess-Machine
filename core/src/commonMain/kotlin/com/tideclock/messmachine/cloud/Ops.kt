@@ -42,7 +42,7 @@ object Ops {
     private const val NONE = Int.MIN_VALUE   // "no value" for a lock or lane cell, in thousandths
 
     @JvmField val EDIT_FIELDS: Array<String> = arrayOf("att", "rel", "rev", "loop", "mode", "tune", "fine", "vol", "pan", "tone", "norm", "choke",
-        "held", "beatN", "pitch", "bake", "fx.rvb", "fx.rvbSize", "fx.echo", "fx.echoT", "fx.dirt", "fx.crush", "fx.chorus", "fx.wob", "fx.wobRate")
+        "held", "beatN", "pitch", "bake", "fx.rvb", "fx.rvbSize", "fx.echo", "fx.echoT", "fx.dirt", "fx.crush", "fx.chorus", "fx.wob", "fx.wobRate", "ap", "apKind")
     @JvmField val OPT_FIELDS: Array<String> = arrayOf("glide", "glideT", "legato", "route", "ftype", "xy", "pack",
         "lfo.on", "lfo.wave", "lfo.rate", "lfo.target", "lfo.depth", "lfo.retrig")
     @JvmField val MESS_FIELDS: Array<String> = arrayOf("bpm", "swing", "squash", "level", "scale", "root", "fold", "name")
@@ -406,6 +406,8 @@ object Ops {
         "held" -> if ("tail" == e.held || "once" == e.held || "sustain" == e.held || "beat" == e.held) e.held else "loop"
         "beatN" -> (if (e.beatN == 2 || e.beatN == 4) e.beatN else 1).toDouble()
         "pitch" -> if ("stretch" == e.pitch || "grain" == e.pitch) e.pitch else "auto"
+        "apKind" -> if ("note" == e.apKind || "key" == e.apKind) e.apKind else ""
+        "ap" -> cl(e.ap, -12.0, 12.0)
         "fx.rvb" -> cl(e.rvb, 0.0, 1.0); "fx.rvbSize" -> cl(e.rvbSize, 0.0, 1.0); "fx.echo" -> cl(e.echo, 0.0, 1.0)
         "fx.echoT" -> clampI(e.echoT, 0, 3).toDouble()
         "fx.dirt" -> cl(e.dirt, 0.0, 1.0); "fx.crush" -> cl(e.crush, 0.0, 1.0); "fx.chorus" -> cl(e.chorus, 0.0, 1.0)
@@ -423,12 +425,14 @@ object Ops {
             "mode" -> { if (v !is String) return false; e.mode = if ("gate" == v) "gate" else "one" }
             "held" -> { if (v !is String) return false; e.held = if ("tail" == v || "once" == v || "sustain" == v || "beat" == v) v else "loop" }
             "pitch" -> { if (v !is String) return false; e.pitch = if ("stretch" == v || "grain" == v) v else "auto" }
+            "apKind" -> { if (v !is String) return false; e.apKind = if ("note" == v || "key" == v) v else "" }
             else -> {
                 if (v !is Number) return false
                 val d = v.toDouble()
                 when (f) {
                     "att" -> e.att = cl(d, 0.0, 4.0); "rel" -> e.rel = cl(d, 0.0, 4.0)
                     "tune" -> e.tune = cl(d, -48.0, 48.0); "fine" -> e.fine = cl(d, -100.0, 100.0)
+                    "ap" -> e.ap = cl(d, -12.0, 12.0)
                     "vol" -> e.vol = cl(d, 0.0, 4.0); "pan" -> e.pan = cl(d, -1.0, 1.0); "tone" -> e.tone = cl(d, -1.0, 1.0)
                     "choke" -> e.choke = cl(d, 0.0, 8.0).toInt()
                     "beatN" -> { val b = cl(d, 0.0, 8.0).roundToInt(); e.beatN = if (b == 2 || b == 4) b else 1 }
@@ -453,7 +457,7 @@ object Ops {
         a === b || (a.st == b.st && a.en == b.en && a.att == b.att && a.rel == b.rel && a.rev == b.rev && a.loop == b.loop && a.norm == b.norm
             && a.mode == b.mode && a.tune == b.tune && a.fine == b.fine && a.vol == b.vol && a.pan == b.pan && a.tone == b.tone && a.choke == b.choke
             && a.held == b.held && a.beatN == b.beatN && a.pitch == b.pitch && a.bake == b.bake && a.rvb == b.rvb && a.rvbSize == b.rvbSize
-            && a.echo == b.echo && a.echoT == b.echoT && a.dirt == b.dirt && a.crush == b.crush && a.chorus == b.chorus && a.wob == b.wob && a.wobRate == b.wobRate)
+            && a.echo == b.echo && a.echoT == b.echoT && a.dirt == b.dirt && a.crush == b.crush && a.chorus == b.chorus && a.wob == b.wob && a.wobRate == b.wobRate && a.ap == b.ap && a.apKind == b.apKind)
 
     private fun optGet(o: PadOpts, f: String): Any? = when (f) {
         "glide" -> o.glide; "legato" -> o.legato
