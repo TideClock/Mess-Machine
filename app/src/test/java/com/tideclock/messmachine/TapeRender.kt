@@ -585,6 +585,76 @@ class TapeRender {
         at(420)
     }
 
+    /** Horror v3, chapter 03: two Padianos at once, bass under one row and Haunted chords under the next. */
+    @Test fun x11() = shoot("x11") {
+        mess { steps(kit[0], 0, 4, 8, 12); steps(kit[2], 2, 6, 10, 14); steps(kit[3], 4, 12) }
+        state.newSynth(1, analog("Mono bass"))
+        state.newSynth(5, analog("Soft keys"))
+        state.pickChordMode("set:Haunted")
+        state.selectPad(0, false)
+        roll()
+        at(40); swipe("pad-1", "down")
+        at(90); swipe("pad-5", "down")
+        println("DEMO x11 keyboards=${state.keyboards.toList()}")
+        at(120); tap("chords-toggle", hold = 3)
+        val bass = listOf(0, 0, 12, 0, 3, 3, 15, 3, 7, 7, 19, 7, 5, 5, 17, 5)
+        for ((i, n) in bass.withIndex()) { at(150 + i * 15); key(1, n, 6) }
+        for ((i, j) in listOf(0, 3, 4, 5).withIndex()) { at(152 + i * 60); slot(5, j, 40) }
+        at(420)
+    }
+
+    /** Horror v3, chapter 04: Re-pitch moves a loop into the mess's key. */
+    @Test fun x12() = shoot("x12") {
+        val k = "loop:give-me-throne-1"
+        mess { steps(kit[0], 0, 4, 8, 12) }
+        state.setScale("Minor"); state.setRoot(0)
+        state.putOnPad(5, k); load(k)
+        state.edit { pat().setStep(k, 0, true) }
+        roll()
+        at(30); swipe("pad-5", "left")
+        at(75); if (has("repitch")) { show("repitch"); frames(4) }
+        at(100); tap("repitch", hold = 3)
+        val end = System.currentTimeMillis() + 15000
+        while (state.project.edit(k).apKind.isEmpty() && System.currentTimeMillis() < end) { Thread.sleep(20); settle() }
+        println("DEMO x12 ap=${state.project.edit(k).ap} kind=${state.project.edit(k).apKind}")
+        at(300)
+    }
+
+    /** Horror v3, chapter 07: mouth control moving a synth's filter. The readings are fed by script, not a real mic. */
+    @Test fun x13() = shoot("x13") {
+        mess { steps(kit[0], 0, 4, 8, 12); steps(kit[2], 2, 6, 10, 14) }
+        state.newSynth(5, analog("Wobble"))
+        state.edit { pat().setStep(kit[5], 0, true); pat().setStep(kit[5], 8, true) }
+        state.selectPad(5, false)
+        state.overlay = Overlay.Mouth
+        roll()
+        at(20); if (has("mouth-toggle")) tap("mouth-toggle", hold = 3) else state.switchMouth(true)
+        println("DEMO x13 mouthOn=${state.mouthOn} to=${state.mouthVowelTo}")
+        // "wow, wow, wow wow": each word opens dark and swings bright, then lets go
+        val words = listOf(60, 105, 150, 172, 210, 255)
+        for (f in 40 until 330) {
+            at(f)
+            var vw = 0f; var lv = 0f; var heard = false
+            for (w in words) { val t = f - w; if (t in 0..16) { heard = true; vw = .1f + .85f * kotlin.math.sin(t / 16f * Math.PI.toFloat()).coerceAtLeast(0f); lv = .7f } }
+            state.mouthApply(vw, lv, heard)
+        }
+        state.mouthApply(.5f, 0f, false)
+        at(360)
+    }
+
+    /** Horror v3, chapter 10: a keyboard plugged in plays at once. The notes are fed by script, as a test keyboard would send them. */
+    @Test fun x14() = shoot("x14") {
+        mess { steps(kit[0], 0, 4, 8, 12) }
+        state.newSynth(5, analog("Brass"))
+        state.selectPad(5, false)
+        roll()
+        at(20); state.say("MIDI: Test keyboard plugged in. Notes 36 to 51 hit pads 1 to 16; the rest play the selected pad as keys. MIDI map, in the menu, teaches it your own layout.")
+        for ((i, n) in listOf(36, 38, 42, 38, 36, 36, 38, 42).withIndex()) { at(60 + i * 15); state.midiDown(n, 110); frames(2); state.midiUp(n) }
+        val mel = listOf(60, 63, 67, 70, 72, 70, 67, 63)
+        for ((i, n) in mel.withIndex()) { at(180 + i * 15); state.midiDown(n, 100); frames(10); state.midiUp(n) }
+        at(330)
+    }
+
     /** Not part of the video's motion: still close-ups of the inventory screens for exhibit 8. */
     @Test fun p1() = shoot("p1") {
         mess { fullBeat(); pat().setChance(kit[2], 6, 50) }
