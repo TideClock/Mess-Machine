@@ -174,7 +174,9 @@ class WebAudioOut(private val engine: Engine, private val rate: Int, burst: Int)
     private val buf = FloatArray(block * 2)
     private var timer = -1
     private var made = 0.0
-    private var aheadMs = 60
+    private var aheadMs = 80
+    private var lastUnder = 0
+    private var grownN = 0
     override var useAAudio = false
     override var growCap = 0
     override val bufferFrames get() = aheadMs * rate / 1000
@@ -182,7 +184,7 @@ class WebAudioOut(private val engine: Engine, private val rate: Int, burst: Int)
     override val outputMs get() = aheadMs.toDouble()
     override val fastPath = "AudioWorklet"
     override val cpuHint = ""
-    override val grown = 0
+    override val grown get() = grownN
     override val shrunk = 0
     override val growVoices = 0
     override var lastSlowFrameNanos = 0L
@@ -195,6 +197,9 @@ class WebAudioOut(private val engine: Engine, private val rate: Int, burst: Int)
         timer = jsInterval({ pump() }, 10)
     }
     private fun pump() {
+        // a gap in the sound: keep more queued (up to 240 ms), as the phone grows its buffer after underruns
+        val u = jsUnderruns()
+        if (u > lastUnder) { if (aheadMs < 240) { aheadMs += 20; grownN++ }; lastUnder = u }
         val heard = jsAudioFrames()
         if (made < heard) made = heard // fell behind (a hidden tab): skip ahead, do not catch up with old sound
         val want = heard + aheadMs * rate / 1000.0
