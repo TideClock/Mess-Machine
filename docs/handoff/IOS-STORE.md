@@ -24,7 +24,7 @@ review. Bundle ID: `app.shotgunstudio.messmachine` (the same as Android's applic
   (only HTTPS, which is exempt).
 - `PrivacyInfo.xcprivacy`: declare the required-reason APIs the app and its libraries touch (UserDefaults for
   settings, file timestamps for the mess list). Check Xcode's privacy report on the archive.
-- The app icon at 1024 by 1024 with no transparency (from `tools/icons`).
+- The app icon at 1024 by 1024 with no transparency: `tools/icons/store/icon-1024.png` (the teardrop eye, Nov 26; redraw with `tools/icons/launcher.py`).
 
 ## Review rules that touch this app
 

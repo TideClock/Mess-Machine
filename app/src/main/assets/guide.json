@@ -1,19 +1,16 @@
 {
-  "title": "Re-pitch: samples land in key",
+  "title": "A new face: the teardrop eye",
   "thisBuild": [
-    "Sample sheet, Play tab: a Re-pitch key. A sound with one clear note (a pluck, a hum, a bass hit) moves so that note is a C, so keys, chords and the Roll play the notes they say. A melody or loop moves into the mess's key by the fewest steps and keeps its length.",
-    "It takes out the sound's own tuning drift too, so a sample a little sharp or flat lands on the note.",
-    "Works on sounds as short as a tenth of a second. A line under the key says what it heard and how far it moved it. Undo puts it back; Tune and Fine stay yours.",
-    "Settings, Playing: Auto-pitch new sounds. Every new mic take, import or sound you put on a pad is re-pitched by itself, and loops moved by their key follow the mess when you change its key."
+    "New app icon: the teardrop eye from your painting, drawn in the app's own icon style (flat colours, thick ink lines). It fits every launcher shape, circle or rounded square.",
+    "Still new from the last build: Re-pitch on the Sample sheet's Play tab. One clear note moves to C so keys and chords play the notes they say; a melody or loop moves into the mess's key and keeps its length.",
+    "Settings, Playing: Auto-pitch new sounds re-pitches every new sound on a pad, and key-matched loops follow the mess's key."
   ],
   "watch": [
-    "Sample something melodic, tap Re-pitch, and play it on the keys: do the notes match the key names?",
-    "Try a loop, then change the mess's key with Auto-pitch on: does it follow?",
-    "Tell me about any sound it reads wrong (the line under Re-pitch shows what it heard)."
+    "Look at the icon on your home screen and in the app drawer: does it read at that size, on your wallpaper?",
+    "Sample something melodic, tap Re-pitch, and play it on the keys: do the notes match the key names?"
   ],
   "limits": [
-    "Drums and noise have no note, so they stay as they are.",
-    "A tapped one-shot plays its C. Play it from the keys to hear other notes.",
-    "Moves are never more than 6 semitones, so a far-off sound can still change character a little."
+    "Some launchers keep the old icon until the phone restarts or the launcher's cache clears.",
+    "Drums and noise have no note, so Re-pitch leaves them as they are."
   ]
 }
