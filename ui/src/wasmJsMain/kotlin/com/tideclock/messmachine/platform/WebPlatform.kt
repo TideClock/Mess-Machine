@@ -13,7 +13,7 @@ import com.tideclock.messmachine.engine.Sample
 /*
  * The browser as a Platform (docs/WEB-CMP.md): the same AppState and screens as Android and the iPhone. Files live in
  * the page (IndexedDB behind it), settings in localStorage, the sound in an AudioWorklet fed from here.
- * Not on the web yet: speech to text, the updater (a page is always the newest), the mouth mic and packs (none sent yet).
+ * Not on the web yet: the updater (a page is always the newest), the mouth mic and packs (none sent yet).
  */
 class WebPlatform : Platform {
     override val device: Device = WebDevice
@@ -27,11 +27,12 @@ class WebPlatform : Platform {
     override fun bench(lib: Library): Bench = WebBench(lib)
     override fun notes(): NoteBook = WebNotes()
     override fun packs(lib: Library): Packs = WebPacks()
+    /** Quick notes by voice: Claude's dictation inside an artifact, else the browser's own speech to text. */
     override fun speech(heard: (String) -> Unit, done: (text: String, problem: String?) -> Unit): SpeechIn = object : SpeechIn {
-        override fun available() = false
-        override fun start() = false
-        override fun stop() {}
-        override fun cancel() {}
+        override fun available() = jsSpeechOk()
+        override fun start() = jsSpeechStart(heard, done)
+        override fun stop() = jsSpeechStop()
+        override fun cancel() = jsSpeechCancel()
     }
     override fun updater(): AppUpdater = object : AppUpdater {
         override val latest get() = current

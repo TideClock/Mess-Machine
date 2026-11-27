@@ -87,7 +87,44 @@ window.mm = (() => {
         files.set(k, b); out.push(k); } cb(out.join('\n')); };
     i.click(); };
   mm.open = u => { try { window.open(u, '_blank', 'noopener'); } catch (e) {} };
-  mm.download = (path, mime, name) => { const b = files.get(path); if (!b) return; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([b], { type: mime })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000); };
+  // Inside a claude.ai artifact a page may only save files through its downloads capability, and only some types
+  // (not WAV, MIDI or a .mess): those go out inside a zip. Elsewhere it is a plain download link.
+  const cap = n => { try { return window.claude && window.claude.use ? window.claude.use(n).catch(() => null) : Promise.resolve(null); } catch (e) { return Promise.resolve(null); } };
+  let saver = null, dict = null;
+  cap('downloads').then(d => { saver = d; }); cap('dictation').then(d => { dict = d; });
+  const SAVE_OK = /\.(gif|png|jpe?g|webp|mp4|webm|txt|json|md|docx|pptx|epub|csv|ttf|html|svg|pdf|xlsx|zip)$/i;
+  const crcT = (() => { const t = new Int32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? (c >>> 1) ^ 0xEDB88320 : c >>> 1; t[n] = c; } return t; })();
+  const zip1 = (name, data) => { let c = -1; for (let i = 0; i < data.length; i++) c = crcT[(c ^ data[i]) & 255] ^ (c >>> 8); c = ~c;
+    const nb = new TextEncoder().encode(name), lh = 30 + nb.length, ch = 46 + nb.length, out = new Uint8Array(lh + data.length + ch + 22), d = new DataView(out.buffer);
+    const head = (o, sig, central) => { d.setUint32(o, sig, true); let q = o + 4; if (central) { d.setUint16(q, 20, true); q += 2; } d.setUint16(q, 20, true); d.setUint16(q + 2, 0, true); d.setUint16(q + 4, 0, true); d.setUint32(q + 6, 0x210000, true);
+      d.setInt32(q + 10, c, true); d.setUint32(q + 14, data.length, true); d.setUint32(q + 18, data.length, true); d.setUint16(q + 22, nb.length, true); return q + 26; };
+    head(0, 0x04034b50, false); out.set(nb, 30); out.set(data, lh);
+    const co = lh + data.length; head(co, 0x02014b50, true); out.set(nb, co + 46);
+    const e = co + ch; d.setUint32(e, 0x06054b50, true); d.setUint16(e + 8, 1, true); d.setUint16(e + 10, 1, true); d.setUint32(e + 12, ch, true); d.setUint32(e + 16, co, true); return out; };
+  mm.download = (path, mime, name) => { const b = files.get(path); if (!b) return;
+    if (saver) { const ok = SAVE_OK.test(name); saver.save({ filename: ok ? name : name.replace(/\.[^.]*$/, '') + '.zip', data: ok ? b.slice(0) : zip1(name, b) }).catch(() => {}); return; }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([b], { type: mime })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000); };
+  // Speech to text for quick notes: the artifact's dictation, else the browser's own (Chrome), else none (type it)
+  let talk = null;
+  mm.speechOk = () => !!dict || !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  mm.speechStart = (heard, done) => {
+    let said = '', part = '', ended = false; const end = p => { if (ended) return; ended = true; talk = null; done((said + ' ' + part).trim(), p || null); };
+    if (dict) {
+      const offs = [dict.onPartial(e => { part = e.text; heard((said + ' ' + part).trim()); }), dict.onFinal(e => { said += e.text; part = ''; heard(said.trim()); }),
+        dict.onState(e => { if (e.state === 'idle') { offs.forEach(f => f()); end(e.reason === 'stopped' || e.reason === 'viewer_stopped' ? null : 'Dictation stopped (' + e.reason + ').'); } })];
+      talk = { stop: () => dict.stop(), cancel: () => { said = ''; part = ''; dict.stop(); } };
+      dict.start().catch(e => { offs.forEach(f => f()); end(e && e.code === 'not_granted' ? 'Dictation is off for this page; type the note instead.' : 'Dictation would not start (' + (e && e.code) + ').'); });
+      return true;
+    }
+    const R = window.SpeechRecognition || window.webkitSpeechRecognition; if (!R) return false;
+    const r = new R(); r.continuous = true; r.interimResults = true;
+    r.onresult = e => { part = ''; for (let i = e.resultIndex; i < e.results.length; i++) { if (e.results[i].isFinal) said += ' ' + e.results[i][0].transcript; else part += e.results[i][0].transcript; } heard((said + ' ' + part).trim()); };
+    r.onerror = e => end(e.error === 'not-allowed' ? 'The mic is blocked here; type the note instead.' : null); r.onend = () => end(null);
+    talk = { stop: () => r.stop(), cancel: () => { said = ''; part = ''; r.abort(); } };
+    try { r.start(); } catch (e) { talk = null; return false; } return true;
+  };
+  mm.speechStop = () => { if (talk) talk.stop(); };
+  mm.speechCancel = () => { if (talk) talk.cancel(); };
   mm.shareText = t => { try { navigator.clipboard.writeText(t); } catch (e) {} };
   mm.info = () => 'Web ' + mm.build + ' on ' + navigator.userAgent;
   // the network, for notes to GitHub: done(status, text); status 0 means no connection (or the page may not reach it)

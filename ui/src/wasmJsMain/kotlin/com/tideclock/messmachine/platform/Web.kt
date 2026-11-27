@@ -67,6 +67,10 @@ package com.tideclock.messmachine.platform
 @JsFun("(u) => window.mm.open(u)") external fun jsOpen(u: String)
 @JsFun("(m, u, a, b, done) => window.mm.http(m, u, a, b, done)") external fun jsHttp(method: String, url: String, auth: String?, body: String?, done: (Int, String) -> Unit)
 @JsFun("() => window.mm.store") external fun jsStore(): String
+@JsFun("() => window.mm.speechOk()") external fun jsSpeechOk(): Boolean
+@JsFun("(heard, done) => window.mm.speechStart(heard, done)") external fun jsSpeechStart(heard: (String) -> Unit, done: (String, String?) -> Unit): Boolean
+@JsFun("() => window.mm.speechStop()") external fun jsSpeechStop()
+@JsFun("() => window.mm.speechCancel()") external fun jsSpeechCancel()
 @JsFun("(s) => encodeURIComponent(s)") external fun jsEnc(s: String): String
 @JsFun("(ms, f) => new Date(ms).toLocaleString('en-US', f === 1 ? {month:'short', day:'numeric'} : {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'})") external fun jsDateText(ms: Double, f: Int): String
 

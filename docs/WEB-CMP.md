@@ -14,6 +14,25 @@ web app on the `web-engine` branch, which can no longer follow the app (its engi
 - First version placeholders: the Workbench (import, mic), notes, packs, speech, the updater, the mouth mic and the
   speaker test. MIDI is not wired yet.
 
+## Status (Nov 26 2026, night)
+
+- Tyler's phone, claude.ai artifact (CI run 4): loads, pads sound, taps feel 100 to 150 ms late (the lead was 80 ms).
+- Hubbub: https://universe-canon.netlify.app/play/mess-machine/latest/ (the zip from web-cmp-dist, Library card
+  `Mess_Machine_01_Web_Build_v1`). Hubbub plays games in a sandboxed frame with an opaque origin: no IndexedDB (saved
+  files under 96 KB go in localStorage, which Hubbub keeps per player, 1.5 MB in all; mic takes and imports last only
+  until the page closes there), no mic, no Web MIDI. Files there are served through a function, so the engine files
+  go in parts of at most 1.5 MB (`tools/web-pack.py`).
+- claude.ai artifact: no mic for the page (Claude's `dictation` capability gives quick notes words instead), saves
+  only through the `downloads` capability and only some types (WAV, MIDI, .mess go out in a zip).
+- Built: the Workbench (imports decoded by the browser into WAVs; mic takes with Android's auto sample and trim),
+  notes to GitHub (key or the new-issue page), Web MIDI, speech for quick notes, fallback fonts for the symbols and
+  emoji (`mm_symbols.ttf` from DejaVu Sans, `mm_emoji.ttf` from Noto Emoji, both subset), the sound lead (Tight
+  30 ms up to 180, Steady 60 up to 300; `?lead=` sets the start for tests).
+- Not built: the updater (a page is always the newest), the mouth mic, packs (the release has none), accounts and
+  sharing (no cloud API on web yet), the speaker test.
+- Headless Chromium on a cloud box (software drawing) settles at a 165 to 180 ms lead while playing; a phone with a
+  GPU should settle far lower. The lag figure under the tempo shows it.
+
 ## Status (Nov 26 2026, the spike)
 
 - CI run 4 builds the page: two WebAssembly files (8 MB and 5 MB), mm.js (0.5 MB), the app's fonts and art (2 MB)
