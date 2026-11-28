@@ -1,0 +1,1 @@
+shot=x12 fps=30 rate=48000 frames=300 bpm=120

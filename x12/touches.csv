@@ -1,0 +1,9 @@
+frame,type,x,y,note
+30,down,739,905,swipe-left
+31,move,662,905,swipe-left
+32,move,596,905,swipe-left
+33,move,524,905,swipe-left
+34,move,452,905,swipe-left
+35,up,0,0,swipe-left
+100,down,174,2087,repitch
+103,up,174,2087,repitch
