@@ -1,17 +1,16 @@
 {
-  "title": "Getting ready to play together",
+  "title": "Accounts are switched on",
   "thisBuild": [
-    "Behind the scenes: the web Mess Machine can now sign in, save online and play together, as soon as the server is switched on. Nothing changes on your phone from this.",
-    "App icon: the teardrop eye from your painting in the app's own icon style, for now. The painted version is saved for later.",
-    "Still new from the last build: Re-pitch on the Sample sheet's Play tab. One clear note moves to C so keys and chords play the notes they say; a melody or loop moves into the mess's key and keeps its length.",
-    "Settings, Playing: Auto-pitch new sounds re-pitches every new sound on a pad, and key-matched loops follow the mess's key."
+    "The app now talks to the Mess Machine server, so the sign-in and online parts of Settings are live for the first time.",
+    "The web version gets the same server on its next build, so a phone and a computer can open the same mess together.",
+    "Still new: Re-pitch on the Sample sheet's Play tab, and Auto-pitch new sounds in Settings, Playing."
   ],
   "watch": [
-    "Look at the icon on your home screen and in the app drawer: does it read at that size?",
-    "Sample something melodic, tap Re-pitch, and play it on the keys: do the notes match the key names?"
+    "Try signing in with your email. If no code arrives, that is the mail setup, not you.",
+    "Once signed in, save a mess online and open it on the computer."
   ],
   "limits": [
-    "Some launchers keep the old icon until the phone restarts or the launcher's cache clears.",
-    "Drums and noise have no note, so Re-pitch leaves them as they are."
+    "Sign-in codes need the mail service hooked up on the server. Until then the email may hold a link the app cannot use.",
+    "Only your own email can get codes for now. A second tester has to be added to the server's team first."
   ]
 }
