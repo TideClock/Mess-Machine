@@ -444,7 +444,7 @@ class TapeRender {
     @Test fun x1() = shoot("x1") {
         hero()
         roll()
-        val p = "pad-5"
+        val p = "pad-6"
         at(105); swipe(p, "up"); at(135); swipe(p, "up")
         at(165); swipe(p, "right"); at(195); swipe(p, "right")
         at(225); swipe(p, "down"); at(255); swipe(p, "down")
@@ -584,14 +584,17 @@ class TapeRender {
     /** Chapter 03: two Padianos at once, chords on both: the mono bass plays one note of each, the keys all of it. */
     @Test fun x11() = shoot("x11") {
         hero()
+        // a Padiano opens under its row and a row holds one, so this take puts a second Mono bass on pad 1 (row one,
+        // the unused clap) and keeps the keys on pad 5 (row two): bass under one row, chords under the next
+        state.newSynth(1, analog("Mono bass")); state.selectPad(0, false); settle()
         state.pickChordMode("set:Haunted")
         roll()
-        at(40); swipe("pad-7", "down")
+        at(40); swipe("pad-1", "down")
         at(90); swipe("pad-5", "down")
         println("DEMO x11 keyboards=${state.keyboards.toList()} chord=${state.chordMode}")
         val prog = listOf(0, 3, 4, 5)
         for ((i, j) in prog.withIndex()) {
-            for (e in 0 until 4) { at(150 + i * 60 + e * 15); slot(7, j, 6) }
+            for (e in 0 until 4) { at(150 + i * 60 + e * 15); slot(1, j, 6) }
             at(152 + i * 60); slot(5, j, 40)
         }
         at(420)
