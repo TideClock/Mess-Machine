@@ -1,0 +1,43 @@
+frame,type,x,y,note
+6,down,78,1627,key 0
+32,up,78,1627,key 0
+40,down,671,1627,key 7
+66,up,671,1627,key 7
+79,down,78,1627,key 0
+101,up,78,1627,key 0
+105,down,316,756,synthkind-fm
+107,up,316,756,synthkind-fm
+109,down,332,1627,key 3
+131,up,332,1627,key 3
+135,down,497,756,synthkind-wave
+137,up,497,756,synthkind-wave
+139,down,671,1627,key 7
+161,up,671,1627,key 7
+165,down,679,756,synthkind-grain
+167,up,679,756,synthkind-grain
+169,down,755,1801,key 8
+191,up,755,1801,key 8
+195,down,861,756,synthkind-drum
+197,up,861,756,synthkind-drum
+199,down,78,1721,key 0
+221,up,78,1721,key 0
+225,down,1043,756,synthkind-pluck
+227,up,1043,756,synthkind-pluck
+229,down,1094,1379,key 12
+251,up,1094,1379,key 12
+262,down,78,1379,key 0
+270,up,78,1379,key 0
+273,down,332,1379,key 3
+281,up,332,1379,key 3
+284,down,671,1379,key 7
+292,up,671,1379,key 7
+295,down,1094,1379,key 12
+303,up,1094,1379,key 12
+306,down,755,1379,key 8
+314,up,755,1379,key 8
+317,down,671,1379,key 7
+325,up,671,1379,key 7
+328,down,332,1379,key 3
+336,up,332,1379,key 3
+339,down,78,1379,key 0
+347,up,78,1379,key 0
