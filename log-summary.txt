@@ -1,0 +1,3 @@
+123:    DEMO hero kit=[samples/basement-kick.wav, samples/wet-clap.wav, samples/pot-lid-hat.wav, samples/bw-snare.wav, samples/tom-of-doom.wav, synth:2, samples/singing-bowl.wav, synth:3] bowl ap=-1.52
+124:    DEMO done x7 frames=300 audio=480000 samples
+150:BUILD SUCCESSFUL in 2m 59s

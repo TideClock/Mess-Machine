@@ -1,0 +1,7 @@
+frame,type,x,y,note
+60,down,132,549,fx-stutter
+90,up,0,0,fx-stutter
+97,down,247,549,fx-echo
+127,up,0,0,fx-echo
+157,down,478,549,fx-tape
+209,up,0,0,fx-tape
