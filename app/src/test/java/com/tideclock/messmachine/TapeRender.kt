@@ -583,7 +583,7 @@ class TapeRender {
 
     /** Chapter 03: two Padianos at once, chords on both: the mono bass plays one note of each, the keys all of it. */
     @Test fun x11() = shoot("x11") {
-        hero { notes(kit[6]).clear() }
+        hero()
         state.pickChordMode("set:Haunted")
         roll()
         at(40); swipe("pad-7", "down")
