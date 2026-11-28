@@ -6,7 +6,9 @@ pluginManagement {
     }
 }
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    // the web build (-Pmm.web, docs/WEB-CMP.md) downloads Node and Yarn through repositories the Kotlin plugin adds
+    // to the project, so it lets project repositories through; every other build keeps failing on them
+    repositoriesMode.set(if (providers.gradleProperty("mm.web").isPresent) RepositoriesMode.PREFER_PROJECT else RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
         mavenCentral()

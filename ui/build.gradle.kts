@@ -12,6 +12,8 @@ plugins {
 
 val onMac = System.getProperty("os.name").startsWith("Mac")
 val wantIos = onMac || providers.gradleProperty("mm.ios").isPresent
+// the web build of the whole app (docs/WEB-CMP.md): -Pmm.web, then :ui:wasmJsBrowserDistribution
+val wantWeb = providers.gradleProperty("mm.web").isPresent
 
 kotlin {
     androidTarget {
@@ -26,6 +28,14 @@ kotlin {
                 isStatic = true
                 export(project(":core"))
             }
+        }
+    }
+    if (wantWeb) {
+        @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
+        wasmJs {
+            moduleName = "mm"
+            browser { commonWebpackConfig { outputFileName = "mm.js" } }
+            binaries.executable()
         }
     }
     sourceSets {

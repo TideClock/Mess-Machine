@@ -10,6 +10,8 @@ plugins {
 val onMac = System.getProperty("os.name").startsWith("Mac")
 val wantIos = onMac || providers.gradleProperty("mm.ios").isPresent
 val wantJs = providers.gradleProperty("mm.js").isPresent
+// the web build of the whole app (Compose for Web, docs/WEB-CMP.md): -Pmm.web
+val wantWeb = providers.gradleProperty("mm.web").isPresent
 
 kotlin {
     jvm {
@@ -22,6 +24,10 @@ kotlin {
     }
     if (wantJs) {
         js { browser(); binaries.library() }
+    }
+    if (wantWeb) {
+        @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
+        wasmJs { browser() }
     }
     sourceSets.all {
         languageSettings.optIn("kotlin.concurrent.atomics.ExperimentalAtomicApi")

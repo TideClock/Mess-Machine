@@ -1,0 +1,86 @@
+name: Web (the shared app in a browser)
+# docs/WEB-CMP.md: builds the whole app (ui/ and core/, Compose for Web on WebAssembly) for the browser and pushes the
+# page, pass or fail, to the web-cmp-dist branch (log.txt and status.txt always), so a chat that cannot read Actions
+# logs can still see what happened.
+on:
+  push:
+    branches: [main, web-cmp]
+    paths-ignore: ['site/**', 'library/**', 'docs/**']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: web-cmp
+  cancel-in-progress: true
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+      - name: Build the web page
+        run: |
+          mkdir -p out
+          set +e
+          ./gradlew -Pmm.web :ui:wasmJsBrowserDistribution --stacktrace > out/log.txt 2>&1
+          echo $? > out/status.txt
+          grep -E "^e: |error:|FAILED|BUILD" out/log.txt | head -80
+          tail -30 out/log.txt
+      - name: Put the page together (the app's sounds go in assets/)
+        env:
+          MM_CLOUD_URL: ${{ secrets.MM_CLOUD_URL }}
+          MM_CLOUD_KEY: ${{ secrets.MM_CLOUD_KEY }}
+        run: |
+          D=ui/build/dist/wasmJs/productionExecutable
+          mkdir -p out/page
+          if [ "$(cat out/status.txt)" = "0" ] && [ -d "$D" ]; then
+            cp -r "$D"/. out/page/
+            mkdir -p out/page/assets && cp -r app/src/main/assets/. out/page/assets/
+            (cd out/page/assets && find . -type f ! -name index.json | sed 's#^\./##' | sort | python3 -c "import sys,json; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))" > index.json)
+            sed -i "s#<meta charset=\"utf-8\">#<meta charset=\"utf-8\">\n<meta name=\"mm-build\" content=\"${{ github.run_number }} ${GITHUB_SHA::7}\">#" out/page/index.html
+            # accounts (CMP step 8): the same server as the Android app, from the MM_CLOUD_URL and MM_CLOUD_KEY secrets or
+            # gradle.properties (the publishable key is meant to ship in the app); none: the page has no accounts
+            CU="${MM_CLOUD_URL:-$(grep -E '^mm.cloudUrl=' gradle.properties | cut -d= -f2- | tr -d ' ')}"
+            CK="${MM_CLOUD_KEY:-$(grep -E '^mm.cloudKey=' gradle.properties | cut -d= -f2- | tr -d ' ')}"
+            if [ -n "$CU" ] && [ -n "$CK" ]; then
+              sed -i "s#<meta charset=\"utf-8\">#<meta charset=\"utf-8\">\n<meta name=\"mm-cloud\" content=\"$CU $CK\">#" out/page/index.html
+              echo "accounts: on ($CU)" >> out/run-cloud.txt
+            else
+              echo "accounts: off (no server set)" >> out/run-cloud.txt
+            fi
+            # one page for every host: the engine and fonts in parts, the sounds in packs (tools/web-pack.py), and a zip
+            # of it that Hubbub imports (raw.githubusercontent.com/<repo>/web-cmp-dist/mm-web.zip)
+            rm -f out/page/*.map
+            python3 tools/web-pack.py out/page
+            (cd out/page && zip -qr -X ../mm-web.zip .)
+            ls -la out/page > out/files.txt; du -sh out/page/* out/mm-web.zip >> out/files.txt
+          fi
+          echo "run ${{ github.run_number }} from ${GITHUB_SHA::7}" > out/run.txt
+      - name: Push to web-cmp-dist (one commit, replaced each run)
+        run: |
+          cd out
+          git init -q -b web-cmp-dist
+          git config user.name "web build"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Web build ${{ github.run_number }}: status $(cat status.txt) [skip ci]"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" web-cmp-dist
+      - name: Push the page itself to web-pages (GitHub Pages serves it at hubbub0.github.io/Mess-Machine, a plain web address for testing accounts)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          [ "$(cat out/status.txt)" = "0" ] && [ -f out/page/index.html ] || exit 0
+          cd out/page
+          touch .nojekyll
+          git init -q -b web-pages
+          git config user.name "web build"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Web page from build ${{ github.run_number }} [skip ci]"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" web-pages

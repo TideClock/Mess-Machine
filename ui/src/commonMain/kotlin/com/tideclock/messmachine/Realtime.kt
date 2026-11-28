@@ -7,7 +7,8 @@ import com.tideclock.messmachine.cloud.Wire
 import com.tideclock.messmachine.engine.Json
 
 /*
- * Accounts, Slice C: the live socket to Supabase Realtime (docs/ACCOUNTS-API.md s2). This file is the protocol only:
+ * Accounts, Slice C: the live socket to Supabase Realtime (docs/ACCOUNTS-API.md s2), shared by Android, iPhone and the
+ * web (CMP step 8). This file is the protocol only:
  * what goes over the socket and what comes back. The socket itself is an RtSocket, so the app hands in OkHttp's
  * websocket (SupabaseApi) and the tests a scripted one. Everything here runs on one thread (the main thread).
  *

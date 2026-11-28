@@ -32,6 +32,7 @@ being built to match this app. `shared/` is their contract (see `shared/README.m
 its row in `shared/PARITY.md` in the same commit; when you change the mess format, follow `shared/MESS-FORMAT.md`.
 Pull requests titled `[iOS]` or `[Web]` come from those chats: review them like any change. Handoffs are in
 `docs/handoff/`.
+The web build compiles the shared ui/ for the browser on every push (web-cmp.yml). When you add to the Platform interface or an expect function in ui/, add the web actual in ui/src/wasmJsMain too, then check status.txt on the web-cmp-dist branch (0 = built).
 
 ## Tyler's notes (the in-app bug button)
 

@@ -1,12 +1,13 @@
 {
-  "title": "A new face: the teardrop eye",
+  "title": "Getting ready to play together",
   "thisBuild": [
-    "New app icon: the teardrop eye from your painting, drawn in the app's own icon style (flat colours, thick ink lines). It fits every launcher shape, circle or rounded square.",
+    "Behind the scenes: the web Mess Machine can now sign in, save online and play together, as soon as the server is switched on. Nothing changes on your phone from this.",
+    "App icon: the teardrop eye from your painting in the app's own icon style, for now. The painted version is saved for later.",
     "Still new from the last build: Re-pitch on the Sample sheet's Play tab. One clear note moves to C so keys and chords play the notes they say; a melody or loop moves into the mess's key and keeps its length.",
     "Settings, Playing: Auto-pitch new sounds re-pitches every new sound on a pad, and key-matched loops follow the mess's key."
   ],
   "watch": [
-    "Look at the icon on your home screen and in the app drawer: does it read at that size, on your wallpaper?",
+    "Look at the icon on your home screen and in the app drawer: does it read at that size?",
     "Sample something melodic, tap Re-pitch, and play it on the keys: do the notes match the key names?"
   ],
   "limits": [
