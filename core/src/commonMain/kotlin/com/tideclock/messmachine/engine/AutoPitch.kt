@@ -134,11 +134,11 @@ object AutoPitch {
      * hear is then higher (about 60 Hz for 50 ms), which is fine for anything that short.
      */
     @JvmStatic
-    fun frames(data: FloatArray, rate: Int, from: Int, to: Int, maxSeconds: Double = NOTE_SECONDS): Frames? {
+    fun frames(data: FloatArray, rate: Int, from: Int, to: Int, maxSeconds: Double = NOTE_SECONDS, skipAttack: Boolean = true): Frames? {
         if (rate <= 0 || to - from <= 0) return null
         val step = if (rate >= 32000) 2 else 1
         val sr = rate / step.toDouble()
-        val a = from + (minOf(.012, (to - from) / rate.toDouble() * .08) * rate).toInt()
+        val a = from + if (skipAttack) (minOf(.012, (to - from) / rate.toDouble() * .08) * rate).toInt() else 0
         val z = minOf(to, a + (maxSeconds * rate).toInt())
         val n = (z - a) / step
         if (n < sr * .03) return null
@@ -219,6 +219,96 @@ object AutoPitch {
         for (i in i0 until i1) { val o = midi[i]; if (o.isNaN()) continue; val dv = pcDiff(o, bestM); if (abs(dv) < give) sum += dv * weight[i] }
         return bestM + sum / bestW
     }
+
+    /** The longest stretch chop by note looks at; past it the sound is left as one slice. */
+    const val CHOP_SECONDS = 30.0
+    /** Most cuts chop by note makes (32 slices fill two banks). */
+    const val MAX_CUTS = 31
+
+    /**
+     * Chop to pitch (Nov 28, Tyler): where the notes of a melody change, as cut points (fractions of the whole sound)
+     * inside st..en, so each slice holds one note and Re-pitch can put it on C. A new note is cut where the pitch moves
+     * to another note for at least two frames, after a gap, or where the same note is played again (a fresh attack).
+     * Each cut sits on the quietest spot just before the new note, at a zero crossing.
+     */
+    @JvmStatic
+    fun noteCuts(data: FloatArray?, rate: Int, st: Double, en: Double): DoubleArray {
+        if (data == null || rate <= 0) return DoubleArray(0)
+        val a = (maxOf(0.0, minOf(1.0, st)) * data.size).toInt()
+        val z = (maxOf(0.0, minOf(1.0, en)) * data.size).toInt()
+        val f = frames(data, rate, a, z, CHOP_SECONDS, false) ?: return DoubleArray(0)
+        val n = f.midi.size
+        // each frame's note (rounded), -1 when quiet or unclear; a lone odd frame between two that agree takes their note
+        val lab = IntArray(n) { if (f.loud[it] && !f.midi[it].isNaN()) round(f.midi[it]).toInt() else -1 }
+        for (i in 1 until n - 1) if (lab[i - 1] >= 0 && lab[i + 1] >= 0 && same(lab[i - 1], lab[i + 1]) && (lab[i] < 0 || !same(lab[i], lab[i - 1]))) lab[i] = lab[i - 1]
+        val starts = ArrayList<Int>()
+        var cur = -1
+        var gap = 0
+        var last = -100
+        for (i in 0 until n) {
+            if (lab[i] < 0) { gap++; continue }
+            val steady = i + 1 < n && lab[i + 1] >= 0 && same(lab[i], lab[i + 1])
+            if ((cur < 0 || !same(lab[i], cur) || gap >= 3) && steady) {
+                if (cur >= 0 && i - last >= 3) starts.add(i)
+                last = i
+                cur = lab[i]
+            }
+            gap = 0
+        }
+        // candidate cuts in samples, each with the span to look for its quiet spot in. A pitch change: frame i is the
+        // first whose window is mostly the new note, so the change is near its middle; look in the half window before.
+        val cand = ArrayList<IntArray>()
+        for (i in starts) { val mid = f.start + i * f.hop + f.len / 2; cand.add(intArrayOf(mid - f.len / 2, mid + f.hop / 2)) }
+        // the same note played again: a fresh attack (5 ms loudness jumps to double what it was just before) inside a
+        // pitched stretch, not already next to a pitch cut
+        // loudness over 20 ms windows every 5 ms (long enough that a low bass wave does not flicker)
+        val blk5 = maxOf(32, rate / 200)
+        val eb = DoubleArray(maxOf(0, (z - a) / blk5))
+        for (j in eb.indices) { var e = 0.0; val p0 = a + j * blk5; for (q in p0 until p0 + blk5) e += data[q] * data[q].toDouble(); eb[j] = e }
+        val env = DoubleArray(maxOf(0, eb.size - 3))
+        var envTop = 0.0
+        for (j in env.indices) { env[j] = sqrt((eb[j] + eb[j + 1] + eb[j + 2] + eb[j + 3]) / (4.0 * blk5)); if (env[j] > envTop) envTop = env[j] }
+        var lastOn = -1000
+        for (j in 8 until env.size) {
+            // against the quietest of the windows that end before this one starts
+            val before = minOf(env[j - 8], env[j - 6], env[j - 4])
+            if (env[j] < envTop * .15 || env[j] < 2.2 * before || j - lastOn < .08 * rate / blk5) continue
+            if (j + 1 < env.size && env[j + 1] > env[j] * 1.3) continue // still rising: take the next block
+            lastOn = j
+            val at = a + j * blk5
+            val fi = ((at - f.start) / f.hop).coerceIn(0, n - 1)
+            var pitched = false
+            for (k in fi until minOf(n, fi + 4)) if (lab[k] >= 0) pitched = true
+            if (!pitched) continue
+            if (cand.any { abs(it[0] + (it[1] - it[0]) / 2 - at) < rate * .06 }) continue
+            cand.add(intArrayOf(at - rate * 3 / 100, at))
+        }
+        cand.sortBy { it[1] }
+        // each cut goes on the quietest 2 ms of its span, then the nearest zero crossing before that
+        val cuts = ArrayList<Double>()
+        val blk = maxOf(16, rate / 500)
+        for (sp in cand) {
+            val lo = maxOf(a + 1, sp[0]); val hi = minOf(z - blk - 1, sp[1])
+            var best = (lo + hi) / 2; var bestE = Double.MAX_VALUE
+            var p = lo
+            while (p <= hi) {
+                var e = 0.0
+                for (j in p until p + blk) e += data[j] * data[j].toDouble()
+                if (e < bestE * .9) { bestE = e; best = p + blk / 2 }
+                p += blk / 2
+            }
+            var c = best
+            for (r in 0 until rate / 250) {
+                val q = best - r
+                if (q > 0 && (data[q - 1] <= 0) != (data[q] <= 0)) { c = q; break }
+            }
+            val fr = c / data.size.toDouble()
+            if (fr > st + .02 / (data.size / rate.toDouble()) && fr < en && (cuts.isEmpty() || (fr - cuts.last()) * data.size > rate * .04)) cuts.add(fr)
+        }
+        return cuts.take(MAX_CUTS).toDoubleArray()
+    }
+
+    private fun same(x: Int, y: Int): Boolean = ((x - y) % 12 + 12) % 12 == 0
 
     /** a minus b in semitones, folded into -6..6 so octaves do not count. */
     private fun pcDiff(a: Double, b: Double): Double { var v = (a - b) % 12; if (v > 6) v -= 12; if (v < -6) v += 12; return v }

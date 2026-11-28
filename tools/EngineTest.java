@@ -372,6 +372,28 @@ public class EngineTest {
           if (sf != null && "note".equals(sf.kind) && off < .3) shortOk++; else shortMiss += " " + sec + "s/" + m;
         }
         check(shortOk == shortAll, "Re-pitch: short clicky hits (50 to 200 ms, 48 kHz) read as their note: " + shortOk + "/" + shortAll + shortMiss);
+        // Nov 28, Tyler: chop to pitch. A melody with leaps and a repeated note is cut once per note, near each change.
+        double[][] mel = {{57, .2}, {57, .2}, {60, .15}, {64, .15}, {64, .3}, {52, .4}};
+        double melSec = 0; for (double[] m : mel) melSec += m[1];
+        float[] tunes = new float[(int) (48000 * melSec)]; java.util.List<Double> want = new java.util.ArrayList<>();
+        double mt0 = 0;
+        for (double[] m : mel) {
+          double f = 440 * Math.pow(2, (m[0] - 69) / 12.0); int i0 = (int) (mt0 * 48000), nn = (int) (m[1] * 48000);
+          for (int i = 0; i < nn && i0 + i < tunes.length; i++) {
+            double t = i / 48000.0, env = Math.min(1, i / 144.0) * Math.exp(-t * 6) * (t > m[1] - .02 ? Math.max(0, (m[1] - t) / .02) : 1);
+            tunes[i0 + i] += (float) (env * (.5 * Math.sin(2 * Math.PI * f * t) + .25 * Math.sin(4 * Math.PI * f * t + .4)));
+          }
+          if (mt0 > 0) want.add(mt0); mt0 += m[1];
+        }
+        double[] nc = AutoPitch.noteCuts(tunes, 48000, 0, 1);
+        int near = 0; for (double wt : want) for (double c : nc) if (Math.abs(c * melSec - wt) < .04) { near++; break; }
+        check(nc.length == want.size() && near == want.size(), "Chop by note: one cut per note change and per repeated note, each within 40 ms: " + java.util.Arrays.toString(nc) + " x " + melSec + " s");
+        boolean slicesNote = true;
+        double[] edges = new double[nc.length + 2]; edges[edges.length - 1] = 1; System.arraycopy(nc, 0, edges, 1, nc.length);
+        for (int i = 0; i + 1 < edges.length; i++) { AutoPitch.Found sf = AutoPitch.detect(tunes, 48000, edges[i], edges[i + 1]); if (sf == null || !"note".equals(sf.kind) || Math.abs(((sf.midi - mel[i][0]) % 12 + 18) % 12 - 6) > .3) slicesNote = false; }
+        check(slicesNote, "Chop by note: every slice reads as its own note, ready to move to C");
+        check(AutoPitch.noteCuts(note.apply(60.0, 1.0), ksr, 0, 1).length == 0, "Chop by note: one held note gets no cuts");
+        check(AutoPitch.noteCuts(hiss, ksr, 0, 1).length == 0, "Chop by note: noise gets no cuts");
         float[] tick = new float[2400]; java.util.Random tr = new java.util.Random(5);
         for (int i = 0; i < tick.length; i++) tick[i] = (float) (tr.nextGaussian() * Math.exp(-i / 300.0));
         check(AutoPitch.detect(tick, 48000, 0, 1) == null, "Re-pitch: a 50 ms noise tick (a hat) gets nothing");

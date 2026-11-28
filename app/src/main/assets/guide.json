@@ -1,16 +1,17 @@
 {
-  "title": "Re-pitch hears short sounds",
+  "title": "Chop by note, then join",
   "thisBuild": [
-    "Re-pitch now hears sounds as short as a twentieth of a second: clicks, blips, plucks and quick vocal chops. Before, anything under about an eighth of a second got nothing.",
-    "It also copes with noisy attacks and notes that die away fast, and it is fussier about long loops, so a loop with one bass note under it goes into the mess's key instead of being moved to C.",
-    "Accounts are on: sign in under Settings, Account, and open the same mess on the computer at hubbub0.github.io/Mess-Machine."
+    "Chop by note: on the Sample sheet, Chop to pads has a new By note button. It cuts wherever the note changes or the same note is played again, and each slice moves to C as it lands on a pad, so it plays its real note on the keys.",
+    "Join the slices: once two or more slices of a sound are on pads, the same spot has Join. It glues them back into one new sound in pad order, with their new pitch, trims and effects.",
+    "Re-pitch now hears sounds as short as a twentieth of a second, noisy attacks and fast fades too."
   ],
   "watch": [
-    "Chop something melodic into short slices and tap Re-pitch on a few: does each one land on C?",
-    "Try it on a kick or a hat too, and tell me if it moves anything it should leave alone."
+    "Sample a hummed or played melody, tap By note, then Chop to pads. Do the cuts land between the notes?",
+    "Play the slices on the keys, move a few to other pads, then Join. Does the new sound play them in pad order?"
   ],
   "limits": [
-    "A note that slides a long way and never settles (a big 808 drop) still gets nothing.",
-    "Some tuned kicks now read as a note, so Re-pitch or Auto-pitch can move them. Undo puts them back."
+    "By note looks at the first 30 seconds and makes at most 32 slices.",
+    "Chords and busy loops have no single note, so their slices stay as they are.",
+    "Some tuned kicks now read as a note, so Re-pitch can move them. Undo puts them back."
   ]
 }

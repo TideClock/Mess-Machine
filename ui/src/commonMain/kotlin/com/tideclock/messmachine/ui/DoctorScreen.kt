@@ -79,6 +79,8 @@ fun DoctorScreen(state: AppState, key: String) {
     }
     fun equalCuts(n: Int): List<Double> = (1 until n).map { e.st + (e.en - e.st) * it / n }
     fun refreshCuts() {
+        // chop by note listens off the main thread and fills the cuts in when it is done
+        if (chopMode == "note") { state.findNoteCuts(key, e.st, e.en) { cuts = it }; return }
         cuts = when (chopMode) {
             "equal" -> equalCuts(chopN)
             "auto" -> smp?.onsets(e.st, e.en, sens.toDouble())?.toList() ?: emptyList()
@@ -166,8 +168,8 @@ fun DoctorScreen(state: AppState, key: String) {
         fun chopSection() {
             Section("Chop to pads")
             Wrap(Modifier.tagged("chop-chips")) {
-                for ((m, label) in listOf("equal" to "Equal", "auto" to "Auto (by hits)", "tap" to "Tap the wave", "lazy" to "Lazy (while it plays)")) {
-                    Btn(label, { chopMode = m; cuts = emptyList(); refreshCuts() }, on = chopMode == m, onColor = C.Teal, small = true)
+                for ((m, label) in listOf("equal" to "Equal", "note" to "By note", "auto" to "Auto (by hits)", "tap" to "Tap the wave", "lazy" to "Lazy (while it plays)")) {
+                    Btn(label, { chopMode = m; cuts = emptyList(); refreshCuts() }, on = chopMode == m, onColor = C.Teal, small = true, tag = if (m == "note") "chop-note" else null)
                 }
             }
             when (chopMode) {
@@ -177,6 +179,8 @@ fun DoctorScreen(state: AppState, key: String) {
                 }
                 "auto" -> SliderRow("Sensitivity", sens, 0f..1f, { "${(it * 100).roundToInt()}" }, { sens = it }, { refreshCuts() }, accent = C.Teal)
                 "tap" -> Help("Tap the waveform to add a cut; tap a cut to take it away. Zoom in for fine work.", modifier = Modifier.padding(top = 8.dp))
+                // Nov 28 (Tyler): chop to pitch, one note per slice, each moved to C as it lands on a pad
+                "note" -> T("One note per slice · each moves to C", size = 12.sp, color = C.Dim, modifier = Modifier.padding(top = 8.dp))
                 else -> Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Btn("Play", { cuts = emptyList(); looping = false; state.engine.stopPreviews(); state.preview(key); lazyT0 = state.nanoTime() }, small = true, color = C.Teal)
                     Btn("Chop here", {
@@ -192,7 +196,13 @@ fun DoctorScreen(state: AppState, key: String) {
             Wrap(Modifier.padding(top = 10.dp)) {
                 T("${cuts.count { it > e.st && it < e.en } + 1} slices", size = 13.sp, color = C.Yellow)
                 Btn("Clear cuts", { cuts = emptyList() }, small = true, tier = Tier.Danger)
-                Btn("Chop to pads", { state.chopToPads(key, cuts); state.overlay = null }, small = true, color = C.Pink)
+                Btn("Chop to pads", { state.chopToPads(key, cuts, chopMode == "note"); state.overlay = null }, small = true, color = C.Pink, tag = "chop-go")
+            }
+            // Nov 28 (Tyler): the slices back into one sound, as they play now
+            val slices = state.slicesOnPads(key)
+            if (slices.size >= 2) {
+                Section("Join the slices")
+                Btn("Join ${slices.size} slices", { state.joinSlices(key); state.overlay = null }, small = true, color = C.Pink, tag = "join-slices")
             }
         }
         Row(Modifier.fillMaxWidth().padding(bottom = 10.dp, end = 4.dp).tagged("dtab-chips"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {

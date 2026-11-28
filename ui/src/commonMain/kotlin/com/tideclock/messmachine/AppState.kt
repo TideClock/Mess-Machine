@@ -3902,8 +3902,28 @@ class AppState(
         say("Re-pitched ${if (semis > 0) "up" else "down"} ${fmt(kotlin.math.abs(semis), 2)} semitones to fill it at ${project.bpm} BPM.")
     }
 
-    /** Slice a sound at the cuts and put each slice on an empty pad. */
-    fun chopToPads(key: String, cuts: List<Double>) {
+    /**
+     * Chop by note (Nov 28, Tyler: "chop to pitch ... ensuring each sample chopped is properly pitchable"): the cuts
+     * where the notes change in the trimmed part, worked out off the main thread (a long sound takes a moment).
+     */
+    fun findNoteCuts(key: String, st: Double, en: Double, done: (List<Double>) -> Unit) {
+        busy = "Listening for the notes…"
+        worker.execute {
+            val c = try {
+                val s = lib.get(key) ?: lib.load(key)
+                if (s == null) emptyList() else com.tideclock.messmachine.engine.AutoPitch.noteCuts(s.data, s.rate, st, en).toList()
+            } catch (_: Exception) { emptyList() }
+            main.post {
+                busy = null
+                notes.trail("note cuts ${c.size}")
+                if (c.isEmpty()) say("No note changes in that stretch: it sounds like one note (or none).")
+                done(c)
+            }
+        }
+    }
+
+    /** Slice a sound at the cuts and put each slice on an empty pad. toC: then move each slice's note to C (chop by note). */
+    fun chopToPads(key: String, cuts: List<Double>, toC: Boolean = false) {
         val e = project.edit(key)
         val bounds = listOf(e.st) + cuts.filter { it > e.st && it < e.en }.sorted() + listOf(e.en)
         if (bounds.size < 3) { say("No cuts yet. Pick Equal or Auto, or tap out some cuts."); return }
@@ -3920,8 +3940,89 @@ class AppState(
             }
         }
         if (placed > 0) bank = free[0] / Project.BANK
-        notes.trail("chop ${keys.size}")
-        say("${keys.size} slices in Your Workbench" + if (placed < keys.size) ", $placed on pads (no more empty pads)." else ", all on pads.")
+        notes.trail("chop ${keys.size}" + if (toC) " by note" else "")
+        val where = if (placed < keys.size) "$placed on pads (no more empty pads)" else "all on pads"
+        if (toC) pitchSlices(keys, where) else say("${keys.size} slices in Your Workbench, $where.")
+    }
+
+    /** Chop by note: each new slice with one clear note is re-pitched so the note is a C (one message for all of them). */
+    private fun pitchSlices(keys: List<String>, where: String) {
+        val jobs = keys.map { k -> val e = project.edit(k); Triple(k, e.st, e.en) }
+        busy = "Moving each slice to C…"
+        worker.execute {
+            val found = jobs.map { (k, st, en) ->
+                k to try {
+                    val s = lib.get(k) ?: lib.load(k)
+                    if (s == null) null else com.tideclock.messmachine.engine.AutoPitch.detect(s.data, s.rate, st, en, "")?.takeIf { it.kind == "note" }
+                } catch (_: Exception) { null }
+            }
+            main.post {
+                busy = null
+                val moved = ArrayList<Pair<String, SoundEdit>>()
+                for ((k, f) in found) {
+                    pitchFound[k] = f
+                    if (f == null) continue
+                    val e = project.edit(k).copy()
+                    e.ap = kotlin.math.round(com.tideclock.messmachine.engine.AutoPitch.shift(f, project.root, project.scale) * 100) / 100
+                    e.apKind = "note"
+                    moved.add(k to e)
+                }
+                if (moved.isNotEmpty()) edit { for ((k, e) in moved) this.setEdit(k, e) }
+                notes.trail("chop by note: ${moved.size} of ${keys.size} to C")
+                val none = keys.size - moved.size
+                say("${keys.size} slices, $where. " + when {
+                    none == 0 -> "Each moved to C, so it plays its real note on the keys."
+                    moved.isEmpty() -> "None had one clear note, so they stay as they are."
+                    else -> "${moved.size} moved to C; $none had no clear note and stay as they are."
+                })
+            }
+        }
+    }
+
+    /** How many slices of this sound (or of the sound it was chopped from) sit on pads: what Join would glue. */
+    fun slicesOnPads(key: String): List<String> {
+        val base = lib.chopOf(key) ?: key
+        return project.kit.filter { it.isNotEmpty() && lib.chopOf(it) == base }.distinct()
+    }
+
+    /**
+     * Join (Nov 28, Tyler: "a final tool ... returning pitch separated samples into a single sample again"): every slice
+     * of the sound on a pad, in pad order, rendered as it plays now (its pitch, trim, shape and effects) and laid end to
+     * end, each one's tail running under the next, as one new sound in Your Workbench.
+     */
+    fun joinSlices(key: String) {
+        val keys = slicesOnPads(key)
+        if (keys.size < 2) { say("Join needs two or more slices of this sound on pads. Chop it to pads first."); return }
+        val parts = keys.map { k -> Triple(k, lib.get(k), project.edit(k).copy()) }
+        if (parts.any { it.second == null }) { say("A slice is still loading. Try again in a moment."); return }
+        val root = lib.titleOf(lib.chopOf(key) ?: key).replace(Regex(" chop \\d+$"), "").take(24)
+        busy = "Joining ${keys.size} slices…"
+        notes.trail("join ${keys.size}")
+        worker.execute {
+            try {
+                val rate = parts[0].second!!.rate
+                val laid = ArrayList<Pair<Int, FloatArray>>()
+                var at = 0
+                var end = 0
+                for ((k, s, e) in parts) {
+                    val r = Engine.renderOne(k, s!!, e)
+                    val d = r.data // slices of one sound share its rate
+                    laid.add(at to d)
+                    end = maxOf(end, at + d.size)
+                    // the next slice starts where this one's body ends (its tail keeps ringing under the next)
+                    val semis = e.tune + e.fine / 100 + (if (e.apKind == "key") 0.0 else e.ap)
+                    val speed = if (e.pitch == "grain") 1.0 else kotlin.math.exp(semis / 12 * kotlin.math.ln(2.0))
+                    at += maxOf(1, ((e.en - e.st) * s.data.size / speed).toInt())
+                }
+                val out = FloatArray(maxOf(end, at))
+                for ((o, d) in laid) for (i in d.indices) out[o + i] += d[i]
+                var peak = 0f
+                for (v in out) if (kotlin.math.abs(v) > peak) peak = kotlin.math.abs(v)
+                if (peak > .99f) { val g = .99f / peak; for (i in out.indices) out[i] *= g }
+                val k = bench.addSample("take", "$root joined", Sample("take", out, rate))
+                main.post { busy = null; placeNew(k, "Joined ${keys.size} slices, in pad order, into one sound.") }
+            } catch (e: Exception) { main.post { busy = null; say("The join broke: ${e.message}") } }
+        }
     }
 
     fun removeFromBench(key: String) {

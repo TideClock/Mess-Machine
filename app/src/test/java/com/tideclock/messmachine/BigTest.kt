@@ -3219,6 +3219,41 @@ class BigTest {
         state.switchAutoPitch(false); state.setRoot(0); settle()
     }
 
+    /** Nov 28 (Tyler): chop to pitch, each slice moved to C, then the slices joined back into one sound. */
+    @Test fun nov28ChopByNoteAndJoin() {
+        state.setScale("Major"); state.setRoot(0); settle()
+        val k = "samples/bw-porch-pluck.wav"   // a little phrase: F, A, C, F
+        state.putOnPad(state.project.sel, k); settle()
+        state.overlay = Overlay.Doctor(k); settle()
+        waitFor("the waveform") { state.lib.loaded(k) }
+        at("chop-note").performScrollTo().performClick()
+        waitFor("the notes are found") { state.busy == null }
+        settle()
+        shot("nov28-chop-by-note")
+        state.toast = null; settle()
+        at("chop-go").performScrollTo().performClick()
+        waitFor("each slice is moved to C") { state.busy == null && state.slicesOnPads(k).isNotEmpty() }
+        settle()
+        val slices = state.slicesOnPads(k)
+        assertTrue("one slice per note (${slices.size})", slices.size in 3..6)
+        val toC = slices.count { state.project.edit(it).apKind == "note" }
+        assertTrue("the slices with a clear note moved to C ($toC of ${slices.size})", toC >= slices.size - 1)
+        assertTrue("no slice moves more than 6 semitones", slices.all { kotlin.math.abs(state.project.edit(it).ap) <= 6.01 })
+        // Join: every slice back into one sound, in pad order, as it plays now
+        state.toast = null
+        state.overlay = Overlay.Doctor(slices[0]); settle()
+        waitFor("the slice's waveform") { state.lib.loaded(slices[0]) }
+        shot("nov28-join")
+        val before = state.bench.items.size
+        at("join-slices").performScrollTo().performClick()
+        waitFor("the joined sound") { state.busy == null && state.bench.items.size > before }
+        settle()
+        val joined = state.bench.items.last()
+        assertTrue("it is called joined (${joined.title})", joined.title.endsWith("joined"))
+        assertTrue("and sits on a pad", state.project.kit.any { it == state.bench.keyOf(joined) })
+        state.overlay = null; settle()
+    }
+
     /** Nov 24 (Tyler's bug video): the settings, the loop strip, Tempo, the synth's row, the Mixer, Auto trim, the stutter. */
     @Test fun nov24VideoNotes() {
         // Settings: switches on one line each; Auto trim is one of them, and hold-to-record is gone
