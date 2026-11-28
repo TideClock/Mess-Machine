@@ -282,7 +282,8 @@ class TogetherTest {
         assertTrue("the Share sheet is open", p1.overlay is Overlay.Share)
         if (shots) { shot("together-01-share-sheet"); faqCovers("the Share sheet") }
         tap("share-invite"); pump()
-        link = p1.lastShared
+        link = p1.inviteLink
+        assertTrue("the share sheet got the link and the code", p1.lastShared.startsWith(link) && p1.lastShared.contains(p1.inviteCode))
         assertTrue("an invite link went to the phone's share sheet: $link", link.startsWith("messmachine://j/") && link.length > 30)
         assertEquals("the sheet shows the link once", link, p1.inviteLink)
         assertTrue("an unused invite is listed, with Cancel", tagsStarting("inv-revoke-").isNotEmpty())
@@ -605,6 +606,21 @@ class TogetherTest {
         waitFor("the take to reach Mia's phone") { p2.lib.loaded(k) }
         assertEquals("it went up once", 1, fake.uploads(c1))
         assertEquals(canon(p1), canon(p2))
+    }
+
+    /** Nov 28 (Tyler: the clipboard is a pain): the invite's code, typed into the Account page's box, joins too. */
+    @Test fun togetherTypeTheCode() {
+        tylerInvites()
+        val code = p1.inviteCode
+        assertTrue("the Share sheet has a code to type ($code)", code.length == 11 && code[5] == '-')
+        signIn(p2, mia, "Mia")
+        show(p2); openAccount()
+        rule.onNodeWithTag("link-field").performTextInput(code.lowercase().replace("-", " "))
+        tap("link-open"); pump()
+        rule.onNodeWithTag("invite-join").assertExists()
+        tap("invite-join")
+        waitFor("Mia's phone opens the mess together") { p2.fileId != null && p2.sync != null && p2.sync!!.state == SyncSession.LIVE }
+        assertEquals(p1.project.name, p2.project.name)
     }
 
     /* ---------- Slice D: share links and History ---------- */

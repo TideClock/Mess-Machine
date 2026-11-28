@@ -49,7 +49,8 @@ class SoundUrl(@JvmField val key: String, @JvmField val sha256: String, @JvmFiel
 class Since(@JvmField val rev: Long, @JvmField val doc_rev: Long, @JvmField val members: Int, @JvmField val topic: String, @JvmField val ops: List<Batch>)
 class Applied(@JvmField val rev: Long, @JvmField val at: String)
 class Snapped(@JvmField val doc_rev: Long, @JvmField val version_id: String)
-class Invite(@JvmField val id: String, @JvmField val token: String, @JvmField val expires_at: String)
+/** code (Nov 28): the same invite as 10 letters to type on another screen; empty from a server without codes. */
+class Invite(@JvmField val id: String, @JvmField val token: String, @JvmField val expires_at: String, @JvmField val code: String = "")
 class InviteRow(@JvmField val id: String, @JvmField val expires_at: String, @JvmField val uses_left: Int, @JvmField val revoked: Boolean)
 class InviteInfo(@JvmField val mess_name: String, @JvmField val owner_name: String)
 class Joined(@JvmField val mess_id: String, @JvmField val role: String)

@@ -4590,6 +4590,8 @@ class AppState(
     var shareNote by mutableStateOf("")
     /** The invite link just made (shown once, and handed to the phone's share sheet). */
     var inviteLink by mutableStateOf("")
+    /** The same invite as a code to type on another screen (Nov 28), "ABCDE-FGHJK", or "" before one is made. */
+    var inviteCode by mutableStateOf("")
         private set
     /** Tests read what was last handed to the phone's share sheet. */
     var lastShared = ""
@@ -4604,7 +4606,7 @@ class AppState(
     /** omess-share-<cid>: the Share sheet of an online mess. */
     fun openShare(cid: String) {
         notes.trail("open share sheet")
-        shareMembers = emptyList(); shareInvites = emptyList(); shareNote = ""; inviteLink = ""
+        shareMembers = emptyList(); shareInvites = emptyList(); shareNote = ""; inviteLink = ""; inviteCode = ""
         shareLink = null; versions = null; reportFor = null
         overlay = Overlay.Share(cid)
         shareLoad(cid)
@@ -4660,8 +4662,10 @@ class AppState(
             if (inv == null) { shareNote = if (e?.code == "too_many_invites") "There are 20 unused invites already. Cancel one first." else cloudErrText(e); return@makeInvite }
             markOps(cid)
             inviteLink = inviteUrl(inv.token)
+            inviteCode = if (inv.code.length == 10) inv.code.substring(0, 5) + "-" + inv.code.substring(5) else ""
             shareLoad(cid)
-            shareText(inviteLink, "Invite to " + (cloudRow(cid)?.name ?: "a mess"))
+            shareText(inviteLink + (if (inviteCode.isNotEmpty()) "\nOr type this code in Mess Machine (Settings, Account): $inviteCode" else ""),
+                "Invite to " + (cloudRow(cid)?.name ?: "a mess"))
         }
     }
 
@@ -4746,7 +4750,16 @@ class AppState(
     /** A link came in. true: it was one of ours. */
     fun cloudLink(text: String): Boolean {
         if (store == null) return false
-        val m = linkRe.find(text.trim()) ?: return false
+        val m = linkRe.find(text.trim())
+        if (m == null) {
+            // Nov 28: an invite code typed or pasted on its own (10 letters and digits; dashes and spaces are fine)
+            val code = text.filter { it.isLetterOrDigit() }.uppercase()
+            if (code.length != 10 || text.contains('/') || text.trim().length > 14) return false
+            notes.trail("invite code typed")
+            setInvite(code); inviteInfo = null; inviteNote = ""; loadInvite()
+            overlay = Overlay.Account
+            return true
+        }
         val kind = m.groupValues[1]; val token = m.groupValues[2]
         notes.trail("link opened: " + (if (kind == "m") "share" else "invite"))
         if (kind == "m") { pendingShare = token; sharedMess = null; sharedNote = ""; loadShared() }
@@ -4760,7 +4773,14 @@ class AppState(
         val text = try {
             device.clipboardText()
         } catch (_: Exception) { "" }
-        if (!cloudLink(text)) say("No Mess Machine link is on the clipboard. Copy the link first.")
+        if (!cloudLink(text)) say("Nothing to paste here. Paste the link or type the code in the box instead.")
+    }
+
+    /** link-open: the link or code typed or pasted into the box on the Account page. */
+    fun openLinkText(text: String): Boolean {
+        val ok = cloudLink(text)
+        if (!ok) say("That is not a Mess Machine link or code. A code is 10 letters, like ABCDE-FGHJK.")
+        return ok
     }
 
     private fun setInvite(token: String) { pendingInvite = token; prefs.edit().putString("cloudInvite", token).apply() }

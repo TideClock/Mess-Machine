@@ -1,6 +1,11 @@
 package com.tideclock.messmachine.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -63,6 +68,11 @@ fun ShareScreen(state: AppState, cid: String) {
                     T("An invite link lets one person join and change this mess with you. It works once, for 7 days.", size = 13.sp, weight = FontWeight.Medium,
                         modifier = Modifier.padding(top = 4.dp, bottom = 8.dp))
                     Btn(if (state.shareBusy) "Making the link" else "Invite to edit", { state.inviteToEdit(cid) }, color = C.Teal, small = true, enabled = !state.shareBusy, tag = "share-invite")
+                    // Nov 28: the code to type on the other screen (no clipboard needed), big; the link under it
+                    if (state.inviteCode.isNotEmpty()) {
+                        T("CODE", size = 11.sp, color = C.Dim, spacing = .1.em, modifier = Modifier.padding(top = 10.dp))
+                        T(state.inviteCode, size = 26.sp, color = C.Yellow, family = Mono, modifier = Modifier.tagged("invite-code"))
+                    }
                     if (state.inviteLink.isNotEmpty()) T(state.inviteLink, size = 12.sp, color = C.Cream, weight = FontWeight.Normal, family = Mono, modifier = Modifier.padding(top = 8.dp))
                     for (inv in state.shareInvites) {
                         Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -157,11 +167,21 @@ fun AccountPeople(state: AppState) {
     Card(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
         Column {
             T("PEOPLE", size = 12.sp, color = C.Yellow, spacing = .1.em)
+            // Nov 28 (Tyler: "it forces you to have it in your clipboard"): type the code or paste the link into a box
+            var typed by remember { mutableStateOf("") }
+            OutlinedTextField(
+                value = typed, onValueChange = { typed = it.take(300) }, singleLine = true,
+                placeholder = { T("Invite code or link", color = C.Dim, weight = FontWeight.Medium) },
+                textStyle = TextStyle(color = C.Cream, fontFamily = Archivo, fontSize = 16.sp),
+                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = C.Pink, unfocusedBorderColor = C.Card2, cursorColor = C.Pink),
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, autoCorrectEnabled = false),
+                modifier = Modifier.fillMaxWidth().padding(top = 6.dp).tagged("link-field"),
+            )
             Wrap(Modifier.padding(top = 6.dp)) {
+                Btn("Join", { if (state.openLinkText(typed)) typed = "" }, small = true, color = C.Teal, enabled = typed.isNotBlank(), tag = "link-open")
                 Btn("Paste a link", { state.pasteLink() }, small = true, tag = "link-paste")
                 Btn(if (state.blocks == null) "People you blocked" else "Hide blocked people", { state.toggleBlocks() }, small = true, on = state.blocks != null, tag = "acct-blocks")
             }
-            T("Got an invite link in a message? Copy it, then Paste a link.", size = 12.sp, color = C.Dim, weight = FontWeight.Medium, modifier = Modifier.padding(top = 6.dp))
             val list = state.blocks
             if (list != null) {
                 if (list.isEmpty()) T("You have blocked nobody.", size = 13.sp, weight = FontWeight.Medium, modifier = Modifier.padding(top = 8.dp))

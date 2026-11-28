@@ -29,7 +29,7 @@ open class FakeCloudB(clock: Clock) : FakeCloud(clock) {
     protected class Stored(@JvmField val rev: Long, @JvmField val user: String, @JvmField val batch: String, @JvmField val v: Int,
                            @JvmField val json: String, @JvmField val at: String, @JvmField val bytes: Int)
     protected class BatchRec(@JvmField val mess: String, @JvmField val user: String, @JvmField val rev: Long, @JvmField val at: String)
-    protected class FakeInvite(@JvmField val id: String, @JvmField val mess: String, @JvmField val tokenHash: String, @JvmField val expires: Long) {
+    protected class FakeInvite(@JvmField val id: String, @JvmField val mess: String, @JvmField val tokenHash: String, @JvmField val expires: Long, @JvmField val codeHash: String = "") {
         @JvmField var usesLeft = 1
         @JvmField var revoked = false
     }
@@ -107,9 +107,14 @@ open class FakeCloudB(clock: Clock) : FakeCloud(clock) {
     }
     private fun copyBatchLater(rev: Long, u: String, batch: String, v: Int, json: String, at: String): Batch = Batch(rev, u, batch, v, Json.list(Json.parse(json)), at)
 
+    /** The real server's invite_code_norm: letters and digits, upper case, exactly 10 of them, or "". */
+    protected fun codeNorm(t: String): String { val c = t.filter { it.isLetterOrDigit() }.uppercase(); return if (c.length == 10) c else "" }
+    /** Does this invite answer to a link token or a typed code (the real server's two hashes)? */
+    protected fun answers(i: FakeInvite, token: String): Boolean =
+        i.tokenHash == Sha256.hex(token.encodeToByteArray()) || (i.codeHash.isNotEmpty() && codeNorm(token).isNotEmpty() && i.codeHash == Sha256.hex(codeNorm(token).encodeToByteArray()))
+
     protected fun liveInvite(token: String): FakeInvite? {
-        val h = Sha256.hex(token.encodeToByteArray())
-        for (i in invites.values) if (i.tokenHash == h) {
+        for (i in invites.values) if (answers(i, token)) {
             val m = messes[i.mess] ?: return null
             if (i.revoked || i.usesLeft <= 0 || nowMs() >= i.expires || m.blocked) return null
             return i
@@ -234,9 +239,10 @@ open class FakeCloudB(clock: Clock) : FakeCloud(clock) {
         for (i in invites.values) if (i.mess == m.id && !i.revoked && i.usesLeft > 0 && now < i.expires) liveN++
         if (liveN >= 20) fail("too_many_invites")
         val tok = ("tok" + (++tokenSeq).toString(36) + "x".repeat(32)).substring(0, 32)
-        val inv = FakeInvite(nextId(), m.id, Sha256.hex(tok.encodeToByteArray()), now + days * 86400000L)
+        val code = ("CD" + tokenSeq.toString(36).uppercase() + "QRSTUVWXYZ").substring(0, 10)
+        val inv = FakeInvite(nextId(), m.id, Sha256.hex(tok.encodeToByteArray()), now + days * 86400000L, Sha256.hex(code.encodeToByteArray()))
         invites[inv.id] = inv
-        return Invite(inv.id, tok, iso(inv.expires))
+        return Invite(inv.id, tok, iso(inv.expires), code)
     }
 
     protected open fun srvListInvites(u: FakeUser, messId: String): List<InviteRow> {
@@ -263,8 +269,7 @@ open class FakeCloudB(clock: Clock) : FakeCloud(clock) {
 
     protected open fun srvRedeemInvite(u: FakeUser, token: String): Joined {
         // the real server: a current member who sends a used or expired link again gets the answer (a retry after a lost answer)
-        val h = Sha256.hex(token.encodeToByteArray())
-        for (x in invites.values) if (x.tokenHash == h) { val mm = messes[x.mess]; if (mm != null && mm.members.containsKey(u.id)) return Joined(mm.id, mm.members[u.id] ?: "editor") }
+        for (x in invites.values) if (answers(x, token)) { val mm = messes[x.mess]; if (mm != null && mm.members.containsKey(u.id)) return Joined(mm.id, mm.members[u.id] ?: "editor") }
         val i = liveInvite(token) ?: fail("invite_invalid")
         val m = messes[i.mess] ?: fail("invite_invalid")
         if (u.blocks.contains(m.owner)) fail("invite_invalid")

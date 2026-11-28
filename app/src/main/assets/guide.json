@@ -1,17 +1,16 @@
 {
-  "title": "Chop by note, then join",
+  "title": "Join with a code",
   "thisBuild": [
-    "Chop by note: on the Sample sheet, Chop to pads has a new By note button. It cuts wherever the note changes or the same note is played again, and each slice moves to C as it lands on a pad, so it plays its real note on the keys.",
-    "Join the slices: once two or more slices of a sound are on pads, the same spot has Join. It glues them back into one new sound in pad order, with their new pitch, trims and effects.",
-    "Re-pitch now hears sounds as short as a twentieth of a second, noisy attacks and fast fades too."
+    "Invite to edit now also shows a 10 letter code, big, under the button. On the other screen go to Settings, Account, type the code in the box and tap Join. No copying links.",
+    "The same box takes a pasted link, so nothing depends on what is on the clipboard any more. The web version could never read the clipboard; now it does not have to.",
+    "Still new: By note under Chop to pads, Join the slices, and Re-pitch for short sounds."
   ],
   "watch": [
-    "Sample a hummed or played melody, tap By note, then Chop to pads. Do the cuts land between the notes?",
-    "Play the slices on the keys, move a few to other pads, then Join. Does the new sound play them in pad order?"
+    "Make an invite on the phone and type its code on the computer. Does Join open the same mess on both?",
+    "Tap pads on one screen: does the other one change?"
   ],
   "limits": [
-    "By note looks at the first 30 seconds and makes at most 32 slices.",
-    "Chords and busy loops have no single note, so their slices stay as they are.",
-    "Some tuned kicks now read as a note, so Re-pitch can move them. Undo puts them back."
+    "A code works once, for 7 days, like the link. Make a new one for each person.",
+    "Invites made before this build have no code; make a fresh one."
   ]
 }

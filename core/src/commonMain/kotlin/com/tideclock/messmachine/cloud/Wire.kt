@@ -85,7 +85,7 @@ object Wire {
     }
     @JvmStatic fun applied(j: Any?): Applied { val m = Json.map(j); return Applied(l(m, "rev"), s(m, "at")) }
     @JvmStatic fun snapped(j: Any?): Snapped { val m = Json.map(j); return Snapped(l(m, "doc_rev"), s(m, "version_id")) }
-    @JvmStatic fun invite(j: Any?): Invite { val m = Json.map(j); return Invite(s(m, "id"), s(m, "token"), s(m, "expires_at")) }
+    @JvmStatic fun invite(j: Any?): Invite { val m = Json.map(j); return Invite(s(m, "id"), s(m, "token"), s(m, "expires_at"), (m["code"] as? String) ?: "") }
     @JvmStatic fun inviteRow(j: Any?): InviteRow {
         val m = Json.map(j)
         return InviteRow(s(m, "id"), s(m, "expires_at"), i(m, "uses_left"), b(m, "revoked"))
