@@ -1,0 +1,1 @@
+shot=x6 fps=30 rate=48000 frames=480 bpm=120
