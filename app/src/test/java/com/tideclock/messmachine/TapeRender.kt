@@ -416,9 +416,33 @@ class TapeRender {
         for (i in 1..n) { val t = i / n.toFloat(); val e = t * t * (3 - 2 * t); fx0 = x0 + (x - x0) * e; fy0 = y0 + (y - y0) * e; fingerMove(0, tag, fx0, fy0, "sphere"); frame() }
     }
 
-    /** Exhibit 1, Four Ways In: every swipe off one pad, opened and closed, then all four in a row. */
+    /* ---------- horror v3: one mess for every take ----------
+     * Tyler, Nov 27: kick, snare, hats, a synth, another synth and one single-note sample. Never the tape wobble
+     * chord or the spring doink. Every take shares the same drums on the same clock, so the music can run under
+     * every cut without a jump.
+     * Pads: 0 kick, 2 hat, 3 snare, 5 Soft keys (synth), 6 singing bowl (one note, auto-pitched to C), 7 Mono bass.
+     */
+    private val bowl = "samples/singing-bowl.wav"
+    private fun hero(beat: Boolean = true, autopitch: Boolean = true, block: Project.() -> Unit = {}) {
+        state.newMess(); state.setBpm(120)
+        state.edit { scale = "Harmonic minor"; root = 0 }
+        state.switchAutoPitch(autopitch)
+        state.newSynth(5, analog("Soft keys"))
+        state.newSynth(7, analog("Mono bass"))
+        state.putOnPad(6, bowl); load(bowl)
+        val end = System.currentTimeMillis() + 8000
+        if (autopitch) while (state.project.edit(bowl).apKind.isEmpty() && System.currentTimeMillis() < end) { Thread.sleep(20); settle() }
+        state.edit { if (beat) heroBeat(); block() }
+        state.selectPad(0, false)
+        settle()
+        println("DEMO hero kit=${state.project.kit.take(8)} bowl ap=${state.project.edit(bowl).ap}")
+    }
+    /** The groove under everything: kick on 1, the and of 3 and the a of 3; snare on 2 and 4; eighth hats; the bowl on the one. */
+    private fun Project.heroBeat() { steps(kit[0], 0, 8, 11); steps(kit[3], 4, 12); steps(kit[2], 0, 2, 4, 6, 8, 10, 12, 14); steps(kit[6], 0) }
+
+    /** Chapter 02, Four swipes: every swipe off one pad, opened and closed, then all four in a row. */
     @Test fun x1() = shoot("x1") {
-        mess { steps(kit[0], 0, 4, 8, 12) }
+        hero()
         roll()
         val p = "pad-5"
         at(105); swipe(p, "up"); at(135); swipe(p, "up")
@@ -430,44 +454,27 @@ class TapeRender {
         at(420)
     }
 
-    /** Exhibit 2, It Grows Keys: the Padiano out of a pad, then the Haunted chord set. */
-    @Test fun x2() = shoot("x2") {
-        mess { steps(kit[0], 0, 4, 8, 12); steps(kit[2], 2, 6, 10, 14) }
-        state.putOnPad(5, harp); load(harp)
-        state.pickChordMode("set:Haunted"); state.toggleChords(); settle()
-        roll()
-        at(60); swipe("pad-5", "down")
-        for ((i, n) in listOf(0, 3, 7, 12, 7, 3, 0).withIndex()) { at(135 + i * 15); key(5, n, hold = 7) }
-        at(240); tap("chords-toggle", hold = 3)
-        println("DEMO x2 chord=${state.chordMode} scale=${state.project.scale}")
-        at(330); slot(5, 0, 24)
-        at(360); slot(5, 3, 24); at(390); slot(5, 4, 24); at(420); slot(5, 5, 24); at(450); slot(5, 0, 26)
-        at(480)
-    }
-
-    /** Exhibit 3, It Takes Sounds Apart: the Sample sheet, a trim, a chop onto pads, the pieces played. */
+    /** Chapter 04, Reshape: the bowl's Sample sheet, a trim, a chop onto pads, the pieces played. */
     @Test fun x3() = shoot("x3") {
-        mess { steps(kit[0], 0, 4, 8, 12) }
-        state.putOnPad(5, dance); load(dance)
+        hero()
         roll()
-        at(60); swipe("pad-5", "left")
+        at(60); swipe("pad-6", "left")
         at(113); tapExact("HEAR IT", hold = 3)
         at(128); tap("dtab-trim", hold = 2)
-        at(136); drag("sheet", .9f, .203f, .503f, .203f, 16, note = "trim")
-        if (state.project.edit(dance).en > .99) {
-            // the frame by frame drag did not take: the same drag as one gesture
-            println("DEMO x3 trim: frame drag did nothing (en=${state.project.edit(dance).en}), one-call swipe")
-            val a = rootPoint("sheet", .9f, .203f); val b = rootPoint("sheet", .503f, .203f)
+        at(136); drag("sheet", .9f, .203f, .62f, .203f, 16, note = "trim")
+        if (state.project.edit(bowl).en > .99) {
+            println("DEMO x3 trim: frame drag did nothing, one-call swipe")
+            val a = rootPoint("sheet", .9f, .203f); val b = rootPoint("sheet", .62f, .203f)
             for (i in 0..8) log.append("${frameNo + i},${if (i == 0) "down" else "move"},${(a.x + (b.x - a.x) * i / 8f).toInt()},${a.y.toInt()},trim\n")
-            rule.onNodeWithTag("sheet").performTouchInput { swipe(Offset(width * .9f, height * .203f), Offset(width * .503f, height * .203f), 280) }
+            rule.onNodeWithTag("sheet").performTouchInput { swipe(Offset(width * .9f, height * .203f), Offset(width * .62f, height * .203f), 280) }
             frames(9); log.append("$frameNo,up,0,0,trim\n")
         }
-        println("DEMO x3 trim en=${state.project.edit(dance).en} st=${state.project.edit(dance).st}")
+        println("DEMO x3 trim en=${state.project.edit(bowl).en}")
         at(165); tap("dtab-tools", hold = 2)
         at(176); tapExact("4 SLICES", hold = 2)
         at(196); tapExact("CHOP TO PADS", hold = 3)
-        println("DEMO x3 kit=${state.project.kit.take(16)} overlay=${state.overlay}")
         frames(4)
+        println("DEMO x3 kit=${state.project.kit.take(16)} overlay=${state.overlay}")
         val end = System.currentTimeMillis() + 15000
         while (!state.project.kit.filter { it.isNotEmpty() }.all { state.lib.loaded(it) } && System.currentTimeMillis() < end) { Thread.sleep(20); settle() }
         val seq = listOf(8, 9, 10, 11, 8, 8, 10, 11, 9, 9, 10, 8, 11, 10, 9, 8)
@@ -475,62 +482,55 @@ class TapeRender {
         at(360)
     }
 
-    /** Exhibit 4, The Vials: a pad's own effects poured in, bypassed, and back. */
+    /** Chapter 05, The vials: the kick's own effects poured in, bypassed, and back. */
     @Test fun x4() = shoot("x4") {
-        mess { steps(kit[0], 0, 4, 8, 12); steps(kit[5], 3, 6, 11, 14); steps(kit[2], 2, 10) }
+        hero()
         roll()
-        at(45); swipe("pad-5", "right")
-        at(125); drag("fx-8-5", .5f, .92f, .5f, .3f, 18, note = "vial")
-        at(152); drag("fx-9-5", .5f, .92f, .5f, .45f, 18, note = "vial")
-        println("DEMO x4 sends=${state.fxSend}")
-        at(195); tap("fxstrip-off-5", hold = 3)
-        at(232); tap("fxstrip-off-5", hold = 3)
+        at(45); swipe("pad-0", "right")
+        at(125); drag("fx-8-0", .5f, .92f, .5f, .3f, 18, note = "vial")
+        at(152); drag("fx-9-0", .5f, .92f, .5f, .45f, 18, note = "vial")
+        at(195); tap("fxstrip-off-0", hold = 3)
+        at(232); tap("fxstrip-off-0", hold = 3)
         at(300)
     }
 
-    /** Exhibit 5, Six Kinds Live Inside: one synth pad, all six kinds, the same notes on each. */
+    /** Chapter 08, Six kinds of synth: one synth pad, all six kinds, the same phrase on each. */
     @Test fun x5() = shoot("x5") {
-        mess { steps(kit[0], 0, 4, 8, 12) }
+        hero()
         state.newSynth(8, analog("Warm pad"))
         state.tab = Tab.Synth
         roll()
-        dumpTags("synth-pad")
         at(6); key(8, 0, 26); at(40); key(8, 7, 26)
         val first = listOf(0, 3, 7, 8, 0, 12)
         for ((i, k) in listOf("analog", "fm", "wave", "grain", "drum", "pluck").withIndex()) {
             val f = 75 + i * 30
-            at(f); if (i > 0) { tap("synthkind-$k", hold = 2); println("DEMO x5 kind=${state.synthOn(8)?.kind?.id}") }
+            at(f); if (i > 0) tap("synthkind-$k", hold = 2)
             at(f + 4); key(8, first[i], 22)
         }
         for ((i, n) in listOf(0, 3, 7, 12, 8, 7, 3, 0).withIndex()) { at(262 + i * 11); key(8, n, 8) }
         at(360)
     }
 
-    /** Exhibit 6, It Has Eyes: a circle opens the sphere, a push bends the sound, one recorded move keeps playing. */
+    /** Chapter 06, XY spheres: a circle on the bowl opens the sphere, a push bends it, one recorded move keeps playing. */
     @Test fun x6() = shoot("x6") {
-        mess { }
-        state.putOnPad(5, dance); load(dance)
-        state.edit { pat().setStep(dance, 0, true) }
-        state.setXy(5, XySetup.PRESETS[2])
-        state.selectPad(0, false)
+        hero { steps(kit[6], 8) }
+        state.setXy(6, XySetup.PRESETS[2])
         roll()
-        val p = "pad-5"
+        val p = "pad-6"
         circle(p, 90)
-        println("DEMO x6 sphere=${state.sphere}")
         at(128); glide(p, 1.45f, .5f, 18); frames(6); glide(p, .5f, .5f, 12); glide(p, -.45f, .5f, 18); frames(4); glide(p, .5f, -.4f, 14); glide(p, 1.3f, .2f, 12)
         at(222); fingerUp(0, p, "sphere"); frame()
         at(230); tap("rec", hold = 3)
         circle(p, 240)
         glide(p, 1.45f, .5f, 10); glide(p, .5f, .5f, 6); glide(p, -.45f, .5f, 10); glide(p, 1.3f, .1f, 8)
         at(297); fingerUp(0, p, "sphere"); frame()
-        at(302); println("DEMO x6 motion=" + state.project.pat().motion.map { (k, v) -> "$k=" + v.take(16).joinToString(",") { if (it.isNaN()) "-" else "%.1f".format(it) } })
-        for (f in listOf(330, 345, 352, 356, 400, 412)) { at(f); println("DEMO x6 f=$f step=${state.heardStep} rate=${state.engine.padRate(5)} rec=${state.live.rec} playing=${state.playing}") }
+        at(302); println("DEMO x6 motion keys=${state.project.pat().motion.keys}")
         at(480)
     }
 
-    /** Exhibit 7, It Breaks On Command: stutter, echo throw and tape stop on the whole mix. */
+    /** Chapter 09, Break it: stutter, echo throw and tape stop on the whole mix. */
     @Test fun x7() = shoot("x7") {
-        mess { fullBeat() }
+        hero()
         state.tab = Tab.Perform
         roll()
         at(60); press("fx-stutter", 30)
@@ -539,34 +539,30 @@ class TapeRender {
         at(300)
     }
 
-    /** Exhibit 8's sound: the loop, untouched, under the inventory close-ups. */
+    /** The groove alone, for the music under the cards. */
     @Test fun x8() = shoot("x8") {
-        mess { fullBeat() }
+        hero()
         roll()
-        at(420)
+        at(300)
     }
 
-    /** Exhibit 9 and the close: six layers recorded in six bars, then banks, skins, a tape stop and one last hit. */
+    /** Chapter 01 and the close: six layers recorded in six bars on an empty loop, then banks, skins, a tape stop, one last hit. */
     @Test fun x9() = shoot("x9") {
-        mess { }
-        state.putOnPad(5, harp); load(harp); state.setXy(5, XySetup.PRESETS[2])
-        state.newSynth(8, analog("Soft keys"))
+        hero(beat = false)
+        state.setXy(6, XySetup.PRESETS[2])
         state.pickChordMode("set:Haunted")
-        state.openPadiano(8)
+        state.openPadiano(5)
         state.selectPad(0, false)
         roll()
         at(45); tap("rec", hold = 3)
-        for (b in 0..3) { at(120 + b * 15); tap("pad-0", hold = 2) }
-        for (b in listOf(1, 3)) { at(180 + b * 15); tap("pad-3", hold = 2) }
-        for (i in 0..7) { at(240 + (i * 7.5).toInt()); tap("pad-2", hold = 2) }
-        for (s in listOf(0, 3, 6, 10)) { at(300 + (s * 3.75).toInt()); tap("pad-4", hold = 2) }
-        at(360); slot(8, 0, 22); at(390); slot(8, 5, 22)
-        circle("pad-5", 420)
-        glide("pad-5", 1.45f, .5f, 10); glide("pad-5", .5f, .5f, 6); glide("pad-5", -.45f, .5f, 10); glide("pad-5", 1.3f, .1f, 8)
-        at(476); fingerUp(0, "pad-5", "sphere"); frame()
-        at(480)
-        val pr = state.project
-        println("DEMO x9 layers " + listOf(0, 3, 2, 4, 8, 5).joinToString(" ") { "${it}:${pr.pat().notes(pr.kit[it]).size}" })
+        for (f in listOf(120, 150, 161)) { at(f); tap("pad-0", hold = 2) }          // kick: the groove's 1, and-of-3, a-of-3
+        for (f in listOf(195, 225)) { at(f); tap("pad-3", hold = 2) }               // snare on 2 and 4
+        for (i in 0..7) { at(240 + (i * 7.5).toInt()); tap("pad-2", hold = 2) }     // eighth hats
+        for (f in listOf(300, 311, 322, 330, 341)) { at(f); tap("pad-7", hold = 3) } // bass
+        at(360); slot(5, 0, 22); at(390); slot(5, 5, 22)                             // chords
+        circle("pad-6", 420)                                                         // motion on the bowl
+        glide("pad-6", 1.45f, .5f, 10); glide("pad-6", .5f, .5f, 6); glide("pad-6", -.45f, .5f, 10); glide("pad-6", 1.3f, .1f, 8)
+        at(476); fingerUp(0, "pad-6", "sphere"); frame()
         at(495); tap("rec", hold = 3)
         for ((i, b) in listOf(1, 2, 3, 0).withIndex()) { at(525 + i * 15); tap("bank-$b", hold = 2) }
         at(573); tap("tab-Synth", hold = 2); at(603); tap("tab-Pads", hold = 2)
@@ -577,54 +573,43 @@ class TapeRender {
         at(1140)
     }
 
-    /** A short of its own, It Changes Its Skin: one loop, the five skins, two beats each. */
+    /** The close: one groove, the five skins, two beats each. */
     @Test fun x10() = shoot("x10") {
-        mess { fullBeat() }
+        hero()
         roll()
         for ((i, k) in listOf("classic", "stage", "felt", "rust", "specimen", "classic", "stage", "felt", "rust", "specimen").withIndex()) { at(60 + i * 30); state.pickSkin(k) }
         at(420)
     }
 
-    /** Horror v3, chapter 03: two Padianos at once, bass under one row and Haunted chords under the next. */
+    /** Chapter 03: two Padianos at once, chords on both: the mono bass plays one note of each, the keys all of it. */
     @Test fun x11() = shoot("x11") {
-        mess { steps(kit[0], 0, 4, 8, 12); steps(kit[2], 2, 6, 10, 14); steps(kit[3], 4, 12) }
-        state.newSynth(1, analog("Mono bass"))
-        state.newSynth(5, analog("Soft keys"))
+        hero { notes(kit[6]).clear() }
         state.pickChordMode("set:Haunted")
-        state.selectPad(0, false)
         roll()
-        at(40); swipe("pad-1", "down")
+        at(40); swipe("pad-7", "down")
         at(90); swipe("pad-5", "down")
-        println("DEMO x11 keyboards=${state.keyboards.toList()}")
-        println("DEMO x11 chord=${state.chordMode}")
-        // chords are on for every Padiano: the mono bass plays one note of each chord, the keys play all of it
+        println("DEMO x11 keyboards=${state.keyboards.toList()} chord=${state.chordMode}")
         val prog = listOf(0, 3, 4, 5)
         for ((i, j) in prog.withIndex()) {
-            for (e in 0 until 4) { at(150 + i * 60 + e * 15); slot(1, j, 6) }
+            for (e in 0 until 4) { at(150 + i * 60 + e * 15); slot(7, j, 6) }
             at(152 + i * 60); slot(5, j, 40)
         }
         at(420)
     }
 
-    /** Horror v3, chapter 04: Re-pitch moves a loop into the mess's key. */
+    /** Chapter 04: Re-pitch moves the bowl (auto-pitch off here) onto C. */
     @Test fun x12() = shoot("x12") {
-        val k = "loop:give-me-throne-1"
-        mess { steps(kit[0], 0, 4, 8, 12) }
-        state.setScale("Minor"); state.setRoot(0)
-        state.putOnPad(5, k); load(k)
-        state.edit { pat().setStep(k, 0, true) }
+        hero(autopitch = false)
         roll()
-        at(30); swipe("pad-5", "left")
+        at(30); swipe("pad-6", "left")
         at(75); if (has("repitch")) { show("repitch"); frames(4) }
         at(100); tap("repitch", hold = 3)
         val end = System.currentTimeMillis() + 15000
-        while (state.project.edit(k).apKind.isEmpty() && System.currentTimeMillis() < end) { Thread.sleep(20); settle() }
-        println("DEMO x12 ap=${state.project.edit(k).ap} kind=${state.project.edit(k).apKind}")
+        while (state.project.edit(bowl).apKind.isEmpty() && System.currentTimeMillis() < end) { Thread.sleep(20); settle() }
+        println("DEMO x12 ap=${state.project.edit(bowl).ap} kind=${state.project.edit(bowl).apKind}")
         at(300)
     }
 
-    /** Horror v3, chapter 07: mouth control. No microphone in the renderer, so a stand-in mic feeds a made-up
-     *  voice ("wow", vowels ooo to aah and back) into the app's real mouth tracker; the screen says so. */
     private class ScriptMouth : com.tideclock.messmachine.platform.MouthIn {
         override val tracker = com.tideclock.messmachine.engine.MouthTracker(16000)
         @Volatile override var running = false
@@ -647,10 +632,8 @@ class TapeRender {
         return out
     }
     @Test fun x13() = shoot("x13") {
-        mess { steps(kit[0], 0, 4, 8, 12); steps(kit[2], 2, 6, 10, 14) }
-        state.putOnPad(5, dance); load(dance)
-        state.edit { pat().setStep(dance, 0, true) }
-        state.selectPad(5, false)
+        hero { steps(kit[6], 4, 8, 12) }
+        state.selectPad(6, false)
         org.robolectric.Shadows.shadowOf(org.robolectric.RuntimeEnvironment.getApplication()).grantPermissions(android.Manifest.permission.RECORD_AUDIO)
         val fake = ScriptMouth()
         AppState::class.java.getDeclaredField("mouthMic").apply { isAccessible = true }.set(state, fake)
@@ -659,7 +642,6 @@ class TapeRender {
         roll()
         at(20); tap("mouth-toggle", hold = 3)
         println("DEMO x13 mouthOn=${state.mouthOn} running=${fake.running}")
-        at(30)
         // "wow" at each of these frames: ooo, open to aah, close to ooo, over 15 frames
         val words = listOf(60, 105, 150, 172, 210, 255)
         for (f in 31 until 330) {
@@ -671,15 +653,14 @@ class TapeRender {
             }
             fake.tracker.feed(vowel(f1, f2, amp), 0, 16000 / 30)
         }
-        at(330)
         at(360)
     }
 
-    /** Horror v3, chapter 10: a keyboard plugged in plays at once. The notes are fed by script, as a test keyboard would send them. */
+    /** Chapter 10: a keyboard plugged in plays at once. The notes are fed by script, as a test keyboard would send them. */
     @Test fun x14() = shoot("x14") {
-        mess { steps(kit[0], 0, 4, 8, 12) }
-        state.newSynth(5, analog("Brass"))
-        state.selectPad(5, false)
+        hero()
+        state.newSynth(8, analog("Brass"))
+        state.selectPad(8, false)
         roll()
         at(20); state.say("MIDI: Test keyboard plugged in. Notes 36 to 51 hit pads 1 to 16; the rest play the selected pad as keys. MIDI map, in the menu, teaches it your own layout.")
         for ((i, n) in listOf(36, 38, 42, 38, 36, 36, 38, 42).withIndex()) { at(60 + i * 15); state.midiDown(n, 110); frames(2); state.midiUp(n) }
