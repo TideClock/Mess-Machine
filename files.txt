@@ -1,0 +1,16 @@
+total 588
+drwxr-xr-x 5 runner runner   4096 Nov 28 17:13 .
+drwxr-xr-x 3 runner runner   4096 Nov 28 17:13 ..
+drwxr-xr-x 3 runner runner   4096 Nov 28 17:13 assets
+drwxr-xr-x 3 runner runner   4096 Nov 28 17:13 composeResources
+-rw-r--r-- 1 runner runner  26559 Nov 28 17:13 index.html
+-rw-r--r-- 1 runner runner 546359 Nov 28 17:13 mm.js
+-rw-r--r-- 1 runner runner   1298 Nov 28 17:13 mm.js.LICENSE.txt
+drwxr-xr-x 2 runner runner   4096 Nov 28 17:13 wasm
+23M	out/page/assets
+2.2M	out/page/composeResources
+28K	out/page/index.html
+536K	out/page/mm.js
+4.0K	out/page/mm.js.LICENSE.txt
+19M	out/page/wasm
+23M	out/mm-web.zip

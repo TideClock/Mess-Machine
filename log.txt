@@ -1,0 +1,103 @@
+Starting a Gradle Daemon (subsequent builds will be faster)
+Configuration 'wasmJsNpmAggregated' was resolved during configuration time.
+This is a build performance and scalability issue.
+See https://github.com/gradle/gradle/issues/2298
+Run with --info for a stacktrace.
+Configuration 'wasmJsTestNpmAggregated' was resolved during configuration time.
+This is a build performance and scalability issue.
+See https://github.com/gradle/gradle/issues/2298
+Run with --info for a stacktrace.
+> Task :kotlinNodeJsSetup
+> Task :kotlinNpmCachesSetup
+> Task :kotlinRestoreYarnLock SKIPPED
+> Task :kotlinYarnSetup
+> Task :core:wasmJsPackageJson
+> Task :core:wasmJsTestPackageJson
+> Task :ui:wasmJsPackageJson
+> Task :ui:wasmJsTestPackageJson
+> Task :core:wasmJsPublicPackageJson
+> Task :core:wasmJsTestPublicPackageJson
+> Task :ui:wasmJsPublicPackageJson
+> Task :ui:wasmJsTestPublicPackageJson
+> Task :packageJsonUmbrella
+> Task :rootPackageJson
+
+> Task :kotlinNpmInstall
+(node:2578) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+warning workspace-aggregator-15c1a168-6829-448a-87cf-65eaab30590a > MessMachine-core-wasm-js-test > karma-webpack > glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+warning workspace-aggregator-15c1a168-6829-448a-87cf-65eaab30590a > MessMachine-core-wasm-js-test > karma > glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+warning workspace-aggregator-15c1a168-6829-448a-87cf-65eaab30590a > MessMachine-core-wasm-js-test > mocha > glob@8.1.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+warning workspace-aggregator-15c1a168-6829-448a-87cf-65eaab30590a > MessMachine-core-wasm-js-test > karma > rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+warning workspace-aggregator-15c1a168-6829-448a-87cf-65eaab30590a > mm > webpack-dev-server > rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+warning workspace-aggregator-15c1a168-6829-448a-87cf-65eaab30590a > MessMachine-core-wasm-js-test > karma > rimraf > glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+warning workspace-aggregator-15c1a168-6829-448a-87cf-65eaab30590a > MessMachine-core-wasm-js-test > karma-webpack > glob > inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+warning workspace-aggregator-15c1a168-6829-448a-87cf-65eaab30590a > MessMachine-core-wasm-js-test > mocha > glob > inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+warning workspace-aggregator-15c1a168-6829-448a-87cf-65eaab30590a > mm > webpack-dev-server > sockjs > uuid@8.3.2: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+warning workspace-aggregator-15c1a168-6829-448a-87cf-65eaab30590a > mm > webpack-dev-server > webpack-dev-middleware > memfs@3.6.0: this will be v4
+warning Ignored scripts due to flag.
+
+> Task :kotlinStoreYarnLock
+> Task :ui:wasmJsResolveResourcesFromDependencies
+> Task :ui:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :ui:copyNonXmlValueResourcesForCommonMain
+> Task :ui:prepareComposeResourcesTaskForCommonMain
+> Task :ui:convertXmlValueResourcesForWasmJsMain NO-SOURCE
+> Task :ui:copyNonXmlValueResourcesForWasmJsMain NO-SOURCE
+> Task :ui:prepareComposeResourcesTaskForWasmJsMain NO-SOURCE
+> Task :ui:assembleWasmJsMainResources
+> Task :ui:wasmJsResolveSelfResourcesCopyHierarchicalMultiplatformResources
+> Task :ui:wasmJsAggregateResources
+> Task :ui:wasmJsProcessResources
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ui:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ui:generateResourceAccessorsForCommonMain
+> Task :ui:generateResourceAccessorsForWasmJsMain NO-SOURCE
+> Task :ui:generateActualResourceCollectorsForWasmJsMain
+> Task :ui:generateComposeResClass
+> Task :ui:generateExpectResourceCollectorsForCommonMain
+> Task :kotlinBinaryenSetup
+> Task :ui:unpackSkikoWasmRuntime
+> Task :ui:processSkikoRuntimeForKWasm
+
+> Task :core:compileKotlinWasmJs
+w: file:///home/runner/work/Mess-Machine/Mess-Machine/core/src/commonMain/kotlin/com/tideclock/messmachine/engine/Engine.kt:2010:21 Condition is always 'false'.
+w: file:///home/runner/work/Mess-Machine/Mess-Machine/core/src/commonMain/kotlin/com/tideclock/messmachine/engine/MidiOut.kt:38:21 Condition is always 'false'.
+w: file:///home/runner/work/Mess-Machine/Mess-Machine/core/src/commonMain/kotlin/com/tideclock/messmachine/engine/MidiOut.kt:75:28 Condition is always 'false'.
+
+> Task :ui:compileKotlinWasmJs
+> Task :ui:wasmJsMainClasses
+> Task :ui:compileProductionExecutableKotlinWasmJs
+> Task :ui:compileProductionExecutableKotlinWasmJsOptimize
+> Task :ui:wasmJsProductionExecutableCompileSync
+
+> Task :ui:wasmJsBrowserProductionWebpack
+asset size limit: The following asset(s) exceed the recommended size limit (244 KiB).
+This can impact web performance.
+Assets: 
+  mm.js (534 KiB)
+  718c9a066bbc5f0e275a.wasm (5.6 MiB)
+  2eaba8643e2ccdf352b4.wasm (7.91 MiB)
+
+entrypoint size limit: The following entrypoint(s) combined asset size exceeds the recommended limit (244 KiB). This can impact web performance.
+Entrypoints:
+  main (534 KiB)
+      mm.js
+
+webpack performance recommendations: 
+You can limit the size of your bundles by using import() or require.ensure to lazy load some parts of your application.
+For more info visit https://webpack.js.org/guides/code-splitting/
+
+
+> Task :ui:wasmJsBrowserDistribution
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1795885524395.json
+[Incubating] Problems report is available at: file:///home/runner/work/Mess-Machine/Mess-Machine/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 8m 36s
+35 actionable tasks: 35 executed

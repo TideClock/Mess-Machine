@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="mm-cloud" content="https://bkcywidkynhmavztgchi.supabase.co sb_publishable_cRkRYEhUiVT4-S0oSvJwDg_0kxwI7j4">
+<meta name="mm-build" content="17 10e0905">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mess Machine</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #141215; overflow: hidden; overscroll-behavior: none; }
+  #app { position: fixed; inset: 0; }
+  #wait { position: fixed; inset: 0; display: grid; place-items: center; color: #fff4e2; font: 600 16px/1.4 system-ui, sans-serif; text-align: center; }
+  #wait b { display: block; font-size: 22px; margin-bottom: 6px; }
+</style>
+</head>
+<body>
+<div id="wait"><div><b>Mess Machine</b><span id="waitline">Loading the sounds...</span></div></div>
+<div id="app"></div>
+<script>
+(() => { const real = window.fetch.bind(window), packed = {"2eaba8643e2ccdf352b4.wasm": 8, "718c9a066bbc5f0e275a.wasm": 6, "mm_emoji.ttf": 1, "mm_symbols.ttf": 1};
+  window.fetch = async (u, o) => { const s = String(u && u.url || u), n = s.split('/').pop().split('?')[0];
+    if (packed[n]) { const ps = await Promise.all([...Array(packed[n]).keys()].map(async k => (await real('wasm/' + n + '.' + k + '.json')).json()));
+      const t = atob(ps.join('')), b = new Uint8Array(t.length); for (let i = 0; i < t.length; i++) b[i] = t.charCodeAt(i);
+      return new Response(b, { headers: { 'Content-Type': n.endsWith('.wasm') ? 'application/wasm' : 'font/ttf' } }); }
+    return real(u, o); }; })();
+</script>
+<script>
+/* The page side of the web build (docs/WEB-CMP.md): files, assets, Back, the picker, the mic, MIDI, the network for
+   notes, and the sound out. The Kotlin side (ui/src/wasmJsMain/.../platform/Web.kt) calls these through window.mm. */
+window.mm = (() => {
+  const mm = { build: 0, sha: '', micOk: false, underruns: 0, cur: null, blk: null, store: 'memory' };
+  // The mic: a page in a frame that may not use it (a claude.ai artifact, Hubbub's game frame) is refused every time,
+  // so the app records with the phone's own recorder instead (mm.recordWithPhone). Known up front where the frame
+  // says so; otherwise learned from the first refusal.
+  try { const fp = document.permissionsPolicy || document.featurePolicy; mm.micBlocked = self.origin === 'null' || !!(fp && fp.allowsFeature && !fp.allowsFeature('microphone')) || !navigator.mediaDevices; } catch (e) { mm.micBlocked = false; }
+  // ?lead=40 starts the sound lead at 40 ms (a test knob; the app's Steady buffer setting doubles it)
+  try { const q = new URLSearchParams(location.search).get('lead'); mm.lead = q ? Math.max(10, Math.min(300, +q || 0)) : 0; } catch (e) { mm.lead = 0; }
+  try { const v = document.querySelector('meta[name=mm-build]'); if (v) { mm.build = +v.content.split(' ')[0] || 0; mm.sha = v.content.split(' ')[1] || ''; } } catch (e) {}
+  const files = new Map(), times = new Map(), dirs = new Set(['/', '/files', '/cache']);
+  let fresh = null;
+  const norm = k => k.length > 1 ? k.replace(/\/+$/, '') : k;
+  const parents = k => { let p = k; while ((p = p.slice(0, p.lastIndexOf('/'))) && p.length) dirs.add(p); };
+  const b64 = s => { const t = atob(s), u = new Uint8Array(t.length); for (let i = 0; i < t.length; i++) u[i] = t.charCodeAt(i); return u; };
+  const unb64 = u => { let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
+  // Saved files (under /files) last in IndexedDB. Where a page may not have IndexedDB (Hubbub plays games in a
+  // locked frame), small saved files go in localStorage instead, which Hubbub keeps for each player; big ones (mic
+  // takes, imports) then last only until the page closes. Assets (asset:...) and picked files (pick:...) stay in memory.
+  let db = null;
+  const LS_ONE = 96 * 1024, LS_ALL = 1536 * 1024;
+  const idb = () => new Promise(res => { try { const r = indexedDB.open('messmachine-web', 1); r.onupgradeneeded = () => r.result.createObjectStore('files'); r.onsuccess = () => res(r.result); r.onerror = () => res(null); } catch (e) { res(null); } });
+  const lsKeys = () => { const out = []; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('mmf:')) out.push(k); } } catch (e) {} return out; };
+  const lsUsed = () => { let n = 0; for (const k of lsKeys()) { try { n += (localStorage.getItem(k) || '').length; } catch (e) {} } return n; };
+  const put = (k, v) => {
+    if (db) { try { const t = db.transaction('files', 'readwrite'); v ? t.objectStore('files').put(v, k) : t.objectStore('files').delete(k); } catch (e) {} return; }
+    if (mm.store !== 'local' || !k.startsWith('/files')) return;
+    try {
+      if (!v) { localStorage.removeItem('mmf:' + k); return; }
+      if (v.b.length > LS_ONE) { localStorage.removeItem('mmf:' + k); return; }
+      const s = JSON.stringify({ t: v.t, b: unb64(v.b) });
+      const was = (localStorage.getItem('mmf:' + k) || '').length;
+      if (lsUsed() - was + s.length > LS_ALL) return;
+      localStorage.setItem('mmf:' + k, s);
+    } catch (e) {}
+  };
+  mm.sel = k => { const b = files.get(k); if (!b) return -1; mm.cur = new DataView(b.buffer, b.byteOffset, b.byteLength); return b.length; };
+  mm.fresh = n => { fresh = new Uint8Array(n); mm.cur = new DataView(fresh.buffer); };
+  mm.keep = k => { files.set(k, fresh); times.set(k, Date.now()); parents(k); if (k.startsWith('/')) put(k, { b: fresh, t: Date.now() }); };
+  mm.has = k => files.has(k);
+  mm.isDir = k => { k = norm(k); if (dirs.has(k)) return true; const p = k + '/'; for (const f of files.keys()) if (f.startsWith(p)) return true; return false; };
+  mm.del = k => { if (files.delete(k)) { put(k, null); return true; } k = norm(k); return dirs.delete(k); };
+  mm.rename = (a, b) => { const v = files.get(a); if (!v) return false; files.set(b, v); files.delete(a); times.set(b, Date.now()); parents(b); put(a, null); put(b, { b: v, t: Date.now() }); return true; };
+  mm.list = k => { if (!mm.isDir(k)) return null; const p = norm(k) === '/' ? '/' : norm(k) + '/'; const out = new Set();
+    for (const f of files.keys()) if (f.startsWith(p)) out.add(f.slice(p.length).split('/')[0]);
+    for (const d of dirs) if (d.startsWith(p) && d.length > p.length) out.add(d.slice(p.length).split('/')[0]);
+    return [...out].join('\n'); };
+  mm.mkdirs = k => { k = norm(k); dirs.add(k); parents(k + '/x'); return true; };
+  mm.mtime = k => times.get(k) || 0;
+  // Back: each open sheet holds one history step; Back runs the newest one
+  const backs = []; let backId = 0, skip = 0;
+  mm.backPush = cb => { const id = ++backId; backs.push({ id, cb }); try { history.pushState({ mmb: id }, ''); } catch (e) {} return id; };
+  mm.backDrop = id => { const i = backs.findIndex(b => b.id === id); if (i < 0) return; backs.splice(i, 1); try { if (history.state && history.state.mmb === id) { skip++; history.back(); } } catch (e) {} };
+  addEventListener('popstate', () => { if (skip) { skip--; return; } const top = backs.pop(); if (top) top.cb(); });
+  addEventListener('keydown', e => { if (e.key === 'Escape' && backs.length) { e.preventDefault(); const top = backs[backs.length - 1]; mm.backDrop(top.id); top.cb(); } });
+  // Files from the phone or computer. Sound files are turned into a mono 16-bit WAV here (the browser decodes MP3,
+  // M4A, OGG, FLAC and WAV), at most 60 seconds, so the app's own WAV reader takes every one of them.
+  let picks = 0;
+  const wav16 = (f, rate) => { const n = f.length, o = new DataView(new ArrayBuffer(44 + n * 2)); const s = (i, t) => { for (let k = 0; k < t.length; k++) o.setUint8(i + k, t.charCodeAt(k)); };
+    s(0, 'RIFF'); o.setUint32(4, 36 + n * 2, true); s(8, 'WAVE'); s(12, 'fmt '); o.setUint32(16, 16, true); o.setUint16(20, 1, true); o.setUint16(22, 1, true);
+    o.setUint32(24, rate, true); o.setUint32(28, rate * 2, true); o.setUint16(32, 2, true); o.setUint16(34, 16, true); s(36, 'data'); o.setUint32(40, n * 2, true);
+    for (let i = 0; i < n; i++) o.setInt16(44 + i * 2, Math.max(-1, Math.min(1, f[i])) * 32767, true); return new Uint8Array(o.buffer); };
+  const looksAudio = f => /^audio\//.test(f.type) || /\.(wav|mp3|m4a|aac|ogg|oga|opus|flac|aif|aiff|webm)$/i.test(f.name);
+  const decode = async bytes => { const C = window.OfflineAudioContext || window.webkitOfflineAudioContext; const c = new C(1, 1, 48000);
+    const ab = await c.decodeAudioData(bytes.buffer.slice(0)); const n = Math.min(ab.length, ab.sampleRate * 60), out = new Float32Array(n);
+    for (let ch = 0; ch < ab.numberOfChannels; ch++) { const d = ab.getChannelData(ch); for (let i = 0; i < n; i++) out[i] += d[i] / ab.numberOfChannels; }
+    return wav16(out, ab.sampleRate); };
+  mm.pick = (types, multi, cb) => { const i = document.createElement('input'); i.type = 'file'; i.multiple = multi;
+    const acc = types.split(',').map(t => t.trim()).filter(Boolean); i.accept = acc.join(',');
+    const wantsSound = acc.some(t => t.startsWith('audio'));
+    i.onchange = async () => { const out = []; for (const f of i.files) { const k = 'pick:' + (++picks) + '/' + f.name; let b = new Uint8Array(await f.arrayBuffer());
+        if (wantsSound && looksAudio(f)) { try { b = await decode(b); } catch (e) {} }
+        files.set(k, b); out.push(k); } cb(out.join('\n')); };
+    i.click(); };
+  // Record with the phone's own recorder (a file input with capture: iPhone opens its recorder, Android offers its
+  // recorder apps, a computer asks for a file). It has to open inside the tap: false when the tap is too long ago.
+  let recs = 0;
+  mm.recordWithPhone = cb => {
+    if (navigator.userActivation && !navigator.userActivation.isActive) return false;
+    const i = document.createElement('input'); i.type = 'file'; i.accept = 'audio/*'; i.setAttribute('capture', '');
+    let done = false; const end = k => { if (!done) { done = true; cb(k); } };
+    i.onchange = async () => { const f = i.files && i.files[0]; if (!f) return end('');
+      let b = new Uint8Array(await f.arrayBuffer()); try { b = await decode(b); } catch (e) { mm.toast('The phone gave a recording this browser cannot read (' + (f.type || f.name) + ').'); return end(''); }
+      const k = 'rec:' + (++recs); files.set(k, b); end(k); };
+    i.addEventListener('cancel', () => end(''));
+    i.click(); return true;
+  };
+  let toastT = 0;
+  mm.toast = t => { let el = document.getElementById('mmtoast'); if (!el) { el = document.createElement('div'); el.id = 'mmtoast';
+      el.style.cssText = 'position:fixed;left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:9;padding:12px 14px;border-radius:10px;background:#2a2326;color:#fff4e2;font:600 15px/1.35 system-ui,sans-serif;box-shadow:0 4px 18px #0008;text-align:center;pointer-events:none';
+      document.body.appendChild(el); }
+    el.textContent = t; el.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(() => { el.style.display = 'none'; }, 4500); };
+  mm.open = u => { try { window.open(u, '_blank', 'noopener'); } catch (e) {} };
+  // Inside a claude.ai artifact a page may only save files through its downloads capability, and only some types
+  // (not WAV, MIDI or a .mess): those go out inside a zip. Elsewhere it is a plain download link.
+  const cap = n => { try { return window.claude && window.claude.use ? window.claude.use(n).catch(() => null) : Promise.resolve(null); } catch (e) { return Promise.resolve(null); } };
+  let saver = null, dict = null;
+  cap('downloads').then(d => { saver = d; }); cap('dictation').then(d => { dict = d; });
+  const SAVE_OK = /\.(gif|png|jpe?g|webp|mp4|webm|txt|json|md|docx|pptx|epub|csv|ttf|html|svg|pdf|xlsx|zip)$/i;
+  const crcT = (() => { const t = new Int32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? (c >>> 1) ^ 0xEDB88320 : c >>> 1; t[n] = c; } return t; })();
+  const zip1 = (name, data) => { let c = -1; for (let i = 0; i < data.length; i++) c = crcT[(c ^ data[i]) & 255] ^ (c >>> 8); c = ~c;
+    const nb = new TextEncoder().encode(name), lh = 30 + nb.length, ch = 46 + nb.length, out = new Uint8Array(lh + data.length + ch + 22), d = new DataView(out.buffer);
+    const head = (o, sig, central) => { d.setUint32(o, sig, true); let q = o + 4; if (central) { d.setUint16(q, 20, true); q += 2; } d.setUint16(q, 20, true); d.setUint16(q + 2, 0, true); d.setUint16(q + 4, 0, true); d.setUint32(q + 6, 0x210000, true);
+      d.setInt32(q + 10, c, true); d.setUint32(q + 14, data.length, true); d.setUint32(q + 18, data.length, true); d.setUint16(q + 22, nb.length, true); return q + 26; };
+    head(0, 0x04034b50, false); out.set(nb, 30); out.set(data, lh);
+    const co = lh + data.length; head(co, 0x02014b50, true); out.set(nb, co + 46);
+    const e = co + ch; d.setUint32(e, 0x06054b50, true); d.setUint16(e + 8, 1, true); d.setUint16(e + 10, 1, true); d.setUint32(e + 12, ch, true); d.setUint32(e + 16, co, true); return out; };
+  mm.download = (path, mime, name) => { const b = files.get(path); if (!b) return;
+    if (saver) { const ok = SAVE_OK.test(name); saver.save({ filename: ok ? name : name.replace(/\.[^.]*$/, '') + '.zip', data: ok ? b.slice(0) : zip1(name, b) }).catch(() => {}); return; }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([b], { type: mime })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000); };
+  // Speech to text for quick notes: the artifact's dictation, else the browser's own (Chrome), else none (type it)
+  let talk = null;
+  mm.speechOk = () => !!dict || !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  mm.speechStart = (heard, done) => {
+    let said = '', part = '', ended = false; const end = p => { if (ended) return; ended = true; talk = null; done((said + ' ' + part).trim(), p || null); };
+    if (dict) {
+      const offs = [dict.onPartial(e => { part = e.text; heard((said + ' ' + part).trim()); }), dict.onFinal(e => { said += e.text; part = ''; heard(said.trim()); }),
+        dict.onState(e => { if (e.state === 'idle') { offs.forEach(f => f()); end(e.reason === 'stopped' || e.reason === 'viewer_stopped' ? null : 'Dictation stopped (' + e.reason + ').'); } })];
+      talk = { stop: () => dict.stop(), cancel: () => { said = ''; part = ''; dict.stop(); } };
+      dict.start().catch(e => { offs.forEach(f => f()); end(e && e.code === 'not_granted' ? 'Dictation is off for this page; type the note instead.' : 'Dictation would not start (' + (e && e.code) + ').'); });
+      return true;
+    }
+    const R = window.SpeechRecognition || window.webkitSpeechRecognition; if (!R) return false;
+    const r = new R(); r.continuous = true; r.interimResults = true;
+    r.onresult = e => { part = ''; for (let i = e.resultIndex; i < e.results.length; i++) { if (e.results[i].isFinal) said += ' ' + e.results[i][0].transcript; else part += e.results[i][0].transcript; } heard((said + ' ' + part).trim()); };
+    r.onerror = e => end(e.error === 'not-allowed' ? 'The mic is blocked here; type the note instead.' : null); r.onend = () => end(null);
+    talk = { stop: () => r.stop(), cancel: () => { said = ''; part = ''; r.abort(); } };
+    try { r.start(); } catch (e) { talk = null; return false; } return true;
+  };
+  mm.speechStop = () => { if (talk) talk.stop(); };
+  mm.speechCancel = () => { if (talk) talk.cancel(); };
+  mm.shareText = t => { try { navigator.clipboard.writeText(t); } catch (e) {} };
+  mm.info = () => 'Web ' + mm.build + ' on ' + navigator.userAgent;
+  // the network, for notes to GitHub: done(status, text); status 0 means no connection (or the page may not reach it)
+  mm.http = (method, url, auth, body, done) => { const h = { Accept: 'application/vnd.github+json' }; if (auth) h.Authorization = 'Bearer ' + auth; if (body) h['Content-Type'] = 'application/json';
+    fetch(url, { method, headers: h, body: body || undefined }).then(async r => done(r.status, await r.text()), () => done(0, '')); };
+  // accounts (WebCloud.kt, CMP step 8): the server from the mm-cloud meta tag ("<project url> <publishable key>"),
+  // requests with their own headers, files sent and fetched straight from the file store, SHA-256, the live socket
+  try { const c = document.querySelector('meta[name=mm-cloud]'); const p = c ? (c.content || '').trim().split(/\s+/) : []; mm.cloud = p.length === 2 ? { url: p[0], key: p[1] } : null; } catch (e) { mm.cloud = null; }
+  mm.uuid = () => { try { return crypto.randomUUID(); } catch (e) { const b = new Uint8Array(16); crypto.getRandomValues(b); b[6] = (b[6] & 15) | 64; b[8] = (b[8] & 63) | 128; const h = [...b].map(x => x.toString(16).padStart(2, '0')).join(''); return h.slice(0, 8) + '-' + h.slice(8, 12) + '-' + h.slice(12, 16) + '-' + h.slice(16, 20) + '-' + h.slice(20); } };
+  mm.cloudHttp = (method, url, headers, body, done) => { let h = {}; try { h = JSON.parse(headers); } catch (e) {}
+    fetch(url, { method, headers: h, body: body == null ? undefined : body }).then(async r => done(r.status, await r.text()), () => done(0, '')); };
+  mm.cloudSend = (method, url, headers, key, done) => { let h = {}; try { h = JSON.parse(headers); } catch (e) {} const b = files.get(key); if (!b) { done(0, ''); return; }
+    fetch(url, { method, headers: h, body: b }).then(async r => done(r.status, await r.text()), () => done(0, '')); };
+  const hex = buf => [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, '0')).join('');
+  mm.sha256 = (key, done) => { const b = files.get(key); if (!b || !crypto.subtle) { done(''); return; } crypto.subtle.digest('SHA-256', b).then(d => done(hex(d)), () => done('')); };
+  mm.cloudGet = (url, key, max, done) => {
+    fetch(url).then(async r => { if (!r.ok) { done(r.status, ''); return; } let u = new Uint8Array(await r.arrayBuffer()); if (max >= 0 && u.length > max) u = u.slice(0, max);
+      files.set(key, u); times.set(key, Date.now()); parents(key); put(key, { b: u, t: Date.now() });
+      let sha = ''; try { sha = hex(await crypto.subtle.digest('SHA-256', u)); } catch (e) {} done(r.status, sha); }, () => done(0, '')); };
+  const socks = new Map(); let sockId = 0;
+  mm.wsOpen = (url, open, text, closed) => { const id = ++sockId; let ws = null, gone = false; const bye = () => { if (gone) return; gone = true; socks.delete(id); closed(); };
+    try { ws = new WebSocket(url); } catch (e) { setTimeout(bye, 0); return id; }
+    socks.set(id, ws); ws.onopen = () => open(); ws.onmessage = e => { if (typeof e.data === 'string') text(e.data); }; ws.onclose = bye; ws.onerror = () => { try { ws.close(); } catch (e) {} bye(); }; return id; };
+  mm.wsSend = (id, t) => { const ws = socks.get(id); if (ws && ws.readyState === 1) ws.send(t); };
+  mm.wsClose = id => { const ws = socks.get(id); if (ws) { try { ws.close(1000); } catch (e) {} } };
+  // the sound out (blocks rendered by the engine) and the mic in (blocks for the engine), one AudioWorklet module
+  const WORKLET = `class MMOut extends AudioWorkletProcessor {
+    constructor() { super(); this.q = []; this.at = 0; this.under = 0; this.told = -1e9; this.on = false; this.port.onmessage = e => { this.on = true; this.q.push(e.data); let n = 0; for (const b of this.q) n += b.length / 2; while (n > sampleRate / 2 && this.q.length > 1) { n -= this.q.shift().length / 2; this.at = 0; } }; }
+    process(_, outs) { const L = outs[0][0], R = outs[0][1] || outs[0][0]; let i = 0;
+      while (i < L.length) { const b = this.q[0]; if (!b) { if (i === 0 && this.on) { this.under++; if (currentFrame - this.told > sampleRate / 20) { this.told = currentFrame; this.port.postMessage(this.under); } } for (; i < L.length; i++) { L[i] = 0; R[i] = 0; } break; }
+        while (i < L.length && this.at < b.length) { L[i] = b[this.at]; R[i] = b[this.at + 1]; this.at += 2; i++; }
+        if (this.at >= b.length) { this.q.shift(); this.at = 0; } }
+      return true; } }
+  registerProcessor('mm-out', MMOut);
+  class MMIn extends AudioWorkletProcessor {
+    constructor() { super(); this.buf = new Float32Array(2048); this.n = 0; this.live = true; this.port.onmessage = () => { this.live = false; }; }
+    process(ins) { const c = ins[0] && ins[0][0]; if (c) for (let i = 0; i < c.length; i++) { this.buf[this.n++] = c[i]; if (this.n === this.buf.length) { this.port.postMessage(this.buf); this.buf = new Float32Array(2048); this.n = 0; } } return this.live; } }
+  registerProcessor('mm-in', MMIn);`;
+  let ctx = null, node = null, waiting = [], ready = null;
+  mm.audioOpen = rate => {
+    if (ctx) { ctx.resume && ctx.resume(); return 0; }
+    try { ctx = new AudioContext({ sampleRate: rate, latencyHint: 'interactive' }); } catch (e) { ctx = new AudioContext(); }
+    const url = URL.createObjectURL(new Blob([WORKLET], { type: 'text/javascript' }));
+    ready = ctx.audioWorklet.addModule(url).then(() => {
+      node = new AudioWorkletNode(ctx, 'mm-out', { numberOfInputs: 0, outputChannelCount: [2] });
+      node.port.onmessage = e => { mm.underruns = e.data; };
+      node.connect(ctx.destination);
+      waiting.forEach(b => node.port.postMessage(b, [b.buffer])); waiting = [];
+    });
+    const wake = () => { if (ctx && ctx.state !== 'running') ctx.resume(); };
+    addEventListener('pointerdown', wake, true); addEventListener('keydown', wake, true);
+    return 0;
+  };
+  mm.audioClose = () => { if (ctx) ctx.suspend(); };
+  mm.audioFrames = () => ctx ? ctx.currentTime * ctx.sampleRate : 0;
+  mm.outMs = () => ctx ? ((ctx.baseLatency || 0) + (ctx.outputLatency || 0)) * 1000 : 0;
+  mm.audioInfo = () => ctx ? 'AudioWorklet ' + ctx.sampleRate + ' Hz, ' + Math.round(mm.outMs()) + ' ms in the browser, ' + ctx.state : 'no sound yet';
+  mm.blockStart = n => { mm.blk = new Float32Array(n * 2); };
+  mm.blockSend = () => { const b = mm.blk; if (node) node.port.postMessage(b, [b.buffer]); else { waiting.push(b); if (waiting.length > 40) waiting.shift(); } };
+  // the mic, for sampling: mono at the sound out's rate; the app pulls what came in since the last pull
+  let mic = null, micQ = [];
+  mm.askMic = cb => { if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return cb(false); navigator.mediaDevices.getUserMedia({ audio: true }).then(s => { s.getTracks().forEach(t => t.stop()); mm.micOk = true; cb(true); }, () => { mm.micBlocked = true; cb(false); }); };
+  mm.micStart = cb => {
+    if (mic || !navigator.mediaDevices || !ctx) return cb(false);
+    micQ = [];
+    navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }).then(async s => {
+      await ready; mm.micOk = true;
+      const src = ctx.createMediaStreamSource(s), w = new AudioWorkletNode(ctx, 'mm-in', { numberOfInputs: 1, numberOfOutputs: 0 });
+      w.port.onmessage = e => micQ.push(e.data); src.connect(w);
+      mic = { s, src, w }; cb(true);
+    }, () => { mm.micBlocked = true; cb(false); });
+  };
+  mm.micRate = () => ctx ? ctx.sampleRate : 48000;
+  mm.micPull = () => { let n = 0; for (const b of micQ) n += b.length; const out = new Float32Array(n); let at = 0; for (const b of micQ) { out.set(b, at); at += b.length; } micQ = []; mm.cur = new DataView(out.buffer); return n; };
+  mm.micStop = () => { if (!mic) return; try { mic.w.port.postMessage(0); mic.src.disconnect(); mic.s.getTracks().forEach(t => t.stop()); } catch (e) {} mic = null; };
+  // MIDI in: each message as (status, data1, data2); say(text) when a device comes or goes
+  mm.midiStart = (on, say) => {
+    if (!navigator.requestMIDIAccess) return false;
+    navigator.requestMIDIAccess().then(a => {
+      const hook = p => { if (p.type !== 'input' || p.state !== 'connected' || p.onmidimessage) return; p.onmidimessage = e => { const d = e.data; if (d.length >= 2 && d[0] < 0xF0) on(d[0], d[1], d.length > 2 ? d[2] : 0); }; say(p.name || 'a MIDI device'); };
+      a.inputs.forEach(hook); a.onstatechange = e => { if (e.port.state === 'connected') hook(e.port); else e.port.onmidimessage = null; };
+    }, () => {});
+    return true;
+  };
+  // pause and come back
+  mm.onHide = f => document.addEventListener('visibilitychange', () => { if (document.hidden) f(); });
+  mm.onShow = f => document.addEventListener('visibilitychange', () => { if (!document.hidden) f(); });
+  // start: the app's sounds, its fallback fonts and the saved files load first
+  let go = null, loaded = false;
+  mm.ready = f => { go = f; if (loaded) { document.getElementById('wait').remove(); f(); } };
+  (async () => {
+    db = await idb();
+    if (db) await new Promise(res => { try { const t = db.transaction('files', 'readonly'); const r = t.objectStore('files').openCursor();
+      r.onsuccess = () => { const c = r.result; if (!c) return res(); files.set(c.key, c.value.b); times.set(c.key, c.value.t); parents(c.key); c.continue(); }; r.onerror = () => res(); } catch (e) { db = null; res(); } });
+    if (db) mm.store = 'indexeddb';
+    else {
+      try { localStorage.setItem('mmf:?', '1'); localStorage.removeItem('mmf:?'); mm.store = 'local'; } catch (e) {}
+      for (const k of lsKeys()) { try { const o = JSON.parse(localStorage.getItem(k)); const p = k.slice(4); files.set(p, b64(o.b)); times.set(p, o.t); parents(p); } catch (e) {} }
+    }
+    await Promise.all(['mm_symbols.ttf', 'mm_emoji.ttf'].map(async n => { try { const r = await fetch(n); if (r.ok) files.set('font:' + n, new Uint8Array(await r.arrayBuffer())); } catch (e) {} }));
+    const list = await (await fetch('assets/index.json')).json();
+    let done = 0; const line = document.getElementById('waitline');
+    if (Array.isArray(list)) {
+      await Promise.all(list.map(async p => { const r = await fetch('assets/' + p); files.set('asset:' + p, new Uint8Array(await r.arrayBuffer())); done++; line.textContent = 'Loading the sounds... ' + done + ' of ' + list.length; }));
+    } else {
+      // a claude.ai artifact will not serve every file type, so there the assets come as base64 packs (tools/web-pack.py)
+      await Promise.all(list.packs.map(async p => { const o = await (await fetch('assets/' + p)).json(); for (const k in o) files.set('asset:' + k, b64(o[k])); done++; line.textContent = 'Loading the sounds... ' + done + ' of ' + list.packs.length; }));
+    }
+    loaded = true;
+    if (go) { document.getElementById('wait').remove(); go(); }
+  })().catch(e => { document.getElementById('waitline').textContent = 'The sounds did not load: ' + e.message; });
+  return mm;
+})();
+</script>
+<script src="mm.js"></script>
+</body>
+</html>
