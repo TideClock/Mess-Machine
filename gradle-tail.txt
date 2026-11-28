@@ -1,0 +1,151 @@
+Starting a Gradle Daemon (subsequent builds will be faster)
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:jvmProcessResources NO-SOURCE
+> Task :core:processJvmMainResources SKIPPED
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugBuildConfig
+> Task :ui:preBuild UP-TO-DATE
+> Task :ui:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugResValues
+> Task :ui:generateDebugResValues
+> Task :ui:writeDebugAarMetadata
+> Task :ui:generateDebugResources
+> Task :app:checkDebugAarMetadata
+> Task :ui:packageDebugResources
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :ui:extractDeepLinksDebug
+> Task :ui:processDebugManifest
+> Task :app:parseDebugLocalResources
+> Task :app:mergeDebugResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:processDebugManifestForPackage
+> Task :ui:compileDebugLibraryResources
+> Task :ui:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ui:parseDebugLocalResources
+> Task :ui:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :ui:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :ui:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :ui:generateResourceAccessorsForAndroidMain NO-SOURCE
+> Task :ui:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :ui:generateDebugRFile
+> Task :ui:copyNonXmlValueResourcesForCommonMain
+> Task :ui:prepareComposeResourcesTaskForCommonMain
+> Task :ui:generateResourceAccessorsForCommonMain
+> Task :ui:generateActualResourceCollectorsForAndroidMain
+> Task :ui:generateComposeResClass
+> Task :ui:generateExpectResourceCollectorsForCommonMain
+> Task :ui:convertXmlValueResourcesForAndroidDebug NO-SOURCE
+> Task :ui:copyNonXmlValueResourcesForAndroidDebug NO-SOURCE
+> Task :ui:prepareComposeResourcesTaskForAndroidDebug NO-SOURCE
+> Task :ui:generateResourceAccessorsForAndroidDebug NO-SOURCE
+> Task :ui:javaPreCompileDebug
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebug
+> Task :app:javaPreCompileDebugUnitTest
+> Task :app:mergeDebugShaders
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :ui:mergeDebugShaders
+> Task :ui:compileDebugShaders NO-SOURCE
+> Task :ui:copyDebugComposeResourcesToAndroidAssets
+> Task :app:processDebugResources
+> Task :ui:debugAssetsCopyForAGP NO-SOURCE
+> Task :ui:generateDebugAssets UP-TO-DATE
+> Task :ui:mergeDebugAssets
+> Task :app:mergeDebugAssets
+> Task :app:packageDebugUnitTestForUnitTest
+> Task :ui:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:generateDebugUnitTestConfig
+> Task :ui:convertXmlValueResourcesForAndroidUnitTest NO-SOURCE
+> Task :ui:copyNonXmlValueResourcesForAndroidUnitTest NO-SOURCE
+> Task :ui:prepareComposeResourcesTaskForAndroidUnitTest NO-SOURCE
+> Task :ui:generateResourceAccessorsForAndroidUnitTest NO-SOURCE
+> Task :ui:convertXmlValueResourcesForAndroidUnitTestDebug NO-SOURCE
+> Task :ui:copyNonXmlValueResourcesForAndroidUnitTestDebug NO-SOURCE
+> Task :ui:prepareComposeResourcesTaskForAndroidUnitTestDebug NO-SOURCE
+> Task :ui:generateResourceAccessorsForAndroidUnitTestDebug NO-SOURCE
+> Task :ui:convertXmlValueResourcesForCommonTest NO-SOURCE
+> Task :ui:copyNonXmlValueResourcesForCommonTest NO-SOURCE
+> Task :ui:generateDebugUnitTestStubRFile
+> Task :ui:prepareComposeResourcesTaskForCommonTest NO-SOURCE
+> Task :ui:generateResourceAccessorsForCommonTest NO-SOURCE
+> Task :ui:javaPreCompileDebugUnitTest
+> Task :core:compileKotlinJvm
+w: file:///home/runner/work/Mess-Machine/Mess-Machine/core/src/commonMain/kotlin/com/tideclock/messmachine/engine/Engine.kt:2010:21 Condition is always 'false'.
+w: file:///home/runner/work/Mess-Machine/Mess-Machine/core/src/commonMain/kotlin/com/tideclock/messmachine/engine/MidiOut.kt:38:21 Condition is always 'false'.
+w: file:///home/runner/work/Mess-Machine/Mess-Machine/core/src/commonMain/kotlin/com/tideclock/messmachine/engine/MidiOut.kt:75:28 Condition is always 'false'.
+
+> Task :core:compileJvmMainJava NO-SOURCE
+> Task :core:jvmMainClasses
+> Task :core:jvmJar
+> Task :ui:compileDebugKotlinAndroid
+> Task :ui:compileDebugJavaWithJavac NO-SOURCE
+> Task :ui:processDebugJavaRes
+> Task :ui:bundleLibCompileToJarDebug
+> Task :ui:bundleLibRuntimeToJarDebug
+> Task :ui:compileDebugUnitTestKotlinAndroid NO-SOURCE
+> Task :ui:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :ui:processDebugUnitTestJavaRes NO-SOURCE
+> Task :ui:testDebugUnitTest NO-SOURCE
+> Task :app:compileDebugKotlin
+> Task :app:compileDebugJavaWithJavac
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:processDebugJavaRes
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:compileDebugUnitTestKotlin
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes
+
+> Task :app:testDebugUnitTest
+
+TapeRender > p0 SKIPPED
+
+TapeRender > p1 SKIPPED
+
+TapeRender > x1 SKIPPED
+
+TapeRender > x3 SKIPPED
+
+TapeRender > x4 SKIPPED
+
+TapeRender > x5 SKIPPED
+
+TapeRender > x6 SKIPPED
+
+TapeRender > x7 SKIPPED
+
+TapeRender > x8 SKIPPED
+
+TapeRender > x9 STANDARD_OUT
+    DEMO hero kit=[samples/basement-kick.wav, samples/wet-clap.wav, samples/pot-lid-hat.wav, samples/bw-snare.wav, samples/tom-of-doom.wav, synth:2, samples/singing-bowl.wav, synth:3] bowl ap=-1.52
+    DEMO done x9 frames=1140 audio=1824000 samples
+
+TapeRender > x9 PASSED
+
+TapeRender > x10 SKIPPED
+
+TapeRender > x11 SKIPPED
+
+TapeRender > x12 SKIPPED
+
+TapeRender > x13 SKIPPED
+
+TapeRender > x14 SKIPPED
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1795852978926.json
+[Incubating] Problems report is available at: file:///home/runner/work/Mess-Machine/Mess-Machine/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 5m 36s
+55 actionable tasks: 55 executed

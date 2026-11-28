@@ -1,0 +1,1 @@
+shot=x9 fps=30 rate=48000 frames=1140 bpm=120
