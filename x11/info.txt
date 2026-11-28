@@ -1,0 +1,1 @@
+shot=x11 fps=30 rate=48000 frames=450 bpm=120

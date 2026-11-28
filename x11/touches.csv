@@ -1,0 +1,53 @@
+frame,type,x,y,note
+40,down,452,617,swipe-down
+41,move,452,689,swipe-down
+42,move,452,760,swipe-down
+43,move,452,832,swipe-down
+44,move,452,904,swipe-down
+45,up,0,0,swipe-down
+90,down,452,1624,swipe-down
+91,move,452,1701,swipe-down
+92,move,452,1767,swipe-down
+93,move,452,1839,swipe-down
+94,move,452,1911,swipe-down
+95,up,0,0,swipe-down
+150,down,127,1047,chord 0
+156,up,127,1047,chord 0
+165,down,127,1047,chord 0
+171,up,127,1047,chord 0
+180,down,127,1047,chord 0
+186,up,127,1047,chord 0
+195,down,127,1047,chord 0
+201,up,127,1047,chord 0
+202,down,127,1993,chord 0
+242,up,127,1993,chord 0
+243,down,678,1047,chord 3
+249,up,678,1047,chord 3
+250,down,678,1047,chord 3
+256,up,678,1047,chord 3
+257,down,678,1047,chord 3
+263,up,678,1047,chord 3
+264,down,678,1047,chord 3
+270,up,678,1047,chord 3
+271,down,678,1993,chord 3
+311,up,678,1993,chord 3
+312,down,861,1047,chord 4
+318,up,861,1047,chord 4
+319,down,861,1047,chord 4
+325,up,861,1047,chord 4
+326,down,861,1047,chord 4
+332,up,861,1047,chord 4
+333,down,861,1047,chord 4
+339,up,861,1047,chord 4
+340,down,861,1993,chord 4
+380,up,861,1993,chord 4
+381,down,1045,1047,chord 5
+387,up,1045,1047,chord 5
+388,down,1045,1047,chord 5
+394,up,1045,1047,chord 5
+395,down,1045,1047,chord 5
+401,up,1045,1047,chord 5
+402,down,1045,1047,chord 5
+408,up,1045,1047,chord 5
+409,down,1045,1993,chord 5
+449,up,1045,1993,chord 5
