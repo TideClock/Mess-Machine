@@ -1,0 +1,3 @@
+  <system-out><![CDATA[DEMO hero kit=[samples/basement-kick.wav, samples/wet-clap.wav, samples/pot-lid-hat.wav, samples/bw-snare.wav, samples/tom-of-doom.wav, synth:2, samples/singing-bowl.wav, synth:3] bowl ap=-1.52
+DEMO x13 mouthOn=true running=true
+DEMO done x13 frames=360 audio=576000 samples
