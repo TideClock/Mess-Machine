@@ -152,6 +152,26 @@ window.mm = (() => {
   // the network, for notes to GitHub: done(status, text); status 0 means no connection (or the page may not reach it)
   mm.http = (method, url, auth, body, done) => { const h = { Accept: 'application/vnd.github+json' }; if (auth) h.Authorization = 'Bearer ' + auth; if (body) h['Content-Type'] = 'application/json';
     fetch(url, { method, headers: h, body: body || undefined }).then(async r => done(r.status, await r.text()), () => done(0, '')); };
+  // accounts (WebCloud.kt, CMP step 8): the server from the mm-cloud meta tag ("<project url> <publishable key>"),
+  // requests with their own headers, files sent and fetched straight from the file store, SHA-256, the live socket
+  try { const c = document.querySelector('meta[name=mm-cloud]'); const p = c ? (c.content || '').trim().split(/\s+/) : []; mm.cloud = p.length === 2 ? { url: p[0], key: p[1] } : null; } catch (e) { mm.cloud = null; }
+  mm.uuid = () => { try { return crypto.randomUUID(); } catch (e) { const b = new Uint8Array(16); crypto.getRandomValues(b); b[6] = (b[6] & 15) | 64; b[8] = (b[8] & 63) | 128; const h = [...b].map(x => x.toString(16).padStart(2, '0')).join(''); return h.slice(0, 8) + '-' + h.slice(8, 12) + '-' + h.slice(12, 16) + '-' + h.slice(16, 20) + '-' + h.slice(20); } };
+  mm.cloudHttp = (method, url, headers, body, done) => { let h = {}; try { h = JSON.parse(headers); } catch (e) {}
+    fetch(url, { method, headers: h, body: body == null ? undefined : body }).then(async r => done(r.status, await r.text()), () => done(0, '')); };
+  mm.cloudSend = (method, url, headers, key, done) => { let h = {}; try { h = JSON.parse(headers); } catch (e) {} const b = files.get(key); if (!b) { done(0, ''); return; }
+    fetch(url, { method, headers: h, body: b }).then(async r => done(r.status, await r.text()), () => done(0, '')); };
+  const hex = buf => [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, '0')).join('');
+  mm.sha256 = (key, done) => { const b = files.get(key); if (!b || !crypto.subtle) { done(''); return; } crypto.subtle.digest('SHA-256', b).then(d => done(hex(d)), () => done('')); };
+  mm.cloudGet = (url, key, max, done) => {
+    fetch(url).then(async r => { if (!r.ok) { done(r.status, ''); return; } let u = new Uint8Array(await r.arrayBuffer()); if (max >= 0 && u.length > max) u = u.slice(0, max);
+      files.set(key, u); times.set(key, Date.now()); parents(key); put(key, { b: u, t: Date.now() });
+      let sha = ''; try { sha = hex(await crypto.subtle.digest('SHA-256', u)); } catch (e) {} done(r.status, sha); }, () => done(0, '')); };
+  const socks = new Map(); let sockId = 0;
+  mm.wsOpen = (url, open, text, closed) => { const id = ++sockId; let ws = null, gone = false; const bye = () => { if (gone) return; gone = true; socks.delete(id); closed(); };
+    try { ws = new WebSocket(url); } catch (e) { setTimeout(bye, 0); return id; }
+    socks.set(id, ws); ws.onopen = () => open(); ws.onmessage = e => { if (typeof e.data === 'string') text(e.data); }; ws.onclose = bye; ws.onerror = () => { try { ws.close(); } catch (e) {} bye(); }; return id; };
+  mm.wsSend = (id, t) => { const ws = socks.get(id); if (ws && ws.readyState === 1) ws.send(t); };
+  mm.wsClose = id => { const ws = socks.get(id); if (ws) { try { ws.close(1000); } catch (e) {} } };
   // the sound out (blocks rendered by the engine) and the mic in (blocks for the engine), one AudioWorklet module
   const WORKLET = `class MMOut extends AudioWorkletProcessor {
     constructor() { super(); this.q = []; this.at = 0; this.under = 0; this.told = -1e9; this.on = false; this.port.onmessage = e => { this.on = true; this.q.push(e.data); let n = 0; for (const b of this.q) n += b.length / 2; while (n > sampleRate / 2 && this.q.length > 1) { n -= this.q.shift().length / 2; this.at = 0; } }; }

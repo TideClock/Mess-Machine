@@ -13,6 +13,7 @@ import androidx.compose.ui.window.ComposeViewport
 import com.tideclock.messmachine.platform.MFile
 import com.tideclock.messmachine.platform.Web
 import com.tideclock.messmachine.platform.WebFiles
+import com.tideclock.messmachine.platform.WebCloud
 import com.tideclock.messmachine.platform.WebPlatform
 import com.tideclock.messmachine.platform.jsMidiStart
 import com.tideclock.messmachine.ui.MessMachineApp
@@ -32,10 +33,11 @@ fun main() {
     MFile.store = WebFiles
     whenReady {
         val platform = WebPlatform()
-        val state = AppState(platform)
+        // accounts (CMP step 8): the server when the page names one (mm-cloud meta tag), else none, like Android's
+        val state = AppState(platform, WebCloud.orNull())
         state.onScreen = true
         state.audio.start()
-        onHide { state.saveNow(); state.onScreen = false; if (!state.playing) state.audio.stop() }
+        onHide { state.saveNow(); state.cloudBackground(); state.onScreen = false; if (!state.playing) state.audio.stop() }
         onShow { state.onScreen = true; state.audio.start() }
         startMidi(state)
         ComposeViewport("app") {
