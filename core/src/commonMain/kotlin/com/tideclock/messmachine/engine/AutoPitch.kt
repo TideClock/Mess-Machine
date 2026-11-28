@@ -20,7 +20,7 @@ import kotlin.math.sqrt
  * Both also take out the sound's own tuning drift, so a sample a little sharp lands on the note.
  */
 object AutoPitch {
-    const val NOTE_MIN_SECONDS = .1
+    const val NOTE_MIN_SECONDS = .04
     const val NOTE_SECONDS = 2.0
     /** Never moves a sound more than this many semitones, so it does not turn to chipmunk or sludge. */
     const val MAX_MOVE = 6.0
@@ -60,12 +60,15 @@ object AutoPitch {
         val a = (maxOf(0.0, minOf(1.0, st)) * data.size).toInt()
         val z = (maxOf(0.0, minOf(1.0, en)) * data.size).toInt()
         if (z - a < NOTE_MIN_SECONDS * rate) return null
-        val m = noteOf(data, rate, a, z)
-        if (m != null) return Found("note").also { it.midi = m }
         val kn = KeyFinder.parse(known)
         val t = if (z - a < KeyFinder.MIN_SECONDS * rate) null else KeyFinder.measure(data.copyOfRange(a, z), rate)
         val k = if (t == null || t.frames == 0) null else KeyFinder.ranked(t.chroma)[0]
-        if (k != null && KeyFinder.sure(k, t!!.tonal)) return Found("key").also { it.key = k; it.chroma = t.chroma.copyOf(); it.drift = t.drift }
+        val sureKey = k != null && KeyFinder.sure(k, t!!.tonal)
+        // one note first (noteOf asks a long sound to agree far more than a short hit, so a loop with a bass line
+        // under it is not taken for one note), then a key
+        val m = noteOf(data, rate, a, z)
+        if (m != null) return Found("note").also { it.midi = m }
+        if (sureKey) return Found("key").also { it.key = k; it.chroma = t!!.chroma.copyOf(); it.drift = t.drift }
         if (kn != null) return Found("key").also { it.key = kn; it.chroma = KeyFinder.shape(kn); it.drift = if (t != null && t.frames > 0) t.drift else 0.0 }
         if (k != null && k.match >= LOOSE && t!!.tonal >= KeyFinder.TONAL) return Found("key").also { it.key = k; it.chroma = t.chroma.copyOf(); it.drift = t.drift }
         return null
@@ -97,66 +100,124 @@ object AutoPitch {
      */
     @JvmStatic
     fun noteOf(data: FloatArray, rate: Int, from: Int, to: Int): Double? {
+        val f = frames(data, rate, from, to) ?: return null
+        // a short hit gets the benefit of the doubt; a long sound must agree more, so a melody or a loop is not one note
+        val sec = (to - from) / rate.toDouble()
+        val need = .5 + .35 * maxOf(0.0, minOf(1.0, (sec - .3) / .9))
+        val bar = f.loudWeight(0, f.midi.size)
+        // then once more with a whole semitone of give, for a wobbly note (vibrato, a spring's boing)
+        return vote(f.midi, f.weight, 0, f.midi.size, bar, need) ?: vote(f.midi, f.weight, 0, f.midi.size, bar, need, 1.0)
+    }
+
+    /** The pitch of each short frame of a sound (YIN), for noteOf and for chopping a melody into its notes. */
+    class Frames internal constructor(
+        /** midi of each frame, NaN where the frame has no clear pitch or is quiet */
+        @JvmField val midi: DoubleArray,
+        /** how much each pitched frame counts (louder and clearer count more), 0 where midi is NaN */
+        @JvmField val weight: DoubleArray,
+        /** each frame's loudness (RMS), and whether it is loud enough to judge */
+        @JvmField val rms: DoubleArray,
+        @JvmField val loud: BooleanArray,
+        /** where frame i starts and how long it is, in samples of the original data */
+        @JvmField val start: Int, @JvmField val hop: Int, @JvmField val len: Int,
+    ) {
+        /**
+         * The bar votes are measured against: what the loud frames in a range could carry. A loud frame with no pitch
+         * (an attack's click, a breath) counts for less than a pitched one, so a short pluck is not sunk by its attack.
+         */
+        fun loudWeight(a: Int, z: Int): Double { var s = 0.0; for (i in a until z) if (loud[i]) s += if (midi[i].isNaN()) sqrt(rms[i]) * .6 else weight[i]; return s }
+    }
+
+    /**
+     * YIN pitch per frame over data[from, to), at most NOTE_SECONDS of it after the first moment of attack. The window
+     * shrinks for short sounds (down to about 30 ms), so a 50 ms blip still gets several frames; the lowest note it can
+     * hear is then higher (about 60 Hz for 50 ms), which is fine for anything that short.
+     */
+    @JvmStatic
+    fun frames(data: FloatArray, rate: Int, from: Int, to: Int, maxSeconds: Double = NOTE_SECONDS): Frames? {
+        if (rate <= 0 || to - from <= 0) return null
         val step = if (rate >= 32000) 2 else 1
         val sr = rate / step.toDouble()
-        val a = from + (minOf(.03, (to - from) / rate.toDouble() * .2) * rate).toInt()
-        val z = minOf(to, a + (NOTE_SECONDS * rate).toInt())
-        val w = 1024
-        val lag = minOf((sr / 45).toInt(), 1024)
-        val lag0 = maxOf(2, (sr / 2000).toInt())
+        val a = from + (minOf(.012, (to - from) / rate.toDouble() * .08) * rate).toInt()
+        val z = minOf(to, a + (maxSeconds * rate).toInt())
         val n = (z - a) / step
-        if (n < w + lag) return null
+        if (n < sr * .03) return null
         val x = FloatArray(n)
         for (i in 0 until n) { val j = a + i * step; x[i] = if (step == 2) (data[j] + data[minOf(j + 1, data.size - 1)]) * .5f else data[j] }
-        var peak = 0f
-        for (v in x) if (abs(v) > peak) peak = abs(v)
-        if (peak < 1e-4f) return null
-        val hop = 512
-        val d = DoubleArray(lag + 1)
-        val notes = ArrayList<Double>()
-        var loud = 0
-        var at = 0
-        while (at + w + lag <= n) {
+        val lag = minOf((sr / 40).toInt(), 1024, n / 3)
+        val lag0 = maxOf(2, (sr / 2500).toInt())
+        if (lag <= lag0 + 2) return null
+        val w = maxOf(lag, minOf(1024, n / 3))
+        if (w + lag > n) return null
+        val hop = maxOf(32, w / 4)
+        val count = (n - w - lag) / hop + 1
+        val rms = DoubleArray(count)
+        for (k in 0 until count) {
             var e = 0.0
+            val at = k * hop
             for (i in at until at + w) e += x[i] * x[i].toDouble()
-            if (sqrt(e / w) >= peak * .05) {
-                loud++
-                for (t in 1..lag) {
-                    var s = 0.0
-                    for (i in at until at + w) { val q = x[i] - x[i + t].toDouble(); s += q * q }
-                    d[t] = s
-                }
-                // cumulative mean normalised difference
-                var run = 0.0
-                d[0] = 1.0
-                for (t in 1..lag) { run += d[t]; d[t] = if (run > 0) d[t] * t / run else 1.0 }
-                var t = lag0
-                var got = -1
-                while (t < lag) {
-                    if (d[t] < .15) { while (t + 1 < lag && d[t + 1] < d[t]) t++; got = t; break }
-                    t++
-                }
-                if (got > 0) {
-                    val y0 = d[got - 1]; val y1 = d[got]; val y2 = d[got + 1]
-                    val den = y0 - 2 * y1 + y2
-                    val tau = got + (if (abs(den) > 1e-12) .5 * (y0 - y2) / den else 0.0)
-                    notes.add(69 + 12 * ln(sr / tau / 440.0) / ln(2.0))
-                }
+            rms[k] = sqrt(e / w)
+        }
+        var top = 0.0
+        for (v in rms) if (v > top) top = v
+        if (top < 1e-4) return null
+        val midi = DoubleArray(count) { Double.NaN }
+        val weight = DoubleArray(count)
+        val loud = BooleanArray(count)
+        val d = DoubleArray(lag + 1)
+        for (k in 0 until count) {
+            if (rms[k] < top * .08) continue
+            loud[k] = true
+            val at = k * hop
+            for (t in 1..lag) {
+                var s = 0.0
+                for (i in at until at + w) { val q = x[i] - x[i + t].toDouble(); s += q * q }
+                d[t] = s
             }
-            at += hop
+            // cumulative mean normalised difference
+            var run = 0.0
+            d[0] = 1.0
+            for (t in 1..lag) { run += d[t]; d[t] = if (run > 0) d[t] * t / run else 1.0 }
+            // the first dip under .15 (YIN's rule, which avoids octave errors); failing that the deepest dip if it is
+            // still clearly periodic (a noisy recording or a fast decay never gets under .15)
+            var got = -1
+            var t = lag0
+            while (t < lag) {
+                if (d[t] < .15) { while (t + 1 < lag && d[t + 1] < d[t]) t++; got = t; break }
+                t++
+            }
+            if (got < 0) {
+                var lo = .3
+                for (u in lag0 until lag) if (d[u] < lo && d[u] <= d[u - 1] && d[u] <= d[u + 1]) { lo = d[u]; got = u }
+            }
+            if (got <= 0 || got >= lag) continue
+            val y0 = d[got - 1]; val y1 = d[got]; val y2 = d[got + 1]
+            val den = y0 - 2 * y1 + y2
+            val tau = got + (if (abs(den) > 1e-12) .5 * (y0 - y2) / den else 0.0)
+            if (tau <= 0) continue
+            midi[k] = 69 + 12 * ln(sr / tau / 440.0) / ln(2.0)
+            weight[k] = sqrt(rms[k]) * (1 - minOf(.9, y1))
         }
-        if (notes.size < 3 || notes.size < loud * .6) return null
-        // the pitch class most frames agree on (octave slips count as agreeing), then the average of those frames
-        var bestM = 0.0; var bestN = -1
-        for (c in notes) {
-            var k = 0
-            for (o in notes) if (abs(pcDiff(o, c)) < .5) k++
-            if (k > bestN) { bestN = k; bestM = c }
+        return Frames(midi, weight, rms, loud, a, hop * step, w * step)
+    }
+
+    /**
+     * The pitch class most of frames [i0, i1) agree on (octave slips count as agreeing), averaged, or null when they
+     * do not agree enough: the agreeing frames must carry at least `need` of what every loud frame could carry.
+     */
+    @JvmStatic
+    fun vote(midi: DoubleArray, weight: DoubleArray, i0: Int, i1: Int, bar: Double, need: Double = .5, give: Double = .5): Double? {
+        var bestM = 0.0; var bestW = -1.0; var bestN = 0
+        for (i in i0 until i1) {
+            val c = midi[i]; if (c.isNaN()) continue
+            var s = 0.0; var k = 0
+            for (j in i0 until i1) { val o = midi[j]; if (!o.isNaN() && abs(pcDiff(o, c)) < give) { s += weight[j]; k++ } }
+            if (s > bestW) { bestW = s; bestM = c; bestN = k }
         }
-        if (bestN < notes.size * .7) return null
+        if (bestN < 2 || bestW < bar * need) return null
         var sum = 0.0
-        for (o in notes) { val dv = pcDiff(o, bestM); if (abs(dv) < .5) sum += dv }
-        return bestM + sum / bestN
+        for (i in i0 until i1) { val o = midi[i]; if (o.isNaN()) continue; val dv = pcDiff(o, bestM); if (abs(dv) < give) sum += dv * weight[i] }
+        return bestM + sum / bestW
     }
 
     /** a minus b in semitones, folded into -6..6 so octaves do not count. */

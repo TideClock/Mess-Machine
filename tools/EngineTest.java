@@ -351,7 +351,30 @@ public class EngineTest {
         check(cm != null && "key".equals(cm.kind) && Math.abs(AutoPitch.shift(cm, 9, "Minor")) < .1, "Re-pitch: a C major tune stays put in A minor (the same notes)");
         check(cm != null && Math.abs(AutoPitch.shift(cm, 2, "Major") - 2) < .1, "Re-pitch: a C major tune moves up 2 for D major");
         check(AutoPitch.detect(hiss, ksr, 0, 1) == null, "Re-pitch: noise gets nothing");
-        check(AutoPitch.detect(note.apply(60.0, .05), ksr, 0, 1) == null, "Re-pitch: a sound under 0.1 s gets nothing");
+        check(AutoPitch.detect(note.apply(60.0, .03), ksr, 0, 1) == null, "Re-pitch: a sound under 0.04 s gets nothing");
+        // Nov 28, Tyler: "the repitch still doesnt work on short sounds". Short, fast-dying, clicky hits at 48 kHz.
+        java.util.function.Function<double[], float[]> blip = bp -> {
+          int r = (int) bp[3]; float[] x = new float[(int) (r * bp[1])];
+          double f = 440 * Math.pow(2, (bp[0] - 69) / 12.0); java.util.Random br = new java.util.Random(3);
+          for (int i = 0; i < x.length; i++) {
+            double t = i / (double) r, env = Math.min(1, i / (r * .002)) * Math.exp(-t * bp[2]);
+            double v = env * (.5 * Math.sin(2 * Math.PI * f * t) + .3 * Math.sin(4 * Math.PI * f * t + .3) + .15 * Math.sin(6 * Math.PI * f * t + 1.1));
+            if (t < .012) v += .3 * br.nextGaussian() * (1 - t / .012);
+            x[i] = (float) (v + .015 * br.nextGaussian());
+          }
+          return x;
+        };
+        int shortOk = 0, shortAll = 0; String shortMiss = "";
+        for (double sec : new double[] {.05, .08, .12, .2}) for (double m : new double[] {40.0, 48.0, 55.6, 62.0, 67.2, 79.0}) for (double dec : new double[] {8, 30}) {
+          shortAll++;
+          AutoPitch.Found sf = AutoPitch.detect(blip.apply(new double[] {m, sec, dec, 48000}), 48000, 0, 1);
+          double off = sf == null ? 99 : Math.abs(((sf.midi - m) % 12 + 18) % 12 - 6);
+          if (sf != null && "note".equals(sf.kind) && off < .3) shortOk++; else shortMiss += " " + sec + "s/" + m;
+        }
+        check(shortOk == shortAll, "Re-pitch: short clicky hits (50 to 200 ms, 48 kHz) read as their note: " + shortOk + "/" + shortAll + shortMiss);
+        float[] tick = new float[2400]; java.util.Random tr = new java.util.Random(5);
+        for (int i = 0; i < tick.length; i++) tick[i] = (float) (tr.nextGaussian() * Math.exp(-i / 300.0));
+        check(AutoPitch.detect(tick, 48000, 0, 1) == null, "Re-pitch: a 50 ms noise tick (a hat) gets nothing");
         check(AutoPitch.detect(new float[ksr], ksr, 0, 1) == null, "Re-pitch: silence gets nothing");
         SoundEdit ape = new SoundEdit(); ape.ap = 4.8; ape.apKind = "note";
         SoundEdit apb = SoundEdit.fromMap(ape.toMap());

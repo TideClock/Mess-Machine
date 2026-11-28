@@ -1,16 +1,16 @@
 {
-  "title": "Accounts are switched on",
+  "title": "Re-pitch hears short sounds",
   "thisBuild": [
-    "The app now talks to the Mess Machine server, so the sign-in and online parts of Settings are live for the first time.",
-    "The web version gets the same server on its next build, so a phone and a computer can open the same mess together.",
-    "Still new: Re-pitch on the Sample sheet's Play tab, and Auto-pitch new sounds in Settings, Playing."
+    "Re-pitch now hears sounds as short as a twentieth of a second: clicks, blips, plucks and quick vocal chops. Before, anything under about an eighth of a second got nothing.",
+    "It also copes with noisy attacks and notes that die away fast, and it is fussier about long loops, so a loop with one bass note under it goes into the mess's key instead of being moved to C.",
+    "Accounts are on: sign in under Settings, Account, and open the same mess on the computer at hubbub0.github.io/Mess-Machine."
   ],
   "watch": [
-    "Try signing in with your email. If no code arrives, that is the mail setup, not you.",
-    "Once signed in, save a mess online and open it on the computer."
+    "Chop something melodic into short slices and tap Re-pitch on a few: does each one land on C?",
+    "Try it on a kick or a hat too, and tell me if it moves anything it should leave alone."
   ],
   "limits": [
-    "Sign-in codes need the mail service hooked up on the server. Until then the email may hold a link the app cannot use.",
-    "Only your own email can get codes for now. A second tester has to be added to the server's team first."
+    "A note that slides a long way and never settles (a big 808 drop) still gets nothing.",
+    "Some tuned kicks now read as a note, so Re-pitch or Auto-pitch can move them. Undo puts them back."
   ]
 }
