@@ -1,7 +1,7 @@
 {
-  "title": "Same app, now in a browser too",
+  "title": "One app on Android, iPhone and the web",
   "thisBuild": [
-    "Behind the scenes: the web Mess Machine now runs these same screens and engine, so the phone app and the web one stay in step. Nothing changes on your phone from this.",
+    "Behind the scenes: Android, the iPhone app and the web Mess Machine now all build from the same code. Nothing changes on your phone from this.",
     "App icon: the teardrop eye from your painting in the app's own icon style, for now. The painted version is saved for later.",
     "Still new from the last build: Re-pitch on the Sample sheet's Play tab. One clear note moves to C so keys and chords play the notes they say; a melody or loop moves into the mess's key and keeps its length.",
     "Settings, Playing: Auto-pitch new sounds re-pitches every new sound on a pad, and key-matched loops follow the mess's key."
