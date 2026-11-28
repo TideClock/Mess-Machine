@@ -1,0 +1,67 @@
+frame,type,x,y,note
+60,down,739,905,swipe-left
+61,move,662,905,swipe-left
+62,move,596,905,swipe-left
+63,move,524,905,swipe-left
+64,move,452,905,swipe-left
+65,up,0,0,swipe-left
+113,down,157,884,HEAR IT
+116,up,157,884,HEAR IT
+128,down,366,1064,dtab-trim
+130,up,366,1064,dtab-trim
+136,down,1109,585,trim
+137,move,1088,585,trim
+138,move,1066,585,trim
+139,move,1044,585,trim
+140,move,1023,585,trim
+141,move,1001,585,trim
+142,move,980,585,trim
+143,move,958,585,trim
+144,move,937,585,trim
+145,move,915,585,trim
+146,move,893,585,trim
+147,move,872,585,trim
+148,move,850,585,trim
+149,move,829,585,trim
+150,move,807,585,trim
+151,move,786,585,trim
+152,move,764,585,trim
+153,up,0,0,trim
+165,down,1019,1064,dtab-tools
+167,up,1019,1064,dtab-tools
+176,down,441,2290,4 SLICES
+178,up,441,2290,4 SLICES
+196,down,735,2464,CHOP TO PADS
+199,up,735,2464,CHOP TO PADS
+240,down,165,1194,pad-8
+242,up,165,1194,pad-8
+247,down,452,1193,pad-9
+249,up,452,1193,pad-9
+255,down,739,1193,pad-10
+257,up,739,1193,pad-10
+262,down,1026,1193,pad-11
+264,up,1026,1193,pad-11
+270,down,165,1194,pad-8
+272,up,165,1194,pad-8
+277,down,165,1194,pad-8
+279,up,165,1194,pad-8
+285,down,739,1193,pad-10
+287,up,739,1193,pad-10
+292,down,1026,1193,pad-11
+294,up,1026,1193,pad-11
+300,down,452,1193,pad-9
+302,up,452,1193,pad-9
+307,down,452,1193,pad-9
+309,up,452,1193,pad-9
+315,down,739,1193,pad-10
+317,up,739,1193,pad-10
+322,down,165,1194,pad-8
+324,up,165,1194,pad-8
+330,down,1026,1193,pad-11
+332,up,1026,1193,pad-11
+337,down,739,1193,pad-10
+339,up,739,1193,pad-10
+345,down,452,1193,pad-9
+347,up,452,1193,pad-9
+352,down,165,1194,pad-8
+354,up,165,1194,pad-8
